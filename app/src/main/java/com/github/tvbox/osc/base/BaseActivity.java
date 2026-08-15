@@ -82,7 +82,7 @@ public abstract class BaseActivity extends AppCompatActivity implements CustomAd
         ImmersionBar.with(this)
                 .statusBarDarkFont(!Utils.isDarkTheme())
                 .titleBar(findTitleBar(getWindow().getDecorView().findViewById(android.R.id.content)))
-                .navigationBarColor(R.color.white)
+                .navigationBarColor(android.R.color.transparent)
                 .init();
     }
 

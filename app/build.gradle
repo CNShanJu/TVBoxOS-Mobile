@@ -1,13 +1,16 @@
-apply plugin: 'com.android.application'
-apply plugin: 'org.jetbrains.kotlin.android'
+plugins {
+    id 'com.android.application'
+    id 'org.jetbrains.kotlin.android'
+}
 
 android {
-    compileSdkVersion 33
+    namespace 'com.github.tvbox.osc'
+    compileSdk 34
 
     defaultConfig {
         applicationId 'com.github.tvbox.osc'
-        minSdkVersion 24
-        targetSdkVersion 30
+        minSdk 24
+        targetSdk 34
         versionCode 31
         versionName '1.1.1'
         multiDexEnabled true
@@ -38,8 +41,10 @@ android {
         }
     }
 
-    packagingOptions {
-        exclude 'META-INF/DEPENDENCIES'
+    packaging {
+        resources {
+            excludes += ['META-INF/DEPENDENCIES', 'META-INF/beans.xml']
+        }
     }
 
     signingConfigs {
@@ -54,6 +59,9 @@ android {
     buildTypes {
         debug {
             signingConfig signingConfigs.config
+            // 调试包使用独立包名,可与设备上已安装的同包名应用共存(避免签名不一致需卸载旧应用)
+            applicationIdSuffix ".debug"
+            // 调试包应用名见 app/src/debug/res/values/strings.xml,便于在桌面区分正式版与调试版
         }
 
         release {
@@ -67,31 +75,26 @@ android {
         targetCompatibility JavaVersion.VERSION_1_8
     }
 
-    lintOptions {
+    kotlinOptions {
+        jvmTarget = '1.8'
+    }
+
+    lint {
         checkReleaseBuilds false
         abortOnError false
     }
-    dexOptions {
-        javaMaxHeapSize "4g"
-        additionalParameters += '--multi-dex'
-        additionalParameters += '--set-max-idx-number=48000'
-        additionalParameters += '--minimal-main-dex'
-    }
+
     buildFeatures {
         viewBinding true
-    }
-
-    packagingOptions {//引入dlna-cast时的文件冲突
-        exclude 'META-INF/beans.xml'
     }
 }
 
 dependencies {
     api fileTree(dir: "libs", include: ['*.jar', '*.aar'])
 
-    implementation 'com.google.android.material:material:1.4.0'
+    implementation 'com.google.android.material:material:1.9.0'
 
-    implementation "org.jetbrains.kotlin:kotlin-stdlib:1.5.31"
+    implementation "org.jetbrains.kotlin:kotlin-stdlib:1.9.22"
     implementation 'androidx.core:core-ktx:1.6.0'
 
     implementation 'org.nanohttpd:nanohttpd:2.3.1'
@@ -104,11 +107,12 @@ dependencies {
     implementation files('libs/commons-lang3-3.12.0.jar')
     implementation 'org.conscrypt:conscrypt-android:2.5.2'
 
-    implementation 'com.squareup.okhttp3:okhttp:3.12.11'
+    implementation 'com.squareup.okhttp3:okhttp:4.12.0'
+    implementation 'com.squareup.okhttp3:logging-interceptor:4.12.0'
+    implementation 'com.squareup.okhttp3:okhttp-dnsoverhttps:4.12.0'
     annotationProcessor 'androidx.room:room-compiler:2.3.0'
     implementation 'androidx.room:room-runtime:2.3.0'
     implementation 'androidx.multidex:multidex:2.0.1'
-    implementation 'com.squareup.okio:okio:2.8.0'
     implementation 'com.github.CymChad:BaseRecyclerViewAdapterHelper:2.9.45-androidx'
     implementation 'com.kingja.loadsir:loadsir:1.3.8'
     implementation 'com.google.code.gson:gson:2.8.7'
@@ -124,7 +128,6 @@ dependencies {
     implementation project(":quickjs")
     implementation 'net.sourceforge.streamsupport:android-retrofuture:1.7.4'
 
-    implementation 'com.lzy.net:okgo:3.0.4'
     // implementation 'com.tencent.bugly:crashreport_upgrade:latest.release'
     implementation 'com.owen:tv-recyclerview:3.0.0'
 
@@ -161,8 +164,7 @@ dependencies {
     implementation 'com.hyman:flowlayout-lib:1.1.2'
     //崩溃
     implementation project(":crash")
-    //dlna投屏
-    implementation 'com.github.devin1014.DLNA-Cast:dlna-dmc:V1.0.0'
+    //dlna投屏(已移除:com.github.devin1014.DLNA-Cast:dlna-dmc:V1.0.0 已从 JitPack 消失,功能暂用桩实现,见 _backup_dlna/)
     // Lifecycles only (without ViewModel or LiveData)
     implementation "androidx.lifecycle:lifecycle-runtime-ktx:2.2.0"
 }

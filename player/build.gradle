@@ -3,11 +3,12 @@ plugins {
 }
 
 android {
-    compileSdkVersion 33
+    namespace 'com.github.tvbox.osc.player'
+    compileSdk 34
 
     defaultConfig {
-        minSdkVersion 16
-        targetSdkVersion 26
+        minSdk 24
+        targetSdk 34
         versionCode 1
         versionName "1.0"
     }
@@ -36,6 +37,6 @@ dependencies {
     api "com.google.android.exoplayer:exoplayer-hls:$exoplayerVersion"
     api "com.google.android.exoplayer:exoplayer-rtsp:$exoplayerVersion"
     api "com.google.android.exoplayer:extension-rtmp:$exoplayerVersion"
-    implementation 'com.squareup.okhttp3:okhttp:3.12.11'
+    implementation 'com.squareup.okhttp3:okhttp:4.12.0'
     api 'xyz.doikki.android.dkplayer:dkplayer-ui:3.3.5'
 }

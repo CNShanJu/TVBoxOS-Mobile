@@ -9,6 +9,9 @@
     <external-cache-path
         name="vod_external_cache_path"
         path="." />
+    <external-files-path
+        name="vod_external_files_path"
+        path="." />
 
     <!-- /storage/emulated/0/Download/${applicationId}/.beta/apk-->
     <external-path

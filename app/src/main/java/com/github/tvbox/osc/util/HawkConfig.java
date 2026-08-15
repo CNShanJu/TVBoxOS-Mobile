@@ -11,6 +11,12 @@ public class HawkConfig {
     public static final String EPG_URL = "epg_url";
     public static final String SHOW_PREVIEW = "show_preview";
     public static final String SUBSCRIPTIONS = "api_history";
+    /** 本地默认订阅文件注入的订阅集合(用于与文件内容同步增删) */
+    public static final String DEFAULT_SUBS = "default_subs";
+    /** 运行日志开关(默认关闭,排查问题时开启) */
+    public static final String APP_LOG = "app_log";
+    /** 字幕开关(默认关闭,播放器设置里可打开/关闭) */
+    public static final String SUBTITLE_OPEN = "subtitle_open";
     public static final String LIVE_HISTORY = "live_history";
     public static final String EPG_HISTORY = "epg_history";
     public static final String HOME_API = "home_api";

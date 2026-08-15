@@ -37,6 +37,7 @@ import java.util.Comparator;
 import java.util.Date;
 import java.util.Enumeration;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -156,13 +157,24 @@ public class RemoteServer extends NanoHTTPD {
                     }
                 } else if (fileName.equals("/dns-query")) {
                     String name = session.getParms().get("name");
-                    byte[] rs = null;
+                    byte[] rs = new byte[0];
                     try {
-                        rs = OkGoHelper.dnsOverHttps.lookupHttpsForwardSync(name);
+                        // okhttp 4 的 DnsOverHttps 不再提供原始 DNS 报文转发,这里改为返回解析结果文本
+                        if (OkGoHelper.dnsOverHttps != null) {
+                            List<InetAddress> addresses = OkGoHelper.dnsOverHttps.lookup(name);
+                            if (!addresses.isEmpty()) {
+                                StringBuilder sb = new StringBuilder();
+                                for (InetAddress a : addresses) {
+                                    if (sb.length() > 0) sb.append("\n");
+                                    sb.append(a.getHostAddress());
+                                }
+                                rs = sb.toString().getBytes("UTF-8");
+                            }
+                        }
                     } catch (Throwable th) {
                         rs = new byte[0];
                     }
-                    return NanoHTTPD.newFixedLengthResponse(NanoHTTPD.Response.Status.OK, "application/dns-message", new ByteArrayInputStream(rs), rs.length);
+                    return NanoHTTPD.newFixedLengthResponse(NanoHTTPD.Response.Status.OK, NanoHTTPD.MIME_PLAINTEXT, new ByteArrayInputStream(rs), rs.length);
                 } else if (fileName.equals("/m3u8")) {
                     return NanoHTTPD.newFixedLengthResponse(NanoHTTPD.Response.Status.OK,  NanoHTTPD.MIME_PLAINTEXT, m3u8Content);
                 }

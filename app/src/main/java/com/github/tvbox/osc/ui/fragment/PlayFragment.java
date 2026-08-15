@@ -16,6 +16,7 @@ import android.text.TextUtils;
 import android.view.KeyEvent;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.ViewParent;
 import android.webkit.ConsoleMessage;
 import android.webkit.CookieManager;
 import android.webkit.JsPromptResult;
@@ -71,7 +72,9 @@ import com.github.tvbox.osc.ui.dialog.SelectDialog;
 import com.github.tvbox.osc.ui.dialog.SubtitleDialog;
 import com.github.tvbox.osc.util.AdBlocker;
 import com.github.tvbox.osc.util.DefaultConfig;
+import com.github.tvbox.osc.util.HCallBack;
 import com.github.tvbox.osc.util.HawkConfig;
+import com.github.tvbox.osc.util.HttpClient;
 import com.github.tvbox.osc.util.LOG;
 import com.github.tvbox.osc.util.MD5;
 import com.github.tvbox.osc.util.PlayerHelper;
@@ -86,10 +89,6 @@ import com.gyf.immersionbar.ImmersionBar;
 import com.lxj.xpopup.XPopup;
 import com.lxj.xpopup.core.BasePopupView;
 import com.lxj.xpopup.enums.PopupPosition;
-import com.lzy.okgo.OkGo;
-import com.lzy.okgo.callback.AbsCallback;
-import com.lzy.okgo.model.HttpHeaders;
-import com.lzy.okgo.model.Response;
 import com.obsez.android.lib.filechooser.ChooserDialog;
 import com.orhanobut.hawk.Hawk;
 
@@ -396,10 +395,9 @@ public class PlayFragment extends BaseLazyFragment {
     //设置字幕
     void setSubtitle(String path) {
         if (path != null && path.length() > 0) {
-            // 设置字幕
-            mController.mSubtitleView.setVisibility(View.GONE);
+            // 设置字幕(显隐跟随"字幕"开关,默认关闭)
             mController.mSubtitleView.setSubtitlePath(path);
-            mController.mSubtitleView.setVisibility(View.VISIBLE);
+            mController.mSubtitleView.setVisibility(Hawk.get(HawkConfig.SUBTITLE_OPEN, false) ? View.VISIBLE : View.GONE);
         }
     }
 
@@ -450,11 +448,11 @@ public class PlayFragment extends BaseLazyFragment {
                         });
                     }
                 });
-                if (mVodInfo.playFlag.contains("Ali") || mVodInfo.playFlag.contains("parse")) {
-                    searchSubtitleDialog.setSearchWord(mVodInfo.playNote);
-                } else {
-                    searchSubtitleDialog.setSearchWord(mVodInfo.name);
+                String searchWord = mVodInfo.name;
+                if (mVodInfo.playFlag != null && (mVodInfo.playFlag.contains("Ali") || mVodInfo.playFlag.contains("parse"))) {
+                    searchWord = mVodInfo.playNote;
                 }
+                searchSubtitleDialog.setSearchWord(TextUtils.isEmpty(searchWord) ? "" : searchWord);
                 searchSubtitleDialog.show();
             }
         });
@@ -761,23 +759,19 @@ public class PlayFragment extends BaseLazyFragment {
             startPlayUrl(url, headers);
             return;
         }
-        OkGo.getInstance().cancelTag("m3u8-1");
-        OkGo.getInstance().cancelTag("m3u8-2");
+        HttpClient.cancel("m3u8-1");
+        HttpClient.cancel("m3u8-2");
         //remove ads in m3u8
-        HttpHeaders hheaders = new HttpHeaders();
+        Map<String, String> hheaders = new HashMap<>();
         if(headers != null){
             for (Map.Entry<String, String> s : headers.entrySet()) {
                 hheaders.put(s.getKey(), s.getValue());
             }
         }
 
-        OkGo.<String>get(url)
-                .tag("m3u8-1")
-                .headers(hheaders)
-                .execute(new AbsCallback<String>() {
+        HttpClient.get(url, hheaders, "m3u8-1", new HCallBack() {
                     @Override
-                    public void onSuccess(com.lzy.okgo.model.Response<String> response) {
-                        String content = response.body();
+                    public void onSuccess(String content) {
                         if (!content.startsWith("#EXTM3U")) {
                             startPlayUrl(url, headers);
                             return;
@@ -818,51 +812,35 @@ public class PlayFragment extends BaseLazyFragment {
                             if (RemoteServer.m3u8Content == null)
                                 startPlayUrl(url, headers);
                             else {
+                                // 广告过滤静默执行,不弹任何提示
                                 startPlayUrl("http://127.0.0.1:" + RemoteServer.serverPort + "/m3u8", headers);
-                                //Toast.makeText(getContext(), "已移除视频广告", Toast.LENGTH_SHORT).show();
                             }
                             return;
                         }
                         final String finalforwardurl = forwardurl;
-                        OkGo.<String>get(forwardurl)
-                                .tag("m3u8-2")
-                                .headers(hheaders)
-                                .execute(new AbsCallback<String>() {
+                        HttpClient.get(forwardurl, hheaders, "m3u8-2", new HCallBack() {
                                     @Override
-                                    public void onSuccess(com.lzy.okgo.model.Response<String> response) {
-                                        String content = response.body();
+                                    public void onSuccess(String content) {
                                         int ilast = finalforwardurl.lastIndexOf('/');
                                         RemoteServer.m3u8Content = removeMinorityUrl(finalforwardurl.substring(0, ilast + 1), content);
 
                                         if (RemoteServer.m3u8Content == null)
                                             startPlayUrl(finalforwardurl, headers);
                                         else {
+                                            // 广告过滤静默执行,不弹任何提示
                                             startPlayUrl("http://127.0.0.1:" + RemoteServer.serverPort + "/m3u8", headers);
-                                            //Toast.makeText(getContext(), "已移除视频广告", Toast.LENGTH_SHORT).show();
                                         }
                                     }
 
                                     @Override
-                                    public String convertResponse(okhttp3.Response response) throws Throwable {
-                                        return response.body().string();
-                                    }
-
-                                    @Override
-                                    public void onError(com.lzy.okgo.model.Response<String> response) {
-                                        super.onError(response);
+                                    public void onError(Throwable e) {
                                         startPlayUrl(url, headers);
                                     }
                                 });
                     }
 
                     @Override
-                    public String convertResponse(okhttp3.Response response) throws Throwable {
-                        return response.body().string();
-                    }
-
-                    @Override
-                    public void onError(com.lzy.okgo.model.Response<String> response) {
-                        super.onError(response);
+                    public void onError(Throwable e) {
                         startPlayUrl(url, headers);
                     }
                 });
@@ -992,6 +970,8 @@ public class PlayFragment extends BaseLazyFragment {
                 }
             }
         }
+        // 字幕默认关闭:显隐跟随设置(用户可在播放器字幕设置里打开/关闭)
+        mController.mSubtitleView.setVisibility(Hawk.get(HawkConfig.SUBTITLE_OPEN, false) ? View.VISIBLE : View.GONE);
     }
 
     private void initViewModel() {
@@ -1349,7 +1329,7 @@ public class PlayFragment extends BaseLazyFragment {
     void stopParse() {
         mHandler.removeMessages(100);
         stopLoadWebView(false);
-        OkGo.getInstance().cancelTag("json_jx");
+        HttpClient.cancel("json_jx");
         if (parseThreadPool != null) {
             try {
                 parseThreadPool.shutdown();
@@ -1396,7 +1376,7 @@ public class PlayFragment extends BaseLazyFragment {
         } else if (pb.getType() == 1) { // json 解析
             setTip("正在解析播放地址", true, false);
             // 解析ext
-            HttpHeaders reqHeaders = new HttpHeaders();
+            Map<String, String> reqHeaders = new HashMap<>();
             try {
                 JSONObject jsonObject = new JSONObject(pb.getExt());
                 if (jsonObject.has("header")) {
@@ -1410,22 +1390,9 @@ public class PlayFragment extends BaseLazyFragment {
             } catch (Throwable e) {
                 e.printStackTrace();
             }
-            OkGo.<String>get(pb.getUrl() + encodeUrl(webUrl))
-                    .tag("json_jx")
-                    .headers(reqHeaders)
-                    .execute(new AbsCallback<String>() {
+            HttpClient.get(pb.getUrl() + encodeUrl(webUrl), reqHeaders, "json_jx", new HCallBack() {
                         @Override
-                        public String convertResponse(okhttp3.Response response) throws Throwable {
-                            if (response.body() != null) {
-                                return response.body().string();
-                            } else {
-                                throw new IllegalStateException("网络请求错误");
-                            }
-                        }
-
-                        @Override
-                        public void onSuccess(Response<String> response) {
-                            String json = response.body();
+                        public void onSuccess(String json) {
                             try {
                                 JSONObject rs = jsonParse(webUrl, json);
                                 HashMap<String, String> headers = null;
@@ -1453,8 +1420,7 @@ public class PlayFragment extends BaseLazyFragment {
                         }
 
                         @Override
-                        public void onError(Response<String> response) {
-                            super.onError(response);
+                        public void onError(Throwable e) {
                             errorWithRetry("解析错误", false);
 //                            setTip("解析错误", false, true);
                         }
@@ -1623,7 +1589,11 @@ public class PlayFragment extends BaseLazyFragment {
                 mSysWebView.stopLoading();
                 mSysWebView.loadUrl("about:blank");
                 if (destroy) {
-//                        mSysWebView.clearCache(true);
+                    // 先摘除父容器,再 destroy,避免 "WebView.destroy() called while still attached" 警告与渲染进程崩溃
+                    ViewParent parent = mSysWebView.getParent();
+                    if (parent instanceof ViewGroup) {
+                        ((ViewGroup) parent).removeView(mSysWebView);
+                    }
                     mSysWebView.removeAllViews();
                     mSysWebView.destroy();
                     mSysWebView = null;

@@ -11,6 +11,7 @@ import com.github.tvbox.osc.databinding.DialogPlayingControlBinding;
 import com.github.tvbox.osc.player.MyVideoView;
 import com.github.tvbox.osc.player.controller.VodController;
 import com.github.tvbox.osc.ui.activity.DetailActivity;
+import com.github.tvbox.osc.ui.activity.DownloadActivity;
 import com.lxj.xpopup.core.BottomPopupView;
 
 import org.jetbrains.annotations.NotNull;
@@ -104,6 +105,11 @@ public class PlayingControlDialog extends BottomPopupView {
         mBinding.subtitle.setOnClickListener(view -> dismissWith(() -> changeAndUpdateText(null,mController.mZimuBtn)));
         mBinding.voice.setOnClickListener(view -> dismissWith(() -> changeAndUpdateText(null,mController.mAudioTrackBtn)));
         mBinding.download.setOnClickListener(view -> dismissWith(mDetailActivity::use1DMDownload));
+        // 长按3秒:直接跳转下载页(短按保持原下载逻辑)
+        mDetailActivity.setupDownloadLongPress(mBinding.download, () -> {
+            dismiss();
+            mDetailActivity.jumpActivity(DownloadActivity.class);
+        });
     }
 
     private void updateSkipText(boolean start){

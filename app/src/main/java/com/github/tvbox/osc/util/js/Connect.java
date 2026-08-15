@@ -3,9 +3,8 @@ package com.github.tvbox.osc.util.js;
 import android.util.Base64;
 
 import com.github.catvod.net.OkHttp;
+import com.github.tvbox.osc.util.HttpClient;
 import com.github.tvbox.osc.util.LOG;
-import com.google.common.net.HttpHeaders;
-import com.lzy.okgo.OkGo;
 import com.whl.quickjs.wrapper.JSArray;
 import com.whl.quickjs.wrapper.JSObject;
 import com.whl.quickjs.wrapper.JSUtils;
@@ -63,7 +62,7 @@ public class Connect {
 
     private static Request getRequest(String url, Req req, Headers headers) {
         if (req.getMethod().equalsIgnoreCase("post")) {
-            return new Request.Builder().url(url).tag("js_okhttp_tag").headers(headers).post(getPostBody(req, headers.get(HttpHeaders.CONTENT_TYPE))).build();
+            return new Request.Builder().url(url).tag("js_okhttp_tag").headers(headers).post(getPostBody(req, headers.get("Content-Type"))).build();
         } else if (req.getMethod().equalsIgnoreCase("header")) {
             return new Request.Builder().url(url).tag("js_okhttp_tag").headers(headers).head().build();
         } else {
@@ -118,7 +117,7 @@ public class Connect {
                     }
                 }
             }
-            OkGo.getInstance().cancelTag(tag);
+            HttpClient.cancel(tag);
         } catch (Exception e) {
             LOG.e(e);
         }

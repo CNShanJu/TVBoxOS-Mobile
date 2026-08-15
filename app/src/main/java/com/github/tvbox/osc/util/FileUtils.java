@@ -10,8 +10,6 @@ import com.github.tvbox.osc.server.ControlManager;
 import com.github.tvbox.osc.util.StringUtils;
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
-import com.lzy.okgo.OkGo;
-import com.lzy.okgo.model.HttpHeaders;
 import com.orhanobut.hawk.Hawk;
 
 import org.json.JSONObject;
@@ -117,20 +115,12 @@ public class FileUtils {
 
     public static String get(String str, Map<String, String> headerMap) {
         try {
-            HttpHeaders h = new HttpHeaders();
-            Response response = null;
             if (headerMap != null) {
-                for (String key : headerMap.keySet()) {
-                    h.put(key, headerMap.get(key));
-                }
-                response = OkGo.<String>get(str).headers(h).execute();
+                return HttpClient.getSync(str, headerMap);
             } else {
-                response =OkGo.<String>get(str).headers("User-Agent", str.startsWith("https://gitcode.net/") ? UA.random() : "okhttp/3.15").execute();
-            }
-            if (response.isSuccessful() && response.body() != null){
-                return new String(response.body().bytes(), "UTF-8");
-            } else {
-                return "";
+                Map<String, String> headers = new java.util.HashMap<>();
+                headers.put("User-Agent", str.startsWith("https://gitcode.net/") ? UA.random() : "okhttp/4.12");
+                return HttpClient.getSync(str, headers);
             }
         } catch (IOException e) {
             return "";

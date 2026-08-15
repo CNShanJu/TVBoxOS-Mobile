@@ -23,20 +23,18 @@ import com.github.tvbox.osc.ui.activity.CollectActivity;
 import com.github.tvbox.osc.ui.activity.DetailActivity;
 import com.github.tvbox.osc.ui.activity.FastSearchActivity;
 import com.github.tvbox.osc.ui.activity.HistoryActivity;
-import com.github.tvbox.osc.ui.activity.LiveActivity;
 
 import com.github.tvbox.osc.ui.activity.SettingActivity;
 import com.github.tvbox.osc.ui.adapter.GridAdapter;
 import com.github.tvbox.osc.util.FastClickCheckUtil;
+import com.github.tvbox.osc.util.HCallBack;
 import com.github.tvbox.osc.util.HawkConfig;
+import com.github.tvbox.osc.util.HttpClient;
 import com.github.tvbox.osc.util.UA;
 import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
-import com.lzy.okgo.OkGo;
-import com.lzy.okgo.callback.AbsCallback;
-import com.lzy.okgo.model.Response;
 import com.orhanobut.hawk.Hawk;
 import com.owen.tvrecyclerview.widget.TvRecyclerView;
 import com.owen.tvrecyclerview.widget.V7GridLayoutManager;
@@ -48,7 +46,9 @@ import org.greenrobot.eventbus.ThreadMode;
 
 import java.util.ArrayList;
 import java.util.Calendar;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * @author pj567
@@ -86,7 +86,6 @@ public class UserFragment extends BaseLazyFragment {
     @Override
     protected void init() {
         tvHotList1 = findViewById(R.id.tvHotList1);
-        findViewById(R.id.btn_live).setOnClickListener(view -> jumpActivity(LiveActivity.class));
         homeHotVodAdapter = new GridAdapter();
         homeHotVodAdapter.setOnItemClickListener(new BaseQuickAdapter.OnItemClickListener() {
             @Override
@@ -100,6 +99,7 @@ public class UserFragment extends BaseLazyFragment {
                 if (!TextUtils.isEmpty(vod.id)) {
                     bundle.putString("id", vod.id);
                     bundle.putString("sourceKey", vod.sourceKey);
+                    bundle.putString("vodName", vod.name);
                     jumpActivity(DetailActivity.class, bundle);
                 } else {
                     bundle.putString("title", vod.name);
@@ -154,33 +154,32 @@ public class UserFragment extends BaseLazyFragment {
                 }
             }
             String doubanUrl = "https://movie.douban.com/j/new_search_subjects?sort=U&range=0,10&tags=&playable=1&start=0&year_range=" + year + "," + year;
-            OkGo.<String>get(doubanUrl)
-                    .headers("User-Agent", UA.randomOne())
-                    .execute(new AbsCallback<String>() {
+            Map<String, String> headers = new HashMap<>();
+            headers.put("User-Agent", UA.randomOne());
+            HttpClient.get(doubanUrl, headers, null, new HCallBack() {
+                @Override
+                public void onSuccess(String netJson) {
+                    Hawk.put("home_hot_day", today);
+                    Hawk.put("home_hot", netJson);
+                    mActivity.runOnUiThread(new Runnable() {
                         @Override
-                        public void onSuccess(Response<String> response) {
-                            String netJson = response.body();
-                            Hawk.put("home_hot_day", today);
-                            Hawk.put("home_hot", netJson);
-                            mActivity.runOnUiThread(new Runnable() {
-                                @Override
-                                public void run() {
-                                    ArrayList<Movie.Video> videos = loadHots(netJson);
-                                    if (videos.size()>0){
-                                        showSuccess();
-                                        adapter.setNewData(videos);
-                                    }else {
-                                        showEmpty();
-                                    }
-                                }
-                            });
-                        }
-
-                        @Override
-                        public String convertResponse(okhttp3.Response response) throws Throwable {
-                            return response.body().string();
+                        public void run() {
+                            ArrayList<Movie.Video> videos = loadHots(netJson);
+                            if (videos.size()>0){
+                                showSuccess();
+                                adapter.setNewData(videos);
+                            }else {
+                                showEmpty();
+                            }
                         }
                     });
+                }
+
+                @Override
+                public void onError(Throwable e) {
+                    // 保持原行为
+                }
+            });
         } catch (Throwable th) {
             th.printStackTrace();
             if (adapter.getData().isEmpty()){

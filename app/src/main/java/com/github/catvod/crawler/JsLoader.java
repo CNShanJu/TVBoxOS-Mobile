@@ -2,20 +2,16 @@ package com.github.catvod.crawler;
 
 
 import com.github.tvbox.osc.base.App;
+import com.github.tvbox.osc.util.HttpClient;
 import com.github.tvbox.osc.util.LOG;
 import com.github.tvbox.osc.util.MD5;
 import com.github.tvbox.osc.util.js.JsSpider;
-import com.lzy.okgo.OkGo;
 
 import java.io.File;
-import java.io.FileOutputStream;
-import java.io.InputStream;
-import java.io.OutputStream;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 import dalvik.system.DexClassLoader;
-import okhttp3.Response;
 
 public class JsLoader {
     private static ConcurrentHashMap<String, Spider> spiders = new ConcurrentHashMap<>();
@@ -43,6 +39,11 @@ public class JsLoader {
             File cacheDir = new File(App.getInstance().getCacheDir().getAbsolutePath() + "/catvod_jsapi");
             if (!cacheDir.exists())
                 cacheDir.mkdirs();
+            // Android 8+ 禁止加载可写的 dex/jar 文件,加载前置为只读
+            File jarFile = new File(jar);
+            if (jarFile.exists()) {
+                jarFile.setReadOnly();
+            }
             DexClassLoader classLoader = new DexClassLoader(jar, cacheDir.getAbsolutePath(), null, App.getInstance().getClassLoader());
             // make force wait here, some device async dex load
             int count = 0;
@@ -81,23 +82,7 @@ public class JsLoader {
             }
         }
         try {
-            Response response = OkGo.<File>get(jar).execute();
-            InputStream is = response.body().byteStream();
-            OutputStream os = new FileOutputStream(cache);
-            try {
-                byte[] buffer = new byte[2048];
-                int length;
-                while ((length = is.read(buffer)) > 0) {
-                    os.write(buffer, 0, length);
-                }
-            } finally {
-                try {
-                    is.close();
-                    os.close();
-                } catch (Exception e) {
-                    e.printStackTrace();
-                }
-            }
+            HttpClient.downloadSync(jar, cache);
             loadClassLoader(cache.getAbsolutePath(), key);
             return classs.get(key);
         } catch (Throwable e) {

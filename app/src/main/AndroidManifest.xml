@@ -1,6 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="com.github.tvbox.osc">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <!-- 在 Android 11 中，应用程序需要声明它们要使用的其他应用程序的包名 -->
     <queries>
         <package android:name="idm.internet.download.manager.plus" />
@@ -88,15 +87,23 @@
         <activity
             android:name=".ui.activity.CollectActivity"
             android:configChanges="orientation|screenSize|keyboardHidden"/>
+        <activity
+            android:name=".ui.activity.DownloadActivity"
+            android:configChanges="orientation|screenSize|keyboardHidden"/>
 
-        <service android:name="com.android.cast.dlna.dmc.DLNACastService"/>
+        <!-- DLNA 投屏服务已停用:依赖 com.github.devin1014.DLNA-Cast 从 JitPack 消失,待找到替代库后恢复 -->
+        <!-- <service android:name="com.android.cast.dlna.dmc.DLNACastService"/> -->
 
-        <receiver android:name=".receiver.SearchReceiver">
+        <receiver
+            android:name=".receiver.SearchReceiver"
+            android:exported="true">
             <intent-filter>
                 <action android:name="android.content.movie.search.Action" />
             </intent-filter>
         </receiver>
-        <receiver android:name=".receiver.CustomWebReceiver">
+        <receiver
+            android:name=".receiver.CustomWebReceiver"
+            android:exported="true">
             <intent-filter>
                 <action android:name="android.content.movie.custom.web.Action" />
             </intent-filter>

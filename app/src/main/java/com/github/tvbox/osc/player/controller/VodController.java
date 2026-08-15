@@ -58,6 +58,9 @@ import static xyz.doikki.videoplayer.util.PlayerUtils.stringForTime;
 
 public class VodController extends BaseController {
 
+    /** 是否成功播放过(用于下载前置校验:必须先播放成功才能下载) */
+    public volatile boolean hasPlayedOnce = false;
+
     public VodController(@NonNull @NotNull Context context) {
         super(context);
         mHandlerCallback = new HandlerCallback() {
@@ -887,6 +890,7 @@ public class VodController extends BaseController {
             case VideoView.STATE_IDLE:
                 break;
             case VideoView.STATE_PLAYING:
+                hasPlayedOnce = true;
                 initLandscapePortraitBtnInfo();
                 startProgress();
                 mIvPlayStatus.setImageResource(R.drawable.ic_pause);
@@ -1050,6 +1054,8 @@ public class VodController extends BaseController {
     }
 
     public void openSubtitle(boolean open) {
+        // 持久化字幕开关,供字幕设置弹窗显示当前状态
+        Hawk.put(HawkConfig.SUBTITLE_OPEN, open);
         if (open) {
             mSubtitleView.setVisibility(VISIBLE);
             Toast.makeText(getContext(), "字幕已开启", Toast.LENGTH_SHORT).show();

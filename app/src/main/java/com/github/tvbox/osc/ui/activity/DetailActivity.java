@@ -19,6 +19,7 @@ import android.os.Bundle;
 import android.text.TextUtils;
 import android.util.Rational;
 import android.view.KeyEvent;
+import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.FrameLayout;
@@ -63,8 +64,13 @@ import com.github.tvbox.osc.ui.dialog.QuickSearchDialog;
 import com.github.tvbox.osc.ui.dialog.VideoDetailDialog;
 import com.github.tvbox.osc.ui.fragment.PlayFragment;
 import com.github.tvbox.osc.ui.widget.LinearSpacingItemDecoration;
+import com.github.tvbox.osc.util.BroadcastUtils;
+import com.github.tvbox.osc.util.DownloadManager;
+import com.github.tvbox.osc.ui.activity.DownloadActivity;
 import com.github.tvbox.osc.util.FastClickCheckUtil;
+import com.github.tvbox.osc.util.HCallBack;
 import com.github.tvbox.osc.util.HawkConfig;
+import com.github.tvbox.osc.util.HttpClient;
 import com.github.tvbox.osc.util.ScreenShotListenManager;
 import com.github.tvbox.osc.util.SearchHelper;
 import com.github.tvbox.osc.util.SubtitleHelper;
@@ -78,9 +84,6 @@ import com.lxj.xpopup.XPopup;
 import com.lxj.xpopup.core.BasePopupView;
 import com.lxj.xpopup.enums.PopupPosition;
 import com.lxj.xpopup.interfaces.OnSelectListener;
-import com.lzy.okgo.OkGo;
-import com.lzy.okgo.callback.AbsCallback;
-import com.lzy.okgo.model.Response;
 import com.orhanobut.hawk.Hawk;
 import com.owen.tvrecyclerview.widget.V7LinearLayoutManager;
 
@@ -116,6 +119,8 @@ public class DetailActivity extends BaseVbActivity<ActivityDetailBinding> {
     public SeriesAdapter seriesAdapter;
     public String vodId;
     public String sourceKey;
+    /** 入口(搜索/列表)传入的剧名,详情拉不到名称时用于下载命名 */
+    private String mPassedName = "";
     private View seriesFlagFocus = null;
     private boolean isReverse;
     private String preFlag = "";
@@ -145,7 +150,7 @@ public class DetailActivity extends BaseVbActivity<ActivityDetailBinding> {
         initView();
         initViewModel();
         initData();
-        registerReceiver(mBatteryReceiver, new IntentFilter(Intent.ACTION_BATTERY_CHANGED));
+        BroadcastUtils.registerReceiverNotExported(this, mBatteryReceiver, new IntentFilter(Intent.ACTION_BATTERY_CHANGED));
         ImmersionBar.with(this)
                 .statusBarColor(R.color.black)
                 .navigationBarColor(R.color.white)
@@ -196,6 +201,15 @@ public class DetailActivity extends BaseVbActivity<ActivityDetailBinding> {
             @Override
             public void onClick(View view) {
                 use1DMDownload();
+            }
+        });
+        // 长按3秒:直接跳转下载页
+        setupDownloadLongPress(findViewById(R.id.tvDownload), () -> jumpActivity(DownloadActivity.class));
+        // 选集列表下方的"下载管理"按钮:直接进入下载页
+        findViewById(R.id.tvDownloadManager).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                jumpActivity(DownloadActivity.class);
             }
         });
         mBinding.tvSort.setOnClickListener(new View.OnClickListener() {
@@ -295,7 +309,7 @@ public class DetailActivity extends BaseVbActivity<ActivityDetailBinding> {
                     }
                 }
             };
-            registerReceiver(mHomeKeyReceiver, new IntentFilter(Intent.ACTION_CLOSE_SYSTEM_DIALOGS));
+            BroadcastUtils.registerReceiverNotExported(this, mHomeKeyReceiver, new IntentFilter(Intent.ACTION_CLOSE_SYSTEM_DIALOGS));
         }
     }
 
@@ -481,7 +495,9 @@ public class DetailActivity extends BaseVbActivity<ActivityDetailBinding> {
                     vodInfo.sourceKey = mVideo.sourceKey;
 
                     mBinding.tvName.setText(TextUtils.isEmpty(mVideo.name) ? "暂无信息" : mVideo.name);
-                    String srcName = ApiConfig.get().getSource(mVideo.sourceKey).getName();
+                    String srcName = "";
+                    SourceBean detailSource = ApiConfig.get().getSource(mVideo.sourceKey);
+                    if (detailSource != null) srcName = detailSource.getName();
                     mBinding.tvSite.setText("来源：" + (TextUtils.isEmpty(srcName) ? "未知" : srcName));
 
                     if (vodInfo.seriesMap != null && vodInfo.seriesMap.size() > 0) {//线路
@@ -555,6 +571,8 @@ public class DetailActivity extends BaseVbActivity<ActivityDetailBinding> {
         Intent intent = getIntent();
         if (intent != null && intent.getExtras() != null) {
             Bundle bundle = intent.getExtras();
+            // 入口(搜索/列表等)传过来的剧名,用于下载命名兜底
+            mPassedName = bundle.getString("vodName", "");
             loadDetail(bundle.getString("id", null), bundle.getString("sourceKey", ""));
         }
     }
@@ -623,7 +641,7 @@ public class DetailActivity extends BaseVbActivity<ActivityDetailBinding> {
     private ExecutorService searchExecutorService = null;
 
     private void switchSearchWord(String word) {
-        OkGo.getInstance().cancelTag("quick_search");
+        HttpClient.cancel("quick_search");
         quickSearchData.clear();
         searchTitle = word;
         searchResult();
@@ -634,27 +652,15 @@ public class DetailActivity extends BaseVbActivity<ActivityDetailBinding> {
         if (hadQuickStart)
             return;
         hadQuickStart = true;
-        OkGo.getInstance().cancelTag("quick_search");
+        HttpClient.cancel("quick_search");
         quickSearchWord.clear();
         searchTitle = mVideo.name;
         quickSearchData.clear();
         quickSearchWord.addAll(SearchHelper.splitWords(searchTitle));
         // 分词
-        OkGo.<String>get("http://api.pullword.com/get.php?source=" + URLEncoder.encode(searchTitle) + "&param1=0&param2=0&json=1")
-                .tag("fenci")
-                .execute(new AbsCallback<String>() {
+        HttpClient.get("http://api.pullword.com/get.php?source=" + URLEncoder.encode(searchTitle) + "&param1=0&param2=0&json=1", "fenci", new HCallBack() {
                     @Override
-                    public String convertResponse(okhttp3.Response response) throws Throwable {
-                        if (response.body() != null) {
-                            return response.body().string();
-                        } else {
-                            throw new IllegalStateException("网络请求错误");
-                        }
-                    }
-
-                    @Override
-                    public void onSuccess(Response<String> response) {
-                        String json = response.body();
+                    public void onSuccess(String json) {
                         try {
                             for (JsonElement je : new Gson().fromJson(json, JsonArray.class)) {
                                 quickSearchWord.add(je.getAsJsonObject().get("t").getAsString());
@@ -667,8 +673,7 @@ public class DetailActivity extends BaseVbActivity<ActivityDetailBinding> {
                     }
 
                     @Override
-                    public void onError(Response<String> response) {
-                        super.onError(response);
+                    public void onError(Throwable e) {
                     }
                 });
 
@@ -757,9 +762,9 @@ public class DetailActivity extends BaseVbActivity<ActivityDetailBinding> {
         } catch (Throwable th) {
             th.printStackTrace();
         }
-        OkGo.getInstance().cancelTag("fenci");
-        OkGo.getInstance().cancelTag("detail");
-        OkGo.getInstance().cancelTag("quick_search");
+        HttpClient.cancel("fenci");
+        HttpClient.cancel("detail");
+        HttpClient.cancel("quick_search");
         toggleScreenShotListen(false);
     }
 
@@ -832,43 +837,84 @@ public class DetailActivity extends BaseVbActivity<ActivityDetailBinding> {
         EventBus.getDefault().post(new RefreshEvent(RefreshEvent.TYPE_SUBTITLE_SIZE_CHANGE, subtitleTextSize));
     }
 
-    public void use1DMDownload() {
-        if (vodInfo != null && vodInfo.seriesMap.get(vodInfo.playFlag).size() > 0) {
-            VodInfo.VodSeries vod = vodInfo.seriesMap.get(vodInfo.playFlag).get(vodInfo.playIndex);
-            String url = TextUtils.isEmpty(playFragment.getFinalUrl()) ? vod.url : playFragment.getFinalUrl();
-            // 创建Intent对象，启动1DM App
-            Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
-            intent.setDataAndType(Uri.parse(url), "video/mp4");
-            intent.putExtra("title", vodInfo.name + " " + vod.name); // 传入文件保存名
-//            intent.setClassName("idm.internet.download.manager.plus", "idm.internet.download.manager.MainActivity");
-            intent.setClassName("idm.internet.download.manager.plus", "idm.internet.download.manager.Downloader");
-            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-
-            // 检查1DM App是否已安装
-            PackageManager pm = getPackageManager();
-            List<ResolveInfo> activities = pm.queryIntentActivities(intent, 0);
-            boolean isIntentSafe = activities.size() > 0;
-
-            if (isIntentSafe) {
-                startActivity(intent); // 启动1DM App
-            } else {
-                // 如果1DM App未安装，提示用户安装1DM App
-                AlertDialog.Builder builder = new AlertDialog.Builder(this);
-                builder.setTitle("请先安装1DM+下载管理器");
-                builder.setMessage("为了下载视频，请先安装1DM+下载管理器。是否现在安装？");
-                builder.setPositiveButton("立即下载", new DialogInterface.OnClickListener() {
-
-                    public void onClick(DialogInterface dialog, int which) {
-                        // 跳转到下载链接
-                        Intent downloadIntent = new Intent(Intent.ACTION_VIEW, Uri.parse("https://od.lk/d/MzRfMTg0NTcxMDdf/1DM _v15.6.apk"));
-                        startActivity(downloadIntent);
+    /**
+     * 给下载按钮加"长按3秒跳转下载页"逻辑:按下计时,到时自动触发;抬手/取消则取消计时。
+     * 若已触发跳转,抬手时消费事件,避免再误触发下载。
+     */
+    public void setupDownloadLongPress(View btn, Runnable onLongPress) {
+        final String FLAG_JUMPED = "jumped";
+        btn.setOnTouchListener((v, event) -> {
+            switch (event.getActionMasked()) {
+                case MotionEvent.ACTION_DOWN: {
+                    Runnable r = () -> {
+                        if (v.getTag() instanceof Runnable) { // 未被抬手取消
+                            v.setTag(FLAG_JUMPED);
+                            if (onLongPress != null) onLongPress.run();
+                        }
+                    };
+                    v.setTag(r);
+                    v.postDelayed(r, 3000);
+                    break;
+                }
+                case MotionEvent.ACTION_UP:
+                case MotionEvent.ACTION_CANCEL: {
+                    Object tag = v.getTag();
+                    if (tag instanceof Runnable) {
+                        v.removeCallbacks((Runnable) tag);
+                        v.setTag(null);
+                    } else if (FLAG_JUMPED.equals(tag)) {
+                        v.setTag(null);
+                        return true; // 已跳转,消费事件
                     }
-                });
-                builder.setNegativeButton("取消", null);
-                builder.show();
+                    break;
+                }
             }
-        } else {
+            return false;
+        });
+    }
+
+    public void use1DMDownload() {
+        if (vodInfo == null || vodInfo.seriesMap.get(vodInfo.playFlag) == null || vodInfo.seriesMap.get(vodInfo.playFlag).size() <= 0) {
             ToastUtils.showShort("资源异常,请稍后重试");
+            return;
+        }
+        // 必须视频成功播放过才能下载
+        if (playFragment == null || playFragment.getController() == null || !playFragment.getController().hasPlayedOnce) {
+            ToastUtils.showShort("视频播放成功后才能下载");
+            return;
+        }
+        VodInfo.VodSeries vod = vodInfo.seriesMap.get(vodInfo.playFlag).get(vodInfo.playIndex);
+        String url = TextUtils.isEmpty(playFragment.getFinalUrl()) ? vod.url : playFragment.getFinalUrl();
+        if (TextUtils.isEmpty(url)) {
+            ToastUtils.showShort("资源异常,请稍后重试");
+            return;
+        }
+        // 来源名(一级目录,如 饭太硬)
+        String sourceName = "未分类";
+        try {
+            SourceBean sb = ApiConfig.get().getSource(vodInfo.sourceKey);
+            if (sb != null && !TextUtils.isEmpty(sb.getName())) {
+                sourceName = sb.getName();
+            } else if (!TextUtils.isEmpty(vodInfo.sourceKey)) {
+                sourceName = vodInfo.sourceKey;
+            }
+        } catch (Throwable ignored) {
+        }
+        // 剧名:优先详情接口的名称,其次入口(搜索/列表)传入的名称,最后用页面 tvName 兜底
+        String vodName = vodInfo.name;
+        if (TextUtils.isEmpty(vodName)) {
+            vodName = mPassedName;
+        }
+        if (TextUtils.isEmpty(vodName)) {
+            CharSequence title = mBinding.tvName.getText();
+            vodName = title == null ? "" : title.toString().trim();
+            if ("暂无信息".equals(vodName)) vodName = "";
+        }
+        boolean added = DownloadManager.get().enqueue(url, sourceName, vodName, vod.name);
+        if (added) {
+            ToastUtils.showShort("已加入下载任务,可在\"我的-下载\"查看");
+        } else {
+            ToastUtils.showShort("该剧集已下载,不能重复下载");
         }
     }
 
@@ -957,7 +1003,7 @@ public class DetailActivity extends BaseVbActivity<ActivityDetailBinding> {
                     }
                 }
             };
-            registerReceiver(mRemoteActionReceiver, new IntentFilter(IntentKey.BROADCAST_ACTION));
+            BroadcastUtils.registerReceiverNotExported(this, mRemoteActionReceiver, new IntentFilter(IntentKey.BROADCAST_ACTION));
         } else {
             if (mRemoteActionReceiver != null) {
                 unregisterReceiver(mRemoteActionReceiver);

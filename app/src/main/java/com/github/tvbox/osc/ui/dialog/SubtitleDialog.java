@@ -15,7 +15,9 @@ import androidx.annotation.NonNull;
 import com.blankj.utilcode.util.ConvertUtils;
 import com.github.tvbox.osc.R;
 import com.github.tvbox.osc.util.FastClickCheckUtil;
+import com.github.tvbox.osc.util.HawkConfig;
 import com.github.tvbox.osc.util.SubtitleHelper;
+import com.orhanobut.hawk.Hawk;
 
 import org.jetbrains.annotations.NotNull;
 
@@ -32,6 +34,8 @@ public class SubtitleDialog extends BaseDialog {
     private TextView subtitleTimePlus;
     private TextView subtitleStyleOne;
     private TextView subtitleStyleTwo;
+    private TextView subtitleOpen;
+    private TextView subtitleClose;
 
     private SearchSubtitleListener mSearchSubtitleListener;
     private LocalFileChooserListener mLocalFileChooserListener;
@@ -70,6 +74,8 @@ public class SubtitleDialog extends BaseDialog {
         subtitleTimePlus = findViewById(R.id.subtitleTimePlus);
         subtitleStyleOne = findViewById(R.id.subtitleStyleOne);
         subtitleStyleTwo = findViewById(R.id.subtitleStyleTwo);
+        subtitleOpen = findViewById(R.id.subtitleOpen);
+        subtitleClose = findViewById(R.id.subtitleClose);
 
         selectLocal.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -196,13 +202,35 @@ public class SubtitleDialog extends BaseDialog {
             }
         });
         findViewById(R.id.subtitleOpen).setOnClickListener(v -> {
+            updateSubtitleState(true);
             dismiss();
             mSubtitleViewListener.subtitleOpen(true);
         });
         findViewById(R.id.subtitleClose).setOnClickListener(v -> {
+            updateSubtitleState(false);
             dismiss();
             mSubtitleViewListener.subtitleOpen(false);
         });
+
+        // 清楚显示当前字幕开/关状态(默认关闭)
+        updateSubtitleState(Hawk.get(HawkConfig.SUBTITLE_OPEN, false));
+    }
+
+    /** 高亮当前字幕状态:开启->"✓ 打开字幕",关闭->"✓ 关闭字幕" */
+    private void updateSubtitleState(boolean open) {
+        int activeColor = getContext().getResources().getColor(R.color.colorPrimary);
+        int normalColor = getContext().getResources().getColor(R.color.text_foreground);
+        if (open) {
+            subtitleOpen.setText("✓ 打开字幕");
+            subtitleOpen.setTextColor(activeColor);
+            subtitleClose.setText("关闭字幕");
+            subtitleClose.setTextColor(normalColor);
+        } else {
+            subtitleClose.setText("✓ 关闭字幕");
+            subtitleClose.setTextColor(activeColor);
+            subtitleOpen.setText("打开字幕");
+            subtitleOpen.setTextColor(normalColor);
+        }
     }
 
     public void setLocalFileChooserListener(LocalFileChooserListener localFileChooserListener) {

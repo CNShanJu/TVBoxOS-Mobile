@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 调试版应用名,与正式版一致显示为 MBox -->
+    <string name="app_name">MBox</string>
+</resources>

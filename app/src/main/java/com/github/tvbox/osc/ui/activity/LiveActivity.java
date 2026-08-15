@@ -53,7 +53,9 @@ import com.github.tvbox.osc.ui.widget.LinearSpacingItemDecoration;
 import com.github.tvbox.osc.ui.widget.PlayerMenuView;
 import com.github.tvbox.osc.ui.widget.PlayerTitleView;
 import com.github.tvbox.osc.util.FastClickCheckUtil;
+import com.github.tvbox.osc.util.HCallBack;
 import com.github.tvbox.osc.util.HawkConfig;
+import com.github.tvbox.osc.util.HttpClient;
 import com.github.tvbox.osc.util.live.TxtSubscribe;
 import com.google.gson.JsonArray;
 import com.gyf.immersionbar.BarHide;
@@ -61,9 +63,6 @@ import com.gyf.immersionbar.ImmersionBar;
 import com.lxj.xpopup.XPopup;
 import com.lxj.xpopup.core.BasePopupView;
 import com.lxj.xpopup.enums.PopupPosition;
-import com.lzy.okgo.OkGo;
-import com.lzy.okgo.callback.AbsCallback;
-import com.lzy.okgo.model.Response;
 import com.orhanobut.hawk.Hawk;
 import com.owen.tvrecyclerview.widget.TvRecyclerView;
 import com.owen.tvrecyclerview.widget.V7LinearLayoutManager;
@@ -800,18 +799,13 @@ public class LiveActivity extends BaseActivity {
             return;
         }
         showLoading();
-        OkGo.<String>get(url).execute(new AbsCallback<String>() {
+        HttpClient.get(url, null, new HCallBack() {
 
             @Override
-            public String convertResponse(okhttp3.Response response) throws Throwable {
-                return response.body().string();
-            }
-
-            @Override
-            public void onSuccess(Response<String> response) {
+            public void onSuccess(String content) {
                 JsonArray livesArray;
                 LinkedHashMap<String, LinkedHashMap<String, ArrayList<String>>> linkedHashMap = new LinkedHashMap<>();
-                TxtSubscribe.parse(linkedHashMap, response.body());
+                TxtSubscribe.parse(linkedHashMap, content);
                 livesArray = TxtSubscribe.live2JsonArray(linkedHashMap);
 
                 ApiConfig.get().loadLives(livesArray);
@@ -831,6 +825,11 @@ public class LiveActivity extends BaseActivity {
                         initLiveState();
                     }
                 });
+            }
+
+            @Override
+            public void onError(Throwable e) {
+                // 保持原行为:失败不额外处理
             }
         });
     }

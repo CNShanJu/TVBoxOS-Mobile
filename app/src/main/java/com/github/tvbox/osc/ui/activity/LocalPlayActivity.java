@@ -20,6 +20,7 @@ import com.github.tvbox.osc.player.MyVideoView;
 import com.github.tvbox.osc.player.controller.LocalVideoController;
 import com.github.tvbox.osc.receiver.BatteryReceiver;
 import com.github.tvbox.osc.ui.dialog.AllLocalSeriesDialog;
+import com.github.tvbox.osc.util.BroadcastUtils;
 import com.github.tvbox.osc.util.HawkConfig;
 import com.github.tvbox.osc.util.PlayerHelper;
 import com.google.common.reflect.TypeToken;
@@ -53,7 +54,7 @@ public class LocalPlayActivity extends BaseVbActivity<ActivityLocalPlayBinding> 
     private BasePopupView mAllSeriesRightDialog;
     @Override
     protected void init() {
-        registerReceiver(mBatteryReceiver,new IntentFilter(Intent.ACTION_BATTERY_CHANGED));
+        BroadcastUtils.registerReceiverNotExported(this, mBatteryReceiver, new IntentFilter(Intent.ACTION_BATTERY_CHANGED));
         mVideoView = mBinding.player;
         mVideoView.startFullScreen();
         Bundle bundle = getIntent().getExtras();

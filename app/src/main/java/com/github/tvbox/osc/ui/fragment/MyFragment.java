@@ -13,6 +13,7 @@ import com.github.tvbox.osc.base.BaseVbFragment;
 import com.github.tvbox.osc.databinding.FragmentMyBinding;
 import com.github.tvbox.osc.ui.activity.CollectActivity;
 import com.github.tvbox.osc.ui.activity.DetailActivity;
+import com.github.tvbox.osc.ui.activity.DownloadActivity;
 import com.github.tvbox.osc.ui.activity.HistoryActivity;
 import com.github.tvbox.osc.ui.activity.LiveActivity;
 import com.github.tvbox.osc.ui.activity.LocalPlayActivity;
@@ -61,6 +62,8 @@ public class MyFragment extends BaseVbFragment<FragmentMyBinding> {
         mBinding.tvSetting.setOnClickListener(v -> jumpActivity(SettingActivity.class));
 
         mBinding.tvHistory.setOnClickListener(v -> jumpActivity(HistoryActivity.class));
+
+        mBinding.tvDownload.setOnClickListener(v -> jumpActivity(DownloadActivity.class));
 
         mBinding.tvFavorite.setOnClickListener(v -> jumpActivity(CollectActivity.class));
 

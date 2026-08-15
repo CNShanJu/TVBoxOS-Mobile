@@ -13,11 +13,15 @@ import com.github.tvbox.osc.bean.Source
 import com.github.tvbox.osc.bean.Subscription
 import com.github.tvbox.osc.databinding.ActivitySubscriptionBinding
 import com.github.tvbox.osc.ui.adapter.SubscriptionAdapter
+import com.github.tvbox.osc.ui.dialog.AppLogDialog
 import com.github.tvbox.osc.ui.dialog.ChooseSourceDialog
 import com.github.tvbox.osc.ui.dialog.SubsTipDialog
 import com.github.tvbox.osc.ui.dialog.SubsciptionDialog
 import com.github.tvbox.osc.ui.dialog.SubsciptionDialog.OnSubsciptionListener
+import com.github.tvbox.osc.util.AppLog
+import com.github.tvbox.osc.util.HCallBack
 import com.github.tvbox.osc.util.HawkConfig
+import com.github.tvbox.osc.util.HttpClient
 import com.github.tvbox.osc.util.Utils
 import com.google.gson.JsonObject
 import com.google.gson.JsonParser
@@ -25,9 +29,6 @@ import com.hjq.permissions.OnPermissionCallback
 import com.hjq.permissions.Permission
 import com.hjq.permissions.XXPermissions
 import com.lxj.xpopup.XPopup
-import com.lzy.okgo.OkGo
-import com.lzy.okgo.callback.AbsCallback
-import com.lzy.okgo.model.Response
 import com.obsez.android.lib.filechooser.ChooserDialog
 import com.orhanobut.hawk.Hawk
 import java.util.function.Consumer
@@ -55,6 +56,15 @@ class SubscriptionActivity : BaseVbActivity<ActivitySubscriptionBinding>() {
                 .asCustom(SubsTipDialog(this))
                 .show()
         }
+
+        mBinding.tvLog.setOnClickListener {
+            XPopup.Builder(this)
+                .asCustom(AppLogDialog(this))
+                .show()
+        }
+        // 仅当设置里开启"运行日志"时才显示日志入口(默认关闭)
+        mBinding.tvLog.visibility =
+            if (Hawk.get(HawkConfig.APP_LOG, false)) View.VISIBLE else View.GONE
 
         mBinding.titleBar.rightView.setOnClickListener {//添加订阅
             XPopup.Builder(this)
@@ -102,6 +112,8 @@ class SubscriptionActivity : BaseVbActivity<ActivitySubscriptionBinding>() {
                 }
                 XPopup.Builder(this@SubscriptionActivity)
                     .asConfirm("删除订阅", "确定删除订阅吗？") {
+                        val deleted = mSubscriptions.get(position)
+                        AppLog.log("订阅管理", "删除订阅: " + deleted.name + "  " + deleted.url)
                         mSubscriptions.removeAt(position)
                         //删除/选择只刷新,不触发重新排序
                         mSubscriptionAdapter.notifyDataSetChanged()
@@ -119,6 +131,8 @@ class SubscriptionActivity : BaseVbActivity<ActivitySubscriptionBinding>() {
                     subscription.setChecked(false)
                 }
             }
+            val chosen = mSubscriptions[position]
+            AppLog.log("订阅管理", "选择订阅: " + chosen.name + "  " + chosen.url)
             //删除/选择只刷新,不触发重新排序
             mSubscriptionAdapter.notifyDataSetChanged()
         }
@@ -239,13 +253,12 @@ class SubscriptionActivity : BaseVbActivity<ActivitySubscriptionBinding>() {
             mSubscriptionAdapter.setNewData(mSubscriptions)
         } else if (url.startsWith("http")) {
             showLoadingDialog()
-            OkGo.get<String>(url)
-                .tag("get_subscription")
-                .execute(object : AbsCallback<String?>() {
-                    override fun onSuccess(response: Response<String?>) {
+            AppLog.log("订阅管理", "新增订阅: " + name + "  " + url)
+            HttpClient.get(url, null, "get_subscription", object : HCallBack {
+                    override fun onSuccess(response: String) {
                         dismissLoadingDialog()
                         try {
-                            val json = JsonParser.parseString(response.body()).asJsonObject
+                            val json = JsonParser.parseString(response).asJsonObject
                             // 多线路?
                             val urls = json["urls"]
                             // 多仓?
@@ -305,13 +318,7 @@ class SubscriptionActivity : BaseVbActivity<ActivitySubscriptionBinding>() {
                         mSubscriptionAdapter.setNewData(mSubscriptions)
                     }
 
-                    @Throws(Throwable::class)
-                    override fun convertResponse(response: okhttp3.Response): String {
-                        return response.body()!!.string()
-                    }
-
-                    override fun onError(response: Response<String?>) {
-                        super.onError(response)
+                    override fun onError(e: Throwable) {
                         dismissLoadingDialog()
                         ToastUtils.showLong("订阅失败,请检查地址或网络状态")
                     }
@@ -361,6 +368,6 @@ class SubscriptionActivity : BaseVbActivity<ActivitySubscriptionBinding>() {
 
     override fun onDestroy() {
         super.onDestroy()
-        OkGo.getInstance().cancelTag("get_subscription")
+        HttpClient.cancel("get_subscription")
     }
 }

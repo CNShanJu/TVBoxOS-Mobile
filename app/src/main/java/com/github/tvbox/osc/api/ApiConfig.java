@@ -18,6 +18,12 @@ import com.github.tvbox.osc.server.ControlManager;
 import com.github.tvbox.osc.util.AES;
 import com.github.tvbox.osc.util.AdBlocker;
 import com.github.tvbox.osc.util.DefaultConfig;
+import com.github.tvbox.osc.util.FCallBack;
+import com.github.tvbox.osc.util.HCallBack;
+import com.github.tvbox.osc.util.HttpClient;
+import com.github.tvbox.osc.util.SubUrlResolver;
+import com.github.tvbox.osc.util.SubUrlResolvers;
+import com.github.tvbox.osc.util.AppLog;
 import com.github.tvbox.osc.util.HawkConfig;
 import com.github.tvbox.osc.util.MD5;
 import com.github.tvbox.osc.util.VideoParseRuler;
@@ -25,9 +31,6 @@ import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
-import com.lzy.okgo.OkGo;
-import com.lzy.okgo.callback.AbsCallback;
-import com.lzy.okgo.model.Response;
 import com.orhanobut.hawk.Hawk;
 
 import org.apache.commons.lang3.StringUtils;
@@ -92,6 +95,8 @@ public class ApiConfig {
     public static String FindResult(String json, String configKey) {
         String content = json;
         try {
+            // 去掉 BOM 与开头的 // 注释行(部分源配置带注释,Gson 不支持注释)
+            content = stripJsonNoise(content);
             if (AES.isJson(content)) return content;
             Pattern pattern = Pattern.compile("[A-Za-z0]{8}\\*\\*");
             Matcher matcher = pattern.matcher(content);
@@ -115,6 +120,24 @@ public class ApiConfig {
             e.printStackTrace();
         }
         return json;
+    }
+
+    /** 剥离配置开头的 BOM 与 // 注释行 */
+    private static String stripJsonNoise(String content) {
+        if (content == null || content.isEmpty()) return content;
+        if (content.charAt(0) == '\ufeff') {
+            content = content.substring(1);
+        }
+        String trimmed = content.trim();
+        while (trimmed.startsWith("//")) {
+            int nl = trimmed.indexOf('\n');
+            if (nl < 0) {
+                trimmed = "";
+                break;
+            }
+            trimmed = trimmed.substring(nl + 1).trim();
+        }
+        return trimmed.isEmpty() ? content : trimmed;
     }
 
     private static byte[] getImgJar(String body){
@@ -162,80 +185,80 @@ public class ApiConfig {
             configUrl = apiUrl;
         }
         String configKey = TempKey;
-        OkGo.<String>get(configUrl)
-                .headers("User-Agent", userAgent)
-                .headers("Accept", requestAccept)
-                .execute(new AbsCallback<String>() {
-                    @Override
-                    public void onSuccess(Response<String> response) {
-                        try {
-                            String json = response.body();
-                            parseJson(apiUrl, json);
-                            try {
-                                File cacheDir = cache.getParentFile();
-                                if (!cacheDir.exists())
-                                    cacheDir.mkdirs();
-                                if (cache.exists())
-                                    cache.delete();
-                                FileOutputStream fos = new FileOutputStream(cache);
-                                fos.write(json.getBytes("UTF-8"));
-                                fos.flush();
-                                fos.close();
-                            } catch (Throwable th) {
-                                th.printStackTrace();
-                            }
-                            callback.success();
-                        } catch (Throwable th) {
-                            th.printStackTrace();
-                            callback.error("解析配置失败");
-                        }
+        // 统一特殊处理接口:当前未注册任何特殊源,所有订阅一律按正常规则直接拉取。
+        // 将来确有需要特殊动作(如地址变换)的源时,在 SubUrlResolvers 注册实现即可,命中才生效。
+        SubUrlResolver resolver = SubUrlResolvers.find(configUrl);
+        if (resolver != null) {
+            configUrl = resolver.transform(configUrl);
+        }
+        Map<String, String> headers = new HashMap<>();
+        headers.put("User-Agent", userAgent);
+        headers.put("Accept", requestAccept);
+        HttpClient.get(configUrl, headers, null, new HCallBack() {
+            @Override
+            public void onSuccess(String content) {
+                try {
+                    String result = FindResult(content, configKey);
+                    if (apiUrl.startsWith("clan")) {
+                        result = clanContentFix(clanToAddress(apiUrl), result);
                     }
-
-                    @Override
-                    public void onError(Response<String> response) {
-                        super.onError(response);
-                        if (cache.exists()) {
-                            try {
-                                parseJson(apiUrl, cache);
-                                callback.success();
-                                return;
-                            } catch (Throwable th) {
-                                th.printStackTrace();
-                            }
-                        }
-                        callback.error("拉取配置失败\n" + (response.getException() != null ? response.getException().getMessage() : ""));
+                    //假相對路徑
+                    result = fixContentPath(apiUrl, result);
+                    parseJson(apiUrl, result);
+                    try {
+                        File cacheDir = cache.getParentFile();
+                        if (!cacheDir.exists())
+                            cacheDir.mkdirs();
+                        if (cache.exists())
+                            cache.delete();
+                        FileOutputStream fos = new FileOutputStream(cache);
+                        fos.write(result.getBytes("UTF-8"));
+                        fos.flush();
+                        fos.close();
+                    } catch (Throwable th) {
+                        th.printStackTrace();
                     }
+                    AppLog.log("配置", "加载成功: " + apiUrl);
+                    callback.success();
+                } catch (Throwable th) {
+                    th.printStackTrace();
+                    AppLog.log("配置", "解析失败: " + apiUrl + "  " + th.getMessage());
+                    callback.error("解析配置失败");
+                }
+            }
 
-                    public String convertResponse(okhttp3.Response response) throws Throwable {
-                        String result = "";
-                        if (response.body() == null) {
-                            result = "";
-                        } else {
-                            result = FindResult(response.body().string(), configKey);
-                        }
-
-                        if (apiUrl.startsWith("clan")) {
-                            result = clanContentFix(clanToAddress(apiUrl), result);
-                        }
-                        //假相對路徑
-                        result = fixContentPath(apiUrl,result);
-                        return result;
+            @Override
+            public void onError(Throwable e) {
+                AppLog.log("配置", "拉取失败: " + apiUrl + "  " + (e != null ? e.getMessage() : ""));
+                if (cache.exists()) {
+                    try {
+                        parseJson(apiUrl, cache);
+                        AppLog.log("配置", "使用本地缓存配置: " + apiUrl);
+                        callback.success();
+                        return;
+                    } catch (Throwable th) {
+                        th.printStackTrace();
                     }
-                });
+                }
+                callback.error("拉取配置失败\n" + (e != null ? e.getMessage() : ""));
+            }
+        });
     }
-
 
     public void loadJar(boolean useCache, String spider, LoadConfigCallback callback) {
         String[] urls = spider.split(";md5;");
         String jarUrl = urls[0];
         String md5 = urls.length > 1 ? urls[1].trim() : "";
         File cache = new File(App.getInstance().getFilesDir().getAbsolutePath() + "/csp.jar");
+        AppLog.log("更新", "开始更新订阅: " + jarUrl + (md5.isEmpty() ? "" : "  md5=" + md5));
 
         if (!md5.isEmpty() || useCache) {
             if (cache.exists() && (useCache || MD5.getFileMd5(cache).equalsIgnoreCase(md5))) {
                 if (jarLoader.load(cache.getAbsolutePath())) {
+                    AppLog.log("更新", "使用缓存订阅成功: " + jarUrl);
                     callback.success();
                 } else {
+                    AppLog.log("更新", "缓存订阅 jar 加载失败: " + jarUrl);
                     callback.error("");
                 }
                 return;
@@ -243,51 +266,114 @@ public class ApiConfig {
         }
 
         boolean isJarInImg = jarUrl.startsWith("img+");
-        jarUrl = jarUrl.replace("img+", "");
-        OkGo.<File>get(jarUrl)
-                .headers("User-Agent", userAgent)
-                .headers("Accept", requestAccept)
-                .execute(new AbsCallback<File>() {
-
-            @Override
-            public File convertResponse(okhttp3.Response response) throws Throwable {
-                File cacheDir = cache.getParentFile();
-                if (!cacheDir.exists())
-                    cacheDir.mkdirs();
-                if (cache.exists())
-                    cache.delete();
-                FileOutputStream fos = new FileOutputStream(cache);
-                if(isJarInImg) {
-                    String respData = response.body().string();
-                    byte[] imgJar = getImgJar(respData);
-                    fos.write(imgJar);
-                } else {
-                    fos.write(response.body().bytes());
-                }
-                fos.flush();
-                fos.close();
-                return cache;
-            }
-
-            @Override
-            public void onSuccess(Response<File> response) {
-                if (response.body().exists()) {
-                    if (jarLoader.load(response.body().getAbsolutePath())) {
-                        callback.success();
-                    } else {
+        final String realJarUrl = jarUrl.replace("img+", "");
+        Map<String, String> headers = new HashMap<>();
+        headers.put("User-Agent", userAgent);
+        headers.put("Accept", requestAccept);
+        if (isJarInImg) {
+            HttpClient.get(realJarUrl, headers, null, new HCallBack() {
+                @Override
+                public void onSuccess(String respData) {
+                    try {
+                        File cacheDir = cache.getParentFile();
+                        if (!cacheDir.exists())
+                            cacheDir.mkdirs();
+                        if (cache.exists())
+                            cache.delete();
+                        byte[] imgJar = getImgJar(respData);
+                        FileOutputStream fos = new FileOutputStream(cache);
+                        fos.write(imgJar);
+                        fos.flush();
+                        fos.close();
+                        onJarDownloaded(cache, callback, realJarUrl);
+                    } catch (Throwable th) {
+                        th.printStackTrace();
+                        AppLog.log("更新", "订阅图片解析失败: " + realJarUrl + "  " + th.getMessage());
                         callback.error("");
                     }
-                } else {
+                }
+
+                @Override
+                public void onError(Throwable e) {
+                    AppLog.log("更新", "订阅下载失败: " + realJarUrl + "  " + (e != null ? e.getMessage() : ""));
                     callback.error("");
                 }
-            }
+            });
+        } else {
+            HttpClient.download(realJarUrl, cache, headers, null, new FCallBack() {
+                @Override
+                public void onSuccess(File file) {
+                    onJarDownloaded(cache, callback, realJarUrl);
+                }
 
-            @Override
-            public void onError(Response<File> response) {
-                super.onError(response);
-                callback.error("");
+                @Override
+                public void onError(Throwable e) {
+                    AppLog.log("更新", "订阅下载失败: " + realJarUrl + "  " + (e != null ? e.getMessage() : ""));
+                    callback.error("");
+                }
+            });
+        }
+    }
+
+    private void onJarDownloaded(File cache, LoadConfigCallback callback, String jarUrl) {
+        // 兼容图片套路:部分源把 jar 伪装成 .jpg,内容是 图片+**+base64(jar)(与配置同套路),需先解码
+        try {
+            if (!isZipFile(cache)) {
+                byte[] raw = readFileBytes(cache);
+                if (raw != null && raw.length > 0) {
+                    String body = new String(raw, "UTF-8");
+                    byte[] imgJar = getImgJar(body);
+                    if (imgJar != null && imgJar.length > 0 && imgJar[0] == 'P' && imgJar[1] == 'K') {
+                        if (cache.exists() && !cache.canWrite()) {
+                            cache.setWritable(true);
+                        }
+                        FileOutputStream fos = new FileOutputStream(cache);
+                        fos.write(imgJar);
+                        fos.flush();
+                        fos.close();
+                        AppLog.log("更新", "jar 图片套路解码成功: " + jarUrl);
+                    }
+                }
             }
-        });
+        } catch (Throwable th) {
+            th.printStackTrace();
+        }
+        if (jarLoader.load(cache.getAbsolutePath())) {
+            AppLog.log("更新", "订阅更新成功: " + jarUrl);
+            callback.success();
+        } else {
+            AppLog.log("更新", "订阅 jar 加载失败: " + jarUrl + "  (jar 文件可能损坏或与蜘蛛不匹配)");
+            callback.error("");
+        }
+    }
+
+    private static boolean isZipFile(File file) {
+        try {
+            FileInputStream fis = new FileInputStream(file);
+            byte[] head = new byte[4];
+            int n = fis.read(head);
+            fis.close();
+            return n == 4 && head[0] == 'P' && head[1] == 'K';
+        } catch (Throwable th) {
+            return false;
+        }
+    }
+
+    private static byte[] readFileBytes(File file) {
+        try {
+            FileInputStream fis = new FileInputStream(file);
+            byte[] data = new byte[(int) file.length()];
+            int off = 0;
+            while (off < data.length) {
+                int n = fis.read(data, off, data.length - off);
+                if (n < 0) break;
+                off += n;
+            }
+            fis.close();
+            return data;
+        } catch (Throwable th) {
+            return null;
+        }
     }
 
     private void parseJson(String apiUrl, File f) throws Throwable {

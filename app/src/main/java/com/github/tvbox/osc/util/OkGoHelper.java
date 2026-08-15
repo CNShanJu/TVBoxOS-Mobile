@@ -11,19 +11,18 @@ import com.github.catvod.net.SSLCompat;
 import com.github.tvbox.osc.base.App;
 import com.github.tvbox.osc.picasso.MyOkhttpDownLoader;
 import com.github.tvbox.osc.util.urlhttp.BrotliInterceptor;
-import com.lzy.okgo.OkGo;
-import com.lzy.okgo.https.HttpsUtils;
-import com.lzy.okgo.interceptor.HttpLoggingInterceptor;
-import com.lzy.okgo.model.HttpHeaders;
 import com.orhanobut.hawk.Hawk;
 import com.squareup.picasso.Picasso;
 
 import java.io.File;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
-import java.util.logging.Level;
 
+import javax.net.ssl.HostnameVerifier;
+import javax.net.ssl.SSLSession;
 import javax.net.ssl.SSLSocketFactory;
 
 import okhttp3.Cache;
@@ -31,24 +30,25 @@ import okhttp3.ConnectionSpec;
 import okhttp3.HttpUrl;
 import okhttp3.OkHttpClient;
 import okhttp3.dnsoverhttps.DnsOverHttps;
-import okhttp3.internal.Util;
-import okhttp3.internal.Version;
+import okhttp3.logging.HttpLoggingInterceptor;
 import xyz.doikki.videoplayer.exo.ExoMediaSourceHelper;
 
+/**
+ * 全局 OkHttpClient 初始化(原 OkGo 初始化改造)
+ */
 public class OkGoHelper {
     public static final long DEFAULT_MILLISECONDS = 10000;      //默认的超时时间
 
     static void initExoOkHttpClient() {
         OkHttpClient.Builder builder = new OkHttpClient.Builder();
-        HttpLoggingInterceptor loggingInterceptor = new HttpLoggingInterceptor("OkExoPlayer");
+        HttpLoggingInterceptor loggingInterceptor = new HttpLoggingInterceptor();
 
         if (Hawk.get(HawkConfig.DEBUG_OPEN, false)) {
-            loggingInterceptor.setPrintLevel(HttpLoggingInterceptor.Level.BODY);
-            loggingInterceptor.setColorLevel(Level.INFO);
+            loggingInterceptor.setLevel(HttpLoggingInterceptor.Level.BODY);
         } else {
-            loggingInterceptor.setPrintLevel(HttpLoggingInterceptor.Level.NONE);
-            loggingInterceptor.setColorLevel(Level.OFF);
+            loggingInterceptor.setLevel(HttpLoggingInterceptor.Level.NONE);
         }
+        builder.addInterceptor(loggingInterceptor);
         builder.connectionSpecs(getConnectionSpec());
         builder.addInterceptor(new BrotliInterceptor());
         builder.retryOnConnectionFailure(true);
@@ -60,7 +60,9 @@ public class OkGoHelper {
         } catch (Throwable th) {
             th.printStackTrace();
         }
-        builder.dns(dnsOverHttps);
+        if (dnsOverHttps != null) {
+            builder.dns(dnsOverHttps);
+        }
 
         ExoMediaSourceHelper.getInstance(App.getInstance()).setOkClient(builder.build());
     }
@@ -70,7 +72,7 @@ public class OkGoHelper {
     public static ArrayList<String> dnsHttpsList = new ArrayList<>();
 
     public static List<ConnectionSpec> getConnectionSpec() {
-        return Util.immutableList(RESTRICTED_TLS, MODERN_TLS, COMPATIBLE_TLS, CLEARTEXT);
+        return Collections.unmodifiableList(Arrays.asList(RESTRICTED_TLS, MODERN_TLS, COMPATIBLE_TLS, CLEARTEXT));
     }
 
     public static String getDohUrl(int type) {
@@ -89,19 +91,20 @@ public class OkGoHelper {
     }
 
     static void initDnsOverHttps() {
-        dnsHttpsList.add("关闭");
-        dnsHttpsList.add("腾讯");
-        dnsHttpsList.add("阿里");
-        dnsHttpsList.add("360");
-        OkHttpClient.Builder builder = new OkHttpClient.Builder();
-        HttpLoggingInterceptor loggingInterceptor = new HttpLoggingInterceptor("OkExoPlayer");
-        if (Hawk.get(HawkConfig.DEBUG_OPEN, false)) {
-            loggingInterceptor.setPrintLevel(HttpLoggingInterceptor.Level.BODY);
-            loggingInterceptor.setColorLevel(Level.INFO);
-        } else {
-            loggingInterceptor.setPrintLevel(HttpLoggingInterceptor.Level.NONE);
-            loggingInterceptor.setColorLevel(Level.OFF);
+        if (dnsHttpsList.isEmpty()) {
+            dnsHttpsList.add("关闭");
+            dnsHttpsList.add("腾讯");
+            dnsHttpsList.add("阿里");
+            dnsHttpsList.add("360");
         }
+        OkHttpClient.Builder builder = new OkHttpClient.Builder();
+        HttpLoggingInterceptor loggingInterceptor = new HttpLoggingInterceptor();
+        if (Hawk.get(HawkConfig.DEBUG_OPEN, false)) {
+            loggingInterceptor.setLevel(HttpLoggingInterceptor.Level.BODY);
+        } else {
+            loggingInterceptor.setLevel(HttpLoggingInterceptor.Level.NONE);
+        }
+        builder.addInterceptor(loggingInterceptor);
         builder.addInterceptor(new BrotliInterceptor());
         try {
             setOkHttpSsl(builder);
@@ -112,10 +115,22 @@ public class OkGoHelper {
         builder.cache(new Cache(new File(App.getInstance().getCacheDir().getAbsolutePath(), "dohcache"), 10 * 1024 * 1024));
         OkHttpClient dohClient = builder.build();
         String dohUrl = getDohUrl(Hawk.get(HawkConfig.DOH_URL, 0));
-        dnsOverHttps = new DnsOverHttps.Builder().client(dohClient).url(dohUrl.isEmpty() ? null : HttpUrl.get(dohUrl)).build();
+        if (dohUrl.isEmpty()) {
+            dnsOverHttps = null;
+        } else {
+            dnsOverHttps = new DnsOverHttps.Builder().client(dohClient).url(HttpUrl.get(dohUrl)).build();
+        }
     }
     static OkHttpClient defaultClient = null;
     static OkHttpClient noRedirectClient = null;
+
+    /**
+     * 根据当前 Hawk 配置重建 DnsOverHttps(替代原 DnsOverHttps.setUrl 原地修改)
+     * 注意:已构建的 OkHttpClient 不会立即生效,重启应用或下次重建客户端时生效
+     */
+    public static void refreshDnsOverHttps() {
+        initDnsOverHttps();
+    }
 
     public static OkHttpClient getDefaultClient() {
         return defaultClient;
@@ -129,33 +144,33 @@ public class OkGoHelper {
         initDnsOverHttps();
 
         OkHttpClient.Builder builder = new OkHttpClient.Builder();
-        HttpLoggingInterceptor loggingInterceptor = new HttpLoggingInterceptor("OkGo");
+        HttpLoggingInterceptor loggingInterceptor = new HttpLoggingInterceptor();
 
         if (Hawk.get(HawkConfig.DEBUG_OPEN, false)) {
-            loggingInterceptor.setPrintLevel(HttpLoggingInterceptor.Level.BODY);
-            loggingInterceptor.setColorLevel(Level.INFO);
+            loggingInterceptor.setLevel(HttpLoggingInterceptor.Level.BODY);
         } else {
-            loggingInterceptor.setPrintLevel(HttpLoggingInterceptor.Level.NONE);
-            loggingInterceptor.setColorLevel(Level.OFF);
+            loggingInterceptor.setLevel(HttpLoggingInterceptor.Level.NONE);
         }
+        builder.addInterceptor(loggingInterceptor);
+        // 默认 User-Agent:还原 OkGo 的全局 UA 行为,部分源接口无 UA 会拒绝请求
+        builder.addInterceptor(new HttpClient.UserAgentInterceptor());
 
         //builder.retryOnConnectionFailure(false);
         builder.connectionSpecs(getConnectionSpec());
         builder.addInterceptor(new BrotliInterceptor());
         builder.readTimeout(DEFAULT_MILLISECONDS, TimeUnit.MILLISECONDS)
                 .writeTimeout(DEFAULT_MILLISECONDS, TimeUnit.MILLISECONDS)
-                .connectTimeout(DEFAULT_MILLISECONDS, TimeUnit.MILLISECONDS)
-                .dns(dnsOverHttps);
+                .connectTimeout(DEFAULT_MILLISECONDS, TimeUnit.MILLISECONDS);
+        if (dnsOverHttps != null) {
+            builder.dns(dnsOverHttps);
+        }
         try {
             setOkHttpSsl(builder);
         } catch (Throwable th) {
             th.printStackTrace();
         }
 
-        HttpHeaders.setUserAgent(Version.userAgent());
-
         OkHttpClient okHttpClient = builder.build();
-        OkGo.getInstance().setOkHttpClient(okHttpClient);
 
         defaultClient = okHttpClient;
 
@@ -183,7 +198,12 @@ public class OkGoHelper {
 
             final SSLSocketFactory sslSocketFactory = new SSLCompat();
             builder.sslSocketFactory(sslSocketFactory, SSLCompat.TM);
-            builder.hostnameVerifier(HttpsUtils.UnSafeHostnameVerifier);
+            builder.hostnameVerifier(new HostnameVerifier() {
+                @Override
+                public boolean verify(String hostname, SSLSession session) {
+                    return true;
+                }
+            });
         } catch (Exception e) {
             throw new RuntimeException(e);
         }

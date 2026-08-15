@@ -297,6 +297,66 @@
                 </LinearLayout>
 
                 <LinearLayout
+                    android:id="@+id/llSubscriptionLog"
+                    android:layout_width="match_parent"
+                    android:layout_height="60dp"
+                    android:focusable="true"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal"
+                    android:paddingHorizontal="40dp"
+                    android:foreground="?android:selectableItemBackground">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="运行日志"
+                        android:textColor="@color/text_foreground"
+                        android:textSize="16sp"/>
+
+                    <Space
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1" />
+
+                    <com.google.android.material.switchmaterial.SwitchMaterial
+                        android:id="@+id/switchSubscriptionLog"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:clickable="false"/>
+                </LinearLayout>
+
+                <LinearLayout
+                    android:id="@+id/llSubscriptionLogView"
+                    android:layout_width="match_parent"
+                    android:layout_height="60dp"
+                    android:focusable="true"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal"
+                    android:paddingHorizontal="40dp"
+                    android:foreground="?android:selectableItemBackground"
+                    android:visibility="gone">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="查看运行日志"
+                        android:textColor="@color/text_foreground"
+                        android:textSize="16sp"/>
+
+                    <Space
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="›"
+                        android:textColor="@color/text_sub_foreground"
+                        android:textSize="20sp"/>
+                </LinearLayout>
+
+                <LinearLayout
                     android:id="@+id/llPressSpeed"
                     android:layout_width="match_parent"
                     android:layout_height="@dimen/dp_60"

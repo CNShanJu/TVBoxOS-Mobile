@@ -14,6 +14,7 @@ import com.github.tvbox.osc.constant.IntentKey
 import com.github.tvbox.osc.databinding.ActivitySettingBinding
 import com.github.tvbox.osc.ui.adapter.SelectDialogAdapter
 import com.github.tvbox.osc.ui.adapter.SelectDialogAdapter.SelectDialogInterface
+import com.github.tvbox.osc.ui.dialog.AppLogDialog
 import com.github.tvbox.osc.ui.dialog.BackupDialog
 import com.github.tvbox.osc.ui.dialog.LiveApiDialog
 import com.github.tvbox.osc.ui.dialog.SelectDialog
@@ -160,8 +161,7 @@ class SettingActivity : BaseVbActivity<ActivitySettingBinding>() {
                 override fun click(value: String?, pos: Int) {
                     mBinding.tvDns.text = OkGoHelper.dnsHttpsList[pos]
                     Hawk.put(HawkConfig.DOH_URL, pos)
-                    val url = OkGoHelper.getDohUrl(pos)
-                    OkGoHelper.dnsOverHttps.setUrl(if (url.isEmpty()) null else HttpUrl.get(url))
+                    OkGoHelper.refreshDnsOverHttps()
                     IjkMediaPlayer.toggleDotPort(pos > 0)
                 }
 
@@ -427,6 +427,24 @@ class SettingActivity : BaseVbActivity<ActivitySettingBinding>() {
             val newConfig = !Hawk.get(HawkConfig.IJK_CACHE_PLAY, false)
             mBinding.switchIjkCachePlay.setChecked(newConfig)
             Hawk.put(HawkConfig.IJK_CACHE_PLAY, newConfig)
+        }
+        // 运行日志开关(默认关闭,排查问题时开启) -------------------------------------
+        mBinding.switchSubscriptionLog.setChecked(Hawk.get(HawkConfig.APP_LOG, false))
+        mBinding.llSubscriptionLog.setOnClickListener { v: View? ->
+            FastClickCheckUtil.check(v)
+            val newConfig = !Hawk.get(HawkConfig.APP_LOG, false)
+            mBinding.switchSubscriptionLog.setChecked(newConfig)
+            Hawk.put(HawkConfig.APP_LOG, newConfig)
+            mBinding.llSubscriptionLogView.visibility =
+                if (newConfig) View.VISIBLE else View.GONE
+        }
+        mBinding.llSubscriptionLogView.visibility =
+            if (Hawk.get(HawkConfig.APP_LOG, false)) View.VISIBLE else View.GONE
+        mBinding.llSubscriptionLogView.setOnClickListener { v: View? ->
+            FastClickCheckUtil.check(v)
+            XPopup.Builder(this)
+                .asCustom(AppLogDialog(this))
+                .show()
         }
     }
 

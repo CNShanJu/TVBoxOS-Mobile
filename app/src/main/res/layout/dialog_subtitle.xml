@@ -31,7 +31,7 @@
                     android:layout_height="wrap_content">
                     <com.google.android.material.button.MaterialButton
                         android:id="@+id/subtitleOpen"
-                        style="@style/Widget.MaterialComponents.Button.TextButton"
+                        style="@style/SubtitleTextButton"
                         android:layout_width="0dp"
                         android:layout_weight="1"
                         android:layout_height="wrap_content"
@@ -47,7 +47,7 @@
 
                     <com.google.android.material.button.MaterialButton
                         android:id="@+id/subtitleClose"
-                        style="@style/Widget.MaterialComponents.Button.TextButton"
+                        style="@style/SubtitleTextButton"
                         android:layout_width="0dp"
                         android:layout_weight="1"
                         android:layout_height="wrap_content"
@@ -64,7 +64,7 @@
                     android:layout_height="wrap_content">
                     <com.google.android.material.button.MaterialButton
                         android:id="@+id/subtitleSizeMinus"
-                        style="@style/Widget.MaterialComponents.Button.TextButton"
+                        style="@style/SubtitleTextButton"
                         android:layout_width="0dp"
                         android:layout_weight="1"
                         android:layout_height="wrap_content"
@@ -85,7 +85,7 @@
 
                     <com.google.android.material.button.MaterialButton
                         android:id="@+id/subtitleSizePlus"
-                        style="@style/Widget.MaterialComponents.Button.TextButton"
+                        style="@style/SubtitleTextButton"
                         android:layout_width="0dp"
                         android:layout_weight="1"
                         android:layout_height="wrap_content"
@@ -102,7 +102,7 @@
                     android:layout_height="wrap_content">
                     <com.google.android.material.button.MaterialButton
                         android:id="@+id/subtitleStyleOne"
-                        style="@style/Widget.MaterialComponents.Button.TextButton"
+                        style="@style/SubtitleTextButton"
                         android:layout_width="0dp"
                         android:layout_weight="1"
                         android:layout_height="wrap_content"
@@ -125,7 +125,7 @@
 
                     <com.google.android.material.button.MaterialButton
                         android:id="@+id/subtitleStyleTwo"
-                        style="@style/Widget.MaterialComponents.Button.TextButton"
+                        style="@style/SubtitleTextButton"
                         android:layout_width="0dp"
                         android:layout_weight="1"
                         android:layout_height="wrap_content"
@@ -148,7 +148,7 @@
                     android:layout_height="wrap_content">
                     <com.google.android.material.button.MaterialButton
                         android:id="@+id/subtitleTimeMinus"
-                        style="@style/Widget.MaterialComponents.Button.TextButton"
+                        style="@style/SubtitleTextButton"
                         android:layout_width="0dp"
                         android:layout_weight="1"
                         android:layout_height="wrap_content"
@@ -183,7 +183,7 @@
 
                     <com.google.android.material.button.MaterialButton
                         android:id="@+id/subtitleTimePlus"
-                        style="@style/Widget.MaterialComponents.Button.TextButton"
+                        style="@style/SubtitleTextButton"
                         android:layout_width="0dp"
                         android:layout_weight="1"
                         android:layout_height="wrap_content"

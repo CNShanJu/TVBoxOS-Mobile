@@ -1,0 +1,142 @@
+package com.github.tvbox.osc.util;
+
+import com.github.tvbox.osc.base.App;
+import com.orhanobut.hawk.Hawk;
+
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.FileWriter;
+import java.io.InputStreamReader;
+import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.Date;
+import java.util.List;
+import java.util.Locale;
+
+/**
+ * App 运行日志
+ * <p>
+ * 受 {@link HawkConfig#APP_LOG} 开关控制,默认关闭:
+ * 仅当设置里开启"运行日志"后才写入文件,避免常驻记录耗费性能与存储。
+ * 按天记录到 filesDir/app_logs/app-yyyy-MM-dd.log,单日保留最近 {@link #MAX_LINES_PER_DAY} 行。
+ * 提供:写入(log)、按天查看(listLogFiles/readLines)、清空(clearAll)、导出(exportAll)。
+ */
+public class AppLog {
+
+    private static final String LOG_DIR = "app_logs";
+    private static final String FILE_PREFIX = "app-";
+    private static final String FILE_SUFFIX = ".log";
+    private static final int MAX_LINES_PER_DAY = 2000;
+
+    private static final Object LOCK = new Object();
+
+    private AppLog() {
+    }
+
+    /** 追加一条日志(线程安全);开关关闭时直接忽略 */
+    public static void log(String tag, String msg) {
+        if (!Hawk.get(HawkConfig.APP_LOG, false)) return;
+        try {
+            synchronized (LOCK) {
+                File dir = logDir();
+                if (!dir.exists()) dir.mkdirs();
+                File file = new File(dir, FILE_PREFIX + new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(new Date()) + FILE_SUFFIX);
+                String line = "[" + new SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(new Date()) + "] " + tag + ": " + msg + "\n";
+                FileOutputStream fos = new FileOutputStream(file, true);
+                fos.write(line.getBytes("UTF-8"));
+                fos.flush();
+                fos.close();
+                trimFile(file);
+            }
+        } catch (Throwable th) {
+            th.printStackTrace();
+        }
+    }
+
+    private static void trimFile(File file) {
+        try {
+            List<String> lines = readLines(file);
+            if (lines.size() > MAX_LINES_PER_DAY) {
+                List<String> tail = lines.subList(lines.size() - MAX_LINES_PER_DAY, lines.size());
+                FileWriter fw = new FileWriter(file, false);
+                for (String l : tail) fw.write(l + "\n");
+                fw.close();
+            }
+        } catch (Throwable ignored) {
+        }
+    }
+
+    private static File logDir() {
+        return new File(App.getInstance().getFilesDir().getAbsolutePath() + "/" + LOG_DIR);
+    }
+
+    /** 按天列出日志文件(新的在前) */
+    public static List<File> listLogFiles() {
+        List<File> files = new ArrayList<>();
+        File dir = logDir();
+        if (dir.exists()) {
+            File[] fs = dir.listFiles();
+            if (fs != null) {
+                for (File f : fs) {
+                    if (f.isFile() && f.getName().endsWith(FILE_SUFFIX)) files.add(f);
+                }
+            }
+        }
+        Collections.sort(files, new Comparator<File>() {
+            @Override
+            public int compare(File a, File b) {
+                return b.getName().compareTo(a.getName());
+            }
+        });
+        return files;
+    }
+
+    /** 读取日志文件全部行 */
+    public static List<String> readLines(File file) {
+        List<String> lines = new ArrayList<>();
+        try {
+            BufferedReader reader = new BufferedReader(new InputStreamReader(new FileInputStream(file), "UTF-8"));
+            String line;
+            while ((line = reader.readLine()) != null) lines.add(line);
+            reader.close();
+        } catch (Throwable th) {
+            th.printStackTrace();
+        }
+        return lines;
+    }
+
+    /** 清空全部日志 */
+    public static void clearAll() {
+        synchronized (LOCK) {
+            for (File f : listLogFiles()) f.delete();
+        }
+    }
+
+    /**
+     * 导出全部日志到一个 txt 文件(放 cacheDir,可通过 FileProvider 分享)
+     *
+     * @return 导出文件;无日志返回 null
+     */
+    public static File exportAll() {
+        try {
+            List<File> files = listLogFiles();
+            if (files.isEmpty()) return null;
+            File out = new File(App.getInstance().getCacheDir().getAbsolutePath() + "/app_log_export.txt");
+            FileWriter fw = new FileWriter(out, false);
+            for (File f : files) {
+                fw.write("===== " + f.getName() + " =====\n");
+                for (String line : readLines(f)) fw.write(line + "\n");
+                fw.write("\n");
+            }
+            fw.close();
+            return out;
+        } catch (Throwable th) {
+            th.printStackTrace();
+            return null;
+        }
+    }
+}

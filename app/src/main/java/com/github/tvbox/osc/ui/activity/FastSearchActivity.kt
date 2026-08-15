@@ -34,7 +34,9 @@ import com.github.tvbox.osc.ui.dialog.DoubanSuggestDialog
 import com.github.tvbox.osc.ui.dialog.SearchCheckboxDialog
 import com.github.tvbox.osc.ui.dialog.SearchSuggestionsDialog
 import com.github.tvbox.osc.util.FastClickCheckUtil
+import com.github.tvbox.osc.util.HCallBack
 import com.github.tvbox.osc.util.HawkConfig
+import com.github.tvbox.osc.util.HttpClient
 import com.github.tvbox.osc.util.SearchHelper
 import com.github.tvbox.osc.viewmodel.SourceViewModel
 import com.google.gson.JsonElement
@@ -44,13 +46,9 @@ import com.google.gson.reflect.TypeToken
 import com.lxj.xpopup.XPopup
 import com.lxj.xpopup.core.BasePopupView
 import com.lxj.xpopup.interfaces.SimpleCallback
-import com.lzy.okgo.OkGo
-import com.lzy.okgo.callback.AbsCallback
-import com.lzy.okgo.callback.StringCallback
 import com.orhanobut.hawk.Hawk
 import com.zhy.view.flowlayout.FlowLayout
 import com.zhy.view.flowlayout.TagAdapter
-import okhttp3.Response
 import org.greenrobot.eventbus.Subscribe
 import org.greenrobot.eventbus.ThreadMode
 import java.util.concurrent.ExecutorService
@@ -76,6 +74,12 @@ class FastSearchActivity : BaseVbActivity<ActivityFastSearchBinding>(), TextWatc
     private var resultVods = HashMap<String, MutableList<Movie.Video>>()
     private var pauseRunnable: MutableList<Runnable>? = null
     private var mSearchSuggestionsDialog: SearchSuggestionsDialog? = null
+
+    /** 是否已勾选订阅(以订阅管理写入的接口地址为准) */
+    private fun hasSubscription(): Boolean {
+        return !TextUtils.isEmpty(Hawk.get(HawkConfig.API_URL, ""))
+    }
+
     override fun init() {
         sourceViewModel = ViewModelProvider(this).get(SourceViewModel::class.java)
         initView()
@@ -137,6 +141,7 @@ class FastSearchActivity : BaseVbActivity<ActivityFastSearchBinding>(), TextWatc
             val bundle = Bundle()
             bundle.putString("id", video.id)
             bundle.putString("sourceKey", video.sourceKey)
+            bundle.putString("vodName", video.name)
             jumpActivity(DetailActivity::class.java, bundle)
         }
         mBinding.mGridViewFilter.setLayoutManager(LinearLayoutManager(this))
@@ -158,6 +163,7 @@ class FastSearchActivity : BaseVbActivity<ActivityFastSearchBinding>(), TextWatc
                 val bundle = Bundle()
                 bundle.putString("id", video.id)
                 bundle.putString("sourceKey", video.sourceKey)
+                bundle.putString("vodName", video.name)
                 jumpActivity(DetailActivity::class.java, bundle)
             }
         }
@@ -261,16 +267,16 @@ class FastSearchActivity : BaseVbActivity<ActivityFastSearchBinding>(), TextWatc
     private val hotWords: Unit
         get() {
             // 加载热词
-            OkGo.get<String>("https://node.video.qq.com/x/api/hot_search")
-                .params("channdlId", "0")
-                .params("_", System.currentTimeMillis())
-                .execute(object : AbsCallback<String?>() {
-                    override fun onSuccess(response: com.lzy.okgo.model.Response<String?>) {
+            val params = HashMap<String, String>()
+            params["channdlId"] = "0"
+            params["_"] = System.currentTimeMillis().toString()
+            HttpClient.get("https://node.video.qq.com/x/api/hot_search", params, null, null, object : HCallBack {
+                    override fun onSuccess(response: String) {
                         try {
                             val hots = ArrayList<String>()
                             val itemList =
-                                JsonParser.parseString(response.body()).asJsonObject["data"].asJsonObject["mapResult"].asJsonObject["0"].asJsonObject["listInfo"].asJsonArray
-                            //                            JsonArray itemList = JsonParser.parseString(response.body()).getAsJsonObject().get("data").getAsJsonArray();
+                                JsonParser.parseString(response).asJsonObject["data"].asJsonObject["mapResult"].asJsonObject["0"].asJsonObject["listInfo"].asJsonArray
+                            //                            JsonArray itemList = JsonParser.parseString(response).getAsJsonObject().get("data").getAsJsonArray();
                             for (ele: JsonElement in itemList) {
                                 val obj = ele as JsonObject
                                 hots.add(obj["title"].asString.trim { it <= ' ' }
@@ -302,9 +308,7 @@ class FastSearchActivity : BaseVbActivity<ActivityFastSearchBinding>(), TextWatc
                         }
                     }
 
-                    @Throws(Throwable::class)
-                    override fun convertResponse(response: Response): String {
-                        return response.body()!!.string()
+                    override fun onError(e: Throwable) {
                     }
                 })
         }
@@ -314,12 +318,11 @@ class FastSearchActivity : BaseVbActivity<ActivityFastSearchBinding>(), TextWatc
      */
     private fun getSuggest(text: String) {
         // 加载热词
-        OkGo.get<String>("https://suggest.video.iqiyi.com/?if=mobile&key=$text")
-            .execute(object : AbsCallback<String?>() {
-                override fun onSuccess(response: com.lzy.okgo.model.Response<String?>) {
+        HttpClient.get("https://suggest.video.iqiyi.com/?if=mobile&key=$text", null, object : HCallBack {
+                override fun onSuccess(response: String) {
                     val titles: MutableList<String> = ArrayList()
                     try {
-                        val json = JsonParser.parseString(response.body()).asJsonObject
+                        val json = JsonParser.parseString(response).asJsonObject
                         val datas = json["data"].asJsonArray
                         for (data: JsonElement in datas) {
                             val item = data as JsonObject
@@ -333,9 +336,7 @@ class FastSearchActivity : BaseVbActivity<ActivityFastSearchBinding>(), TextWatc
                     }
                 }
 
-                @Throws(Throwable::class)
-                override fun convertResponse(response: Response): String {
-                    return response.body()!!.string()
+                override fun onError(e: Throwable) {
                 }
             })
     }
@@ -405,6 +406,11 @@ class FastSearchActivity : BaseVbActivity<ActivityFastSearchBinding>(), TextWatc
     private fun search(title: String?) {
         if (title.isNullOrEmpty()) {
             ToastUtils.showShort("请输入搜索内容")
+            return
+        }
+
+        if (!hasSubscription()) {
+            ToastUtils.showShort("请先设置订阅")
             return
         }
 
@@ -567,7 +573,7 @@ class FastSearchActivity : BaseVbActivity<ActivityFastSearchBinding>(), TextWatc
     }
 
     private fun cancel() {
-        OkGo.getInstance().cancelTag("search")
+        HttpClient.cancel("search")
     }
 
     override fun onDestroy() {
@@ -597,11 +603,10 @@ class FastSearchActivity : BaseVbActivity<ActivityFastSearchBinding>(), TextWatc
     }
 
     private fun getDoubanSuggest(text: String) {
-        OkGo.get<String>("https://movie.douban.com/j/subject_suggest?q="+text.trim())
-            .execute(object : StringCallback(){
-                override fun onSuccess(response: com.lzy.okgo.model.Response<String>?) {
+        HttpClient.get("https://movie.douban.com/j/subject_suggest?q="+text.trim(), null, object : HCallBack {
+                override fun onSuccess(response: String) {
                     val list = GsonUtils.fromJson<List<DoubanSuggestBean>>(
-                        response?.body(),
+                        response,
                         object : TypeToken<List<DoubanSuggestBean>>() {}.type
                     )
 
@@ -618,6 +623,9 @@ class FastSearchActivity : BaseVbActivity<ActivityFastSearchBinding>(), TextWatc
                         .maxHeight(ScreenUtils.getScreenHeight() - (ScreenUtils.getScreenHeight() / 4))
                         .asCustom(DoubanSuggestDialog(this@FastSearchActivity,filterList.subList(0,1)))
                         .show()
+                }
+
+                override fun onError(e: Throwable) {
                 }
             })
     }

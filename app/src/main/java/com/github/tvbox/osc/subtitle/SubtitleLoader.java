@@ -37,8 +37,8 @@ import com.github.tvbox.osc.subtitle.format.TimedTextFileFormat;
 import com.github.tvbox.osc.subtitle.model.TimedTextObject;
 import com.github.tvbox.osc.subtitle.runtime.AppTaskExecutor;
 import com.github.tvbox.osc.util.FileUtils;
+import com.github.tvbox.osc.util.HttpClient;
 import com.github.tvbox.osc.util.UnicodeReader;
-import com.lzy.okgo.OkGo;
 
 import org.apache.commons.io.input.ReaderInputStream;
 import org.mozilla.universalchardet.UniversalDetector;
@@ -50,6 +50,8 @@ import java.io.InputStream;
 import java.io.Reader;
 import java.net.URLDecoder;
 import java.nio.charset.Charset;
+import java.util.HashMap;
+import java.util.Map;
 
 import okhttp3.Response;
 
@@ -167,31 +169,32 @@ public class SubtitleLoader {
             referer = "https://secure.assrt.net/";
         }
         String ua = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/94.0.4606.54 Safari/537.36";
-        Response response = OkGo.<String>get(remoteSubtitlePath)
-                .headers("Referer", referer)
-                .headers("User-Agent", ua)
-                .execute();
-        byte[] bytes = response.body().bytes();
-        UniversalDetector detector = new UniversalDetector(null);
-        detector.handleData(bytes, 0, bytes.length);
-        detector.dataEnd();
-        String encoding = detector.getDetectedCharset();
-        String content = new String(bytes, encoding);
-        InputStream is = new ByteArrayInputStream(content.getBytes());
-        String filename = "";
-        String contentDispostion = response.header("content-disposition", "");
-        String[] cd = contentDispostion.split(";");
-        if (cd.length > 1) {
-            String filenameInfo = cd[1];
-            filenameInfo = filenameInfo.trim();
-            if (filenameInfo.startsWith("filename=")) {
-                filename = filenameInfo.replace("filename=", "");
-                filename = filename.replace("\"", "");
-            } else if (filenameInfo.startsWith("filename*=")) {
-                filename = filenameInfo.substring(filenameInfo.lastIndexOf("''")+2);
-            }
-            filename = filename.trim();
-            filename = URLDecoder.decode(filename);
+        Map<String, String> headers = new HashMap<>();
+        headers.put("Referer", referer);
+        headers.put("User-Agent", ua);
+        Response response = HttpClient.getResponseSync(remoteSubtitlePath, headers);
+        try {
+            byte[] bytes = response.body().bytes();
+            UniversalDetector detector = new UniversalDetector(null);
+            detector.handleData(bytes, 0, bytes.length);
+            detector.dataEnd();
+            String encoding = detector.getDetectedCharset();
+            String content = new String(bytes, encoding);
+            InputStream is = new ByteArrayInputStream(content.getBytes());
+            String filename = "";
+            String contentDispostion = response.header("content-disposition", "");
+            String[] cd = contentDispostion.split(";");
+            if (cd.length > 1) {
+                String filenameInfo = cd[1];
+                filenameInfo = filenameInfo.trim();
+                if (filenameInfo.startsWith("filename=")) {
+                    filename = filenameInfo.replace("filename=", "");
+                    filename = filename.replace("\"", "");
+                } else if (filenameInfo.startsWith("filename*=")) {
+                    filename = filenameInfo.substring(filenameInfo.lastIndexOf("''")+2);
+                }
+                filename = filename.trim();
+                filename = URLDecoder.decode(filename);
         }
         String filePath = filename;
         if (filename == null || filename.length() < 1) {
@@ -204,6 +207,9 @@ public class SubtitleLoader {
         subtitleLoadSuccessResult.content = content;
         subtitleLoadSuccessResult.subtitlePath = remoteSubtitlePath;
         return subtitleLoadSuccessResult;
+        } finally {
+            response.close();
+        }
     }
 
     private static SubtitleLoadSuccessResult loadFromLocal(final String localSubtitlePath)

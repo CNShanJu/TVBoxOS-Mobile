@@ -17,7 +17,7 @@ import kotlin.system.exitProcess
 
 class MainActivity : BaseVbActivity<ActivityMainBinding>() {
 
-    var fragments = listOf(HomeFragment(),MyFragment())
+    var fragments = listOf(HomeFragment(), MyFragment())
     var useCacheConfig = false
     private var exitTime = 0L
 
@@ -47,7 +47,7 @@ class MainActivity : BaseVbActivity<ActivityMainBinding>() {
     }
 
     override fun onBackPressed() {
-        if (mBinding.vp.currentItem == 1) {
+        if (mBinding.vp.currentItem != 0) { // 非首页(我的)按返回回首页
             mBinding.vp.currentItem = 0
             return
         }

@@ -21,6 +21,7 @@ import androidx.annotation.Nullable;
 
 import com.blankj.utilcode.util.ActivityUtils;
 import com.github.tvbox.osc.ui.activity.LiveActivity;
+import com.github.tvbox.osc.util.BroadcastUtils;
 
 import xyz.doikki.videocontroller.R;
 import xyz.doikki.videoplayer.controller.ControlWrapper;
@@ -97,7 +98,7 @@ public class PlayerTitleView extends FrameLayout implements IControlComponent {
     protected void onAttachedToWindow() {
         super.onAttachedToWindow();
         if (!mIsRegister) {
-            getContext().registerReceiver(mBatteryReceiver, new IntentFilter(Intent.ACTION_BATTERY_CHANGED));
+            BroadcastUtils.registerReceiverNotExported(getContext(), mBatteryReceiver, new IntentFilter(Intent.ACTION_BATTERY_CHANGED));
             mIsRegister = true;
         }
     }

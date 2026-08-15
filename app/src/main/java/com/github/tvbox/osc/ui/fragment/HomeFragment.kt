@@ -3,6 +3,7 @@ package com.github.tvbox.osc.ui.fragment
 import android.content.Intent
 import android.os.Bundle
 import android.os.Handler
+import android.text.TextUtils
 import android.view.Gravity
 import android.widget.TextView
 import androidx.fragment.app.Fragment
@@ -95,6 +96,10 @@ class HomeFragment : BaseVbFragment<FragmentHomeBinding>() {
             true
         }
         mBinding.search.setOnClickListener {
+            if (!hasSubscription()) {
+                ToastUtils.showShort("请先设置订阅")
+                return@setOnClickListener
+            }
             jumpActivity(FastSearchActivity::class.java)
         }
         mBinding.ivHistory.setOnClickListener {
@@ -170,6 +175,11 @@ class HomeFragment : BaseVbFragment<FragmentHomeBinding>() {
             override fun error(msg: String) {
                 if (msg.equals("-1", ignoreCase = true)) {
                     mHandler.post {
+                        if (!hasSubscription()) {
+                            // 未设置订阅:首屏不加载,提示用户先去订阅管理设置
+                            showNoSubscriptionTip()
+                            return@post
+                        }
                         dataInitOk = true
                         jarInitOk = true
                         initData()
@@ -236,6 +246,43 @@ class HomeFragment : BaseVbFragment<FragmentHomeBinding>() {
                             initData()
                             errorTipDialog?.hide()
                         }
+                    }
+
+                    override fun onTitleClick() {
+                        errorTipDialog?.hide()
+                        jumpActivity(SubscriptionActivity::class.java)
+                    }
+                })
+        }
+        if (!errorTipDialog!!.isShowing) errorTipDialog!!.show()
+    }
+
+    /**
+     * 是否已勾选订阅(以订阅管理写入的接口地址为准)
+     */
+    private fun hasSubscription(): Boolean {
+        return !TextUtils.isEmpty(Hawk.get(HawkConfig.API_URL, ""))
+    }
+
+    /**
+     * 未设置订阅时的提示:首屏不加载,引导去订阅管理设置
+     */
+    private fun showNoSubscriptionTip() {
+        showEmpty()
+        if (errorTipDialog == null) {
+            errorTipDialog =
+                TipDialog(requireActivity(), "尚未设置订阅,请先在订阅管理中设置订阅地址", "去设置", "取消", object : TipDialog.OnListener {
+                    override fun left() {
+                        errorTipDialog?.hide()
+                        jumpActivity(SubscriptionActivity::class.java)
+                    }
+
+                    override fun right() {
+                        errorTipDialog?.hide()
+                    }
+
+                    override fun cancel() {
+                        errorTipDialog?.hide()
                     }
 
                     override fun onTitleClick() {

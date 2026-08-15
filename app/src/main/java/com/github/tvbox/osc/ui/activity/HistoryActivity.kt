@@ -72,6 +72,7 @@ class HistoryActivity : BaseVbActivity<ActivityHistoryBinding>() {
                 val bundle = Bundle()
                 bundle.putString("id", vodInfo.id)
                 bundle.putString("sourceKey", vodInfo.sourceKey)
+                bundle.putString("vodName", vodInfo.name)
                 jumpActivity(DetailActivity::class.java, bundle)
             }
     }

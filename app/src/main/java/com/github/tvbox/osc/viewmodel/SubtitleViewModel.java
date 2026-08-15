@@ -7,8 +7,8 @@ import androidx.lifecycle.ViewModel;
 import com.github.tvbox.osc.bean.Subtitle;
 import com.github.tvbox.osc.bean.SubtitleData;
 import com.github.tvbox.osc.ui.dialog.SearchSubtitleDialog;
-import com.lzy.okgo.OkGo;
-import com.lzy.okgo.callback.AbsCallback;
+import com.github.tvbox.osc.util.HCallBack;
+import com.github.tvbox.osc.util.HttpClient;
 
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
@@ -18,7 +18,9 @@ import org.jsoup.select.Elements;
 import java.io.IOException;
 import java.net.URLDecoder;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -72,53 +74,46 @@ public class SubtitleViewModel extends ViewModel {
             }
             if (page == 1) pagesTotal = -1;//第一页时 重置页大小
             String searchApiUrl = "https://secure.assrt.net/sub/";
-            OkGo.<String>get(searchApiUrl)
-                    .params("searchword", title)
-                    .params("sort", "rank")
-                    .params("page", page)
-                    .params("no_redir", "1")
-                    .execute(new AbsCallback<String>() {
-                        @Override
-                        public void onSuccess(com.lzy.okgo.model.Response<String> response) {
-                            try {
-                                String content = response.body();
-                                Document doc = Jsoup.parse(content);
-                                Elements items = doc.select(".resultcard .sublist_box_title a.introtitle");
-                                List<Subtitle> data = new ArrayList<>();
-                                for (Element item : items) {
-                                    String title = item.attr("title");
-                                    String href = item.attr("href");
-                                    if (TextUtils.isEmpty(href)) continue;
-                                    Subtitle one = new Subtitle();
-                                    one.setName(title);
-                                    one.setUrl("https://assrt.net" + href);
-                                    one.setIsZip(true);
-                                    data.add(one);
-                                }
-                                setSearchListData(data, page <= 1, true);
-                                Elements pages = doc.select(".pagelinkcard a");
-                                if (pages.size() > 0) {
-                                    String[] ps = pages.last().text().split("/", 2);
-                                    if (ps.length == 2 && !TextUtils.isEmpty(ps[1])) {
-                                        pagesTotal = Integer.valueOf(ps[1].trim());
-                                    }
-                                }
-                            } catch (Throwable th) {
-                                th.printStackTrace();
+            Map<String, String> params = new HashMap<>();
+            params.put("searchword", title);
+            params.put("sort", "rank");
+            params.put("page", String.valueOf(page));
+            params.put("no_redir", "1");
+            HttpClient.get(searchApiUrl, params, null, null, new HCallBack() {
+                @Override
+                public void onSuccess(String content) {
+                    try {
+                        Document doc = Jsoup.parse(content);
+                        Elements items = doc.select(".resultcard .sublist_box_title a.introtitle");
+                        List<Subtitle> data = new ArrayList<>();
+                        for (Element item : items) {
+                            String title = item.attr("title");
+                            String href = item.attr("href");
+                            if (TextUtils.isEmpty(href)) continue;
+                            Subtitle one = new Subtitle();
+                            one.setName(title);
+                            one.setUrl("https://assrt.net" + href);
+                            one.setIsZip(true);
+                            data.add(one);
+                        }
+                        setSearchListData(data, page <= 1, true);
+                        Elements pages = doc.select(".pagelinkcard a");
+                        if (pages.size() > 0) {
+                            String[] ps = pages.last().text().split("/", 2);
+                            if (ps.length == 2 && !TextUtils.isEmpty(ps[1])) {
+                                pagesTotal = Integer.valueOf(ps[1].trim());
                             }
                         }
+                    } catch (Throwable th) {
+                        th.printStackTrace();
+                    }
+                }
 
-                        @Override
-                        public String convertResponse(Response response) throws Throwable {
-                            return response.body().string();
-                        }
-
-                        @Override
-                        public void onError(com.lzy.okgo.model.Response<String> response) {
-                            super.onError(response);
-                            setSearchListData(null, page <= 1, true);
-                        }
-                    });
+                @Override
+                public void onError(Throwable e) {
+                    setSearchListData(null, page <= 1, true);
+                }
+            });
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -129,11 +124,10 @@ public class SubtitleViewModel extends ViewModel {
     private void getSearchResultSubtitleUrlsFromAssrt(Subtitle subtitle) {
         try {
             String url = subtitle.getUrl();
-            OkGo.<String>get(url).execute(new AbsCallback<String>() {
+            HttpClient.get(url, null, new HCallBack() {
                 @Override
-                public void onSuccess(com.lzy.okgo.model.Response<String> response) {
+                public void onSuccess(String content) {
                     try {
-                        String content = response.body();
                         List<Subtitle> data = new ArrayList<>();
                         Document doc = Jsoup.parse(content);
                         Elements items = doc.select("#detail-filelist .waves-effect");
@@ -177,13 +171,7 @@ public class SubtitleViewModel extends ViewModel {
                 }
 
                 @Override
-                public String convertResponse(Response response) throws Throwable {
-                    return response.body().string();
-                }
-
-                @Override
-                public void onError(com.lzy.okgo.model.Response<String> response) {
-                    super.onError(response);
+                public void onError(Throwable e) {
                     setSearchListData(null, true, true);
                 }
             });

@@ -40,6 +40,7 @@ public class LastViewedDialog extends PositionPopupView {
             Bundle bundle = new Bundle();
             bundle.putString("id", vodInfo.id);
             bundle.putString("sourceKey", vodInfo.sourceKey);
+            bundle.putString("vodName", vodInfo.name);
             getContext().startActivity(new Intent(getContext(),DetailActivity.class).putExtras(bundle));
         });
     }

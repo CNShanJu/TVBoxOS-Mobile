@@ -1,0 +1,114 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:paddingHorizontal="16dp"
+    android:paddingTop="10dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal">
+
+        <TextView
+            android:id="@+id/tv_tab_downloading"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:gravity="center"
+            android:paddingVertical="10dp"
+            android:text="正在下载"
+            android:textColor="@color/colorPrimary"
+            android:textSize="16sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/tv_tab_done"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:gravity="center"
+            android:paddingVertical="10dp"
+            android:text="下载完成"
+            android:textColor="@color/text_sub_foreground"
+            android:textSize="16sp" />
+
+        <TextView
+            android:id="@+id/tv_concurrent"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:gravity="center"
+            android:paddingVertical="10dp"
+            android:paddingStart="12dp"
+            android:paddingEnd="4dp"
+            android:text="并发:3"
+            android:textColor="@color/colorPrimary"
+            android:textSize="13sp" />
+
+    </LinearLayout>
+
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:layout_marginBottom="8dp"
+        android:background="@color/gray_darker" />
+
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/rv_downloading"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager" />
+
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/rv_done"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:visibility="gone"
+        app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager" />
+
+    <LinearLayout
+        android:id="@+id/ll_menu"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@color/white"
+        android:elevation="8dp"
+        android:orientation="horizontal"
+        android:visibility="gone">
+
+        <TextView
+            android:id="@+id/tv_all_check"
+            android:layout_width="0dp"
+            android:layout_height="48dp"
+            android:layout_weight="1"
+            android:foreground="?selectableItemBackgroundBorderless"
+            android:gravity="center"
+            android:text="全选"
+            android:textColor="@color/colorPrimary" />
+
+        <TextView
+            android:id="@+id/tv_delete"
+            android:layout_width="0dp"
+            android:layout_height="48dp"
+            android:layout_weight="1"
+            android:enabled="false"
+            android:foreground="?selectableItemBackgroundBorderless"
+            android:gravity="center"
+            android:text="删除"
+            android:textColor="@color/disable_text" />
+
+        <TextView
+            android:id="@+id/tv_cancel_all_checked"
+            android:layout_width="0dp"
+            android:layout_height="48dp"
+            android:layout_weight="1"
+            android:foreground="?selectableItemBackgroundBorderless"
+            android:gravity="center"
+            android:text="取消全选"
+            android:textColor="@color/colorPrimary" />
+
+    </LinearLayout>
+</LinearLayout>

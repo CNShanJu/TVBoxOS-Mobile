@@ -5,10 +5,6 @@ import com.github.tvbox.osc.base.App;
 import com.google.gson.Gson;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
-import com.lzy.okgo.OkGo;
-import com.lzy.okgo.callback.AbsCallback;
-import com.lzy.okgo.model.Response;
-import com.lzy.okgo.request.GetRequest;
 
 import org.json.JSONObject;
 
@@ -16,7 +12,9 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.lang.reflect.Type;
+import java.util.HashMap;
 import java.util.Hashtable;
+import java.util.Map;
 
 public class EpgNameFuzzyMatch {
 
@@ -51,34 +49,24 @@ public class EpgNameFuzzyMatch {
         }
 
         //上述两种途径都失败后,读取网络自定义文件中的内容
-        GetRequest<String> request = OkGo.<String>get("http://www.baidu.com/maotv/epg.json");
-        request.headers("User-Agent", UA.random());
-        request.execute(new AbsCallback<String>() {
+        Map<String, String> headers = new HashMap<>();
+        headers.put("User-Agent", UA.random());
+        HttpClient.get("http://www.baidu.com/maotv/epg.json", headers, null, new HCallBack() {
             @Override
-            public void onSuccess(Response<String> response) {
-                JSONObject returnedData = new JSONObject();
+            public void onSuccess(String content) {
                 try {
-                    String pageStr = response.body();
-                    JsonObject infoJson = new Gson().fromJson(pageStr, (Type)JsonObject.class);
+                    String pageStr = content;
+                    JsonObject infoJson = new Gson().fromJson(pageStr, (Type) JsonObject.class);
                     epgNameDoc = infoJson;
                     hasAddData(epgNameDoc);
-                    return;
-                } catch (Exception ex) { }
+                } catch (Exception ex) {
+                    ex.printStackTrace();
+                }
             }
 
             @Override
-            public void onError(Response<String> response) {
-                super.onError(response);
-            }
-
-            @Override
-            public void onFinish() {
-                super.onFinish();
-            }
-
-            @Override
-            public String convertResponse(okhttp3.Response response) throws Throwable {
-                return response.body().string();
+            public void onError(Throwable e) {
+                // ignore
             }
         });
     }

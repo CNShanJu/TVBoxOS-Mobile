@@ -1,50 +1,23 @@
 package com.github.tvbox.osc.ui.adapter;
 
-import com.android.cast.dlna.dmc.OnDeviceRegistryListener;
-import com.blankj.utilcode.util.LogUtils;
 import com.chad.library.adapter.base.BaseQuickAdapter;
 import com.chad.library.adapter.base.BaseViewHolder;
 import com.github.tvbox.osc.R;
-import com.github.tvbox.osc.api.ApiConfig;
-import com.github.tvbox.osc.bean.Movie;
-
-import org.fourthline.cling.model.meta.Device;
-
-import java.util.ArrayList;
-import java.util.List;
 
 /**
- * @author pj567
- * @date :2020/12/23
- * @description:
+ * 投屏设备列表适配器(桩实现)
+ * <p>
+ * DLNA 投屏功能暂不可用:原依赖 com.github.devin1014.DLNA-Cast:dlna-dmc:V1.0.0
+ * 已从 JitPack 消失,原始实现备份于项目根目录 _backup_dlna/ 下。
  */
-public class CastDevicesAdapter extends BaseQuickAdapter<Device, BaseViewHolder> implements OnDeviceRegistryListener {
+public class CastDevicesAdapter extends BaseQuickAdapter<String, BaseViewHolder> {
 
     public CastDevicesAdapter() {
         super(R.layout.item_title);
     }
 
     @Override
-    protected void convert(BaseViewHolder helper, Device item) {
-        helper.setText(R.id.title,item.getDetails().getFriendlyName());
-    }
-
-    @Override
-    public void onDeviceAdded(Device<?, ?, ?> device) {
-        addData(device);
-    }
-
-    @Override
-    public void onDeviceUpdated(Device<?, ?, ?> device) {
-
-    }
-
-    @Override
-    public void onDeviceRemoved(Device<?, ?, ?> device) {
-        List<Device> data = getData();
-        if (data.contains(device)) {
-            data.remove(device);
-            notifyDataSetChanged();
-        }
+    protected void convert(BaseViewHolder helper, String item) {
+        // no-op
     }
 }

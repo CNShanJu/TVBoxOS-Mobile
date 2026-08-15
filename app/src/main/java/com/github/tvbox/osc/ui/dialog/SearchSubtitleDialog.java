@@ -142,6 +142,9 @@ public class SearchSubtitleDialog extends BaseDialog {
     }
 
     public void setSearchWord(String wd) {
+        if (TextUtils.isEmpty(wd)) {
+            wd = "";
+        }
         wd = wd.replaceAll("(?:（|\\(|\\[|【|\\.mp4|\\.mkv|\\.avi|\\.MP4|\\.MKV|\\.AVI)", "");
         wd = wd.replaceAll("(?:：|\\:|）|\\)|\\]|】|\\.)", " ");
         int len = wd.length();

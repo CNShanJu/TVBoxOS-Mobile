@@ -1,11 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- 固定白色背景 -->
     <item>
-        <shape>
-            <solid android:color="@color/white" />
+        <shape android:shape="rectangle">
+            <solid android:color="#FFFFFF" />
         </shape>
     </item>
-    <item >
+    <!-- 启动图标的 Logo -->
+    <item>
         <bitmap
             android:gravity="center"
             android:src="@drawable/iv_splash" />

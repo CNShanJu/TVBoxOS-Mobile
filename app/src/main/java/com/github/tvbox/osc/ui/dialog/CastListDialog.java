@@ -1,37 +1,29 @@
 package com.github.tvbox.osc.ui.dialog;
 
 import android.content.Context;
-import android.util.Log;
 import android.view.View;
+import android.widget.TextView;
 
 import androidx.annotation.NonNull;
-import androidx.recyclerview.widget.LinearLayoutManager;
-import androidx.recyclerview.widget.RecyclerView;
 
-import com.android.cast.dlna.dmc.DLNACastManager;
-import com.blankj.utilcode.util.GsonUtils;
-import com.blankj.utilcode.util.LogUtils;
-import com.chad.library.adapter.base.BaseQuickAdapter;
 import com.github.tvbox.osc.R;
-import com.github.tvbox.osc.base.App;
 import com.github.tvbox.osc.bean.CastVideo;
-import com.github.tvbox.osc.ui.adapter.CastDevicesAdapter;
-import com.lxj.xpopup.core.BottomPopupView;
 import com.lxj.xpopup.core.CenterPopupView;
 
-import org.fourthline.cling.model.meta.Device;
 import org.jetbrains.annotations.NotNull;
 
-import java.util.ArrayList;
-
+/**
+ * 投屏弹窗(桩实现)
+ * <p>
+ * DLNA 投屏功能暂不可用:原依赖 com.github.devin1014.DLNA-Cast:dlna-dmc:V1.0.0
+ * 已从 JitPack 消失,原始实现备份于项目根目录 _backup_dlna/ 下。
+ * 待找到可替代的 DLNA 库后,可恢复 _backup_dlna/ 中的原始实现并适配新库 API。
+ */
 public class CastListDialog extends CenterPopupView {
-
-    private final CastVideo castVideo;
-    private CastDevicesAdapter adapter;
 
     public CastListDialog(@NonNull @NotNull Context context, CastVideo castVideo) {
         super(context);
-        this.castVideo = castVideo;
+        // castVideo 参数保留以兼容调用方,暂不使用
     }
 
     @Override
@@ -42,35 +34,21 @@ public class CastListDialog extends CenterPopupView {
     @Override
     protected void onCreate() {
         super.onCreate();
-        DLNACastManager.getInstance().bindCastService(App.getInstance());
-        findViewById(R.id.btn_cancel).setOnClickListener(view -> {
-            dismiss();
-        });
-        findViewById(R.id.btn_confirm).setOnClickListener(view ->{
-            adapter.setNewData(new ArrayList<>());
-            DLNACastManager.getInstance().search(null, 1);
-        });
-        RecyclerView rv = findViewById(R.id.rv);
-        rv.setLayoutManager(new LinearLayoutManager(getContext()));
-        adapter = new CastDevicesAdapter();
-        rv.setAdapter(adapter);
-        DLNACastManager.getInstance().registerDeviceListener(adapter);
-
-        adapter.setOnItemClickListener(new BaseQuickAdapter.OnItemClickListener() {
-            @Override
-            public void onItemClick(BaseQuickAdapter adapter, View view, int position) {
-                Device item = (Device)adapter.getItem(position);
-                if (item!=null){
-                    DLNACastManager.getInstance().cast(item,castVideo);
-                }
-            }
-        });
-    }
-
-    @Override
-    protected void onDismiss() {
-        super.onDismiss();
-        DLNACastManager.getInstance().unregisterListener(adapter);
-        DLNACastManager.getInstance().unbindCastService(App.getInstance());
+        TextView title = findViewById(R.id.title);
+        if (title != null) {
+            title.setText("投屏功能暂不可用");
+        }
+        View rv = findViewById(R.id.rv);
+        if (rv != null) {
+            rv.setVisibility(View.GONE);
+        }
+        View btnConfirm = findViewById(R.id.btn_confirm);
+        if (btnConfirm != null) {
+            btnConfirm.setVisibility(View.GONE);
+        }
+        View btnCancel = findViewById(R.id.btn_cancel);
+        if (btnCancel != null) {
+            btnCancel.setOnClickListener(v -> dismiss());
+        }
     }
 }

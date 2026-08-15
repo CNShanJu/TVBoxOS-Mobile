@@ -7,7 +7,6 @@ import androidx.collection.ArrayMap;
 import com.github.catvod.utils.Path;
 import com.github.catvod.utils.Util;
 import com.github.tvbox.osc.bean.Doh;
-import com.google.common.net.HttpHeaders;
 
 import java.util.Map;
 import java.util.Objects;
@@ -89,7 +88,7 @@ public class OkHttp {
 
     public static Call newCall(String url) {
         Uri uri = Uri.parse(url);
-        if (uri.getUserInfo() != null) return newCall(url, Headers.of(HttpHeaders.AUTHORIZATION, Util.basic(uri)));
+        if (uri.getUserInfo() != null) return newCall(url, Headers.of("Authorization", Util.basic(uri)));
         return client().newCall(new Request.Builder().url(url).build());
     }
 

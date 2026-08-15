@@ -72,6 +72,7 @@ class CollectActivity : BaseVbActivity<ActivityCollectBinding>() {
                         val bundle = Bundle()
                         bundle.putString("id", vodInfo.vodId)
                         bundle.putString("sourceKey", vodInfo.sourceKey)
+                        bundle.putString("vodName", vodInfo.name)
                         jumpActivity(DetailActivity::class.java, bundle)
                     } else {
 //                            Intent newIntent = new Intent(mContext, SearchActivity.class);

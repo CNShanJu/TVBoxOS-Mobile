@@ -98,3 +98,9 @@ lint/tmp/
 /app/release/
 /.idea/
 *.jks
+
+# 本地默认订阅文件:本地打包存在该文件会把默认订阅打进APK;已屏蔽,线上(CI)打包不含
+/app/src/main/assets/default_subscriptions.json
+/app/src/main/assets/default_subscriptions_bak.json
+# DLNA ����Ŀ¼(׮��ͣ��,�����)
+/_backup_dlna/
