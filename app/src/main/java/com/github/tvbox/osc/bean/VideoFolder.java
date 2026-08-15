@@ -10,6 +10,8 @@ public class VideoFolder {
     }
 
     String name;
+    /** 来源名(下载页分组用,本地视频不用) */
+    String sourceName;
     List<VideoInfo> videoList;
 
     public String getName() {
@@ -18,6 +20,14 @@ public class VideoFolder {
 
     public void setName(String name) {
         this.name = name;
+    }
+
+    public String getSourceName() {
+        return sourceName;
+    }
+
+    public void setSourceName(String sourceName) {
+        this.sourceName = sourceName;
     }
 
     public List<VideoInfo> getVideoList() {

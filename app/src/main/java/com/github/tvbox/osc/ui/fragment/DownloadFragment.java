@@ -3,6 +3,7 @@ package com.github.tvbox.osc.ui.fragment;
 import android.os.Bundle;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.ImageView;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 
@@ -13,6 +14,8 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.blankj.utilcode.util.ColorUtils;
 import com.blankj.utilcode.util.GsonUtils;
 import com.blankj.utilcode.util.ToastUtils;
+import com.bumptech.glide.Glide;
+import com.bumptech.glide.load.engine.DiskCacheStrategy;
 import com.chad.library.adapter.base.BaseQuickAdapter;
 import com.chad.library.adapter.base.BaseViewHolder;
 import com.github.tvbox.osc.R;
@@ -23,7 +26,6 @@ import com.github.tvbox.osc.bean.VideoInfo;
 import com.github.tvbox.osc.databinding.FragmentDownloadBinding;
 import com.github.tvbox.osc.event.DownloadEvent;
 import com.github.tvbox.osc.ui.activity.LocalPlayActivity;
-import com.github.tvbox.osc.ui.adapter.FolderAdapter;
 import com.github.tvbox.osc.ui.adapter.LocalVideoAdapter;
 import com.github.tvbox.osc.util.DownloadManager;
 import com.lxj.xpopup.XPopup;
@@ -56,7 +58,8 @@ public class DownloadFragment extends BaseVbFragment<FragmentDownloadBinding> {
     private BaseQuickAdapter<DownloadTask, BaseViewHolder> downloadingAdapter;
     /** 正在下载的文件级:当前剧名(非空=该剧的任务列表) */
     private String currentVodGroup = null;
-    private FolderAdapter folderAdapter;
+    /** 下载完成:文件夹列表(剧名/来源,两排显示) */
+    private BaseQuickAdapter<VideoFolder, BaseViewHolder> folderAdapter;
     private LocalVideoAdapter localVideoAdapter;
     /** 当前打开的下载文件夹(非空=文件列表级) */
     private VideoFolder currentFolder = null;
@@ -137,8 +140,24 @@ public class DownloadFragment extends BaseVbFragment<FragmentDownloadBinding> {
         });
         mBinding.rvDownloading.setAdapter(downloadingAdapter);
 
-        // 下载完成:文件夹列表(与本地视频一致)
-        folderAdapter = new FolderAdapter();
+        // 下载完成:文件夹列表(剧名 + 来源/个数,两排,与本地视频同款封面)
+        folderAdapter = new BaseQuickAdapter<VideoFolder, BaseViewHolder>(R.layout.item_folder) {
+            @Override
+            protected void convert(BaseViewHolder helper, VideoFolder folder) {
+                List<VideoInfo> videoList = folder.getVideoList();
+                // 第一排:电视剧名称
+                helper.setText(R.id.tv_name, folder.getName());
+                // 第二排:来源 / N 个视频
+                String source = folder.getSourceName();
+                helper.setText(R.id.tv_count, (source == null || source.isEmpty() ? "" : source + " / ") + videoList.size() + " 个视频");
+                Glide.with(mContext)
+                        .load(videoList.get(0).getPath())
+                        .diskCacheStrategy(DiskCacheStrategy.AUTOMATIC)
+                        .placeholder(R.drawable.iv_video)
+                        .centerCrop()
+                        .into((ImageView) helper.getView(R.id.iv));
+            }
+        };
         folderAdapter.setOnItemClickListener((adapter, view, position) -> {
             VideoFolder folder = folderAdapter.getItem(position);
             if (folder != null) openFolder(folder);
@@ -311,7 +330,7 @@ public class DownloadFragment extends BaseVbFragment<FragmentDownloadBinding> {
     // 下载完成:文件夹 / 文件 两级浏览
     // ------------------------------------------------------------------
 
-    /** 扫描下载根目录,按 来源/剧名 目录分组为文件夹 */
+    /** 扫描下载根目录,按 来源/剧名 目录分组为文件夹(名称=剧名,来源单独存) */
     private List<VideoFolder> scanDownloadFolders() {
         List<VideoFolder> folders = new ArrayList<>();
         File base = DownloadManager.getSaveDir();
@@ -325,7 +344,9 @@ public class DownloadFragment extends BaseVbFragment<FragmentDownloadBinding> {
                 if (!vod.isDirectory()) continue;
                 List<VideoInfo> videos = scanFolderFiles(vod.getAbsolutePath());
                 if (videos != null && !videos.isEmpty()) {
-                    folders.add(new VideoFolder(src.getName() + "/" + vod.getName(), videos));
+                    VideoFolder folder = new VideoFolder(vod.getName(), videos);
+                    folder.setSourceName(src.getName());
+                    folders.add(folder);
                 }
             }
         }
@@ -355,9 +376,10 @@ public class DownloadFragment extends BaseVbFragment<FragmentDownloadBinding> {
     }
 
     private String currentFolderNameToPath() {
-        // 文件夹名格式:来源/剧名 → 下载根目录/来源/剧名
+        // 路径 = 下载根目录/来源/剧名
+        String source = currentFolder.getSourceName();
         String name = currentFolder.getName();
-        return new File(DownloadManager.getSaveDir(), name).getAbsolutePath();
+        return new File(new File(DownloadManager.getSaveDir(), source == null ? "" : source), name).getAbsolutePath();
     }
 
     private boolean isVideoFile(String name) {

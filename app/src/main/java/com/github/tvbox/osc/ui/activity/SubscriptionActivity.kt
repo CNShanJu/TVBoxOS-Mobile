@@ -13,7 +13,6 @@ import com.github.tvbox.osc.bean.Source
 import com.github.tvbox.osc.bean.Subscription
 import com.github.tvbox.osc.databinding.ActivitySubscriptionBinding
 import com.github.tvbox.osc.ui.adapter.SubscriptionAdapter
-import com.github.tvbox.osc.ui.dialog.AppLogDialog
 import com.github.tvbox.osc.ui.dialog.ChooseSourceDialog
 import com.github.tvbox.osc.ui.dialog.SubsTipDialog
 import com.github.tvbox.osc.ui.dialog.SubsciptionDialog
@@ -56,15 +55,6 @@ class SubscriptionActivity : BaseVbActivity<ActivitySubscriptionBinding>() {
                 .asCustom(SubsTipDialog(this))
                 .show()
         }
-
-        mBinding.tvLog.setOnClickListener {
-            XPopup.Builder(this)
-                .asCustom(AppLogDialog(this))
-                .show()
-        }
-        // 仅当设置里开启"运行日志"时才显示日志入口(默认关闭)
-        mBinding.tvLog.visibility =
-            if (Hawk.get(HawkConfig.APP_LOG, false)) View.VISIBLE else View.GONE
 
         mBinding.titleBar.rightView.setOnClickListener {//添加订阅
             XPopup.Builder(this)

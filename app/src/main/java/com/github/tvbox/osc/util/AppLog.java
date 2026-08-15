@@ -14,6 +14,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.Date;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Locale;
 
@@ -23,16 +24,21 @@ import java.util.Locale;
  * 受 {@link HawkConfig#APP_LOG} 开关控制,默认关闭:
  * 仅当设置里开启"运行日志"后才写入文件,避免常驻记录耗费性能与存储。
  * 按天记录到 filesDir/app_logs/app-yyyy-MM-dd.log,单日保留最近 {@link #MAX_LINES_PER_DAY} 行。
- * 提供:写入(log)、按天查看(listLogFiles/readLines)、清空(clearAll)、导出(exportAll)。
+ * 提供:写入(log)、logcat 完整捕获(startLogcatCapture/stopLogcatCapture)、
+ * 按天查看(listLogFiles/readLines)、清空(clearAll)、导出(exportAll)。
  */
 public class AppLog {
 
     private static final String LOG_DIR = "app_logs";
     private static final String FILE_PREFIX = "app-";
     private static final String FILE_SUFFIX = ".log";
-    private static final int MAX_LINES_PER_DAY = 2000;
+    private static final int MAX_LINES_PER_DAY = 20000;
 
     private static final Object LOCK = new Object();
+
+    /** logcat 捕获进程与线程(开关开启时持续写入完整运行日志) */
+    private static volatile Process logcatProcess;
+    private static volatile Thread logcatThread;
 
     private AppLog() {
     }
@@ -40,21 +46,102 @@ public class AppLog {
     /** 追加一条日志(线程安全);开关关闭时直接忽略 */
     public static void log(String tag, String msg) {
         if (!Hawk.get(HawkConfig.APP_LOG, false)) return;
-        try {
-            synchronized (LOCK) {
+        String line = "[" + new SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(new Date()) + "] " + tag + ": " + msg;
+        List<String> lines = new ArrayList<>(1);
+        lines.add(line);
+        appendLines(lines);
+    }
+
+    /**
+     * 启动 logcat 完整捕获:持续读取本应用(Uid)的所有系统日志,像 IDEA Logcat 一样写入日志文件。
+     * 幂等,重复调用无副作用。
+     */
+    public static void startLogcatCapture() {
+        if (logcatThread != null && logcatThread.isAlive()) return;
+        synchronized (LOCK) {
+            if (logcatThread != null && logcatThread.isAlive()) return;
+            try {
+                // -T 1:从最后一条开始跟随(不 dump 历史);-v time:带时间戳
+                final Process p = Runtime.getRuntime().exec(new String[]{"logcat", "-v", "time", "-T", "1"});
+                logcatProcess = p;
+                Thread t = new Thread(new Runnable() {
+                    @Override
+                    public void run() {
+                        BufferedReader reader = null;
+                        try {
+                            reader = new BufferedReader(new InputStreamReader(p.getInputStream(), "UTF-8"));
+                            List<String> batch = new ArrayList<>();
+                            long lastFlush = 0;
+                            String line;
+                            while ((line = reader.readLine()) != null) {
+                                if (logcatProcess != p) break; // 已停止
+                                batch.add(line);
+                                long now = System.currentTimeMillis();
+                                if (batch.size() >= 100 || now - lastFlush > 1500) {
+                                    appendLines(batch);
+                                    lastFlush = now;
+                                }
+                            }
+                            appendLines(batch);
+                        } catch (Throwable ignored) {
+                        } finally {
+                            if (reader != null) {
+                                try {
+                                    reader.close();
+                                } catch (Throwable ignored) {
+                                }
+                            }
+                        }
+                    }
+                }, "applog-logcat");
+                t.setDaemon(true);
+                logcatThread = t;
+                t.start();
+            } catch (Throwable th) {
+                th.printStackTrace();
+                logcatProcess = null;
+                logcatThread = null;
+            }
+        }
+    }
+
+    /** 停止 logcat 捕获(开关关闭时调用) */
+    public static void stopLogcatCapture() {
+        Process p = logcatProcess;
+        logcatProcess = null;
+        logcatThread = null;
+        if (p != null) {
+            try {
+                p.destroy();
+            } catch (Throwable ignored) {
+            }
+        }
+    }
+
+    /** 批量写入日志文件(线程安全);开关关闭时忽略 */
+    private static void appendLines(List<String> lines) {
+        if (lines == null || lines.isEmpty()) return;
+        if (!Hawk.get(HawkConfig.APP_LOG, false)) return;
+        synchronized (LOCK) {
+            try {
                 File dir = logDir();
                 if (!dir.exists()) dir.mkdirs();
-                File file = new File(dir, FILE_PREFIX + new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(new Date()) + FILE_SUFFIX);
-                String line = "[" + new SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(new Date()) + "] " + tag + ": " + msg + "\n";
+                File file = todayFile();
+                StringBuilder sb = new StringBuilder(lines.size() * 64);
+                for (String l : lines) sb.append(l).append('\n');
                 FileOutputStream fos = new FileOutputStream(file, true);
-                fos.write(line.getBytes("UTF-8"));
+                fos.write(sb.toString().getBytes("UTF-8"));
                 fos.flush();
                 fos.close();
                 trimFile(file);
+            } catch (Throwable th) {
+                th.printStackTrace();
             }
-        } catch (Throwable th) {
-            th.printStackTrace();
         }
+    }
+
+    private static File todayFile() {
+        return new File(logDir(), FILE_PREFIX + new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(new Date()) + FILE_SUFFIX);
     }
 
     private static void trimFile(File file) {
@@ -105,6 +192,36 @@ public class AppLog {
             reader.close();
         } catch (Throwable th) {
             th.printStackTrace();
+        }
+        return lines;
+    }
+
+    /**
+     * 高效读取日志文件末尾的最近 maxLines 行:顺序读取 + 环形缓冲只保留尾部,
+     * 避免一次性加载全文件(几万行 logcat 也能毫秒级返回)。
+     */
+    public static List<String> readTail(File file, int maxLines) {
+        List<String> lines = new ArrayList<>();
+        if (file == null || !file.exists()) return lines;
+        BufferedReader reader = null;
+        try {
+            reader = new BufferedReader(new InputStreamReader(new FileInputStream(file), "UTF-8"));
+            LinkedList<String> ring = new LinkedList<>();
+            String line;
+            while ((line = reader.readLine()) != null) {
+                ring.add(line);
+                if (ring.size() > maxLines) ring.removeFirst();
+            }
+            lines.addAll(ring);
+        } catch (Throwable th) {
+            th.printStackTrace();
+        } finally {
+            if (reader != null) {
+                try {
+                    reader.close();
+                } catch (Throwable ignored) {
+                }
+            }
         }
         return lines;
     }

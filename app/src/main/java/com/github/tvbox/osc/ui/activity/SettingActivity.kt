@@ -14,10 +14,10 @@ import com.github.tvbox.osc.constant.IntentKey
 import com.github.tvbox.osc.databinding.ActivitySettingBinding
 import com.github.tvbox.osc.ui.adapter.SelectDialogAdapter
 import com.github.tvbox.osc.ui.adapter.SelectDialogAdapter.SelectDialogInterface
-import com.github.tvbox.osc.ui.dialog.AppLogDialog
 import com.github.tvbox.osc.ui.dialog.BackupDialog
 import com.github.tvbox.osc.ui.dialog.LiveApiDialog
 import com.github.tvbox.osc.ui.dialog.SelectDialog
+import com.github.tvbox.osc.util.AppLog
 import com.github.tvbox.osc.util.FastClickCheckUtil
 import com.github.tvbox.osc.util.FileUtils
 import com.github.tvbox.osc.util.HawkConfig
@@ -437,14 +437,18 @@ class SettingActivity : BaseVbActivity<ActivitySettingBinding>() {
             Hawk.put(HawkConfig.APP_LOG, newConfig)
             mBinding.llSubscriptionLogView.visibility =
                 if (newConfig) View.VISIBLE else View.GONE
+            // 开关联动 logcat 完整捕获
+            if (newConfig) {
+                AppLog.startLogcatCapture()
+            } else {
+                AppLog.stopLogcatCapture()
+            }
         }
         mBinding.llSubscriptionLogView.visibility =
             if (Hawk.get(HawkConfig.APP_LOG, false)) View.VISIBLE else View.GONE
         mBinding.llSubscriptionLogView.setOnClickListener { v: View? ->
             FastClickCheckUtil.check(v)
-            XPopup.Builder(this)
-                .asCustom(AppLogDialog(this))
-                .show()
+            jumpActivity(LogActivity::class.java)
         }
     }
 

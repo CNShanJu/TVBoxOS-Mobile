@@ -99,6 +99,10 @@ public class App extends MultiDexApplication {
         putDefault(HawkConfig.APP_LOG, false);                //运行日志:默认关闭,排查问题时开启
         putDefault(HawkConfig.SUBTITLE_OPEN, false);          //字幕:默认关闭,播放器设置里可开关
         putDefaultApi();
+        // 运行日志开关已开启时,启动 logcat 完整捕获(与 IDEA Logcat 一致)
+        if (Hawk.get(HawkConfig.APP_LOG, false)) {
+            AppLog.startLogcatCapture();
+        }
     }
 
     private void putDefaultApi() {
@@ -268,6 +272,41 @@ public class App extends MultiDexApplication {
                 .errorDrawable(R.drawable.app_icon) //错误图标
                 .restartActivity(MainActivity.class) //重新启动后的activity
                 .apply();
+        // 魅族系统(如 ContentCapture 线程的 com.meizu.internal.picker)存在已知 NPE bug,
+        // 属于系统问题而非 App 代码,直接吞掉避免整个 App 被杀,其余异常仍走 CAOC
+        final Thread.UncaughtExceptionHandler caoc = Thread.getDefaultUncaughtExceptionHandler();
+        Thread.setDefaultUncaughtExceptionHandler(new Thread.UncaughtExceptionHandler() {
+            @Override
+            public void uncaughtException(Thread thread, Throwable throwable) {
+                if (isBenignSystemThrowable(thread, throwable)) {
+                    return;
+                }
+                if (caoc != null) {
+                    caoc.uncaughtException(thread, throwable);
+                }
+            }
+        });
+    }
+
+    /** 判断是否为魅族系统内部的无害异常(系统线程 NPE 等),不应导致 App 崩溃 */
+    private boolean isBenignSystemThrowable(Thread thread, Throwable throwable) {
+        try {
+            if (thread != null && "ContentCapture".equals(thread.getName())) {
+                return true;
+            }
+            Throwable t = throwable;
+            while (t != null) {
+                for (StackTraceElement e : t.getStackTrace()) {
+                    String cls = e.getClassName();
+                    if (cls.startsWith("com.meizu.internal.") || cls.startsWith("com.meizu.picker.")) {
+                        return true;
+                    }
+                }
+                t = t.getCause();
+            }
+        } catch (Throwable ignored) {
+        }
+        return false;
     }
 
 }
