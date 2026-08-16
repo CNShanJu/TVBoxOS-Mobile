@@ -89,6 +89,8 @@ public class DownloadManager {
     private static final int MAX_RETRY = 2;
     /** 网络错误(断网/切网)重试次数上限(不含首次),配合退避最长约2分钟 */
     private static final int MAX_NETWORK_RETRY = 8;
+    /** 碎片校验后自动补下缺失分片的最大轮数 */
+    private static final int MAX_SEGMENT_REPAIR = 3;
     /** 分段信息 TXT 文件名 */
     public static final String SEGMENTS_INFO = "segments.txt";
     /** 合并阶段状态文案(下载中任务的 message 标记) */
@@ -953,8 +955,8 @@ public class DownloadManager {
         // 分片下到唯一分段目录(带任务id,避免同目标多任务/重试交错共用目录互相删分片),完成后合成 mp4 再删除
         File tmpDir = segmentsDirOf(t);
         if (!tmpDir.exists()) tmpDir.mkdirs();
-        // 下载前记录分段信息 TXT:来源/剧名/集数/碎片数/解析地址/分片列表
-        writeSegmentsInfo(t, tmpDir, segments);
+        // 下载前记录分段信息 TXT:来源/剧名/集数/碎片数/解析地址/分片列表/已完成(断点续传同步进度)
+        writeSegmentsInfo(t, tmpDir, segments, t.doneSegments);
 
         long speedWindowStart = System.currentTimeMillis();
         long speedWindowBytes = 0;
@@ -970,6 +972,7 @@ public class DownloadManager {
             downloadSegment(segments.get(i), segFile, segDone, t);
             t.doneSegments = i + 1;
             t.segmentBytes = 0;
+            writeSegmentsInfo(t, tmpDir, segments, t.doneSegments); // 每片完成即写入TXT进度
             // 实时网速:按已完成分片的字节增量估算
             speedWindowBytes += segFile.length();
             long now = System.currentTimeMillis();
@@ -986,16 +989,42 @@ public class DownloadManager {
         }
         t.speed = 0;
 
-        // 碎片下载完,进入"文件校验中":按分段信息 TXT 核对碎片数与碎片文件是否齐全一致
+        // 碎片下载完,进入"文件校验中"。doneSegments 始终表示"已下载完的分片数"。
         t.message = MSG_VERIFYING;
         persist();
         notifyChanged();
-        if (!verifySegments(tmpDir, segments)) {
-            // 校验不一致(分片缺失/数量不符):从头重新下载
-            t.doneSegments = 0;
-            t.segmentBytes = 0;
-            throw new IOException("碎片校验不一致,重新下载");
+        // 校验+补下(最多3轮):前两轮以 TXT 记录的"已完成"进度为准,只补缺失分片(不全盘扫);
+        // 第三轮兜底全盘扫一遍核对磁盘,发现缺失再补。
+        int repair = 0;
+        while (true) {
+            // 最后一轮从0全盘兜底;前几轮以 TXT 已完成进度为准
+            int from = (repair + 1 >= MAX_SEGMENT_REPAIR) ? 0 : Math.max(0, readSegmentsInfo(tmpDir));
+            if (from >= segments.size()) break; // 全部完成
+            if (repair >= MAX_SEGMENT_REPAIR) {
+                throw new IOException("碎片校验不一致,自动补下" + MAX_SEGMENT_REPAIR + "轮后仍缺失");
+            }
+            repair++;
+            Log.i("TVBox-Download", "碎片校验缺失,第" + repair + "/" + MAX_SEGMENT_REPAIR + "轮补下缺失分片: " + t.fileName
+                    + (from == 0 ? "(全盘兜底)" : ""));
+            boolean allOk = true;
+            for (int i = from; i < segments.size(); i++) {
+                File segFile = new File(tmpDir, String.format("%05d.ts", i));
+                if (!segFile.exists() || segFile.length() <= 0) {
+                    downloadSegment(segments.get(i), segFile, 0, t); // 失败抛异常由外层重试
+                }
+                if (segFile.exists() && segFile.length() > 0) {
+                    t.doneSegments = i + 1;
+                } else {
+                    allOk = false;
+                    break; // 还有缺失,留到下一轮
+                }
+            }
+            writeSegmentsInfo(t, tmpDir, segments, t.doneSegments); // 补下进度写回TXT
+            if (allOk) break;
         }
+        t.doneSegments = segments.size(); // 全部就绪,进度=已下载分片数
+        t.segmentBytes = 0;
+        writeSegmentsInfo(t, tmpDir, segments, t.doneSegments);
 
         // 校验通过,进入"文件合并"
         t.message = MSG_MERGING;
@@ -1031,9 +1060,10 @@ public class DownloadManager {
     }
 
     /**
-     * 下载前在分段目录记录分段信息 TXT:来源/剧名/集数/碎片数/解析地址/分片列表
+     * 在分段目录记录/更新分段信息 TXT:来源/剧名/集数/碎片数/解析地址/分片列表/已完成。
+     * 已完成 = 已下载完的分片数,每片完成与补下后都更新,校验/补下以 TXT 记录为准。
      */
-    private void writeSegmentsInfo(DownloadTask t, File tmpDir, List<String> segments) {
+    private void writeSegmentsInfo(DownloadTask t, File tmpDir, List<String> segments, int doneCount) {
         try {
             StringBuilder sb = new StringBuilder();
             sb.append("来源=").append(t.sourceName == null ? "" : t.sourceName).append('\n');
@@ -1047,6 +1077,7 @@ public class DownloadManager {
                 sb.append(String.format("%05d.ts", i));
             }
             sb.append('\n');
+            sb.append("已完成=").append(Math.max(0, Math.min(doneCount, segments.size()))).append('\n');
             File f = new File(tmpDir, SEGMENTS_INFO);
             java.io.FileWriter fw = new java.io.FileWriter(f);
             try {
@@ -1059,38 +1090,26 @@ public class DownloadManager {
         }
     }
 
-    /**
-     * 校验分片:与分段信息 TXT 记录的碎片数一致,且每个分片文件存在且非空
-     */
-    private boolean verifySegments(File tmpDir, List<String> segments) {
+    /** 读取分段信息 TXT 记录的"已完成"分片数;TXT 缺失/损坏返回 0 */
+    private int readSegmentsInfo(File tmpDir) {
         try {
-            // 读取 TXT 记录的碎片数
-            int recorded = -1;
             File info = new File(tmpDir, SEGMENTS_INFO);
-            if (info.exists()) {
-                java.io.BufferedReader br = new java.io.BufferedReader(new java.io.FileReader(info));
-                String line;
-                while ((line = br.readLine()) != null) {
-                    if (line.startsWith("碎片数=")) {
-                        try {
-                            recorded = Integer.parseInt(line.substring(4).trim());
-                        } catch (NumberFormatException ignored) {
-                        }
+            if (!info.exists()) return 0;
+            java.io.BufferedReader br = new java.io.BufferedReader(new java.io.FileReader(info));
+            String line;
+            int done = 0;
+            while ((line = br.readLine()) != null) {
+                if (line.startsWith("已完成=")) {
+                    try {
+                        done = Integer.parseInt(line.substring(4).trim());
+                    } catch (NumberFormatException ignored) {
                     }
                 }
-                br.close();
             }
-            // 逐个核对分片文件
-            int actual = 0;
-            for (int i = 0; i < segments.size(); i++) {
-                File seg = new File(tmpDir, String.format("%05d.ts", i));
-                if (!seg.exists() || seg.length() <= 0) return false;
-                actual++;
-            }
-            if (recorded != -1 && recorded != actual) return false;
-            return actual == segments.size();
+            br.close();
+            return Math.max(0, done);
         } catch (Throwable th) {
-            return false;
+            return 0;
         }
     }
 
@@ -1103,6 +1122,19 @@ public class DownloadManager {
         activeResponses.put(t.id, resp);
         try {
             int code = resp.code();
+            if (code == 416) {
+                // Range 超出文件末尾:该分段实际已完整(上次写入完成但进度未更新)。
+                // 关闭本次响应,删除残片,不带 Range 从头整段重下,避免重试死循环
+                Log.i("TVBox-Download", "分段416(Range超界),整段重下: " + segFile.getName());
+                resp.close();
+                activeResponses.remove(t.id);
+                deleteQuietly(segFile);
+                segDone = 0;
+                headers.remove("Range");
+                resp = getDownloadResponse(segUrl, headers);
+                activeResponses.put(t.id, resp);
+                code = resp.code();
+            }
             if (code == 200 && segDone > 0) {
                 segDone = 0;
                 deleteQuietly(segFile);
