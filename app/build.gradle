@@ -4,6 +4,21 @@ plugins {
 }
 
 // ------------------------------------------------------------------
+// 发布配置:版本号/应用名/图标统一由 app_config.properties 维护,
+// 修改该文件后重新构建即可,无需改动 build.gradle 与资源。
+// ------------------------------------------------------------------
+def appConfig = new Properties()
+def appConfigFile = file('app_config.properties')
+if (appConfigFile.exists()) {
+    appConfigFile.withReader('UTF-8') { appConfig.load(it) }
+}
+def cfgVersionCode = (appConfig.getProperty('versionCode', '41') ?: '41').toInteger()
+def cfgVersionName = appConfig.getProperty('versionName', '2.1.3') ?: '2.1.3'
+def cfgAppName = appConfig.getProperty('appName', 'MBox') ?: 'MBox'
+def cfgAppIcon = appConfig.getProperty('appIcon', '@drawable/app_icon') ?: '@drawable/app_icon'
+
+
+// ------------------------------------------------------------------
 // 主题颜色生成:读取 assets/theme_colors.json(浅色)与 theme_colors_night.json(暗色),
 // 分别生成 res/values 与 res/values-night 的颜色文件;文件不存在时用内置默认值。
 // 两个文件字段一致:bg_body / bg_component / text_main / text_highlight / nav_text_normal
@@ -78,8 +93,11 @@ android {
         applicationId 'com.github.tvbox.osc'
         minSdk 24
         targetSdk 34
-        versionCode 41
-        versionName '2.1.3'
+        versionCode cfgVersionCode
+        versionName cfgVersionName
+        // 应用名与图标来自 app_config.properties(集中配置)
+        resValue "string", "app_name", cfgAppName
+        manifestPlaceholders = [appIcon: cfgAppIcon]
         multiDexEnabled true
         //设置room的Schema的位置
         javaCompileOptions {
@@ -100,7 +118,7 @@ android {
 
         // Apk 输出配置
         variant.outputs.all { output ->
-            outputFileName = 'MBox_v' + variant.versionName + '_' + variant.buildType.name
+            outputFileName = cfgAppName + '_v' + variant.versionName + '_' + variant.buildType.name
             if (variant.buildType.name == buildTypes.release.getName()) {
                 outputFileName += '_' + new Date().format("yyyyMMdd")
             }
