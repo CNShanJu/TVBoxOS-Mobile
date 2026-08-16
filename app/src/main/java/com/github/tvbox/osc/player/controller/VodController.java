@@ -722,6 +722,47 @@ public class VodController extends BaseController {
         }
     }
 
+    /** 直接设置画面缩放(0默认 1 16:9 2 4:3 3 填充 4 原始 5 裁剪) */
+    public void setScaleType(int scaleType) {
+        try {
+            mPlayerConfig.put("sc", scaleType);
+            updatePlayerCfgView();
+            listener.updatePlayerCfg();
+            mControlWrapper.setScreenScaleType(scaleType);
+        } catch (JSONException e) {
+            e.printStackTrace();
+        }
+    }
+
+    /** 直接设置播放器类型 */
+    public void setPlayerType(int playerType) {
+        try {
+            mPlayerConfig.put("pl", playerType);
+            updatePlayerCfgView();
+            listener.updatePlayerCfg();
+            listener.replay(false);
+            hideBottom();
+        } catch (JSONException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public int getScaleType() {
+        try {
+            return mPlayerConfig.getInt("sc");
+        } catch (JSONException e) {
+            return 0;
+        }
+    }
+
+    public int getPlayerType() {
+        try {
+            return mPlayerConfig.getInt("pl");
+        } catch (JSONException e) {
+            return 0;
+        }
+    }
+
     public void setTitle(String playTitleInfo) {
         mPlayTitle1.setText(playTitleInfo);
     }

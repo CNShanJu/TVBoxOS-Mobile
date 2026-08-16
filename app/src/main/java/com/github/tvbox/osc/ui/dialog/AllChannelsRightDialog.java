@@ -19,7 +19,6 @@ import com.github.tvbox.osc.ui.widget.GridSpacingItemDecoration;
 import com.github.tvbox.osc.util.FastClickCheckUtil;
 import com.github.tvbox.osc.util.Utils;
 import com.lxj.xpopup.XPopup;
-import com.lxj.xpopup.core.DrawerPopupView;
 import com.lxj.xpopup.enums.PopupPosition;
 import com.lxj.xpopup.interfaces.OnSelectListener;
 import com.owen.tvrecyclerview.widget.V7LinearLayoutManager;
@@ -28,7 +27,7 @@ import org.jetbrains.annotations.NotNull;
 
 import java.util.List;
 
-public class AllChannelsRightDialog extends DrawerPopupView {
+public class AllChannelsRightDialog extends AppDrawerPopupView {
 
     private final LiveActivity mActivity;
     private com.github.tvbox.osc.databinding.DialogAllChannelBinding mBinding;

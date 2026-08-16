@@ -5,6 +5,7 @@ import android.view.View;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
+import androidx.recyclerview.widget.DiffUtil;
 
 import com.blankj.utilcode.util.ColorUtils;
 import com.github.tvbox.osc.R;
@@ -13,17 +14,33 @@ import com.github.tvbox.osc.player.MyVideoView;
 import com.github.tvbox.osc.player.controller.VodController;
 import com.github.tvbox.osc.ui.activity.DetailActivity;
 import com.github.tvbox.osc.ui.activity.DownloadActivity;
-import com.lxj.xpopup.core.DrawerPopupView;
+import com.github.tvbox.osc.ui.adapter.SelectDialogAdapter;
+import com.github.tvbox.osc.util.PlayerHelper;
 
 import org.jetbrains.annotations.NotNull;
 
-public class PlayingControlRightDialog extends DrawerPopupView {
+import java.util.ArrayList;
+import java.util.Arrays;
+
+public class PlayingControlRightDialog extends AppDrawerPopupView {
 
     @NonNull
     private final DetailActivity mDetailActivity;
     private final VodController mController;
     MyVideoView mPlayer;
     private DialogPlayingControlBinding mBinding;
+
+    private static final DiffUtil.ItemCallback<Integer> INT_DIFF = new DiffUtil.ItemCallback<Integer>() {
+        @Override
+        public boolean areItemsTheSame(@NonNull Integer oldItem, @NonNull Integer newItem) {
+            return oldItem.intValue() == newItem.intValue();
+        }
+
+        @Override
+        public boolean areContentsTheSame(@NonNull Integer oldItem, @NonNull Integer newItem) {
+            return oldItem.intValue() == newItem.intValue();
+        }
+    };
 
     public PlayingControlRightDialog(@NonNull @NotNull Context context, VodController controller, MyVideoView videoView) {
         super(context);
@@ -40,6 +57,8 @@ public class PlayingControlRightDialog extends DrawerPopupView {
     @Override
     protected void onCreate() {
         super.onCreate();
+        // 播放器设置抽屉:固定深色背景(播放器黑底风格),不随主题
+        getPopupImplView().setBackgroundResource(R.drawable.bg_drawer_dark);
         mBinding = DialogPlayingControlBinding.bind(getPopupImplView());
 
         initView();
@@ -70,7 +89,7 @@ public class PlayingControlRightDialog extends DrawerPopupView {
         mBinding.speed5.setOnClickListener(view -> setSpeed(mBinding.speed5));
 
         //播放器
-        mBinding.scale.setOnClickListener(view -> changeAndUpdateText(mBinding.scale,mController.mPlayerScaleBtn));
+        mBinding.scale.setOnClickListener(view -> showScaleDialog());
         mBinding.playTimeStart.setOnClickListener(view -> changeAndUpdateText(mBinding.playTimeStart,mController.mPlayerTimeStartBtn));
         mBinding.playTimeEnd.setOnClickListener(view -> changeAndUpdateText(mBinding.playTimeEnd,mController.mPlayerTimeSkipBtn));
         mBinding.playTimeStart.setOnLongClickListener(view -> {
@@ -99,7 +118,7 @@ public class PlayingControlRightDialog extends DrawerPopupView {
             mController.decreaseTime("et");
             updateSkipText(false);
         });
-        mBinding.player.setOnClickListener(view -> changeAndUpdateText(mBinding.player,mController.mPlayerBtn));
+        mBinding.player.setOnClickListener(view -> showPlayerDialog());
         mBinding.decode.setOnClickListener(view -> changeAndUpdateText(mBinding.decode,mController.mPlayerIJKBtn));
 
         //其他
@@ -145,15 +164,64 @@ public class PlayingControlRightDialog extends DrawerPopupView {
         updateSpeedUi();
     }
 
+    /** 缩放:列出所有选项直接选择 */
+    private void showScaleDialog() {
+        final int cur = mController.getScaleType();
+        SelectDialog<Integer> dialog = new SelectDialog<>(mDetailActivity);
+        dialog.setTip("选择缩放");
+        dialog.setAdapter(new SelectDialogAdapter.SelectDialogInterface<Integer>() {
+            @Override
+            public void click(Integer value, int pos) {
+                dialog.cancel();
+                if (value != cur) {
+                    mController.setScaleType(value);
+                }
+                mBinding.scale.setText(PlayerHelper.getScaleName(value));
+            }
+
+            @Override
+            public String getDisplay(Integer val) {
+                return PlayerHelper.getScaleName(val);
+            }
+        }, INT_DIFF, new ArrayList<>(Arrays.asList(0, 1, 2, 3, 4, 5)), cur);
+        dialog.show();
+    }
+
+    /** 播放器:列出所有可用播放器直接选择 */
+    private void showPlayerDialog() {
+        final int cur = mController.getPlayerType();
+        final ArrayList<Integer> players = PlayerHelper.getExistPlayerTypes();
+        SelectDialog<Integer> dialog = new SelectDialog<>(mDetailActivity);
+        dialog.setTip("选择播放器");
+        dialog.setAdapter(new SelectDialogAdapter.SelectDialogInterface<Integer>() {
+            @Override
+            public void click(Integer value, int pos) {
+                dialog.cancel();
+                int type = players.get(pos);
+                if (type != cur) {
+                    mController.setPlayerType(type);
+                }
+                mBinding.player.setText(PlayerHelper.getPlayerName(type));
+            }
+
+            @Override
+            public String getDisplay(Integer val) {
+                return PlayerHelper.getPlayerName(players.get(val));
+            }
+        }, INT_DIFF, players, players.indexOf(cur));
+        dialog.show();
+    }
+
     private void updateSpeedUi(){
         for (int i = 0; i <mBinding.containerSpeed.getChildCount(); i++) {
             TextView tv= (TextView) mBinding.containerSpeed.getChildAt(i);
             if (String.valueOf(mPlayer.getSpeed()).equals(tv.getText().toString().replace("x",""))){
-                tv.setBackground(getResources().getDrawable(R.drawable.bg_r_common_solid_primary));
-                tv.setTextColor(ColorUtils.getColor(R.color.white));
+                // 选中:与选集一致,无填充背景 + 蓝色文字
+                tv.setBackground(getResources().getDrawable(R.drawable.bg_r_common_stroke_primary));
+                tv.setTextColor(ColorUtils.getColor(R.color.color_highlight));
             }else {
                 tv.setBackground(getResources().getDrawable(R.drawable.bg_r_common_stroke_primary));
-                tv.setTextColor(ColorUtils.getColor(R.color.text_foreground));
+                tv.setTextColor(ColorUtils.getColor(R.color.white));
             }
         }
     }

@@ -55,6 +55,7 @@ import com.github.tvbox.osc.ui.widget.PlayerTitleView;
 import com.github.tvbox.osc.util.FastClickCheckUtil;
 import com.github.tvbox.osc.util.HCallBack;
 import com.github.tvbox.osc.util.HawkConfig;
+import com.github.tvbox.osc.util.AppLog;
 import com.github.tvbox.osc.util.HttpClient;
 import com.github.tvbox.osc.util.live.TxtSubscribe;
 import com.google.gson.JsonArray;
@@ -389,6 +390,8 @@ public class LiveActivity extends BaseActivity {
         }
         showBottomEpg();
 
+        AppLog.log("直播", "播放频道[" + currentLiveChannelItem.getChannelName() + "] 源[" + (currentLiveChannelItem.getSourceIndex() + 1) + "/" + currentLiveChannelItem.getSourceNum() + "] " + currentLiveChannelItem.getUrl());
+
         mVideoView.setUrl(currentLiveChannelItem.getUrl());
        // showChannelInfo();
         mVideoView.start();
@@ -579,9 +582,13 @@ public class LiveActivity extends BaseActivity {
         public void run() {
             currentLiveChangeSourceTimes++;
             if (currentLiveChannelItem.getSourceNum() == currentLiveChangeSourceTimes) {
+                // 当前频道所有线路都失败:停止播放,不自动切下一个频道
                 currentLiveChangeSourceTimes = 0;
-                Integer[] groupChannelIndex = getNextChannel(Hawk.get(HawkConfig.LIVE_CHANNEL_REVERSE, false) ? -1 : 1);
-                playChannel(groupChannelIndex[0], groupChannelIndex[1], false);
+                try {
+                    mVideoView.release();
+                } catch (Throwable ignored) {
+                }
+                Toast.makeText(App.getInstance(), "当前频道无可用线路,请手动切换频道", Toast.LENGTH_LONG).show();
             } else {
                 playNextSource();
             }
@@ -799,39 +806,58 @@ public class LiveActivity extends BaseActivity {
             return;
         }
         showLoading();
+        AppLog.log("直播", "加载直播源: " + url);
         HttpClient.get(url, null, new HCallBack() {
 
             @Override
             public void onSuccess(String content) {
-                JsonArray livesArray;
-                LinkedHashMap<String, LinkedHashMap<String, ArrayList<String>>> linkedHashMap = new LinkedHashMap<>();
-                TxtSubscribe.parse(linkedHashMap, content);
-                livesArray = TxtSubscribe.live2JsonArray(linkedHashMap);
+                try {
+                    JsonArray livesArray;
+                    LinkedHashMap<String, LinkedHashMap<String, ArrayList<String>>> linkedHashMap = new LinkedHashMap<>();
+                    TxtSubscribe.parse(linkedHashMap, content);
+                    livesArray = TxtSubscribe.live2JsonArray(linkedHashMap);
 
-                ApiConfig.get().loadLives(livesArray);
-                List<LiveChannelGroup> list = ApiConfig.get().getChannelGroupList();
-                if (list.isEmpty()) {
-                    Toast.makeText(App.getInstance(), "频道列表为空", Toast.LENGTH_SHORT).show();
-                    finish();
-                    return;
-                }
-                liveChannelGroupList.clear();
-                liveChannelGroupList.addAll(list);
-
-                mHandler.post(new Runnable() {
-                    @Override
-                    public void run() {
-                        LiveActivity.this.showSuccess();
-                        initLiveState();
+                    ApiConfig.get().loadLives(livesArray);
+                    List<LiveChannelGroup> list = ApiConfig.get().getChannelGroupList();
+                    if (list.isEmpty()) {
+                        Toast.makeText(App.getInstance(), "频道列表为空", Toast.LENGTH_SHORT).show();
+                        finish();
+                        return;
                     }
-                });
+                    liveChannelGroupList.clear();
+                    liveChannelGroupList.addAll(list);
+
+                    mHandler.post(new Runnable() {
+                        @Override
+                        public void run() {
+                            LiveActivity.this.showSuccess();
+                            initLiveState();
+                        }
+                    });
+                } catch (Throwable th) {
+                    th.printStackTrace();
+                    AppLog.log("直播", "解析失败: " + th.getMessage());
+                    onLiveLoadFail("直播源解析失败,请检查订阅中的直播源");
+                }
             }
 
             @Override
             public void onError(Throwable e) {
-                // 保持原行为:失败不额外处理
+                AppLog.log("直播", "加载失败: " + (e == null ? "null" : e.getMessage()));
+                onLiveLoadFail("直播源加载失败,请检查网络或直播源");
             }
         });
+    }
+
+    /** 直播源加载失败:提示并进入空态,避免一直停留在加载中 */
+    private void onLiveLoadFail(String msg) {
+        try {
+            Toast.makeText(App.getInstance(), msg, Toast.LENGTH_SHORT).show();
+            if (!isFinishing() && !isDestroyed()) {
+                showEmpty();
+            }
+        } catch (Throwable ignored) {
+        }
     }
 
     private void initLiveState() {
@@ -855,6 +881,8 @@ public class LiveActivity extends BaseActivity {
                 lastChannelGroupIndex = 0;
             lastLiveChannelIndex = 0;
         }
+
+        if (mVideoView == null || isFinishing() || isDestroyed()) return; // 防御:页面已销毁/播放器未初始化
 
         livePlayerManager.init(mVideoView);
 

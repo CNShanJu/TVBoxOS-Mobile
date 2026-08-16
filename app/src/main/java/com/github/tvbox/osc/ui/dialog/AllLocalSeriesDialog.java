@@ -13,7 +13,6 @@ import com.github.tvbox.osc.bean.VodInfo;
 import com.github.tvbox.osc.ui.adapter.SeriesAdapter;
 import com.github.tvbox.osc.ui.widget.GridSpacingItemDecoration;
 import com.github.tvbox.osc.util.Utils;
-import com.lxj.xpopup.core.DrawerPopupView;
 import com.lxj.xpopup.interfaces.OnSelectListener;
 
 import org.jetbrains.annotations.NotNull;
@@ -26,7 +25,7 @@ import java.util.List;
  * @Date : on 2023/10/25 10:43.
  * @Description : 本地视频全集弹窗
  */
-public class AllLocalSeriesDialog extends DrawerPopupView {
+public class AllLocalSeriesDialog extends AppDrawerPopupView {
 
     List<VodInfo.VodSeries> mList;
     private final OnSelectListener mSelectListener;

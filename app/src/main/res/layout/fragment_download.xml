@@ -3,9 +3,11 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:layout_margin="10dp"
+    android:background="@drawable/bg_large_round_gray"
     android:orientation="vertical"
-    android:paddingHorizontal="16dp"
-    android:paddingTop="10dp">
+    android:paddingHorizontal="12dp"
+    android:paddingVertical="10dp">
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -74,8 +76,6 @@
         android:id="@+id/ll_menu"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:background="@color/white"
-        android:elevation="8dp"
         android:orientation="horizontal"
         android:visibility="gone">
 

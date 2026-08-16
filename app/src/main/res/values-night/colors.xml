@@ -1,41 +1,42 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
 
-    <color name="bg_gray">#212121</color>
+    <!-- 以下核心色由 assets/theme_colors_night.json 生成控制(values-night/theme_colors.xml) -->
+    <color name="bg_gray">@color/bg_component</color>
     <color name="bg_popup">#2a2d32</color>
 
-    <color name="text_foreground">#FFFFFF</color>
+    <color name="text_foreground">@color/text_main</color>
     <color name="text_sub_foreground">#AFAFAF</color>
 
-    <!--应用的主要色调(Material 3 暗色紫色系)-->
-    <color name="colorPrimary">#D0BCFF</color>
-    <color name="colorAccent">#D0BCFF</color>
-    <color name="windowBackground">#141218</color>
+    <!--应用的主要色调(Material 3 暗色,中性灰白系)-->
+    <color name="colorPrimary">@color/text_highlight</color>
+    <color name="colorAccent">@color/text_highlight</color>
+    <color name="windowBackground">@color/bg_body</color>
 
     <!-- ============ Material 3 色板(暗色) ============ -->
-    <color name="md_primary">#D0BCFF</color>
-    <color name="md_on_primary">#381E72</color>
-    <color name="md_primary_container">#4F378B</color>
-    <color name="md_on_primary_container">#EADDFF</color>
-    <color name="md_secondary">#CCC2DC</color>
-    <color name="md_on_secondary">#332D41</color>
-    <color name="md_secondary_container">#4A4458</color>
-    <color name="md_on_secondary_container">#E8DEF8</color>
-    <color name="md_tertiary">#EFB8C8</color>
-    <color name="md_on_tertiary">#492532</color>
-    <color name="md_tertiary_container">#633B48</color>
-    <color name="md_on_tertiary_container">#FFD8E4</color>
+    <color name="md_primary">@color/text_highlight</color>
+    <color name="md_on_primary">#1F2937</color>
+    <color name="md_primary_container">@color/bg_component</color>
+    <color name="md_on_primary_container">@color/text_main</color>
+    <color name="md_secondary">#9CA3AF</color>
+    <color name="md_on_secondary">#1F2937</color>
+    <color name="md_secondary_container">@color/bg_component</color>
+    <color name="md_on_secondary_container">#D1D5DB</color>
+    <color name="md_tertiary">#9CA3AF</color>
+    <color name="md_on_tertiary">#1F2937</color>
+    <color name="md_tertiary_container">@color/bg_component</color>
+    <color name="md_on_tertiary_container">#D1D5DB</color>
     <color name="md_error">#F2B8B5</color>
     <color name="md_on_error">#601410</color>
     <color name="md_error_container">#8C1D18</color>
     <color name="md_on_error_container">#F9DEDC</color>
-    <color name="md_surface">#141218</color>
+    <color name="md_surface">@color/bg_body</color>
     <color name="md_on_surface">#E6E0E9</color>
-    <color name="md_surface_variant">#49454F</color>
+    <color name="md_surface_variant">@color/bg_component</color>
     <color name="md_on_surface_variant">#CAC4D0</color>
-    <color name="md_background">#141218</color>
+    <color name="md_background">@color/bg_body</color>
     <color name="md_on_background">#E6E0E9</color>
-    <color name="md_outline">#938F99</color>
+    <color name="md_outline">#6B7280</color>
     <!-- ============ Material 3 色板结束 ============ -->
 
 </resources>

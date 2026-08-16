@@ -8,7 +8,7 @@
     android:gravity="center_horizontal"
     tools:context=".ui.activity.SubscriptionActivity">
 
-    <com.hjq.bar.TitleBar
+    <com.github.tvbox.osc.ui.widget.AppTitleBar
         android:id="@+id/title_bar"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -24,7 +24,7 @@
             android:layout_gravity="end|center_vertical"
             android:paddingLeft="20dp"
             android:layout_marginRight="50dp"/>
-    </com.hjq.bar.TitleBar>
+    </com.github.tvbox.osc.ui.widget.AppTitleBar>
 
     <androidx.recyclerview.widget.RecyclerView
         android:background="@drawable/bg_large_round_gray"

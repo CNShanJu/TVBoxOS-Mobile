@@ -56,6 +56,13 @@
 
                 </LinearLayout>
 
+                <!-- 字幕选项区:仅"打开字幕"时展示 -->
+                <LinearLayout
+                    android:id="@+id/ll_subtitle_options"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical">
+
                 <LinearLayout
                     android:gravity="center_vertical"
                     android:orientation="horizontal"
@@ -226,6 +233,7 @@
                         android:layout_marginLeft="10dp"/>
                 </LinearLayout>
 
+                </LinearLayout><!-- /ll_subtitle_options -->
 
             </LinearLayout>
 

@@ -104,3 +104,4 @@ lint/tmp/
 /app/src/main/assets/default_subscriptions_bak.json
 # DLNA 备份目录(桩化停用,不入库)
 /_backup_dlna/
+/app/src/main/assets/theme_colors.json

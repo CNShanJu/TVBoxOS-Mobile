@@ -5,13 +5,11 @@
     android:layout_height="match_parent"
     android:orientation="vertical">
 
-    <com.hjq.bar.TitleBar
+    <com.github.tvbox.osc.ui.widget.AppTitleBar
         android:id="@+id/title_bar"
         android:layout_width="match_parent"
         android:layout_height="60dp"
-        app:title="下载"
-        app:leftTitleSize="16sp"
-        app:lineVisible="false" />
+        app:title="下载" />
 
     <FrameLayout
         android:id="@+id/container"

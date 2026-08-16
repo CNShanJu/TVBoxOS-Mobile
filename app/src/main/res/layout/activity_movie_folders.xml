@@ -6,7 +6,7 @@
     android:layout_height="match_parent"
     android:orientation="vertical">
 
-    <com.hjq.bar.TitleBar
+    <com.github.tvbox.osc.ui.widget.AppTitleBar
         android:id="@+id/title_bar"
         app:title="本地视频"
         android:layout_width="match_parent"

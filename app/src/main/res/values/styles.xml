@@ -32,9 +32,13 @@
     </style>
 
     <style name="SplashTheme" parent="AppTheme">
-        <item name="android:windowBackground">@drawable/bg_splash</item>
+        <!-- 开屏图由 activity_splash 布局的 ImageView 静态显示,windowBackground 只留纯色,避免系统启动窗口的缩放动画 -->
+        <item name="android:windowBackground">@color/bg_body</item>
         <item name="android:windowFullscreen">true</item>
         <item name="android:windowDrawsSystemBarBackgrounds">false</item>
+        <!-- Android 12+ 系统启动画面:背景跟随主题 + 透明图标,去掉"从小变大"的缩放动画 -->
+        <item name="android:windowSplashScreenBackground">@color/bg_body</item>
+        <item name="android:windowSplashScreenAnimatedIcon">@drawable/ic_splash_blank</item>
     </style>
 
     <style name="AppTheme.NoActionBar">

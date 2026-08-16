@@ -98,6 +98,7 @@ public class App extends MultiDexApplication {
         putDefault(HawkConfig.HISTORY_NUM, 2);                //历史记录数量: 0=30, 1=50, 2=70
         putDefault(HawkConfig.APP_LOG, false);                //运行日志:默认关闭,排查问题时开启
         putDefault(HawkConfig.SUBTITLE_OPEN, false);          //字幕:默认关闭,播放器设置里可开关
+        putDefault(HawkConfig.LIVE_URL, "https://live.zbds.top/tv/iptv4.txt"); //直播源:默认地址
         putDefaultApi();
         // 运行日志开关已开启时,启动 logcat 完整捕获(与 IDEA Logcat 一致)
         if (Hawk.get(HawkConfig.APP_LOG, false)) {

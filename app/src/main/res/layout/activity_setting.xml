@@ -6,14 +6,12 @@
     android:layout_height="match_parent"
     android:orientation="vertical">
 
-    <com.hjq.bar.TitleBar
+    <com.github.tvbox.osc.ui.widget.AppTitleBar
         android:id="@+id/title_bar"
         android:layout_width="match_parent"
         android:layout_height="45dp"
         app:title="设置"
-        app:titleStyle="bold"
-        app:titleColor="@color/black"
-        app:lineVisible="false"/>
+        app:titleStyle="bold"/>
 
     <ScrollView
         android:layout_width="match_parent"
@@ -213,7 +211,7 @@
                         android:layout_height="wrap_content"
                         android:layout_weight="1" />
 
-                    <com.google.android.material.switchmaterial.SwitchMaterial
+                    <com.github.tvbox.osc.ui.widget.AppSwitch
                         android:id="@+id/switchPrivateBrowsing"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
@@ -289,7 +287,7 @@
                         android:layout_height="wrap_content"
                         android:layout_weight="1" />
 
-                    <com.google.android.material.switchmaterial.SwitchMaterial
+                    <com.github.tvbox.osc.ui.widget.AppSwitch
                         android:id="@+id/switchVideoPurify"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
@@ -318,7 +316,7 @@
                         android:layout_height="wrap_content"
                         android:layout_weight="1" />
 
-                    <com.google.android.material.switchmaterial.SwitchMaterial
+                    <com.github.tvbox.osc.ui.widget.AppSwitch
                         android:id="@+id/switchSubscriptionLog"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
@@ -572,7 +570,7 @@
                         android:layout_height="wrap_content"
                         android:layout_weight="1" />
 
-                    <com.google.android.material.switchmaterial.SwitchMaterial
+                    <com.github.tvbox.osc.ui.widget.AppSwitch
                         android:id="@+id/switchIjkCachePlay"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"

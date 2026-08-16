@@ -216,7 +216,7 @@ public class SubtitleDialog extends BaseDialog {
         updateSubtitleState(Hawk.get(HawkConfig.SUBTITLE_OPEN, false));
     }
 
-    /** 高亮当前字幕状态:开启->"✓ 打开字幕",关闭->"✓ 关闭字幕" */
+    /** 高亮当前字幕状态:开启->"✓ 打开字幕",关闭->"关闭字幕"(无勾);选项区仅开启时展示 */
     private void updateSubtitleState(boolean open) {
         int activeColor = getContext().getResources().getColor(R.color.colorPrimary);
         int normalColor = getContext().getResources().getColor(R.color.text_foreground);
@@ -226,11 +226,13 @@ public class SubtitleDialog extends BaseDialog {
             subtitleClose.setText("关闭字幕");
             subtitleClose.setTextColor(normalColor);
         } else {
-            subtitleClose.setText("✓ 关闭字幕");
+            subtitleClose.setText("关闭字幕");
             subtitleClose.setTextColor(activeColor);
             subtitleOpen.setText("打开字幕");
             subtitleOpen.setTextColor(normalColor);
         }
+        // 字幕选项(字号/样式/时间/本地/内置/搜索)仅"打开字幕"时展示
+        findViewById(R.id.ll_subtitle_options).setVisibility(open ? View.VISIBLE : View.GONE);
     }
 
     public void setLocalFileChooserListener(LocalFileChooserListener localFileChooserListener) {

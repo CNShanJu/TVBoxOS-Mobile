@@ -6,14 +6,12 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:orientation="vertical">
 
-    <com.hjq.bar.TitleBar
+    <com.github.tvbox.osc.ui.widget.AppTitleBar
         android:id="@+id/title_bar"
         android:layout_width="match_parent"
         android:layout_height="60dp"
         app:title="历史记录"
-        app:leftTitleSize="16sp"
-        app:rightIcon="@drawable/ic_clear"
-        app:lineVisible="false"/>
+        app:rightIcon="@drawable/ic_clear"/>
 
     <TextView
         android:id="@+id/top_tip"

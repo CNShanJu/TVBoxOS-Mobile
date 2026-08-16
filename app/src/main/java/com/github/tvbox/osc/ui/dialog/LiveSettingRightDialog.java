@@ -16,7 +16,6 @@ import com.github.tvbox.osc.ui.adapter.LiveSettingItemAdapter;
 import com.github.tvbox.osc.util.FastClickCheckUtil;
 import com.github.tvbox.osc.util.HawkConfig;
 import com.lxj.xpopup.core.BottomPopupView;
-import com.lxj.xpopup.core.DrawerPopupView;
 import com.orhanobut.hawk.Hawk;
 import com.owen.tvrecyclerview.widget.V7LinearLayoutManager;
 
@@ -26,7 +25,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-public class LiveSettingRightDialog extends DrawerPopupView {
+public class LiveSettingRightDialog extends AppDrawerPopupView {
 
 
     @NonNull

@@ -14,7 +14,6 @@ import com.github.tvbox.osc.ui.activity.DetailActivity;
 import com.github.tvbox.osc.ui.adapter.SeriesAdapter;
 import com.github.tvbox.osc.ui.widget.GridSpacingItemDecoration;
 import com.github.tvbox.osc.util.Utils;
-import com.lxj.xpopup.core.DrawerPopupView;
 
 import org.jetbrains.annotations.NotNull;
 
@@ -23,7 +22,7 @@ import java.util.List;
 /**
  * 点播右侧全集弹窗
  */
-public class AllVodSeriesRightDialog extends DrawerPopupView {
+public class AllVodSeriesRightDialog extends AppDrawerPopupView {
 
     @NonNull
     private final DetailActivity mDetailActivity;

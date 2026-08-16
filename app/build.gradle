@@ -3,6 +3,68 @@ plugins {
     id 'org.jetbrains.kotlin.android'
 }
 
+// ------------------------------------------------------------------
+// 主题颜色生成:读取 assets/theme_colors.json(浅色)与 theme_colors_night.json(暗色),
+// 分别生成 res/values 与 res/values-night 的颜色文件;文件不存在时用内置默认值。
+// 两个文件字段一致:bg_body / bg_component / text_main / text_highlight / nav_text_normal
+// ------------------------------------------------------------------
+def themeColorsFile = file('src/main/assets/theme_colors.json')
+def themeColorsNightFile = file('src/main/assets/theme_colors_night.json')
+def themeColorsDir = file("${buildDir}/generated/theme_colors")
+
+def defaultColors = [
+        bg_body        : '#FFFFFF',
+        bg_component   : '#F9FAFB',
+        text_main      : '#050505',
+        text_highlight : '#1F2937',
+        nav_text_normal: '#CCCCCC'
+]
+def defaultNightColors = [
+        bg_body        : '#141218',
+        bg_component   : '#212121',
+        text_main      : '#FFFFFF',
+        text_highlight : '#E5E7EB',
+        nav_text_normal: '#7A7A7A'
+]
+
+static def readColors(def file, def defaults) {
+    def colors = new LinkedHashMap<>(defaults)
+    if (file.exists()) {
+        try {
+            def json = new groovy.json.JsonSlurper().parse(file)
+            colors.each { k, v ->
+                def uv = json[k]
+                if (uv instanceof String && uv.startsWith('#')) colors[k] = uv
+            }
+        } catch (Throwable th) {
+            println "WARN: ${file.name} 解析失败,使用默认颜色: ${th.message}"
+        }
+    }
+    return colors
+}
+
+static def writeColorsXml(def dir, def name, def colors) {
+    def valuesDir = new File(dir, name)
+    valuesDir.mkdirs()
+    def f = new File(valuesDir, 'theme_colors.xml')
+    def sb = new StringBuilder('<?xml version="1.0" encoding="utf-8"?>\n<resources>\n')
+    colors.each { k, v -> sb.append("    <color name=\"${k}\">${v}</color>\n") }
+    sb.append('</resources>\n')
+    f.text = sb.toString()
+}
+
+task generateThemeColors {
+    inputs.file(themeColorsFile).optional()
+    inputs.file(themeColorsNightFile).optional()
+    outputs.dir(themeColorsDir)
+    doLast {
+        writeColorsXml(themeColorsDir, 'values', readColors(themeColorsFile, defaultColors))
+        writeColorsXml(themeColorsDir, 'values-night', readColors(themeColorsNightFile, defaultNightColors))
+    }
+}
+preBuild.dependsOn generateThemeColors
+android.sourceSets.main.res.srcDirs += themeColorsDir
+
 android {
     namespace 'com.github.tvbox.osc'
     compileSdk 34
