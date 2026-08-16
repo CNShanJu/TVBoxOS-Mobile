@@ -9,9 +9,11 @@
     android:paddingHorizontal="12dp"
     android:paddingVertical="10dp">
 
+    <!-- 标题行:两个 tab + 最右侧设置 -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:gravity="center_vertical"
         android:orientation="horizontal">
 
         <TextView
@@ -37,25 +39,91 @@
             android:textColor="@color/text_sub_foreground"
             android:textSize="16sp" />
 
-        <TextView
-            android:id="@+id/tv_concurrent"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:gravity="center"
-            android:paddingVertical="10dp"
-            android:paddingStart="12dp"
-            android:paddingEnd="4dp"
-            android:text="并发:3"
-            android:textColor="@color/colorPrimary"
-            android:textSize="13sp" />
-
+        <androidx.appcompat.widget.AppCompatImageView
+            android:id="@+id/iv_settings"
+            android:layout_width="34dp"
+            android:layout_height="34dp"
+            android:layout_marginStart="4dp"
+            android:padding="2dp"
+            android:scaleType="centerCrop"
+            android:src="@drawable/ic_setting"
+            android:tint="@color/text_foreground" />
     </LinearLayout>
 
     <View
         android:layout_width="match_parent"
         android:layout_height="1dp"
         android:layout_marginBottom="8dp"
-        android:background="@color/gray_darker" />
+        android:background="@color/gray_darker_press_alpha" />
+
+    <!-- 全部暂停 / 全部开始:仅"正在下载"根级且有任务时显示 -->
+    <LinearLayout
+        android:id="@+id/ll_actions"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:paddingBottom="8dp"
+        android:visibility="gone">
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btn_pause_all"
+            style="@style/mbOutline"
+            android:layout_width="0dp"
+            android:layout_height="36dp"
+            android:layout_marginRight="8dp"
+            android:layout_weight="1"
+            android:text="全部暂停" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btn_start_all"
+            style="@style/mbOutline"
+            android:layout_width="0dp"
+            android:layout_height="36dp"
+            android:layout_weight="1"
+            android:text="全部开始" />
+    </LinearLayout>
+
+    <!-- 当前位置导航:进入剧集文件夹后显示,点按返回上一级 -->
+    <LinearLayout
+        android:id="@+id/ll_nav"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:visibility="gone">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="44dp"
+            android:foreground="?selectableItemBackground"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingHorizontal="12dp">
+
+            <ImageView
+                android:id="@+id/iv_nav_back"
+                android:layout_width="22dp"
+                android:layout_height="22dp"
+                android:src="@drawable/ic_back"
+                app:tint="@color/text_foreground" />
+
+            <TextView
+                android:id="@+id/tv_nav_path"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="10dp"
+                android:layout_weight="1"
+                android:ellipsize="end"
+                android:maxLines="1"
+                android:textColor="@color/text_foreground"
+                android:textSize="13sp" />
+        </LinearLayout>
+
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:layout_marginBottom="8dp"
+            android:background="@color/gray_darker_press_alpha" />
+    </LinearLayout>
 
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/rv_downloading"
@@ -111,4 +179,14 @@
             android:textColor="@color/colorPrimary" />
 
     </LinearLayout>
+
+    <TextView
+        android:id="@+id/tv_storage"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center"
+        android:paddingTop="8dp"
+        android:textColor="@color/text_sub_foreground"
+        android:textSize="11sp" />
+
 </LinearLayout>

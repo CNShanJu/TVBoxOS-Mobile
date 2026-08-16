@@ -6,7 +6,7 @@ import android.text.TextUtils;
 
 import com.blankj.utilcode.util.AppUtils;
 import com.blankj.utilcode.util.ClipboardUtils;
-import com.blankj.utilcode.util.ToastUtils;
+import com.github.tvbox.osc.util.AppBubble;
 import com.github.tvbox.osc.R;
 import com.github.tvbox.osc.base.BaseLazyFragment;
 import com.github.tvbox.osc.base.BaseVbFragment;
@@ -101,18 +101,18 @@ public class MyFragment extends BaseVbFragment<FragmentMyBinding> {
                         if (all) {
                             jumpActivity(MovieFoldersActivity.class);
                         }else {
-                            ToastUtils.showLong("部分权限未正常授予,请授权");
+                            AppBubble.toastLong("部分权限未正常授予,请授权");
                         }
                     }
 
                     @Override
                     public void onDenied(List<String> permissions, boolean never) {
                         if (never) {
-                            ToastUtils.showLong("读写文件权限被永久拒绝，请手动授权");
+                            AppBubble.toastLong("读写文件权限被永久拒绝，请手动授权");
                             // 如果是被永久拒绝就跳转到应用权限系统设置页面
                             XXPermissions.startPermissionActivity(mActivity, permissions);
                         } else {
-                            ToastUtils.showShort("获取权限失败");
+                            AppBubble.toast("获取权限失败");
                             showPermissionTipPopup();
                         }
                     }

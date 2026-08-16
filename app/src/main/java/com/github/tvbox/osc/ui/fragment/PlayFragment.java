@@ -43,7 +43,7 @@ import com.blankj.utilcode.util.LogUtils;
 import com.blankj.utilcode.util.RegexUtils;
 import com.blankj.utilcode.util.ScreenUtils;
 import com.blankj.utilcode.util.SpanUtils;
-import com.blankj.utilcode.util.ToastUtils;
+import com.github.tvbox.osc.util.AppBubble;
 import com.github.catvod.crawler.Spider;
 import com.github.tvbox.osc.R;
 import com.github.tvbox.osc.api.ApiConfig;
@@ -372,6 +372,9 @@ public class PlayFragment extends BaseLazyFragment {
             if (width>height){//根据视频尺寸判断是否横屏,小视频则只在activity改了预览尺寸(全屏预览)
                 //横屏(传感器)
                 mActivity.setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE);
+            } else if (width == 0 && height == 0) {
+                // 视频尺寸未知(尚未加载出来):用户主动全屏,默认横屏,待视频加载后按真实尺寸校正
+                mActivity.setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE);
             }
 
             ImmersionBar.with(mActivity)
@@ -497,7 +500,7 @@ public class PlayFragment extends BaseLazyFragment {
         }
 
         if (trackInfo == null) {
-            Toast.makeText(mContext, "没有音轨", Toast.LENGTH_SHORT).show();
+            AppBubble.toast("没有音轨");
             return;
         }
         List<TrackInfoBean> bean = trackInfo.getAudio();
@@ -564,7 +567,7 @@ public class PlayFragment extends BaseLazyFragment {
         }
 
         if (trackInfo == null) {
-            Toast.makeText(mContext, "没有内置字幕", Toast.LENGTH_SHORT).show();
+            AppBubble.toast("没有内置字幕");
             return;
         }
         List<TrackInfoBean> bean = trackInfo.getSubtitle();
@@ -641,7 +644,7 @@ public class PlayFragment extends BaseLazyFragment {
 
             if ("视频播放出错".equals(msg)){
                 if (!retriedSwitchPlayer){
-                    ToastUtils.showShort("播放出错,正在尝试切换播放器");
+                    AppBubble.toast("播放出错,正在尝试切换播放器");
                     retriedSwitchPlayer = true;
                     mController.mPlayerBtn.performClick();
                 }else {
@@ -668,7 +671,7 @@ public class PlayFragment extends BaseLazyFragment {
                 @Override
                 public void run() {
                     if (finish) {
-                        Toast.makeText(mContext, err, Toast.LENGTH_SHORT).show();
+                        AppBubble.toast(err);
                     } else {
                         setTip(err, false, true);
                     }
@@ -1024,11 +1027,11 @@ public class PlayFragment extends BaseLazyFragment {
                 } catch (Throwable th) {
                     LogUtils.e(th.toString());
 //                        errorWithRetry("获取播放信息错误", true);
-//                        Toast.makeText(mContext, "获取播放信息错误1", Toast.LENGTH_SHORT).show();
+//                        AppBubble.toast("获取播放信息错误1");
                 }
             } else {
                 errorWithRetry("获取播放信息错误", true);
-//                    Toast.makeText(mContext, "获取播放信息错误", Toast.LENGTH_SHORT).show();
+//                    AppBubble.toast("获取播放信息错误");
             }
         }
     };
@@ -1152,7 +1155,7 @@ public class PlayFragment extends BaseLazyFragment {
             hasNext = mVodInfo.playIndex + 1 < mVodInfo.seriesMap.get(mVodInfo.playFlag).size();
         }
         if (!hasNext) {
-            Toast.makeText(requireContext(), "已经是最后一集了!", Toast.LENGTH_SHORT).show();
+            AppBubble.toast("已经是最后一集了!");
             return;
         } else {
             mVodInfo.playIndex++;
@@ -1168,7 +1171,7 @@ public class PlayFragment extends BaseLazyFragment {
             hasPre = mVodInfo.playIndex - 1 >= 0;
         }
         if (!hasPre) {
-            Toast.makeText(requireContext(), "已经是第一集了!", Toast.LENGTH_SHORT).show();
+            AppBubble.toast("已经是第一集了!");
             return;
         }
         mVodInfo.playIndex--;
@@ -1459,7 +1462,7 @@ public class PlayFragment extends BaseLazyFragment {
                             }
                         }
                         if (rs.has("jxFrom")) {
-                            ToastUtils.showShort("解析来自:" + rs.optString("jxFrom"));
+                            AppBubble.toast("解析来自:" + rs.optString("jxFrom"));
                         }
                         boolean parseWV = rs.optInt("parse", 0) == 1;
                         if (parseWV) {
@@ -1529,7 +1532,7 @@ public class PlayFragment extends BaseLazyFragment {
                                 }
                             }
                             if (rs.has("jxFrom")) {
-                                ToastUtils.showShort("解析来自:" + rs.optString("jxFrom"));
+                                AppBubble.toast("解析来自:" + rs.optString("jxFrom"));
                             }
                             playUrl(rs.optString("url", ""), headers);
                         }

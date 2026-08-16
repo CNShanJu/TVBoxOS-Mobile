@@ -10,11 +10,12 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:gravity="center"
-        android:background="@drawable/bg_last_viewed_popup"
-        android:paddingHorizontal="18dp"
-        android:paddingVertical="16dp"
-        android:textSize="16sp"
-        android:textColor="@color/white"
+        android:background="@drawable/bg_bubble"
+        android:paddingHorizontal="20dp"
+        android:paddingVertical="12dp"
+        android:textSize="14sp"
+        android:textColor="@color/text_foreground"
+        android:drawableTint="@color/text_foreground"
         android:drawableRight="@drawable/ic_play"
         tools:text="上次"/>
 </LinearLayout>

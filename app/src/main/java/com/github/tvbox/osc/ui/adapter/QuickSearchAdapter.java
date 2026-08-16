@@ -38,11 +38,11 @@ public class QuickSearchAdapter extends BaseQuickAdapter<Movie.Video, BaseViewHo
                             .centerCorp(true)
                             .override(AutoSizeUtils.mm2px(mContext, 300), AutoSizeUtils.mm2px(mContext, 400))
                             .roundRadius(AutoSizeUtils.mm2px(mContext, 10), RoundTransformation.RoundType.ALL))
-                    .placeholder(R.drawable.error_loading)
-                    .error(R.drawable.error_loading)
+                    .placeholder(R.drawable.iv_load_fail)
+                    .error(R.drawable.iv_load_fail)
                     .into(ivThumb);
         } else {
-            ivThumb.setImageResource(R.drawable.error_loading);
+            ivThumb.setImageResource(R.drawable.iv_load_fail);
         }
         */
     }

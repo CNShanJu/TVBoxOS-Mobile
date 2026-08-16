@@ -4,15 +4,14 @@ import android.content.Context;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
+import androidx.core.content.ContextCompat;
 import androidx.recyclerview.widget.DiffUtil;
 
-import com.blankj.utilcode.util.ColorUtils;
 import com.github.tvbox.osc.R;
 import com.github.tvbox.osc.databinding.DialogPlayingControlBinding;
 import com.github.tvbox.osc.player.MyVideoView;
 import com.github.tvbox.osc.player.controller.VodController;
 import com.github.tvbox.osc.ui.activity.DetailActivity;
-import com.github.tvbox.osc.ui.activity.DownloadActivity;
 import com.github.tvbox.osc.ui.adapter.SelectDialogAdapter;
 import com.github.tvbox.osc.util.PlayerHelper;
 import com.lxj.xpopup.core.BottomPopupView;
@@ -124,12 +123,7 @@ public class PlayingControlDialog extends BottomPopupView {
         mBinding.refresh.setOnClickListener(view -> changeAndUpdateText(null,mController.mPlayRefresh));
         mBinding.subtitle.setOnClickListener(view -> dismissWith(() -> changeAndUpdateText(null,mController.mZimuBtn)));
         mBinding.voice.setOnClickListener(view -> dismissWith(() -> changeAndUpdateText(null,mController.mAudioTrackBtn)));
-        mBinding.download.setOnClickListener(view -> dismissWith(mDetailActivity::use1DMDownload));
-        // 长按3秒:直接跳转下载页(短按保持原下载逻辑)
-        mDetailActivity.setupDownloadLongPress(mBinding.download, () -> {
-            dismiss();
-            mDetailActivity.jumpActivity(DownloadActivity.class);
-        });
+        mBinding.download.setOnClickListener(view -> dismissWith(mDetailActivity::showDownloadSeriesDialog));
     }
 
     private void updateSkipText(boolean start){
@@ -201,7 +195,8 @@ public class PlayingControlDialog extends BottomPopupView {
 
             @Override
             public String getDisplay(Integer val) {
-                return PlayerHelper.getPlayerName(players.get(val));
+                // val 就是播放器类型值(如 0/1/2),直接取名称,不能再当索引
+                return PlayerHelper.getPlayerName(val);
             }
         }, INT_DIFF, players, players.indexOf(cur));
         dialog.show();
@@ -211,12 +206,12 @@ public class PlayingControlDialog extends BottomPopupView {
         for (int i = 0; i <mBinding.containerSpeed.getChildCount(); i++) {
             TextView tv= (TextView) mBinding.containerSpeed.getChildAt(i);
             if (String.valueOf(mPlayer.getSpeed()).equals(tv.getText().toString().replace("x",""))){
-                // 选中:与选集一致,无填充背景 + 蓝色文字
+                // 选中:与选集一致,无填充背景 + 蓝色文字(主题感知,用 getContext() 解析)
                 tv.setBackground(getResources().getDrawable(R.drawable.bg_r_common_stroke_primary));
-                tv.setTextColor(ColorUtils.getColor(R.color.color_highlight));
+                tv.setTextColor(ContextCompat.getColor(getContext(), R.color.color_highlight));
             }else {
                 tv.setBackground(getResources().getDrawable(R.drawable.bg_r_common_stroke_primary));
-                tv.setTextColor(ColorUtils.getColor(R.color.white));
+                tv.setTextColor(ContextCompat.getColor(getContext(), R.color.text_foreground));
             }
         }
     }

@@ -19,7 +19,7 @@ import android.widget.Toast;
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.DiffUtil;
 
-import com.blankj.utilcode.util.ToastUtils;
+import com.github.tvbox.osc.util.AppBubble;
 import com.github.tvbox.osc.R;
 import com.github.tvbox.osc.api.ApiConfig;
 import com.github.tvbox.osc.bean.IJKCode;
@@ -60,6 +60,8 @@ public class VodController extends BaseController {
 
     /** 是否成功播放过(用于下载前置校验:必须先播放成功才能下载) */
     public volatile boolean hasPlayedOnce = false;
+    /** 是否全屏(由 changedLandscape 记录,用于视频加载后校正横竖屏) */
+    private boolean mFullWindows = false;
 
     public VodController(@NonNull @NotNull Context context) {
         super(context);
@@ -148,6 +150,7 @@ public class VodController extends BaseController {
     public TextView mAudioTrackBtn;
     public TextView mLandscapePortraitBtn;
     private ImageView mIvPlayStatus;
+    private ImageView mIvFullscreen;
     private View mChooseSeries;
     public MyBatteryView mMyBatteryView;
     private View mTopRightDeviceInfo;
@@ -196,7 +199,9 @@ public class VodController extends BaseController {
     protected void initView() {
         super.initView();
         View pip = findViewById(R.id.pip);
-        pip.setVisibility((Utils.supportsPiPMode() && Hawk.get(HawkConfig.BACKGROUND_PLAY_TYPE, 0) == 2)?VISIBLE:GONE);
+        // 画中画按钮:设备支持小窗就始终显示(手动进入小窗的入口),与"后台播放"设置无关。
+        // "后台播放"设置控制的是按Home切后台时的行为:0关闭/1后台续播/2自动进小窗
+        pip.setVisibility(Utils.supportsPiPMode() ? VISIBLE : GONE);
         mMyBatteryView = findViewById(R.id.battery);
         mTopRightDeviceInfo = findViewById(R.id.container_top_right_device_info);
         mLlSpeed = findViewById(R.id.ll_speed);
@@ -232,6 +237,7 @@ public class VodController extends BaseController {
         mAudioTrackBtn = findViewById(R.id.audio_track_select);
         mLandscapePortraitBtn = findViewById(R.id.landscape_portrait);
         mIvPlayStatus = findViewById(R.id.play_status);
+        mIvFullscreen = findViewById(R.id.iv_fullscreen);
         mChooseSeries = findViewById(R.id.choose_series);
         mLockView = findViewById(R.id.iv_lock);
 
@@ -636,7 +642,7 @@ public class VodController extends BaseController {
             speed_old = speed;
             mControlWrapper.setSpeed(speed);
         } catch (Exception e) {
-            ToastUtils.showShort("倍速参数异常");
+            AppBubble.toast("倍速参数异常");
             e.printStackTrace();
         }
     }
@@ -779,13 +785,18 @@ public class VodController extends BaseController {
      * @param b
      */
     public void changedLandscape(boolean b) {
+        mFullWindows = b;
         mPlayTitle1.setSelected(true);
         if (b) {
+            // 全屏:放大按钮显示"缩小"图标
+            mIvFullscreen.setImageResource(R.drawable.ic_zoom_out);
             mPreBtn.setVisibility(VISIBLE);
             mNextBtn.setVisibility(VISIBLE);
             mChooseSeries.setVisibility(VISIBLE);
             mTopRightDeviceInfo.setVisibility(VISIBLE);
         } else {
+            // 非全屏(播放详情页):放大按钮显示"聚焦"图标
+            mIvFullscreen.setImageResource(R.drawable.ic_zoom_in);
             mTopRightDeviceInfo.setVisibility(INVISIBLE);
             mPreBtn.setVisibility(GONE);
             mNextBtn.setVisibility(GONE);
@@ -935,6 +946,17 @@ public class VodController extends BaseController {
                 initLandscapePortraitBtnInfo();
                 startProgress();
                 mIvPlayStatus.setImageResource(R.drawable.ic_pause);
+                // 全屏下视频加载出真实尺寸后校正横竖屏(进全屏时尺寸可能未知,未能切横屏)
+                if (mFullWindows) {
+                    int[] size = mControlWrapper.getVideoSize();
+                    if (size != null && size.length >= 2 && size[0] > 0 && size[1] > 0) {
+                        if (size[0] > size[1]) {
+                            mActivity.setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE);
+                        } else {
+                            mActivity.setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
+                        }
+                    }
+                }
                 break;
             case VideoView.STATE_PAUSED:
                 mIvPlayStatus.setImageResource(R.drawable.ic_play);
@@ -1099,10 +1121,10 @@ public class VodController extends BaseController {
         Hawk.put(HawkConfig.SUBTITLE_OPEN, open);
         if (open) {
             mSubtitleView.setVisibility(VISIBLE);
-            Toast.makeText(getContext(), "字幕已开启", Toast.LENGTH_SHORT).show();
+            AppBubble.toast("字幕已开启");
         } else {
             mSubtitleView.setVisibility(View.GONE);
-            Toast.makeText(getContext(), "字幕已关闭", Toast.LENGTH_SHORT).show();
+            AppBubble.toast("字幕已关闭");
         }
         hideBottom();
     }

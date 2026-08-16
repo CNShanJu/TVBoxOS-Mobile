@@ -10,7 +10,7 @@ import android.widget.Toast;
 import androidx.annotation.NonNull;
 
 import com.blankj.utilcode.util.AppUtils;
-import com.blankj.utilcode.util.ToastUtils;
+import com.github.tvbox.osc.util.AppBubble;
 import com.chad.library.adapter.base.BaseQuickAdapter;
 import com.github.tvbox.osc.R;
 import com.github.tvbox.osc.base.App;
@@ -112,13 +112,13 @@ public class BackupDialog extends BaseDialog {
                                 sharedPreferences.edit().putString(key, value).commit();
                             }
                         }
-                        Toast.makeText(getContext(), "恢复成功,即将重启应用!", Toast.LENGTH_SHORT).show();
+                        AppBubble.toast("恢复成功,即将重启应用!");
                         new Handler().postDelayed(() -> AppUtils.relaunchApp(true),2000);
                     } else {
-                        Toast.makeText(getContext(), "Hawk恢复失败!", Toast.LENGTH_SHORT).show();
+                        AppBubble.toast("Hawk恢复失败!");
                     }
                 } else {
-                    Toast.makeText(getContext(), "DB文件恢复失败!", Toast.LENGTH_SHORT).show();
+                    AppBubble.toast("DB文件恢复失败!");
                 }
             }
         } catch (Throwable e) {
@@ -149,17 +149,17 @@ public class BackupDialog extends BaseDialog {
                 }
                 if (!FileUtils.writeSimple(jsonObject.toString().getBytes("UTF-8"), new File(backup, "hawk"))) {
                     backup.delete();
-                    Toast.makeText(getContext(), "备份Hawk失败!", Toast.LENGTH_SHORT).show();
+                    AppBubble.toast("备份Hawk失败!");
                 } else {
-                    Toast.makeText(getContext(), "备份成功!", Toast.LENGTH_SHORT).show();
+                    AppBubble.toast("备份成功!");
                 }
             } else {
-                Toast.makeText(getContext(), "DB文件不存在!", Toast.LENGTH_SHORT).show();
+                AppBubble.toast("DB文件不存在!");
                 backup.delete();
             }
         } catch (Throwable e) {
             e.printStackTrace();
-            Toast.makeText(getContext(), "备份失败!", Toast.LENGTH_SHORT).show();
+            AppBubble.toast("备份失败!");
         }
     }
 
@@ -168,7 +168,7 @@ public class BackupDialog extends BaseDialog {
             String root = Environment.getExternalStorageDirectory().getAbsolutePath();
             File backup = new File(root + "/tvbox_backup/" + dir);
             FileUtils.recursiveDelete(backup);
-            ToastUtils.showShort("删除成功");
+            AppBubble.toast("删除成功");
         } catch (Throwable e) {
             e.printStackTrace();
         }

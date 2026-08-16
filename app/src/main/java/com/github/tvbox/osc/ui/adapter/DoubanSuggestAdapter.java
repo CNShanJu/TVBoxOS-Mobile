@@ -36,8 +36,8 @@ public class DoubanSuggestAdapter extends BaseQuickAdapter<DoubanSuggestBean, Ba
                         .centerCorp(true)
                         .override(AutoSizeUtils.dp2px(mContext, 110), AutoSizeUtils.dp2px(mContext, 160))
                         .roundRadius(AutoSizeUtils.dp2px(mContext, 6), RoundTransformation.RoundType.ALL))
-                .placeholder(R.drawable.img_loading_placeholder)
-                .error(R.drawable.img_loading_placeholder)
+                .placeholder(R.drawable.iv_load_fail)
+                .error(R.drawable.iv_load_fail)
                 .into((ImageView) helper.getView(R.id.ivThumb));
     }
 }

@@ -3,5 +3,5 @@
     <corners
         android:topLeftRadius="20dp"
         android:topRightRadius="20dp" />
-    <solid android:color="#FF1F1F1F" />
+    <solid android:color="@color/bg_popup" />
 </shape>

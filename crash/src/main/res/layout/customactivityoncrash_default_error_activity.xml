@@ -21,11 +21,12 @@
             android:paddingTop="@dimen/customactivityoncrash_activity_vertical_margin">
 
             <ImageView
-                android:id="@+id/customactivityoncrash_error_activity_image"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:contentDescription="@null"
-                android:src="@drawable/customactivityoncrash_error_image" />
+                    android:id="@+id/customactivityoncrash_error_activity_image"
+                    android:layout_width="160dp"
+                    android:layout_height="160dp"
+                    android:contentDescription="@null"
+                    android:scaleType="fitCenter"
+                    android:src="@drawable/customactivityoncrash_error_image"/>
 
             <TextView
                 android:layout_width="wrap_content"

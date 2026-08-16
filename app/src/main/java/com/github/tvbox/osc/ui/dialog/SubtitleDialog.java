@@ -1,4 +1,5 @@
 package com.github.tvbox.osc.ui.dialog;
+import com.github.tvbox.osc.util.AppBubble;
 
 import android.app.Activity;
 import android.content.Context;
@@ -188,7 +189,7 @@ public class SubtitleDialog extends BaseDialog {
                 int style = 0;
                 dismiss();
                 mSubtitleViewListener.setTextStyle(style);
-                Toast.makeText(getContext(), "设置样式成功", Toast.LENGTH_SHORT).show();
+                AppBubble.toast("设置样式成功");
             }
         });
 
@@ -198,7 +199,7 @@ public class SubtitleDialog extends BaseDialog {
                 int style = 1;
                 dismiss();
                 mSubtitleViewListener.setTextStyle(style);
-                Toast.makeText(getContext(), "设置样式成功", Toast.LENGTH_SHORT).show();
+                AppBubble.toast("设置样式成功");
             }
         });
         findViewById(R.id.subtitleOpen).setOnClickListener(v -> {

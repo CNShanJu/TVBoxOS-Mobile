@@ -5,7 +5,7 @@ import android.view.View;
 
 import androidx.annotation.NonNull;
 
-import com.blankj.utilcode.util.ToastUtils;
+import com.github.tvbox.osc.util.AppBubble;
 import com.github.tvbox.osc.R;
 import com.github.tvbox.osc.databinding.DialogInputSubsriptionBinding;
 import com.github.tvbox.osc.databinding.DialogLiveApiBinding;
@@ -40,7 +40,7 @@ public class LiveApiDialog extends CenterPopupView {
         mBinding.ivHistory.setOnClickListener(view -> {
             ArrayList<String> liveHistory = Hawk.get(HawkConfig.LIVE_HISTORY, new ArrayList<String>());
             if (liveHistory.isEmpty()){
-                ToastUtils.showShort("暂无历史记录");
+                AppBubble.toast("暂无历史记录");
                 return;
             }
             new XPopup.Builder(getContext())
@@ -61,7 +61,7 @@ public class LiveApiDialog extends CenterPopupView {
                     liveHistory.remove(20);
                 Hawk.put(HawkConfig.LIVE_HISTORY, liveHistory);
             }
-            ToastUtils.showShort("设置成功");
+            AppBubble.toast("设置成功");
             dismiss();
         });
     }

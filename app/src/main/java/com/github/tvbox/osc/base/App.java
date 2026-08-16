@@ -270,7 +270,7 @@ public class App extends MultiDexApplication {
                 .showRestartButton(true) //是否显示重启按钮
                 .trackActivities(true) //是否跟踪Activity
                 .minTimeBetweenCrashesMs(2000) //崩溃的间隔时间(毫秒)
-                .errorDrawable(R.drawable.app_icon) //错误图标
+                .errorDrawable(R.drawable.ic_crash) //错误图标(记录空空的,矢量)
                 .restartActivity(MainActivity.class) //重新启动后的activity
                 .apply();
         // 魅族系统(如 ContentCapture 线程的 com.meizu.internal.picker)存在已知 NPE bug,

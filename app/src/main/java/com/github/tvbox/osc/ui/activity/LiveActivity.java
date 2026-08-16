@@ -26,7 +26,7 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.blankj.utilcode.util.ConvertUtils;
 import com.blankj.utilcode.util.ScreenUtils;
-import com.blankj.utilcode.util.ToastUtils;
+import com.github.tvbox.osc.util.AppBubble;
 import com.chad.library.adapter.base.BaseQuickAdapter;
 import com.github.tvbox.osc.R;
 import com.github.tvbox.osc.api.ApiConfig;
@@ -588,7 +588,7 @@ public class LiveActivity extends BaseActivity {
                     mVideoView.release();
                 } catch (Throwable ignored) {
                 }
-                Toast.makeText(App.getInstance(), "当前频道无可用线路,请手动切换频道", Toast.LENGTH_LONG).show();
+                AppBubble.toastLong("当前频道无可用线路,请手动切换频道");
             } else {
                 playNextSource();
             }
@@ -780,7 +780,7 @@ public class LiveActivity extends BaseActivity {
     private void initLiveChannelList() {
         List<LiveChannelGroup> list = ApiConfig.get().getChannelGroupList();
         if (list.isEmpty()) {
-            Toast.makeText(App.getInstance(), "频道列表为空", Toast.LENGTH_SHORT).show();
+            AppBubble.toast("频道列表为空");
             finish();
             return;
         }
@@ -801,7 +801,7 @@ public class LiveActivity extends BaseActivity {
             Uri parsedUrl = Uri.parse(url);
             url = new String(Base64.decode(parsedUrl.getQueryParameter("ext"), Base64.DEFAULT | Base64.URL_SAFE | Base64.NO_WRAP), "UTF-8");
         } catch (Throwable th) {
-            Toast.makeText(App.getInstance(), "频道列表为空", Toast.LENGTH_SHORT).show();
+            AppBubble.toast("频道列表为空");
             finish();
             return;
         }
@@ -820,7 +820,7 @@ public class LiveActivity extends BaseActivity {
                     ApiConfig.get().loadLives(livesArray);
                     List<LiveChannelGroup> list = ApiConfig.get().getChannelGroupList();
                     if (list.isEmpty()) {
-                        Toast.makeText(App.getInstance(), "频道列表为空", Toast.LENGTH_SHORT).show();
+                        AppBubble.toast("频道列表为空");
                         finish();
                         return;
                     }
@@ -852,7 +852,7 @@ public class LiveActivity extends BaseActivity {
     /** 直播源加载失败:提示并进入空态,避免一直停留在加载中 */
     private void onLiveLoadFail(String msg) {
         try {
-            Toast.makeText(App.getInstance(), msg, Toast.LENGTH_SHORT).show();
+            AppBubble.toast(msg);
             if (!isFinishing() && !isDestroyed()) {
                 showEmpty();
             }
@@ -954,7 +954,7 @@ public class LiveActivity extends BaseActivity {
                     channelGroupPasswordConfirmed.add(groupIndex);
                     loadChannelGroupDataAndPlay(groupIndex, liveChannelIndex);
                 } else {
-                    Toast.makeText(App.getInstance(), "密码错误", Toast.LENGTH_SHORT).show();
+                    AppBubble.toast("密码错误");
                 }
             }
 
@@ -1063,7 +1063,7 @@ public class LiveActivity extends BaseActivity {
 
     private boolean isCurrentLiveChannelValid() {
         if (currentLiveChannelItem == null) {
-            Toast.makeText(App.getInstance(), "请先选择频道", Toast.LENGTH_SHORT).show();
+            AppBubble.toast("请先选择频道");
             return false;
         }
         return true;
@@ -1187,7 +1187,7 @@ public class LiveActivity extends BaseActivity {
      */
     private void showSettingDialog(boolean fullScreenStyle) {
         if (!isCurrentLiveChannelValid()){
-            ToastUtils.showShort("当前频道未加载");
+            AppBubble.toast("当前频道未加载");
             return;
         }
         if (fullScreenStyle){

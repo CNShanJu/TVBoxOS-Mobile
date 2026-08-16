@@ -24,4 +24,13 @@ public class BroadcastUtils {
             context.registerReceiver(receiver, filter);
         }
     }
+
+    /** 以 RECEIVER_EXPORTED 注册广播(供系统级组件如画中画/通知操作按钮投递,Android 13+ 必须导出才能收到) */
+    public static void registerReceiverExported(Context context, BroadcastReceiver receiver, IntentFilter filter) {
+        if (Build.VERSION.SDK_INT >= 33) {
+            context.registerReceiver(receiver, filter, Context.RECEIVER_EXPORTED);
+        } else {
+            context.registerReceiver(receiver, filter);
+        }
+    }
 }

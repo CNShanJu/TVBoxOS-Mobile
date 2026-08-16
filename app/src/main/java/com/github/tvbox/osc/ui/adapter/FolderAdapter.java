@@ -44,7 +44,7 @@ public class FolderAdapter extends BaseQuickAdapter<VideoFolder, BaseViewHolder>
         Glide.with(mContext)
                 .load(videoList.get(0).getPath()) // 第一个视频做封面
                 .diskCacheStrategy(DiskCacheStrategy.AUTOMATIC)
-                .placeholder(R.drawable.iv_video)
+                .placeholder(R.drawable.iv_load_fail)
                 .centerCrop()
                 .into((ImageView) helper.getView(R.id.iv));
     }

@@ -1,6 +1,9 @@
 package com.github.tvbox.osc.ui.fragment;
 
+import android.content.res.ColorStateList;
 import android.os.Bundle;
+import android.os.StatFs;
+import android.util.Log;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageView;
@@ -8,12 +11,13 @@ import android.widget.ProgressBar;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
+import androidx.core.content.ContextCompat;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.blankj.utilcode.util.ColorUtils;
 import com.blankj.utilcode.util.GsonUtils;
-import com.blankj.utilcode.util.ToastUtils;
+import com.github.tvbox.osc.util.AppBubble;
 import com.bumptech.glide.Glide;
 import com.bumptech.glide.load.engine.DiskCacheStrategy;
 import com.chad.library.adapter.base.BaseQuickAdapter;
@@ -27,7 +31,9 @@ import com.github.tvbox.osc.databinding.FragmentDownloadBinding;
 import com.github.tvbox.osc.event.DownloadEvent;
 import com.github.tvbox.osc.ui.activity.LocalPlayActivity;
 import com.github.tvbox.osc.ui.adapter.LocalVideoAdapter;
+import com.github.tvbox.osc.ui.dialog.DeleteDownloadDialog;
 import com.github.tvbox.osc.util.DownloadManager;
+import com.github.tvbox.osc.util.Utils;
 import com.lxj.xpopup.XPopup;
 
 import org.greenrobot.eventbus.EventBus;
@@ -73,17 +79,42 @@ public class DownloadFragment extends BaseVbFragment<FragmentDownloadBinding> {
         mBinding.tvTabDownloading.setOnClickListener(v -> switchTab(TAB_DOWNLOADING));
         mBinding.tvTabDone.setOnClickListener(v -> switchTab(TAB_DONE));
 
-        // 下载并发选择(1-5)
-        mBinding.tvConcurrent.setText("并发:" + DownloadManager.get().getMaxConcurrent());
-        mBinding.tvConcurrent.setOnClickListener(v -> {
-            String[] options = new String[]{"并发 1", "并发 2", "并发 3", "并发 4", "并发 5"};
+        // 设置:右侧设置 icon,内含下载并发/仅WiFi等选项(参考播放页设置入口)
+        mBinding.ivSettings.setOnClickListener(v -> {
+            boolean wifiOnly = DownloadManager.get().isWifiOnly();
+            String[] options = new String[]{
+                    "下载并发（当前 " + DownloadManager.get().getMaxConcurrent() + "）",
+                    "仅 WiFi 下载（" + (wifiOnly ? "开" : "关") + "）"
+            };
             new XPopup.Builder(mContext)
-                    .asBottomList("选择下载并发", options, (position, text) -> {
-                        DownloadManager.get().setMaxConcurrent(position + 1);
-                        mBinding.tvConcurrent.setText("并发:" + (position + 1));
+                    .asBottomList("下载设置", options, (position, text) -> {
+                        if (position == 0) {
+                            String[] concurrent = new String[]{"并发 1", "并发 2", "并发 3", "并发 4", "并发 5"};
+                            new XPopup.Builder(mContext)
+                                    .asBottomList("选择下载并发", concurrent, (p, t) ->
+                                            DownloadManager.get().setMaxConcurrent(p + 1))
+                                    .show();
+                        } else {
+                            boolean newVal = !DownloadManager.get().isWifiOnly();
+                            DownloadManager.get().setWifiOnly(newVal);
+                            AppBubble.toast("仅 WiFi 下载已" + (newVal ? "开启" : "关闭"));
+                        }
                     })
                     .show();
         });
+
+        // 全部暂停 / 全部开始:仅"正在下载"根级且有任务时显示(见 updateActionBar)
+        mBinding.btnPauseAll.setOnClickListener(v -> {
+            DownloadManager.get().pauseAll();
+            AppBubble.toast("已全部暂停");
+        });
+        mBinding.btnStartAll.setOnClickListener(v -> {
+            DownloadManager.get().startAll();
+            AppBubble.toast("已全部开始");
+        });
+
+        // 当前位置导航条:点按返回上一级
+        mBinding.llNav.setOnClickListener(v -> onBackPressed());
 
         // 正在下载:按剧名分组(文件夹级)
         vodGroupAdapter = new BaseQuickAdapter<String, BaseViewHolder>(R.layout.item_download_vod_group) {
@@ -91,10 +122,16 @@ public class DownloadFragment extends BaseVbFragment<FragmentDownloadBinding> {
             protected void convert(BaseViewHolder helper, String vodName) {
                 helper.setText(R.id.tv_vod_name, vodName);
                 int count = 0;
+                int downloading = 0;
                 for (DownloadTask t : DownloadManager.get().getTasks()) {
-                    if (t.state != DownloadTask.STATE_COMPLETED && vodName.equals(vodNameOf(t))) count++;
+                    if (t.state != DownloadTask.STATE_COMPLETED && vodName.equals(vodNameOf(t))) {
+                        count++;
+                        if (t.state == DownloadTask.STATE_DOWNLOADING) downloading++;
+                    }
                 }
-                helper.setText(R.id.tv_vod_count, count + " 个任务");
+                String desc = count + " 个任务";
+                if (downloading > 0) desc = downloading + " 个下载中 · " + desc;
+                helper.setText(R.id.tv_vod_count, desc);
             }
         };
         vodGroupAdapter.setOnItemClickListener((adapter, view, position) -> {
@@ -110,12 +147,45 @@ public class DownloadFragment extends BaseVbFragment<FragmentDownloadBinding> {
         downloadingAdapter = new BaseQuickAdapter<DownloadTask, BaseViewHolder>(R.layout.item_download_task) {
             @Override
             protected void convert(BaseViewHolder helper, DownloadTask task) {
-                helper.setText(R.id.tv_group, task.vodName == null ? task.groupName : task.vodName);
                 helper.setText(R.id.tv_name, task.fileName);
+                // 状态徽标:下载中/等待中/排队中(调度暂停)/已暂停(用户暂停)/失败
+                String status;
+                int statusColor;
+                if (task.state == DownloadTask.STATE_FAILED) {
+                    status = "失败";
+                    statusColor = ContextCompat.getColor(mContext, R.color.red);
+                } else if (task.state == DownloadTask.STATE_PAUSED) {
+                    status = "已暂停";
+                    statusColor = ContextCompat.getColor(mContext, R.color.text_sub_foreground);
+                } else if (task.state == DownloadTask.STATE_SYSTEM_PAUSED) {
+                    status = "排队中";
+                    statusColor = ContextCompat.getColor(mContext, R.color.text_sub_foreground);
+                } else if (task.state == DownloadTask.STATE_WAITING) {
+                    status = "等待中";
+                    statusColor = ContextCompat.getColor(mContext, R.color.text_sub_foreground);
+                } else {
+                    // 下载中:按 message 显示合并阶段(文件校验中/文件合并中)
+                    if (DownloadManager.MSG_VERIFYING.equals(task.message)) {
+                        status = DownloadManager.MSG_VERIFYING;
+                    } else if (DownloadManager.MSG_MERGING.equals(task.message)) {
+                        status = DownloadManager.MSG_MERGING;
+                    } else {
+                        status = "下载中";
+                    }
+                    statusColor = ContextCompat.getColor(mContext, R.color.download_active);
+                }
+                helper.setText(R.id.tv_group, status);
+                ((TextView) helper.getView(R.id.tv_group)).setTextColor(statusColor);
                 int percent = task.getProgressPercent();
                 helper.setText(R.id.tv_percent, buildPercentText(task));
                 ProgressBar pb = helper.getView(R.id.progress);
                 pb.setProgress(percent);
+                // 进度条状态色:下载中=绿(download_done),其余(暂停/等待/排队/失败)置灰
+                if (task.state == DownloadTask.STATE_DOWNLOADING) {
+                    pb.setProgressTintList(ColorStateList.valueOf(ContextCompat.getColor(mContext, R.color.download_done)));
+                } else {
+                    pb.setProgressTintList(ColorStateList.valueOf(ContextCompat.getColor(mContext, R.color.gray_darker)));
+                }
                 String btn;
                 if (task.state == DownloadTask.STATE_PAUSED) btn = "继 续";
                 else if (task.state == DownloadTask.STATE_FAILED) btn = "重 试";
@@ -138,10 +208,11 @@ public class DownloadFragment extends BaseVbFragment<FragmentDownloadBinding> {
                 DownloadManager.get().remove(t);
             }
         });
-        mBinding.rvDownloading.setAdapter(downloadingAdapter);
+        // 注意:不能在这里 setAdapter(downloadingAdapter),否则会顶掉上面的文件夹级适配器,
+        // 导致"正在下载"默认视图永远空白(任务只在点进文件夹后可见)
 
-        // 下载完成:文件夹列表(剧名 + 来源/个数,两排,与本地视频同款封面)
-        folderAdapter = new BaseQuickAdapter<VideoFolder, BaseViewHolder>(R.layout.item_folder) {
+        // 下载完成:文件夹列表(剧名 + 来源/个数,卡片式)
+        folderAdapter = new BaseQuickAdapter<VideoFolder, BaseViewHolder>(R.layout.item_download_folder) {
             @Override
             protected void convert(BaseViewHolder helper, VideoFolder folder) {
                 List<VideoInfo> videoList = folder.getVideoList();
@@ -153,7 +224,7 @@ public class DownloadFragment extends BaseVbFragment<FragmentDownloadBinding> {
                 Glide.with(mContext)
                         .load(videoList.get(0).getPath())
                         .diskCacheStrategy(DiskCacheStrategy.AUTOMATIC)
-                        .placeholder(R.drawable.iv_video)
+                        .placeholder(R.drawable.iv_load_fail)
                         .centerCrop()
                         .into((ImageView) helper.getView(R.id.iv));
             }
@@ -263,6 +334,7 @@ public class DownloadFragment extends BaseVbFragment<FragmentDownloadBinding> {
         mBinding.rvDownloading.setVisibility(downloading ? View.VISIBLE : View.GONE);
         mBinding.rvDone.setVisibility(downloading ? View.GONE : View.VISIBLE);
         if (!downloading) toggleSelectMode(false);
+        updateNavBar();
     }
 
     private void refresh() {
@@ -303,20 +375,22 @@ public class DownloadFragment extends BaseVbFragment<FragmentDownloadBinding> {
             }
             downloadingAdapter.setNewData(list);
         }
+        updateNavBar();
     }
 
     private String vodNameOf(DownloadTask t) {
         return t.vodName == null ? t.groupName : t.vodName;
     }
 
-    /** 刷新"下载完成":根据当前层级刷新 */
+    /** 刷新"下载完成":基于下载完成记录表,先对账清理文件已不存在的失效记录 */
     private void refreshDoneList() {
+        DownloadManager.get().pruneMissingCompleted(); // 静默清理(不广播,避免刷新循环)
         if (currentFolder == null) {
-            folderAdapter.setNewData(scanDownloadFolders());
+            folderAdapter.setNewData(buildDoneFoldersFromRecords());
         } else {
-            List<VideoInfo> files = scanFolderFiles(currentFolderNameToPath());
-            if (files == null) {
-                // 文件夹已不存在,退回文件夹级
+            List<VideoInfo> files = buildFolderVideosFromRecords(currentFolder.getName());
+            if (files.isEmpty()) {
+                // 记录/文件已清空,退回文件夹级
                 backToFolders();
                 return;
             }
@@ -324,69 +398,115 @@ public class DownloadFragment extends BaseVbFragment<FragmentDownloadBinding> {
             localVideoAdapter.setNewData(files);
             if (localVideoAdapter.isSelectMode()) toggleSelectMode(false);
         }
+        updateNavBar();
+    }
+
+    /** 刷新当前位置导航条:进入剧集文件夹后显示"xx › 剧名",点按返回上一级;跟随当前 tab */
+    private void updateNavBar() {
+        if (currentTab == TAB_DOWNLOADING) {
+            boolean inFolder = currentVodGroup != null;
+            mBinding.llNav.setVisibility(inFolder ? View.VISIBLE : View.GONE);
+            if (inFolder) mBinding.tvNavPath.setText("正在下载 › " + currentVodGroup);
+        } else {
+            boolean inFolder = currentFolder != null;
+            mBinding.llNav.setVisibility(inFolder ? View.VISIBLE : View.GONE);
+            if (inFolder) mBinding.tvNavPath.setText("下载完成 › " + currentFolder.getName());
+        }
+        updateActionBar();
+        updateStorageText();
+    }
+
+    /** 刷新底部"可用存储"提示 */
+    private void updateStorageText() {
+        try {
+            File dir = DownloadManager.getSaveDir();
+            StatFs stat = new StatFs(dir.getAbsolutePath());
+            long free = stat.getAvailableBytes();
+            mBinding.tvStorage.setText("可用存储 " + formatSize(free));
+        } catch (Throwable th) {
+            mBinding.tvStorage.setText("");
+        }
+    }
+
+    /** 刷新"全部暂停/全部开始"操作行:仅"正在下载"根级且有任务时显示,按钮按状态置灰 */
+    private void updateActionBar() {
+        boolean show = currentTab == TAB_DOWNLOADING && currentVodGroup == null;
+        if (show) {
+            int running = 0;
+            int waiting = 0;
+            int paused = 0;
+            int failed = 0;
+            for (DownloadTask t : DownloadManager.get().getTasks()) {
+                if (t.state == DownloadTask.STATE_COMPLETED) continue;
+                if (t.state == DownloadTask.STATE_DOWNLOADING) running++;
+                else if (t.state == DownloadTask.STATE_WAITING) waiting++;
+                else if (t.state == DownloadTask.STATE_SYSTEM_PAUSED) waiting++;
+                else if (t.state == DownloadTask.STATE_PAUSED) paused++;
+                else if (t.state == DownloadTask.STATE_FAILED) failed++;
+            }
+            boolean hasAny = (running + waiting + paused + failed) > 0;
+            mBinding.llActions.setVisibility(hasAny ? View.VISIBLE : View.GONE);
+            boolean canPause = running + waiting > 0;
+            boolean canStart = paused + failed > 0;
+            mBinding.btnPauseAll.setEnabled(canPause);
+            mBinding.btnStartAll.setEnabled(canStart);
+        } else {
+            mBinding.llActions.setVisibility(View.GONE);
+        }
     }
 
     // ------------------------------------------------------------------
-    // 下载完成:文件夹 / 文件 两级浏览
+    // 下载完成:基于"下载完成记录表"(DownloadManager 持久化的已完成任务)构建
+    // 展示前按记录里的 savePath 检查文件是否还在,不在则更新记录表移除
     // ------------------------------------------------------------------
 
-    /** 扫描下载根目录,按 来源/剧名 目录分组为文件夹(名称=剧名,来源单独存) */
-    private List<VideoFolder> scanDownloadFolders() {
+    /** 从下载完成记录构建文件夹列表(按剧名分组) */
+    private List<VideoFolder> buildDoneFoldersFromRecords() {
         List<VideoFolder> folders = new ArrayList<>();
-        File base = DownloadManager.getSaveDir();
-        File[] sources = base.listFiles();
-        if (sources == null) return folders;
-        for (File src : sources) {
-            if (!src.isDirectory()) continue;
-            File[] vods = src.listFiles();
-            if (vods == null) continue;
-            for (File vod : vods) {
-                if (!vod.isDirectory()) continue;
-                List<VideoInfo> videos = scanFolderFiles(vod.getAbsolutePath());
-                if (videos != null && !videos.isEmpty()) {
-                    VideoFolder folder = new VideoFolder(vod.getName(), videos);
-                    folder.setSourceName(src.getName());
-                    folders.add(folder);
-                }
+        Map<String, List<DownloadTask>> groups = new LinkedHashMap<>();
+        for (DownloadTask t : DownloadManager.get().getTasks()) {
+            if (t.state != DownloadTask.STATE_COMPLETED || t.savePath == null) continue;
+            groups.computeIfAbsent(vodNameOf(t), k -> new ArrayList<>()).add(t);
+        }
+        for (Map.Entry<String, List<DownloadTask>> e : groups.entrySet()) {
+            List<VideoInfo> videos = new ArrayList<>();
+            for (DownloadTask t : e.getValue()) {
+                File f = new File(t.savePath);
+                if (!f.exists()) continue; // 双保险:文件已不存在则跳过
+                VideoInfo info = new VideoInfo();
+                info.setPath(f.getAbsolutePath());
+                info.setDisplayName(t.fileName == null ? f.getName() : t.fileName);
+                info.setTitle(info.getDisplayName());
+                info.setSize(f.length());
+                videos.add(info);
+            }
+            if (!videos.isEmpty()) {
+                VideoFolder folder = new VideoFolder(e.getKey(), videos);
+                folder.setSourceName(e.getValue().get(0).sourceName);
+                folders.add(folder);
             }
         }
         folders.sort(Comparator.comparing(VideoFolder::getName));
         return folders;
     }
 
-    /** 扫描某目录下的视频文件(按文件名排序) */
-    private List<VideoInfo> scanFolderFiles(String dirPath) {
-        File dir = new File(dirPath);
-        if (!dir.isDirectory()) return null;
-        File[] files = dir.listFiles();
-        if (files == null) return new ArrayList<>();
+    /** 某剧名下已完成且文件存在的视频列表(记录驱动,按文件名排序) */
+    private List<VideoInfo> buildFolderVideosFromRecords(String vodName) {
         List<VideoInfo> videos = new ArrayList<>();
-        for (File f : files) {
-            if (f.isFile() && isVideoFile(f.getName())) {
-                VideoInfo info = new VideoInfo();
-                info.setPath(f.getAbsolutePath());
-                info.setDisplayName(f.getName());
-                info.setTitle(f.getName());
-                info.setSize(f.length());
-                videos.add(info);
-            }
+        for (DownloadTask t : DownloadManager.get().getTasks()) {
+            if (t.state != DownloadTask.STATE_COMPLETED || t.savePath == null) continue;
+            if (!vodName.equals(vodNameOf(t))) continue;
+            File f = new File(t.savePath);
+            if (!f.exists()) continue;
+            VideoInfo info = new VideoInfo();
+            info.setPath(f.getAbsolutePath());
+            info.setDisplayName(t.fileName == null ? f.getName() : t.fileName);
+            info.setTitle(info.getDisplayName());
+            info.setSize(f.length());
+            videos.add(info);
         }
         videos.sort(Comparator.comparing(VideoInfo::getDisplayName));
         return videos;
-    }
-
-    private String currentFolderNameToPath() {
-        // 路径 = 下载根目录/来源/剧名
-        String source = currentFolder.getSourceName();
-        String name = currentFolder.getName();
-        return new File(new File(DownloadManager.getSaveDir(), source == null ? "" : source), name).getAbsolutePath();
-    }
-
-    private boolean isVideoFile(String name) {
-        String lower = name.toLowerCase(Locale.ROOT);
-        return lower.endsWith(".mp4") || lower.endsWith(".mkv") || lower.endsWith(".avi")
-                || lower.endsWith(".flv") || lower.endsWith(".ts") || lower.endsWith(".mov")
-                || lower.endsWith(".webm") || lower.endsWith(".m4v");
     }
 
     private void openFolder(VideoFolder folder) {
@@ -394,13 +514,15 @@ public class DownloadFragment extends BaseVbFragment<FragmentDownloadBinding> {
         toggleSelectMode(false);
         localVideoAdapter.setNewData(folder.getVideoList());
         mBinding.rvDone.setAdapter(localVideoAdapter);
+        updateNavBar();
     }
 
     private void backToFolders() {
         currentFolder = null;
         toggleSelectMode(false);
         mBinding.rvDone.setAdapter(folderAdapter);
-        folderAdapter.setNewData(scanDownloadFolders());
+        folderAdapter.setNewData(buildDoneFoldersFromRecords());
+        updateNavBar();
     }
 
     private void toggleSelectMode(boolean open) {
@@ -422,39 +544,41 @@ public class DownloadFragment extends BaseVbFragment<FragmentDownloadBinding> {
 
     private void deleteChecked() {
         new XPopup.Builder(mContext)
-                .isDarkTheme(true)
-                .asConfirm("提示", "确定删除所选视频吗？", () -> {
+                .isDarkTheme(Utils.isDarkTheme())
+                .asCustom(new DeleteDownloadDialog(mContext, deleteFiles -> {
                     List<VideoInfo> data = new ArrayList<>(localVideoAdapter.getData());
                     for (VideoInfo item : data) {
                         if (item.isChecked()) {
-                            removeTaskAndFile(item.getPath());
+                            removeTaskAndFile(item.getPath(), deleteFiles);
                         }
                     }
                     toggleSelectMode(false);
-                    // 刷新(文件删除后重新扫描)
                     refresh();
-                })
+                }))
                 .show();
     }
 
-    /** 删除下载文件并同步移除对应下载任务 */
-    private void removeTaskAndFile(String path) {
+    /**
+     * 删除下载:找到对应任务记录移除;deleteFiles=true 连本地文件一起删,false 只删记录保留文件
+     */
+    private void removeTaskAndFile(String path, boolean deleteFiles) {
         for (DownloadTask t : DownloadManager.get().getTasks()) {
             if (t.savePath != null && t.savePath.equals(path)) {
-                DownloadManager.get().remove(t); // remove 内部会删除文件
+                DownloadManager.get().remove(t, deleteFiles);
                 return;
             }
         }
-        // 无任务记录,直接删文件
-        File f = new File(path);
-        if (f.exists()) f.delete();
+        if (deleteFiles) {
+            File f = new File(path);
+            if (f.exists()) f.delete();
+        }
     }
 
     /** 用内置播放器播放下载的文件(与"我的-本地视频"一致) */
     private void playFile(VideoInfo info) {
         try {
             if (!new File(info.getPath()).exists()) {
-                ToastUtils.showShort("文件不存在");
+                AppBubble.toast("文件不存在");
                 return;
             }
             List<VideoInfo> list = new ArrayList<>();
@@ -465,7 +589,7 @@ public class DownloadFragment extends BaseVbFragment<FragmentDownloadBinding> {
             jumpActivity(LocalPlayActivity.class, bundle);
         } catch (Throwable th) {
             th.printStackTrace();
-            ToastUtils.showShort("播放失败:" + th.getMessage());
+            AppBubble.toast("播放失败:" + th.getMessage());
         }
     }
 
@@ -479,10 +603,24 @@ public class DownloadFragment extends BaseVbFragment<FragmentDownloadBinding> {
             sb.append(formatSize(t.downloadedBytes)).append("/").append(formatSize(t.totalBytes));
         }
         sb.append(" (").append(t.getProgressPercent()).append("%)");
+        // 实时网速(仅下载中显示)
+        if (t.state == DownloadTask.STATE_DOWNLOADING && t.speed > 0) {
+            sb.append("  ").append(formatSpeed(t.speed));
+        }
         if (t.state == DownloadTask.STATE_FAILED && t.message != null && !t.message.isEmpty()) {
             sb.append(" 失败:").append(t.message);
         }
         return sb.toString();
+    }
+
+    private static String formatSpeed(long bytesPerSec) {
+        if (bytesPerSec >= 1024 * 1024) {
+            return String.format("%.1fMB/s", bytesPerSec / 1024.0 / 1024.0);
+        }
+        if (bytesPerSec >= 1024) {
+            return String.format("%.0fKB/s", bytesPerSec / 1024.0);
+        }
+        return bytesPerSec + "B/s";
     }
 
     private static String formatSize(long bytes) {

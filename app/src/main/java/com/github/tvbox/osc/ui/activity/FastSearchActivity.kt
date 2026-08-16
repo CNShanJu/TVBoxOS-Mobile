@@ -17,7 +17,7 @@ import com.blankj.utilcode.util.GsonUtils
 import com.blankj.utilcode.util.KeyboardUtils
 import com.blankj.utilcode.util.LogUtils
 import com.blankj.utilcode.util.ScreenUtils
-import com.blankj.utilcode.util.ToastUtils
+import com.github.tvbox.osc.util.AppBubble
 import com.github.catvod.crawler.JsLoader
 import com.github.tvbox.osc.R
 import com.github.tvbox.osc.api.ApiConfig
@@ -405,12 +405,12 @@ class FastSearchActivity : BaseVbActivity<ActivityFastSearchBinding>(), TextWatc
 
     private fun search(title: String?) {
         if (title.isNullOrEmpty()) {
-            ToastUtils.showShort("请输入搜索内容")
+            AppBubble.toast("请输入搜索内容")
             return
         }
 
         if (!hasSubscription()) {
-            ToastUtils.showShort("请先设置订阅")
+            AppBubble.toast("请先设置订阅")
             return
         }
 
@@ -615,7 +615,7 @@ class FastSearchActivity : BaseVbActivity<ActivityFastSearchBinding>(), TextWatc
                         it.title == text
                     }
                     if (filterList.isEmpty()){
-                        ToastUtils.showShort("暂无评分信息")
+                        AppBubble.toast("暂无评分信息")
                         return
                     }
 

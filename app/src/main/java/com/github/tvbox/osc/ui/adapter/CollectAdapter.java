@@ -40,11 +40,11 @@ public class CollectAdapter extends BaseQuickAdapter<VodCollect, BaseViewHolder>
         if (!TextUtils.isEmpty(item.pic)) {
             Picasso.get()
                     .load(DefaultConfig.checkReplaceProxy(item.pic))
-                    .placeholder(R.drawable.img_loading_placeholder)
-                    .error(R.drawable.img_loading_placeholder)
+                    .placeholder(R.drawable.iv_load_fail)
+                    .error(R.drawable.iv_load_fail)
                     .into(ivThumb);
         } else {
-            ivThumb.setImageResource(R.drawable.img_loading_placeholder);
+            ivThumb.setImageResource(R.drawable.iv_load_fail);
         }
     }
 }

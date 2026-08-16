@@ -5,7 +5,7 @@ import android.os.Build
 import android.os.Bundle
 import android.view.View
 import androidx.recyclerview.widget.DiffUtil
-import com.blankj.utilcode.util.ToastUtils
+import com.github.tvbox.osc.util.AppBubble
 import com.github.tvbox.osc.R
 import com.github.tvbox.osc.api.ApiConfig
 import com.github.tvbox.osc.base.BaseVbActivity
@@ -86,6 +86,22 @@ class SettingActivity : BaseVbActivity<ActivitySettingBinding>() {
                 override fun click(value: String?, pos: Int) {
                     mBinding.tvBackgroundPlayType.text = value
                     Hawk.put(HawkConfig.BACKGROUND_PLAY_TYPE, pos)
+                    // 后台播放=开启:Android 13+ 需通知权限,通知栏才有播放控制/关闭按钮
+                    if (pos == 1 && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
+                        && !XXPermissions.isGranted(this@SettingActivity, Permission.NOTIFICATION_SERVICE)
+                    ) {
+                        XXPermissions.with(this@SettingActivity)
+                            .permission(Permission.NOTIFICATION_SERVICE)
+                            .request(object : OnPermissionCallback {
+                                override fun onGranted(permissions: List<String>, all: Boolean) {
+                                    AppBubble.toast("后台播放通知已开启")
+                                }
+
+                                override fun onDenied(permissions: List<String>, never: Boolean) {
+                                    AppBubble.toast("未授予通知权限,后台播放时通知栏将不可见")
+                                }
+                            })
+                    }
                 }
 
                 override fun getDisplay(name: String?): String {
@@ -139,13 +155,13 @@ class SettingActivity : BaseVbActivity<ActivitySettingBinding>() {
 
                         override fun onDenied(permissions: List<String>, never: Boolean) {
                             if (never) {
-                                ToastUtils.showLong("获取存储权限失败,请在系统设置中开启")
+                                AppBubble.toastLong("获取存储权限失败,请在系统设置中开启")
                                 XXPermissions.startPermissionActivity(
                                     this@SettingActivity,
                                     permissions
                                 )
                             } else {
-                                ToastUtils.showShort("获取存储权限失败")
+                                AppBubble.toast("获取存储权限失败")
                             }
                         }
                     })
@@ -484,7 +500,7 @@ class SettingActivity : BaseVbActivity<ActivitySettingBinding>() {
                 e.printStackTrace()
             }
         }.start()
-        ToastUtils.showLong("缓存已清空")
+        AppBubble.toastLong("缓存已清空")
     }
 
     private fun getHomeRecName(type: Int): String {

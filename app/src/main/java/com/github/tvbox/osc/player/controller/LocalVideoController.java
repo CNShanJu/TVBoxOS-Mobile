@@ -1,4 +1,5 @@
 package com.github.tvbox.osc.player.controller;
+import com.github.tvbox.osc.util.AppBubble;
 
 import static xyz.doikki.videoplayer.util.PlayerUtils.stringForTime;
 
@@ -582,7 +583,7 @@ public class LocalVideoController extends BaseController {
                 mSubtitleView.clearSubtitleCache();
                 mSubtitleView.isInternal = false;
                 hideBottom();
-                Toast.makeText(getContext(), "字幕已关闭", Toast.LENGTH_SHORT).show();
+                AppBubble.toast("字幕已关闭");
                 return true;
             }
         });

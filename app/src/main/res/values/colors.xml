@@ -97,4 +97,11 @@
     <color name="color_59353744">#59353744</color>
     <color name="color_80FF0057">#66FF0057</color>
 
+    <!-- "上次看到"弹窗固定配色(不随明暗主题变化,保证两种模式下白字/白图标均清晰可读) -->
+    <color name="last_viewed_popup_start">#567DF4</color>
+    <color name="last_viewed_popup_end">#3E4FB1</color>
+
+    <!-- 开关轨道-关闭态(浅色主题浅灰;深色主题深灰,避免深色主题下白底白点) -->
+    <color name="switch_track_off">#B0B0B0</color>
+
 </resources>

@@ -4,7 +4,7 @@ import android.content.Context;
 
 import androidx.annotation.NonNull;
 
-import com.blankj.utilcode.util.ToastUtils;
+import com.github.tvbox.osc.util.AppBubble;
 import com.github.tvbox.osc.R;
 import com.github.tvbox.osc.databinding.DialogInputSubsriptionBinding;
 import com.lxj.xpopup.core.CenterPopupView;
@@ -46,12 +46,12 @@ public class SubsciptionDialog extends CenterPopupView {
         binding.btnConfirm.setOnClickListener(view -> {
             String name = binding.etName.getText().toString().trim();
             if (name.isEmpty()) {
-                ToastUtils.showShort("请输入名称");
+                AppBubble.toast("请输入名称");
                 return;
             }
             String url = binding.etUrl.getText().toString().trim();
             if (url.isEmpty()) {
-                ToastUtils.showShort("请输入订阅地址");
+                AppBubble.toast("请输入订阅地址");
                 return;
             }
             if (listener != null) {

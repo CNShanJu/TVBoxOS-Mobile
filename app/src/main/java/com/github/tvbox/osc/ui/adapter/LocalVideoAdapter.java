@@ -40,7 +40,7 @@ public class LocalVideoAdapter extends BaseQuickAdapter<VideoInfo, BaseViewHolde
         Glide.with(mContext)
                 .load(item.getPath())
                 .diskCacheStrategy(DiskCacheStrategy.AUTOMATIC)
-                .placeholder(R.drawable.iv_video)
+                .placeholder(R.drawable.iv_load_fail)
                 .centerCrop()
                 .into((ImageView) helper.getView(R.id.iv));
 

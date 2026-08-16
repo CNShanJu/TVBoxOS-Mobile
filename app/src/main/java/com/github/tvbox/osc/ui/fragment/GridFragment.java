@@ -1,4 +1,5 @@
 package com.github.tvbox.osc.ui.fragment;
+import com.github.tvbox.osc.util.AppBubble;
 
 import android.os.Bundle;
 import android.text.TextUtils;
@@ -259,7 +260,7 @@ public class GridFragment extends BaseLazyFragment {
                     if (page > maxPage) {
                         gridAdapter.loadMoreEnd();
                         gridAdapter.setEnableLoadMore(false);
-                        if(page>2)Toast.makeText(getContext(), "没有更多了", Toast.LENGTH_SHORT).show();
+                        if(page>2)AppBubble.toast("没有更多了");
                     } else {
                         gridAdapter.loadMoreComplete();
                         gridAdapter.setEnableLoadMore(true);
@@ -268,7 +269,7 @@ public class GridFragment extends BaseLazyFragment {
                     if(page == 1){
                         showEmpty();
                     }else{
-                        Toast.makeText(getContext(), "没有更多了", Toast.LENGTH_SHORT).show();
+                        AppBubble.toast("没有更多了");
                         gridAdapter.loadMoreEnd();
                     }
                     gridAdapter.setEnableLoadMore(false);

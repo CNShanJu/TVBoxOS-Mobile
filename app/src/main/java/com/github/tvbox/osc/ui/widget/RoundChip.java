@@ -19,6 +19,8 @@ import com.github.tvbox.osc.R;
 public class RoundChip extends FrameLayout {
 
     private final TextView mTextView;
+    /** 禁用态(已下载/下载中不可选),文字置灰 */
+    private boolean mDisabled = false;
 
     public RoundChip(Context context) {
         this(context, null);
@@ -47,6 +49,12 @@ public class RoundChip extends FrameLayout {
         mTextView.setTextSize(sp);
     }
 
+    /** 禁用态:文字置灰(用于已下载/下载中不可重复选择的剧集) */
+    public void setDisabled(boolean disabled) {
+        mDisabled = disabled;
+        updateColor(isSelected());
+    }
+
     @Override
     public void setSelected(boolean selected) {
         super.setSelected(selected);
@@ -54,7 +62,11 @@ public class RoundChip extends FrameLayout {
     }
 
     private void updateColor(boolean selected) {
-        mTextView.setTextColor(ContextCompat.getColor(getContext(),
-                selected ? R.color.color_highlight : R.color.colorPrimary));
+        if (mDisabled) {
+            mTextView.setTextColor(ContextCompat.getColor(getContext(), R.color.text_sub_foreground));
+        } else {
+            mTextView.setTextColor(ContextCompat.getColor(getContext(),
+                    selected ? R.color.color_highlight : R.color.colorPrimary));
+        }
     }
 }

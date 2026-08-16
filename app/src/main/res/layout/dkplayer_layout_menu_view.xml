@@ -40,7 +40,7 @@
             android:layout_width="34dp"
             android:layout_height="34dp"
             android:padding="6dp"
-            android:src="@drawable/ic_player_setting"
+            android:src="@drawable/ic_setting"
             android:tint="@color/white"
             android:layout_marginTop="30dp"
             />

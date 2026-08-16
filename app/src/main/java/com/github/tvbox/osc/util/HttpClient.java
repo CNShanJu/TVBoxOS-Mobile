@@ -310,7 +310,7 @@ public class HttpClient {
     private static final Pattern URL_HOST_PATTERN = Pattern.compile("^(https?://)([^/?#:]+)(:\\d+)?([/?#].*)?$");
 
     /** 中文域名转 punycode(OkHttp 的 HttpUrl 不接收非 ASCII 域名),失败时原样返回 */
-    private static String normalizeUrl(String url) {
+    public static String normalizeUrl(String url) {
         if (url == null) return null;
         try {
             Matcher m = URL_HOST_PATTERN.matcher(url);

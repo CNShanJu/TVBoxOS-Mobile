@@ -17,14 +17,19 @@ def defaultColors = [
         bg_component   : '#F9FAFB',
         text_main      : '#050505',
         text_highlight : '#1F2937',
-        nav_text_normal: '#CCCCCC'
+        nav_text_normal: '#CCCCCC',
+        // 下载状态色:进行中(蓝) / 完成(绿)
+        download_active: '#037AFF',
+        download_done  : '#08CA2C'
 ]
 def defaultNightColors = [
         bg_body        : '#141218',
         bg_component   : '#212121',
         text_main      : '#FFFFFF',
         text_highlight : '#E5E7EB',
-        nav_text_normal: '#7A7A7A'
+        nav_text_normal: '#7A7A7A',
+        download_active: '#037AFF',
+        download_done  : '#08CA2C'
 ]
 
 static def readColors(def file, def defaults) {

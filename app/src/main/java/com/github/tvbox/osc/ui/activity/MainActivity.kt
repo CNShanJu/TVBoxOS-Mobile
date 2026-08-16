@@ -6,7 +6,7 @@ import androidx.fragment.app.Fragment
 import androidx.fragment.app.FragmentPagerAdapter
 import androidx.viewpager.widget.ViewPager.SimpleOnPageChangeListener
 import com.blankj.utilcode.util.ActivityUtils
-import com.blankj.utilcode.util.ToastUtils
+import com.github.tvbox.osc.util.AppBubble
 import com.github.tvbox.osc.base.BaseVbActivity
 import com.github.tvbox.osc.constant.IntentKey
 import com.github.tvbox.osc.databinding.ActivityMainBinding
@@ -75,7 +75,7 @@ class MainActivity : BaseVbActivity<ActivityMainBinding>() {
 
     private fun confirmExit() {
         if (System.currentTimeMillis() - exitTime > 2000) {
-            ToastUtils.showShort("再按一次退出程序")
+            AppBubble.toast("再按一次退出程序")
             exitTime = System.currentTimeMillis()
         } else {
             ActivityUtils.finishAllActivities(true)

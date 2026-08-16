@@ -3,7 +3,7 @@ package com.github.tvbox.osc.ui.activity
 import android.content.Intent
 import android.view.View
 import android.widget.TextView
-import com.blankj.utilcode.util.ToastUtils
+import com.github.tvbox.osc.util.AppBubble
 import com.github.tvbox.osc.R
 import com.github.tvbox.osc.base.BaseVbActivity
 import com.github.tvbox.osc.databinding.ActivityLogBinding
@@ -33,12 +33,12 @@ class LogActivity : BaseVbActivity<ActivityLogBinding>() {
         mBinding.btnCopy.setOnClickListener {
             val text = mBinding.tvContent.text?.toString() ?: ""
             if (text.isEmpty()) {
-                ToastUtils.showShort("暂无内容可复制")
+                AppBubble.toast("暂无内容可复制")
                 return@setOnClickListener
             }
             val cm = getSystemService(CLIPBOARD_SERVICE) as android.content.ClipboardManager
             cm.setPrimaryClip(android.content.ClipData.newPlainText("运行日志", text))
-            ToastUtils.showShort("已复制当前日志内容")
+            AppBubble.toast("已复制当前日志内容")
         }
         // 日期选择:点击弹出底部抽屉
         mBinding.llDatePicker.setOnClickListener { showDatePicker() }
@@ -77,7 +77,7 @@ class LogActivity : BaseVbActivity<ActivityLogBinding>() {
     /** 底部抽屉选择日期 */
     private fun showDatePicker() {
         if (dayFiles.isEmpty()) {
-            ToastUtils.showShort("暂无日志")
+            AppBubble.toast("暂无日志")
             return
         }
         val display = Array(dayFiles.size) { i ->
@@ -122,14 +122,14 @@ class LogActivity : BaseVbActivity<ActivityLogBinding>() {
                 AppLog.clearAll()
                 selectedFile = null
                 refreshDays()
-                ToastUtils.showShort("已清空")
+                AppBubble.toast("已清空")
             }.show()
     }
 
     private fun export() {
         val file = AppLog.exportAll()
         if (file == null) {
-            ToastUtils.showShort("暂无日志可导出")
+            AppBubble.toast("暂无日志可导出")
             return
         }
         try {
@@ -145,7 +145,7 @@ class LogActivity : BaseVbActivity<ActivityLogBinding>() {
             startActivity(Intent.createChooser(intent, "导出运行日志"))
         } catch (th: Throwable) {
             th.printStackTrace()
-            ToastUtils.showShort("导出失败:" + th.message)
+            AppBubble.toast("导出失败:" + th.message)
         }
     }
 }

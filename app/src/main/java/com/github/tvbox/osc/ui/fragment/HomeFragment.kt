@@ -14,7 +14,7 @@ import androidx.recyclerview.widget.DiffUtil
 import com.angcyo.tablayout.delegate.ViewPager1Delegate.Companion.install
 import com.blankj.utilcode.util.ConvertUtils
 import com.blankj.utilcode.util.ScreenUtils
-import com.blankj.utilcode.util.ToastUtils
+import com.github.tvbox.osc.util.AppBubble
 import com.github.tvbox.osc.R
 import com.github.tvbox.osc.api.ApiConfig
 import com.github.tvbox.osc.api.ApiConfig.LoadConfigCallback
@@ -88,7 +88,7 @@ class HomeFragment : BaseVbFragment<FragmentHomeBinding>() {
             if (dataInitOk && jarInitOk) {
                 showSiteSwitch()
             } else {
-                ToastUtils.showShort("数据源未加载，长按刷新或切换订阅")
+                AppBubble.toast("数据源未加载，长按刷新或切换订阅")
             }
         }
         mBinding.nameContainer.setOnLongClickListener {
@@ -97,7 +97,7 @@ class HomeFragment : BaseVbFragment<FragmentHomeBinding>() {
         }
         mBinding.search.setOnClickListener {
             if (!hasSubscription()) {
-                ToastUtils.showShort("请先设置订阅")
+                AppBubble.toast("请先设置订阅")
                 return@setOnClickListener
             }
             jumpActivity(FastSearchActivity::class.java)
@@ -211,7 +211,7 @@ class HomeFragment : BaseVbFragment<FragmentHomeBinding>() {
                     override fun error(msg: String) {
                         jarInitOk = true
                         mHandler.post {
-                            ToastUtils.showShort("更新订阅失败")
+                            AppBubble.toast("更新订阅失败")
                             initData()
                         }
                     }
@@ -392,7 +392,7 @@ class HomeFragment : BaseVbFragment<FragmentHomeBinding>() {
             }, sites, sites.indexOf(ApiConfig.get().homeSourceBean))
             dialog.show()
         } else {
-            ToastUtils.showLong("暂无可用数据源")
+            AppBubble.toastLong("暂无可用数据源")
         }
     }
 

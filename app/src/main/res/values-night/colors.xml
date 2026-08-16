@@ -37,6 +37,7 @@
     <color name="md_background">@color/bg_body</color>
     <color name="md_on_background">#E6E0E9</color>
     <color name="md_outline">#6B7280</color>
-    <!-- ============ Material 3 色板结束 ============ -->
+    <!-- 开关轨道-关闭态(浅色主题浅灰;深色主题深灰,避免深色主题下白底白点) -->
+    <color name="switch_track_off">#3C3C46</color>
 
 </resources>

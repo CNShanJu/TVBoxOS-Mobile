@@ -5,7 +5,7 @@ import android.text.TextUtils
 import android.view.View
 import com.blankj.utilcode.util.ClipboardUtils
 import com.blankj.utilcode.util.LogUtils
-import com.blankj.utilcode.util.ToastUtils
+import com.github.tvbox.osc.util.AppBubble
 import com.chad.library.adapter.base.BaseQuickAdapter
 import com.github.tvbox.osc.R
 import com.github.tvbox.osc.base.BaseVbActivity
@@ -71,7 +71,7 @@ class SubscriptionActivity : BaseVbActivity<ActivitySubscriptionBinding>() {
                             ) { //只有addSub2List用到,看注释,单线路才生效,其余方法仅作为参数继续传递
                                 for (item in mSubscriptions) {
                                     if (item.url == url) {
-                                        ToastUtils.showLong("订阅地址与" + item.name + "相同")
+                                        AppBubble.toastLong("订阅地址与" + item.name + "相同")
                                         return
                                     }
                                 }
@@ -97,7 +97,7 @@ class SubscriptionActivity : BaseVbActivity<ActivitySubscriptionBinding>() {
             LogUtils.d("删除订阅")
             if (view.id == R.id.iv_del) {
                 if (mSubscriptions.get(position).isChecked) {
-                    ToastUtils.showShort("不能删除当前使用的订阅")
+                    AppBubble.toast("不能删除当前使用的订阅")
                     return@setOnItemChildClickListener
                 }
                 XPopup.Builder(this@SubscriptionActivity)
@@ -156,7 +156,7 @@ class SubscriptionActivity : BaseVbActivity<ActivitySubscriptionBinding>() {
                                         { text ->
                                             if (!TextUtils.isEmpty(text)) {
                                                 if (text.trim { it <= ' ' }.length > 8) {
-                                                    ToastUtils.showShort("不要过长,不方便记忆")
+                                                    AppBubble.toast("不要过长,不方便记忆")
                                                 } else {
                                                     item.name = text.trim { it <= ' ' }
                                                     mSubscriptionAdapter.notifyItemChanged(position)
@@ -169,7 +169,7 @@ class SubscriptionActivity : BaseVbActivity<ActivitySubscriptionBinding>() {
                             }
                             2 -> {
                                 ClipboardUtils.copyText(mSubscriptions.get(position).url)
-                                ToastUtils.showLong("已复制")
+                                AppBubble.toastLong("已复制")
                             }
                         }
                     }.show()
@@ -188,20 +188,20 @@ class SubscriptionActivity : BaseVbActivity<ActivitySubscriptionBinding>() {
                             if (all) {
                                 pickFile(checked)
                             } else {
-                                ToastUtils.showLong("部分权限未正常授予,请授权")
+                                AppBubble.toastLong("部分权限未正常授予,请授权")
                             }
                         }
 
                         override fun onDenied(permissions: List<String>, never: Boolean) {
                             if (never) {
-                                ToastUtils.showLong("读写文件权限被永久拒绝，请手动授权")
+                                AppBubble.toastLong("读写文件权限被永久拒绝，请手动授权")
                                 // 如果是被永久拒绝就跳转到应用权限系统设置页面
                                 XXPermissions.startPermissionActivity(
                                     this@SubscriptionActivity,
                                     permissions
                                 )
                             } else {
-                                ToastUtils.showShort("获取权限失败")
+                                AppBubble.toast("获取权限失败")
                                 showPermissionTipPopup(checked)
                             }
                         }
@@ -227,7 +227,7 @@ class SubscriptionActivity : BaseVbActivity<ActivitySubscriptionBinding>() {
                     pathFile.absolutePath.replace("/storage/emulated/0", "clan://localhost")
                 for (item in mSubscriptions) {
                     if (item.url == clanPath) {
-                        ToastUtils.showLong("订阅地址与" + item.name + "相同")
+                        AppBubble.toastLong("订阅地址与" + item.name + "相同")
                         return@Result
                     }
                 }
@@ -255,7 +255,7 @@ class SubscriptionActivity : BaseVbActivity<ActivitySubscriptionBinding>() {
                             val storeHouse = json["storeHouse"]
                             if (urls != null && urls.isJsonArray) { // 多线路
                                 if (checked) {
-                                    ToastUtils.showLong("多条线路请主动选择")
+                                    AppBubble.toastLong("多条线路请主动选择")
                                 }
                                 val urlList = urls.asJsonArray
                                 if (urlList != null && urlList.size() > 0 && urlList[0].isJsonObject
@@ -310,11 +310,11 @@ class SubscriptionActivity : BaseVbActivity<ActivitySubscriptionBinding>() {
 
                     override fun onError(e: Throwable) {
                         dismissLoadingDialog()
-                        ToastUtils.showLong("订阅失败,请检查地址或网络状态")
+                        AppBubble.toastLong("订阅失败,请检查地址或网络状态")
                     }
                 })
         } else {
-            ToastUtils.showShort("订阅格式不正确")
+            AppBubble.toast("订阅格式不正确")
         }
     }
 
