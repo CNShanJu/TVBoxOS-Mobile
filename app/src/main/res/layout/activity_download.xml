@@ -9,7 +9,8 @@
         android:id="@+id/title_bar"
         android:layout_width="match_parent"
         android:layout_height="60dp"
-        app:title="下载" />
+        app:title="下载管理"
+        app:rightIcon="@drawable/ic_setting" />
 
     <FrameLayout
         android:id="@+id/container"

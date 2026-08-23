@@ -55,6 +55,8 @@ public class DownloadTask {
     public String episodeRawUrl;
     /** 集数名(如 第1集_720P),记录到分段信息txt */
     public String episodeName;
+    /** 统一剧集标识:sourceKey|vodId|playFlag|playIndex(见 DownloadCore.buildEpisodeId) */
+    public String episodeId;
     /** 进程重启后首次启动前是否需要重新解析地址(transient) */
     public transient boolean needReResolve = false;
     /** 是否因网络错误失败(网络恢复后自动续传,transient) */

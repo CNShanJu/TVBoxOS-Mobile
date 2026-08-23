@@ -9,7 +9,42 @@
     android:paddingHorizontal="12dp"
     android:paddingVertical="10dp">
 
-    <!-- 标题行:两个 tab + 最右侧设置 -->
+    <!-- 顶部信息条:可用存储 + 保存位置(点击跳系统文件管理器浏览保存目录) -->
+    <LinearLayout
+        android:id="@+id/ll_storage_bar"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingVertical="4dp">
+
+        <TextView
+            android:id="@+id/tv_storage"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:ellipsize="end"
+            android:maxLines="1"
+            android:textColor="@color/text_sub_foreground"
+            android:textSize="12sp" />
+
+        <TextView
+            android:id="@+id/tv_save_path"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:ellipsize="end"
+            android:maxLines="1"
+            android:textColor="@color/text_highlight"
+            android:textSize="12sp" />
+    </LinearLayout>
+
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:layout_marginBottom="2dp"
+        android:background="@color/gray_darker_press_alpha" />
+
+    <!-- Tab 行:正在下载 / 下载完成(加粗+颜色区分选中态,无分隔线堆叠) -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -38,23 +73,7 @@
             android:text="下载完成"
             android:textColor="@color/text_sub_foreground"
             android:textSize="16sp" />
-
-        <androidx.appcompat.widget.AppCompatImageView
-            android:id="@+id/iv_settings"
-            android:layout_width="34dp"
-            android:layout_height="34dp"
-            android:layout_marginStart="4dp"
-            android:padding="2dp"
-            android:scaleType="centerCrop"
-            android:src="@drawable/ic_setting"
-            android:tint="@color/text_foreground" />
     </LinearLayout>
-
-    <View
-        android:layout_width="match_parent"
-        android:layout_height="1dp"
-        android:layout_marginBottom="8dp"
-        android:background="@color/gray_darker_press_alpha" />
 
     <!-- 全部暂停 / 全部开始:仅"正在下载"根级且有任务时显示 -->
     <LinearLayout
@@ -179,14 +198,5 @@
             android:textColor="@color/colorPrimary" />
 
     </LinearLayout>
-
-    <TextView
-        android:id="@+id/tv_storage"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:gravity="center"
-        android:paddingTop="8dp"
-        android:textColor="@color/text_sub_foreground"
-        android:textSize="11sp" />
 
 </LinearLayout>

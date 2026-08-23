@@ -61,6 +61,8 @@ import com.github.tvbox.osc.ui.dialog.VideoDetailDialog;
 import com.github.tvbox.osc.ui.fragment.PlayFragment;
 import com.github.tvbox.osc.ui.widget.LinearSpacingItemDecoration;
 import com.github.tvbox.osc.util.BroadcastUtils;
+import com.github.tvbox.osc.util.DownloadConfig;
+import com.github.tvbox.osc.util.DownloadCore;
 import com.github.tvbox.osc.util.DownloadManager;
 import com.github.tvbox.osc.ui.activity.DownloadActivity;
 import com.github.tvbox.osc.util.FastClickCheckUtil;
@@ -985,6 +987,7 @@ public class DetailActivity extends BaseVbActivity<ActivityDetailBinding> {
 
     /**
      * 打开"选择下载剧集"弹窗:网格多选 + 开始下载/下载管理。
+     * 不要求必须先播放成功(未播放时所有集统一走后台解析);全屏时先退出全屏再弹窗,避免小屏叠加。
      */
     public void showDownloadSeriesDialog() {
         if (vodInfo == null || vodInfo.seriesMap.get(vodInfo.playFlag) == null
@@ -992,10 +995,9 @@ public class DetailActivity extends BaseVbActivity<ActivityDetailBinding> {
             AppBubble.toast("资源异常,请稍后重试");
             return;
         }
-        // 必须视频成功播放过才能下载(当前集才有解析后的可用地址)
-        if (playFragment == null || playFragment.getController() == null || !playFragment.getController().hasPlayedOnce) {
-            AppBubble.toast("视频播放成功后才能下载");
-            return;
+        // 全屏播放下发起下载:先退出全屏回到详情页布局,再弹窗(手机小屏上避免播放器与抽屉叠加)
+        if (fullWindows) {
+            toggleFullPreview();
         }
         // 拷贝一份选集,弹窗内的选中状态不影响原选集的选中态
         List<VodInfo.VodSeries> copy = new ArrayList<>();
@@ -1006,12 +1008,15 @@ public class DetailActivity extends BaseVbActivity<ActivityDetailBinding> {
             c.selected = false;
             copy.add(c);
         }
-        // 基于 来源+剧名+剧集 标记下载状态:0=可下载,1=已下载,2=下载中/排队(弹窗内置灰不可重复选)
+        // 基于 统一剧集标识(EpisodeId) 标记下载状态:0=可下载,1=已下载,2=下载中/排队(弹窗内置灰不可重复选)
         String sourceName = getDownloadSourceName();
         String vodName = getDownloadVodName();
+        String sourceKey = vodInfo.sourceKey;
+        String vodId = vodInfo.id;
+        String playFlag = vodInfo.playFlag;
         int[] states = new int[copy.size()];
         for (int i = 0; i < copy.size(); i++) {
-            states[i] = DownloadManager.get().getEpisodeDownloadState(sourceName, vodName, copy.get(i).name);
+            states[i] = DownloadCore.getEpisodeState(sourceKey, vodId, playFlag, i, sourceName, vodName, copy.get(i).name);
         }
         new XPopup.Builder(this)
                 .isViewMode(true)
@@ -1040,8 +1045,8 @@ public class DetailActivity extends BaseVbActivity<ActivityDetailBinding> {
             AppBubble.toast("请先选择要下载的剧集");
             return;
         }
-        // 网络控制:默认仅 WiFi 下载;移动网络下强提醒流量风险,确认后才继续
-        if (DownloadManager.get().isWifiOnly() && DownloadManager.isMobileNetwork()) {
+        // 网络控制:默认仅 WiFi 下载;移动网络下强提醒流量风险,确认后才继续(统一走 DownloadConfig)
+        if (DownloadConfig.isWifiOnly() && DownloadConfig.isMobileNetwork()) {
             new XPopup.Builder(this)
                     .isDarkTheme(Utils.isDarkTheme())
                     .asConfirm("流量提醒", "当前为移动网络,继续下载将消耗手机流量,是否继续?",
@@ -1062,6 +1067,8 @@ public class DetailActivity extends BaseVbActivity<ActivityDetailBinding> {
         final String vodName = getDownloadVodName();
         final String sourceKey = vodInfo.sourceKey;
         final String playFlag = vodInfo.playFlag;
+        final String vodId = vodInfo.id;
+        final int playIndex = vodInfo.playIndex;
         final String currentName = seriesList.get(vodInfo.playIndex).name;
         // 当前播放视频的分辨率标签:取宽高中的高(如 1280x720→720P;1080→1080P;1440→2K;2160+→4K)
         final String resLabel = (playFragment != null && playFragment.getPlayer() != null)
@@ -1093,7 +1100,16 @@ public class DetailActivity extends BaseVbActivity<ActivityDetailBinding> {
                         && !s.name.equals(vodName) && !containsResolution(s.name)) {
                     epName = s.name + "_" + resLabel;
                 }
-                boolean ok = DownloadManager.get().enqueue(url, sourceKey, playFlag, s.url, sourceName, vodName, epName);
+                // 统一剧集标识(与详情页选集一一对应,精确去重):按集名在完整选集列表中的位置定位索引
+                int idx = 0;
+                for (int i = 0; i < seriesList.size(); i++) {
+                    if (seriesList.get(i).name != null && seriesList.get(i).name.equals(s.name)) {
+                        idx = i;
+                        break;
+                    }
+                }
+                String episodeId = DownloadCore.buildEpisodeId(sourceKey, vodId, playFlag, idx);
+                boolean ok = DownloadManager.get().enqueue(url, sourceKey, playFlag, s.url, episodeId, sourceName, vodName, epName);
                 Log.i("TVBox-Download", "  - " + s.name + " enqueue=" + ok + " 文件名=" + epName + " url=" + url);
                 if (ok) {
                     added++;

@@ -1,6 +1,8 @@
 package com.github.tvbox.osc.ui.fragment;
 
+import android.content.Intent;
 import android.content.res.ColorStateList;
+import android.net.Uri;
 import android.os.Bundle;
 import android.os.StatFs;
 import android.util.Log;
@@ -12,6 +14,7 @@ import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.core.content.ContextCompat;
+import androidx.core.content.FileProvider;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
@@ -32,6 +35,8 @@ import com.github.tvbox.osc.event.DownloadEvent;
 import com.github.tvbox.osc.ui.activity.LocalPlayActivity;
 import com.github.tvbox.osc.ui.adapter.LocalVideoAdapter;
 import com.github.tvbox.osc.ui.dialog.DeleteDownloadDialog;
+import com.github.tvbox.osc.util.DownloadConfig;
+import com.github.tvbox.osc.util.DownloadCore;
 import com.github.tvbox.osc.util.DownloadManager;
 import com.github.tvbox.osc.util.Utils;
 import com.lxj.xpopup.XPopup;
@@ -79,37 +84,29 @@ public class DownloadFragment extends BaseVbFragment<FragmentDownloadBinding> {
         mBinding.tvTabDownloading.setOnClickListener(v -> switchTab(TAB_DOWNLOADING));
         mBinding.tvTabDone.setOnClickListener(v -> switchTab(TAB_DONE));
 
-        // 设置:右侧设置 icon,内含下载并发/仅WiFi等选项(参考播放页设置入口)
-        mBinding.ivSettings.setOnClickListener(v -> {
-            boolean wifiOnly = DownloadManager.get().isWifiOnly();
-            String[] options = new String[]{
-                    "下载并发（当前 " + DownloadManager.get().getMaxConcurrent() + "）",
-                    "仅 WiFi 下载（" + (wifiOnly ? "开" : "关") + "）"
-            };
-            new XPopup.Builder(mContext)
-                    .asBottomList("下载设置", options, (position, text) -> {
-                        if (position == 0) {
-                            String[] concurrent = new String[]{"并发 1", "并发 2", "并发 3", "并发 4", "并发 5"};
-                            new XPopup.Builder(mContext)
-                                    .asBottomList("选择下载并发", concurrent, (p, t) ->
-                                            DownloadManager.get().setMaxConcurrent(p + 1))
-                                    .show();
-                        } else {
-                            boolean newVal = !DownloadManager.get().isWifiOnly();
-                            DownloadManager.get().setWifiOnly(newVal);
-                            AppBubble.toast("仅 WiFi 下载已" + (newVal ? "开启" : "关闭"));
-                        }
-                    })
-                    .show();
+        // 顶部信息条:保存位置(点击跳系统文件管理器浏览保存目录)
+        mBinding.tvSavePath.setOnClickListener(v -> {
+            try {
+                File dir = DownloadConfig.getSaveDir();
+                if (!dir.exists()) dir.mkdirs();
+                Uri uri = FileProvider.getUriForFile(mContext,
+                        mContext.getPackageName() + ".fileprovider", dir);
+                Intent intent = new Intent(Intent.ACTION_VIEW);
+                intent.setDataAndType(uri, "resource/folder");
+                intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                mContext.startActivity(intent);
+            } catch (Throwable th) {
+                AppBubble.toast("无法打开保存目录");
+            }
         });
 
         // 全部暂停 / 全部开始:仅"正在下载"根级且有任务时显示(见 updateActionBar)
         mBinding.btnPauseAll.setOnClickListener(v -> {
-            DownloadManager.get().pauseAll();
+            DownloadCore.pauseAll();
             AppBubble.toast("已全部暂停");
         });
         mBinding.btnStartAll.setOnClickListener(v -> {
-            DownloadManager.get().startAll();
+            DownloadCore.startAll();
             AppBubble.toast("已全部开始");
         });
 
@@ -205,7 +202,14 @@ public class DownloadFragment extends BaseVbFragment<FragmentDownloadBinding> {
                     DownloadManager.get().pause(t);
                 }
             } else if (view.getId() == R.id.btn_delete) {
-                DownloadManager.get().remove(t);
+                // 删除前先确认(弹窗内勾选"同时删除文件"后才执行删除,确认前不动任何数据/文件)
+                new XPopup.Builder(mContext)
+                        .isDarkTheme(Utils.isDarkTheme())
+                        .asCustom(new DeleteDownloadDialog(mContext, deleteFiles -> {
+                            DownloadCore.remove(t, deleteFiles);
+                            refresh();
+                        }))
+                        .show();
             }
         });
         // 注意:不能在这里 setAdapter(downloadingAdapter),否则会顶掉上面的文件夹级适配器,
@@ -416,15 +420,17 @@ public class DownloadFragment extends BaseVbFragment<FragmentDownloadBinding> {
         updateStorageText();
     }
 
-    /** 刷新底部"可用存储"提示 */
+    /** 刷新底部"可用存储"与"保存位置"提示 */
     private void updateStorageText() {
         try {
-            File dir = DownloadManager.getSaveDir();
+            File dir = DownloadConfig.getSaveDir();
             StatFs stat = new StatFs(dir.getAbsolutePath());
             long free = stat.getAvailableBytes();
             mBinding.tvStorage.setText("可用存储 " + formatSize(free));
+            mBinding.tvSavePath.setText("保存: " + dir.getAbsolutePath());
         } catch (Throwable th) {
             mBinding.tvStorage.setText("");
+            mBinding.tvSavePath.setText("");
         }
     }
 
@@ -559,12 +565,13 @@ public class DownloadFragment extends BaseVbFragment<FragmentDownloadBinding> {
     }
 
     /**
-     * 删除下载:找到对应任务记录移除;deleteFiles=true 连本地文件一起删,false 只删记录保留文件
+     * 删除下载:找到对应任务记录移除;deleteFiles=true 连本地文件一起删,false 只删记录保留文件。
+     * 仅在用户确认删除后调用(DeleteDownloadDialog 确认),确认前不动任何数据/文件。
      */
     private void removeTaskAndFile(String path, boolean deleteFiles) {
-        for (DownloadTask t : DownloadManager.get().getTasks()) {
+        for (DownloadTask t : DownloadCore.getTasks()) {
             if (t.savePath != null && t.savePath.equals(path)) {
-                DownloadManager.get().remove(t, deleteFiles);
+                DownloadCore.remove(t, deleteFiles);
                 return;
             }
         }

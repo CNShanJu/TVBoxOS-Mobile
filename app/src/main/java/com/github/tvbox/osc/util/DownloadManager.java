@@ -273,7 +273,15 @@ public class DownloadManager {
      * 新增下载任务(简化入口,不含重新解析信息)
      */
     public boolean enqueue(String url, String sourceName, String vodName, String episodeName) {
-        return enqueue(url, null, null, null, sourceName, vodName, episodeName);
+        return enqueue(url, null, null, null, null, sourceName, vodName, episodeName);
+    }
+
+    /**
+     * 新增下载任务(含 EpisodeId 统一剧集标识)
+     */
+    public boolean enqueue(String url, String sourceKey, String playFlag, String episodeRawUrl,
+                           String episodeId, String sourceName, String vodName, String episodeName) {
+        return enqueueInternal(url, sourceKey, playFlag, episodeRawUrl, episodeId, sourceName, vodName, episodeName);
     }
 
     /**
@@ -290,6 +298,11 @@ public class DownloadManager {
      */
     public boolean enqueue(String url, String sourceKey, String playFlag, String episodeRawUrl,
                            String sourceName, String vodName, String episodeName) {
+        return enqueueInternal(url, sourceKey, playFlag, episodeRawUrl, null, sourceName, vodName, episodeName);
+    }
+
+    private boolean enqueueInternal(String url, String sourceKey, String playFlag, String episodeRawUrl,
+                                    String episodeId, String sourceName, String vodName, String episodeName) {
         String src = sanitize(sourceName);
         if (src.isEmpty()) src = "未分类";
         String vn = sanitize(vodName);
@@ -329,6 +342,10 @@ public class DownloadManager {
         }
         synchronized (tasks) {
             for (DownloadTask t : tasks) {
+                if (episodeId != null && !episodeId.isEmpty() && episodeId.equals(t.episodeId)) {
+                    Log.i("TVBox-Download", "enqueue 拒绝:任务已存在(episodeId) " + finalFile.getAbsolutePath());
+                    return false; // 任务已存在(任意状态),按统一剧集标识精确去重
+                }
                 if (t.savePath != null && t.savePath.equals(finalFile.getAbsolutePath())) {
                     Log.i("TVBox-Download", "enqueue 拒绝:任务已存在 " + finalFile.getAbsolutePath());
                     return false; // 任务已存在(任意状态)
@@ -345,6 +362,7 @@ public class DownloadManager {
         t.sourceKey = sourceKey;
         t.playFlag = playFlag;
         t.episodeRawUrl = episodeRawUrl;
+        t.episodeId = episodeId;
         t.episodeName = episodeName;
         t.sourceName = src;
         t.vodName = vn;
