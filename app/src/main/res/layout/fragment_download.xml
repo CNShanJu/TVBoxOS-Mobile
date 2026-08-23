@@ -9,33 +9,35 @@
     android:paddingHorizontal="12dp"
     android:paddingVertical="10dp">
 
-    <!-- 顶部信息条:可用存储 + 保存位置(点击跳系统文件管理器浏览保存目录) -->
+    <!-- 顶部当前位置导航:进入剧集组/文件夹后显示,点按返回上一级(原可用内存信息条位置) -->
     <LinearLayout
-        android:id="@+id/ll_storage_bar"
+        android:id="@+id/ll_nav"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:foreground="?selectableItemBackground"
         android:gravity="center_vertical"
         android:orientation="horizontal"
-        android:paddingVertical="4dp">
+        android:paddingHorizontal="4dp"
+        android:paddingVertical="6dp"
+        android:visibility="gone">
+
+        <ImageView
+            android:id="@+id/iv_nav_back"
+            android:layout_width="20dp"
+            android:layout_height="20dp"
+            android:src="@drawable/ic_back"
+            app:tint="@color/text_foreground" />
 
         <TextView
-            android:id="@+id/tv_storage"
+            android:id="@+id/tv_nav_path"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
             android:layout_weight="1"
             android:ellipsize="end"
             android:maxLines="1"
-            android:textColor="@color/text_sub_foreground"
-            android:textSize="12sp" />
-
-        <TextView
-            android:id="@+id/tv_save_path"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:ellipsize="end"
-            android:maxLines="1"
-            android:textColor="@color/text_highlight"
-            android:textSize="12sp" />
+            android:textColor="@color/text_foreground"
+            android:textSize="13sp" />
     </LinearLayout>
 
     <View
@@ -75,75 +77,6 @@
             android:textSize="16sp" />
     </LinearLayout>
 
-    <!-- 全部暂停 / 全部开始:仅"正在下载"根级且有任务时显示 -->
-    <LinearLayout
-        android:id="@+id/ll_actions"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:paddingBottom="8dp"
-        android:visibility="gone">
-
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/btn_pause_all"
-            style="@style/mbOutline"
-            android:layout_width="0dp"
-            android:layout_height="36dp"
-            android:layout_marginRight="8dp"
-            android:layout_weight="1"
-            android:text="全部暂停" />
-
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/btn_start_all"
-            style="@style/mbOutline"
-            android:layout_width="0dp"
-            android:layout_height="36dp"
-            android:layout_weight="1"
-            android:text="全部开始" />
-    </LinearLayout>
-
-    <!-- 当前位置导航:进入剧集文件夹后显示,点按返回上一级 -->
-    <LinearLayout
-        android:id="@+id/ll_nav"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:visibility="gone">
-
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="44dp"
-            android:foreground="?selectableItemBackground"
-            android:gravity="center_vertical"
-            android:orientation="horizontal"
-            android:paddingHorizontal="12dp">
-
-            <ImageView
-                android:id="@+id/iv_nav_back"
-                android:layout_width="22dp"
-                android:layout_height="22dp"
-                android:src="@drawable/ic_back"
-                app:tint="@color/text_foreground" />
-
-            <TextView
-                android:id="@+id/tv_nav_path"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_marginStart="10dp"
-                android:layout_weight="1"
-                android:ellipsize="end"
-                android:maxLines="1"
-                android:textColor="@color/text_foreground"
-                android:textSize="13sp" />
-        </LinearLayout>
-
-        <View
-            android:layout_width="match_parent"
-            android:layout_height="1dp"
-            android:layout_marginBottom="8dp"
-            android:background="@color/gray_darker_press_alpha" />
-    </LinearLayout>
-
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/rv_downloading"
         android:layout_width="match_parent"
@@ -159,44 +92,100 @@
         android:visibility="gone"
         app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager" />
 
+    <!-- 长按多选工具条:全部暂停/全部开始(仅下载中)+ 全选/删除/取消全选;删除文字启用态用红色(深浅主题均清晰) -->
     <LinearLayout
         android:id="@+id/ll_menu"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="horizontal"
+        android:orientation="vertical"
         android:visibility="gone">
 
-        <TextView
-            android:id="@+id/tv_all_check"
-            android:layout_width="0dp"
-            android:layout_height="48dp"
-            android:layout_weight="1"
-            android:foreground="?selectableItemBackgroundBorderless"
-            android:gravity="center"
-            android:text="全选"
-            android:textColor="@color/colorPrimary" />
+        <LinearLayout
+            android:id="@+id/ll_toolbar_actions"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:paddingBottom="6dp"
+            android:visibility="gone">
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btn_pause_all"
+                style="@style/mbOutline"
+                android:layout_width="0dp"
+                android:layout_height="36dp"
+                android:layout_marginRight="8dp"
+                android:layout_weight="1"
+                android:minWidth="0dp"
+                android:paddingHorizontal="4dp"
+                android:text="全部暂停" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btn_start_all"
+                style="@style/mbOutline"
+                android:layout_width="0dp"
+                android:layout_height="36dp"
+                android:layout_weight="1"
+                android:minWidth="0dp"
+                android:paddingHorizontal="4dp"
+                android:text="全部开始" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal">
+
+            <TextView
+                android:id="@+id/tv_all_check"
+                android:layout_width="0dp"
+                android:layout_height="44dp"
+                android:layout_weight="1"
+                android:foreground="?selectableItemBackgroundBorderless"
+                android:gravity="center"
+                android:text="全选"
+                android:textColor="@color/colorPrimary" />
+
+            <TextView
+                android:id="@+id/tv_delete"
+                android:layout_width="0dp"
+                android:layout_height="44dp"
+                android:layout_weight="1"
+                android:enabled="false"
+                android:foreground="?selectableItemBackgroundBorderless"
+                android:gravity="center"
+                android:text="删除"
+                android:textColor="@color/disable_text" />
+
+            <TextView
+                android:id="@+id/tv_cancel_all_checked"
+                android:layout_width="0dp"
+                android:layout_height="44dp"
+                android:layout_weight="1"
+                android:foreground="?selectableItemBackgroundBorderless"
+                android:gravity="center"
+                android:text="取消全选"
+                android:textColor="@color/colorPrimary" />
+        </LinearLayout>
+    </LinearLayout>
+
+    <!-- 底部信息条:可用存储 / Wi-Fi / 并发数(原顶部信息条移下,去掉保存路径) -->
+    <LinearLayout
+        android:id="@+id/ll_storage_bottom"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingTop="8dp">
 
         <TextView
-            android:id="@+id/tv_delete"
+            android:id="@+id/tv_storage"
             android:layout_width="0dp"
-            android:layout_height="48dp"
+            android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:enabled="false"
-            android:foreground="?selectableItemBackgroundBorderless"
-            android:gravity="center"
-            android:text="删除"
-            android:textColor="@color/disable_text" />
-
-        <TextView
-            android:id="@+id/tv_cancel_all_checked"
-            android:layout_width="0dp"
-            android:layout_height="48dp"
-            android:layout_weight="1"
-            android:foreground="?selectableItemBackgroundBorderless"
-            android:gravity="center"
-            android:text="取消全选"
-            android:textColor="@color/colorPrimary" />
-
+            android:ellipsize="end"
+            android:maxLines="1"
+            android:textColor="@color/text_sub_foreground"
+            android:textSize="12sp" />
     </LinearLayout>
 
 </LinearLayout>

@@ -17,8 +17,9 @@ import org.jetbrains.annotations.NotNull;
  * 删除下载确认弹窗(下载完成列表用):勾选"同时删除本地文件"。
  * 不勾 = 只删除记录,保留本地文件;勾选 = 记录与本地文件一起删除。
  * <p>
- * 背景/勾选行配色由代码按 app 主题设置(浅色/深色)直接指定,不依赖资源限定符
- * (后者只跟随系统深色模式,与 app 内主题设置可能不同步)。
+ * 弹窗背景由代码按 app 主题设置(浅色/深色)直接指定,不依赖资源限定符
+ * (后者只跟随系统深色模式,与 app 内主题设置可能不同步);勾选行无背景无涟漪,
+ * 复选框用默认样式(与下载完成长按多选一致)。
  */
 public class DeleteDownloadDialog extends CenterPopupView {
 
@@ -49,12 +50,7 @@ public class DeleteDownloadDialog extends CenterPopupView {
         bg.setColor(dark ? 0xFF2A2D32 : 0xFFFFFFFF);
         bg.setCornerRadius(dp2px(20));
         getPopupImplView().setBackground(bg);
-        // 勾选行背景:主题组件色(浅色浅灰 / 深色深灰),圆角;不加涟漪(避免圆形气泡偏移)
-        GradientDrawable rowBg = new GradientDrawable();
-        rowBg.setColor(dark ? 0xFF212121 : 0xFFEBEBF6);
-        rowBg.setCornerRadius(dp2px(12));
-        llCheck.setBackground(rowBg);
-        // 点整行切换勾选
+        // 点整行切换勾选(勾选行无背景/无涟漪,复选框用默认样式与下载完成多选一致)
         llCheck.setOnClickListener(v -> cb.setChecked(!cb.isChecked()));
         findViewById(R.id.tv_cancel).setOnClickListener(v -> dismiss());
         findViewById(R.id.tv_ok).setOnClickListener(v -> {

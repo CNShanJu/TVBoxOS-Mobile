@@ -31,9 +31,11 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -77,6 +79,14 @@ public class DownloadManager {
     private final Object persistLock = new Object();
     private List<DownloadTask> pendingSnapshot = null;
     private boolean writeScheduled = false;
+    /** 剧集海报下载:单线程串行,避免并发写同一文件;私有目录不入系统相册 */
+    private final ExecutorService posterExecutor = Executors.newSingleThreadExecutor(r -> {
+        Thread t = new Thread(r, "tvbox-poster");
+        t.setDaemon(true);
+        return t;
+    });
+    /** 正在拉取的海报文件(去重,避免列表多次刷新重复下载) */
+    private final Set<String> posterFetching = new HashSet<>();
     /** 每个任务当前活动的 HTTP 响应,用于暂停/删除时关闭对应连接 */
     private final Map<String, Response> activeResponses = new ConcurrentHashMap<>();
     /** 下载专用客户端:超时比播放请求长(慢速源/本地代理链不易超时) */
@@ -403,6 +413,8 @@ public class DownloadManager {
         persist();
         notifyChanged();
         wakeWorker();
+        // 触发时顺带把剧集海报下载到本地(按剧集分文件夹,私有目录),下载页组级/条目级展示用
+        ensurePosterAsync(t.pic, t.vodName);
         return true;
     }
 
@@ -1632,12 +1644,72 @@ public class DownloadManager {
         return base;
     }
 
+    // ------------------------------------------------------------------
+    // 剧集海报:下载触发时把海报存到应用私有目录(poster/剧名/poster.jpg),
+    // 不进系统相册/媒体库;下载页组级与条目级展示用本地文件,缺失时显示占位图并懒拉取。
+    // ------------------------------------------------------------------
+
+    /** 剧集海报目录:应用私有目录 poster/<剧名> */
+    public static File getPosterDir(String vodName) {
+        return new File(new File(App.getInstance().getFilesDir(), "poster"), sanitizeName(vodName));
+    }
+
+    /** 剧集海报本地文件:已存在返回 File,否则返回 null(调用方显示占位图) */
+    public static File getPosterFile(String vodName) {
+        if (vodName == null || vodName.isEmpty()) return null;
+        File f = new File(getPosterDir(vodName), "poster.jpg");
+        return f.exists() ? f : null;
+    }
+
+    /** 确保剧集海报已下载到本地(缺失才异步拉取,同文件去重);pic 为空/拉取失败静默跳过 */
+    public void ensurePosterAsync(String pic, String vodName) {
+        if (pic == null || pic.isEmpty() || vodName == null || vodName.isEmpty()) return;
+        final File target = new File(getPosterDir(vodName), "poster.jpg");
+        if (target.exists()) return;
+        final String key = target.getAbsolutePath();
+        synchronized (posterFetching) {
+            if (posterFetching.contains(key)) return;
+            posterFetching.add(key);
+        }
+        posterExecutor.execute(() -> {
+            try {
+                Request req = new Request.Builder().url(pic).build();
+                try (Response resp = downloadClient.newCall(req).execute()) {
+                    if (!resp.isSuccessful() || resp.body() == null) return;
+                    String ct = resp.header("Content-Type");
+                    if (ct != null && !ct.toLowerCase(Locale.ROOT).contains("image")) return;
+                    File dir = target.getParentFile();
+                    if (dir != null && !dir.exists()) dir.mkdirs();
+                    try (InputStream is = resp.body().byteStream();
+                         FileOutputStream fos = new FileOutputStream(target)) {
+                        byte[] buf = new byte[BUFFER];
+                        int n;
+                        while ((n = is.read(buf)) > 0) fos.write(buf, 0, n);
+                    }
+                    Log.i("TVBox-Download", "海报已下载 " + target.getAbsolutePath());
+                    notifyChanged(); // 海报就绪,刷新下载页
+                }
+            } catch (Throwable th) {
+                Log.i("TVBox-Download", "海报下载失败 " + pic + " : " + th.getMessage());
+            } finally {
+                synchronized (posterFetching) {
+                    posterFetching.remove(key);
+                }
+            }
+        });
+    }
+
     /** 去除文件名的非法字符;null/空白返回空串,由调用方决定兜底名 */
-    private String sanitize(String name) {
+    public static String sanitizeName(String name) {
         if (name == null) return "";
         String n = name.trim();
         n = n.replaceAll("[\\\\/:*?\"<>|]", "_").trim();
         return n;
+    }
+
+    /** 去除文件名的非法字符;null/空白返回空串,由调用方决定兜底名 */
+    private String sanitize(String name) {
+        return sanitizeName(name);
     }
 
     private static void deleteQuietly(File f) {

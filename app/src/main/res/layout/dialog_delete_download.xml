@@ -14,15 +14,7 @@
         android:textSize="17sp"
         android:textStyle="bold" />
 
-    <TextView
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="6dp"
-        android:text="请选择删除方式:"
-        android:textColor="@color/text_sub_foreground"
-        android:textSize="13sp" />
-
-    <!-- 勾选整行:背景/涟漪由代码按主题设置,避免系统限定符不跟随 app 主题 -->
+    <!-- 勾选整行:点整行切换勾选;背景由代码按主题设置,不加涟漪(避免圆形气泡偏移) -->
     <LinearLayout
         android:id="@+id/ll_check"
         android:layout_width="match_parent"
@@ -31,13 +23,14 @@
         android:gravity="center_vertical"
         android:orientation="horizontal"
         android:paddingHorizontal="12dp"
-        android:paddingVertical="12dp">
+        android:paddingVertical="8dp">
 
+        <!-- 与下载完成长按多选一致的默认复选框样式(无 buttonTint/无涟漪) -->
         <CheckBox
             android:id="@+id/cb_delete_file"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:buttonTint="@color/text_highlight"
+            android:background="@null"
             android:clickable="false"
             android:focusable="false" />
 

@@ -14,7 +14,17 @@
         android:gravity="center_vertical"
         android:orientation="horizontal">
 
-        <!-- 封面图 -->
+        <!-- 多选勾选框:仅长按多选(组内条目)时显示 -->
+        <CheckBox
+            android:id="@+id/cb"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginEnd="6dp"
+            android:clickable="false"
+            android:focusable="false"
+            android:visibility="gone" />
+
+        <!-- 封面图(剧集海报,本地文件,缺失显示占位图) -->
         <androidx.appcompat.widget.AppCompatImageView
             android:id="@+id/iv_cover"
             android:layout_width="56dp"
@@ -73,7 +83,7 @@
                 android:textSize="11sp" />
         </LinearLayout>
 
-        <!-- 操作按钮:随状态切换 暂停/继续/重试 -->
+        <!-- 操作按钮:随状态切换 暂停/继续/重试(多选模式下隐藏) -->
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btn_action"
             style="@style/mbOutline"
@@ -85,17 +95,7 @@
             android:text="暂停" />
     </LinearLayout>
 
-    <!-- 进度条 -->
-    <ProgressBar
-        android:id="@+id/progress"
-        style="?android:attr/progressBarStyleHorizontal"
-        android:layout_width="match_parent"
-        android:layout_height="6dp"
-        android:layout_marginTop="10dp"
-        android:max="100"
-        android:progressBackgroundTint="@color/gray_darker" />
-
-    <!-- 更多操作行:长按更多(删除),失败时显示重试 -->
+    <!-- 更多操作行:失败显示重试,长按/点更多删除(多选模式下隐藏) -->
     <LinearLayout
         android:id="@+id/ll_more"
         android:layout_width="match_parent"
