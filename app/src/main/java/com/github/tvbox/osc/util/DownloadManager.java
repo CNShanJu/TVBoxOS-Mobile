@@ -969,10 +969,17 @@ public class DownloadManager {
             throw new IOException("m3u8 无有效分片");
         }
         t.totalSegments = segments.size();
-        if (t.doneSegments > segments.size()) t.doneSegments = 0;
-        // 分片下到唯一分段目录(带任务id,避免同目标多任务/重试交错共用目录互相删分片),完成后合成 mp4 再删除
+        // 续传起点以磁盘实况为准(不信任 TXT/内存计数):用户可能删过部分分片文件,
+        // 若仍用 t.doneSegments 会跳过缺失分片直接合并导致失败。
         File tmpDir = segmentsDirOf(t);
         if (!tmpDir.exists()) tmpDir.mkdirs();
+        int existing = countExistingSegments(tmpDir, segments.size());
+        if (existing < t.doneSegments) {
+            Log.i("TVBox-Download", "分片缺失(磁盘" + existing + "/" + segments.size() + ",记录" + t.doneSegments
+                    + "),从缺失处续传: " + t.fileName);
+        }
+        t.doneSegments = existing;
+        t.segmentBytes = 0;
         // 下载前记录分段信息 TXT:来源/剧名/集数/碎片数/解析地址/分片列表/已完成(断点续传同步进度)
         writeSegmentsInfo(t, tmpDir, segments, t.doneSegments);
 
@@ -1007,25 +1014,31 @@ public class DownloadManager {
         }
         t.speed = 0;
 
-        // 碎片下载完,进入"文件校验中"。doneSegments 始终表示"已下载完的分片数"。
+        // 碎片下载完,进入"文件校验中"。校验以磁盘实况为准:每轮全盘扫描缺失分片并补下,
+        // 不信任 TXT 计数(用户可能删过分片文件,计数会失真导致跳过补下直接合并失败)。
         t.message = MSG_VERIFYING;
         persist();
         notifyChanged();
-        // 校验+补下(最多3轮):前两轮以 TXT 记录的"已完成"进度为准,只补缺失分片(不全盘扫);
-        // 第三轮兜底全盘扫一遍核对磁盘,发现缺失再补。
         int repair = 0;
         while (true) {
-            // 最后一轮从0全盘兜底;前几轮以 TXT 已完成进度为准
-            int from = (repair + 1 >= MAX_SEGMENT_REPAIR) ? 0 : Math.max(0, readSegmentsInfo(tmpDir));
-            if (from >= segments.size()) break; // 全部完成
+            // 全盘扫描:找出缺失(不存在/空文件)的分片,缺失则补下;全部存在即通过
+            int firstMissing = -1;
+            for (int i = 0; i < segments.size(); i++) {
+                File segFile = new File(tmpDir, String.format("%05d.ts", i));
+                if (!segFile.exists() || segFile.length() <= 0) {
+                    firstMissing = i;
+                    break;
+                }
+            }
+            if (firstMissing < 0) break; // 全部分片存在,校验通过
             if (repair >= MAX_SEGMENT_REPAIR) {
-                throw new IOException("碎片校验不一致,自动补下" + MAX_SEGMENT_REPAIR + "轮后仍缺失");
+                throw new IOException("碎片校验不一致,自动补下" + MAX_SEGMENT_REPAIR + "轮后仍缺失(缺第" + firstMissing + "片)");
             }
             repair++;
-            Log.i("TVBox-Download", "碎片校验缺失,第" + repair + "/" + MAX_SEGMENT_REPAIR + "轮补下缺失分片: " + t.fileName
-                    + (from == 0 ? "(全盘兜底)" : ""));
+            Log.i("TVBox-Download", "碎片校验缺失,第" + repair + "/" + MAX_SEGMENT_REPAIR + "轮补下缺失分片(从第"
+                    + firstMissing + "片起): " + t.fileName);
             boolean allOk = true;
-            for (int i = from; i < segments.size(); i++) {
+            for (int i = firstMissing; i < segments.size(); i++) {
                 File segFile = new File(tmpDir, String.format("%05d.ts", i));
                 if (!segFile.exists() || segFile.length() <= 0) {
                     downloadSegment(segments.get(i), segFile, 0, t); // 失败抛异常由外层重试
@@ -1049,13 +1062,15 @@ public class DownloadManager {
         persist();
         notifyChanged();
 
-        // 合并分片 -> mp4
+        // 合并分片 -> mp4(双阶段原子合并):
+        // 1) 先合并到分段目录内的 merged.tmp(过程文件,与成果隔离,崩溃最多损坏它)
+        // 2) 完整后 rename 到最终文件(rename 为原子操作,要么成功要么未发生,杜绝半成品最终文件)
         File finalFile = new File(t.savePath);
         if (finalFile.getParentFile() != null && !finalFile.getParentFile().exists()) {
             finalFile.getParentFile().mkdirs();
         }
-        if (finalFile.exists()) finalFile.delete();
-        OutputStream out = new FileOutputStream(finalFile);
+        File mergeTmp = new File(tmpDir, "merged.tmp");
+        OutputStream out = new FileOutputStream(mergeTmp);
         try {
             for (int i = 0; i < segments.size(); i++) {
                 File segFile = new File(tmpDir, String.format("%05d.ts", i));
@@ -1067,6 +1082,12 @@ public class DownloadManager {
                 out.close();
             } catch (Throwable ignored) {
             }
+        }
+        // 原子替换:先删旧最终文件(若有),再 rename;rename 失败则复制兜底
+        if (finalFile.exists()) finalFile.delete();
+        if (!mergeTmp.renameTo(finalFile)) {
+            copyFile(mergeTmp, finalFile);
+            deleteQuietly(mergeTmp);
         }
         // 合成完成后清理:删本任务分片目录(父级 tmp 保留)
         deleteSegmentsDir(t);
@@ -1129,6 +1150,16 @@ public class DownloadManager {
         } catch (Throwable th) {
             return 0;
         }
+    }
+
+    /** 全盘扫描分段目录,统计"存在且非空"的分片数(续传/校验以磁盘实况为准,不信任TXT计数) */
+    private int countExistingSegments(File tmpDir, int total) {
+        int count = 0;
+        for (int i = 0; i < total; i++) {
+            File segFile = new File(tmpDir, String.format("%05d.ts", i));
+            if (segFile.exists() && segFile.length() > 0) count++;
+        }
+        return count;
     }
 
     private void downloadSegment(String segUrl, File segFile, long segDone, DownloadTask t) throws IOException {
