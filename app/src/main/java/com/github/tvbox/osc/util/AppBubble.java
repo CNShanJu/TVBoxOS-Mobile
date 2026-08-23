@@ -1,31 +1,30 @@
 package com.github.tvbox.osc.util;
 
+import android.content.Context;
 import android.content.res.Configuration;
 import android.os.Handler;
 import android.os.Looper;
+import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import com.github.tvbox.osc.R;
 import com.github.tvbox.osc.base.App;
-import com.lxj.xpopup.XPopup;
-import com.lxj.xpopup.core.BasePopupView;
 
 /**
  * 统一提醒气泡组件:
  * 圆角气泡 + 跟随主题配色(浅色柔和灰白底深字 / 深色深底白字),底部居中弹出。
  * <p>
- * 实现:XPopup 自绘气泡(无遮罩、淡入淡出、自动消失),完全脱离系统 Toast 渲染,
- * 规避 Android 13+ 及魅族 Flyme ROM 把自定义 Toast view 判为 "text toast"
- * 显示系统默认样式(白底黑字小圆角、setGravity 失效)的问题。
+ * 实现:系统 Toast + 自定义 view(根 ViewGroup 规避 Android 13+ text toast 系统样式),
+ * 颜色由代码按 app 主题设置直接指定(不依赖 values-night 资源限定符,后者只跟随系统深色)。
+ * 系统 Toast 由系统队列管理,轻量不卡顿,setGravity 底部位置准确。
  * 用法:AppBubble.toast("xxx") / AppBubble.toastLong("xxx")
  */
 public class AppBubble {
 
     private static final Handler MAIN = new Handler(Looper.getMainLooper());
-    /** 当前显示的气泡,新气泡弹出前先关闭旧的 */
-    private static BasePopupView currentPopup;
 
     private AppBubble() {
     }
@@ -52,60 +51,39 @@ public class AppBubble {
             @Override
             public void run() {
                 try {
-                    // 关闭上一个气泡(避免叠加)
-                    dismiss();
-                    // 需要 Activity 上下文:取当前栈顶 Activity;无前台 Activity 时静默丢弃
-                    final android.app.Activity activity = AppManager.getInstance().currentActivity();
-                    if (activity == null || activity.isFinishing() || activity.isDestroyed()) {
-                        return;
-                    }
-                    // 主题上下文(深色切换)
-                    android.content.Context themedCtx = activity;
+                    Context ctx = App.getInstance();
+                    // 主题上下文(深色切换,保证 inflate 的默认资源跟随 app 主题)
+                    Context themedCtx = ctx;
                     try {
-                        Configuration config = new Configuration(activity.getResources().getConfiguration());
-                        int night = Utils.isDarkTheme() ? Configuration.UI_MODE_NIGHT_YES : Configuration.UI_MODE_NIGHT_NO;
+                        Configuration config = new Configuration(ctx.getResources().getConfiguration());
+                        int night = Utils.isAppDarkTheme() ? Configuration.UI_MODE_NIGHT_YES : Configuration.UI_MODE_NIGHT_NO;
                         config.uiMode = (config.uiMode & ~Configuration.UI_MODE_NIGHT_MASK) | night;
-                        themedCtx = activity.createConfigurationContext(config);
+                        themedCtx = ctx.createConfigurationContext(config);
                     } catch (Throwable ignored) {
                     }
                     View view = LayoutInflater.from(themedCtx).inflate(R.layout.view_bubble, null);
                     TextView tv = view.findViewById(R.id.tv_bubble_text);
                     tv.setText(msg);
-                    // 气泡颜色托管给 app 主题设置(浅色/深色),直接读 THEME_TAG(不依赖 AppCompatDelegate/系统 uiMode):
-                    // 部分 ROM 上 AppCompatDelegate 夜间模式与系统 uiMode 不同步,导致气泡颜色跟随系统而非 app 设置。
+                    // 气泡颜色托管给 app 主题设置:直接读 THEME_TAG,不依赖资源限定符/AppCompatDelegate
                     boolean dark = Utils.isAppDarkTheme();
                     android.graphics.drawable.GradientDrawable bg = new android.graphics.drawable.GradientDrawable();
                     bg.setColor(dark ? 0xFF2E2C36 : 0xFFF2F3F7);
-                    bg.setCornerRadius(dp2px(25));
+                    bg.setCornerRadius(dp2px(ctx, 25));
                     tv.setBackground(bg);
                     tv.setTextColor(dark ? 0xFFFFFFFF : 0xFF1F2937);
-                    currentPopup = new XPopup.Builder(activity)
-                            .isViewMode(true)          // view 模式:不拦截触摸
-                            .dismissOnTouchOutside(true)
-                            .dismissOnBackPressed(false)
-                            .shadowBgColor(android.graphics.Color.TRANSPARENT) // 无遮罩
-                            .asCustom(new BubblePopupView(activity, view));
-                    // 自动消失(短/长),关闭后清引用
-                    currentPopup.delayDismissWith(longDuration ? 3500 : 2000, () -> dismiss());
-                    currentPopup.show();
+
+                    Toast toast = new Toast(ctx);
+                    toast.setView(view);
+                    toast.setGravity(Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL, 0, dp2px(ctx, 120));
+                    toast.setDuration(longDuration ? Toast.LENGTH_LONG : Toast.LENGTH_SHORT);
+                    toast.show();
                 } catch (Throwable ignored) {
                 }
             }
         });
     }
 
-    /** 关闭当前气泡(幂等) */
-    private static void dismiss() {
-        if (currentPopup != null) {
-            try {
-                currentPopup.dismiss();
-            } catch (Throwable ignored) {
-            }
-            currentPopup = null;
-        }
-    }
-
-    private static int dp2px(int dp) {
-        return Math.round(dp * App.getInstance().getResources().getDisplayMetrics().density);
+    private static int dp2px(Context ctx, int dp) {
+        return Math.round(dp * ctx.getResources().getDisplayMetrics().density);
     }
 }
