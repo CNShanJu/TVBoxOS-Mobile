@@ -202,13 +202,15 @@ public class DownloadFragment extends BaseVbFragment<FragmentDownloadBinding> {
                     DownloadManager.get().pause(t);
                 }
             } else if (view.getId() == R.id.btn_delete) {
-                // 删除前先确认(弹窗内勾选"同时删除文件"后才执行删除,确认前不动任何数据/文件)
+                // 下载中的任务:删除 = 记录 + 过程文件(分片/临时)一起删,不存在"只删记录保留文件"
+                // (过程文件无保留价值);简单确认后直接全删
                 new XPopup.Builder(mContext)
                         .isDarkTheme(Utils.isDarkTheme())
-                        .asCustom(new DeleteDownloadDialog(mContext, deleteFiles -> {
-                            DownloadCore.remove(t, deleteFiles);
-                            refresh();
-                        }))
+                        .asConfirm("删除任务", "将删除该任务及其未完成的下载文件,确定?",
+                                "删除", "取消", () -> {
+                                    DownloadCore.remove(t, true);
+                                    refresh();
+                                }, null, false)
                         .show();
             }
         });

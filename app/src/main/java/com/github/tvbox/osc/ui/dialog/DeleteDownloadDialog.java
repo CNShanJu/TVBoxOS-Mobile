@@ -1,18 +1,24 @@
 package com.github.tvbox.osc.ui.dialog;
 
 import android.content.Context;
+import android.graphics.drawable.GradientDrawable;
+import android.view.View;
 import android.widget.CheckBox;
 
 import androidx.annotation.NonNull;
 
 import com.github.tvbox.osc.R;
+import com.github.tvbox.osc.util.Utils;
 import com.lxj.xpopup.core.CenterPopupView;
 
 import org.jetbrains.annotations.NotNull;
 
 /**
- * 删除下载确认弹窗:勾选"同时删除本地文件"。
+ * 删除下载确认弹窗(下载完成列表用):勾选"同时删除本地文件"。
  * 不勾 = 只删除记录,保留本地文件;勾选 = 记录与本地文件一起删除。
+ * <p>
+ * 背景/勾选行配色由代码按 app 主题设置(浅色/深色)直接指定,不依赖资源限定符
+ * (后者只跟随系统深色模式,与 app 内主题设置可能不同步)。
  */
 public class DeleteDownloadDialog extends CenterPopupView {
 
@@ -36,8 +42,20 @@ public class DeleteDownloadDialog extends CenterPopupView {
     protected void onCreate() {
         super.onCreate();
         CheckBox cb = findViewById(R.id.cb_delete_file);
+        View llCheck = findViewById(R.id.ll_check);
+        // 弹窗背景:按 app 主题取色(浅色白 / 深色深),圆角
+        boolean dark = Utils.isAppDarkTheme();
+        GradientDrawable bg = new GradientDrawable();
+        bg.setColor(dark ? 0xFF2A2D32 : 0xFFFFFFFF);
+        bg.setCornerRadius(dp2px(20));
+        getPopupImplView().setBackground(bg);
+        // 勾选行背景:主题组件色(浅色浅灰 / 深色深灰),圆角;不加涟漪(避免圆形气泡偏移)
+        GradientDrawable rowBg = new GradientDrawable();
+        rowBg.setColor(dark ? 0xFF212121 : 0xFFEBEBF6);
+        rowBg.setCornerRadius(dp2px(12));
+        llCheck.setBackground(rowBg);
         // 点整行切换勾选
-        findViewById(R.id.ll_check).setOnClickListener(v -> cb.setChecked(!cb.isChecked()));
+        llCheck.setOnClickListener(v -> cb.setChecked(!cb.isChecked()));
         findViewById(R.id.tv_cancel).setOnClickListener(v -> dismiss());
         findViewById(R.id.tv_ok).setOnClickListener(v -> {
             boolean deleteFiles = cb.isChecked();
@@ -46,5 +64,9 @@ public class DeleteDownloadDialog extends CenterPopupView {
                 mListener.onDelete(deleteFiles);
             }
         });
+    }
+
+    private int dp2px(float dp) {
+        return Math.round(dp * getContext().getResources().getDisplayMetrics().density);
     }
 }
