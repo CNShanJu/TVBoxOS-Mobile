@@ -2,6 +2,7 @@ package com.github.tvbox.osc.ui.widget;
 
 import android.content.Context;
 import android.util.AttributeSet;
+import android.view.Gravity;
 
 import androidx.core.content.ContextCompat;
 
@@ -34,5 +35,10 @@ public class AppTitleBar extends TitleBar {
         // 统一右侧图标尺寸,避免自带矢量图标显示过大
         int iconSize = Math.round(20 * getResources().getDisplayMetrics().density);
         setRightIconSize(iconSize, iconSize);
+        // 右侧图标与标题文字水平对齐:图标在右侧区域垂直居中,去掉默认内边距导致的偏移
+        setRightIconGravity(Gravity.CENTER);
+        if (getRightView() != null) {
+            getRightView().setGravity(Gravity.CENTER);
+        }
     }
 }
