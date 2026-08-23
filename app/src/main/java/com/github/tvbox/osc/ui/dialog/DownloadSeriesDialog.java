@@ -12,12 +12,13 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.chad.library.adapter.base.BaseQuickAdapter;
 import com.chad.library.adapter.base.BaseViewHolder;
+import com.airbnb.lottie.LottieAnimationView;
+import com.airbnb.lottie.LottieDrawable;
 import com.github.tvbox.osc.R;
 import com.github.tvbox.osc.bean.VodInfo;
 import com.github.tvbox.osc.ui.widget.GridSpacingItemDecoration;
 import com.github.tvbox.osc.ui.widget.RoundChip;
 import com.github.tvbox.osc.util.AppBubble;
-import com.github.tvbox.osc.util.LoadingAnim;
 import com.lxj.xpopup.core.BottomPopupView;
 
 import org.jetbrains.annotations.NotNull;
@@ -66,8 +67,13 @@ public class DownloadSeriesDialog extends BottomPopupView {
         mRv = findViewById(R.id.rv);
         mFlLoading = findViewById(R.id.fl_loading);
 
-        // 加载动画跟随设置页"加载动画"选项
-        LoadingAnim.apply(findViewById(R.id.lottie_loading));
+        // 加载动画用轻量默认动画(仅占位几百毫秒,避免渲染高帧率大动画导致卡顿/ANR)
+        LottieAnimationView lav = findViewById(R.id.lottie_loading);
+        lav.setAnimation("anim_loading.json");
+        lav.setRepeatMode(LottieDrawable.RESTART);
+        lav.setRepeatCount(LottieDrawable.INFINITE);
+        lav.setSpeed(1f);
+        lav.playAnimation();
 
         // 集数网格:固定3列,条目样式与选集一致(RoundChip 文字,无边框)
         mRv.setLayoutManager(new GridLayoutManager(getContext(), 3));
