@@ -100,6 +100,24 @@ public class Utils {
         return currentNightMode == Configuration.UI_MODE_NIGHT_YES || AppCompatDelegate.getDefaultNightMode()==AppCompatDelegate.MODE_NIGHT_YES;
     }
 
+    /**
+     * 是否深色主题(直接读 app 主题设置,不依赖 AppCompatDelegate/系统 uiMode):
+     * THEME_TAG: 0=跟随系统, 1=浅色, 2=深色。
+     * 用于气泡等自绘控件取色,避免部分 ROM 上 AppCompatDelegate 夜间模式与系统 uiMode 不同步。
+     */
+    public static boolean isAppDarkTheme(){
+        try {
+            int tag = Hawk.get(HawkConfig.THEME_TAG, 0);
+            if (tag == 2) return true;
+            if (tag == 1) return false;
+            // 跟随系统
+            int night = App.getInstance().getResources().getConfiguration().uiMode & Configuration.UI_MODE_NIGHT_MASK;
+            return night == Configuration.UI_MODE_NIGHT_YES;
+        } catch (Throwable th) {
+            return isDarkTheme();
+        }
+    }
+
     public static void initTheme(){
         switch (Hawk.get(HawkConfig.THEME_TAG,0)) {
             case 0:
