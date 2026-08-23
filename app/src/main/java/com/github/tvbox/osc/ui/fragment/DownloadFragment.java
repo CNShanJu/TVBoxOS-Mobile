@@ -484,6 +484,7 @@ public class DownloadFragment extends BaseVbFragment<FragmentDownloadBinding> {
                 info.setDisplayName(t.fileName == null ? f.getName() : t.fileName);
                 info.setTitle(info.getDisplayName());
                 info.setSize(f.length());
+                info.setEpisodeId(t.episodeId); // 统一剧集标识:回跳详情页/本地播放联动用
                 videos.add(info);
             }
             if (!videos.isEmpty()) {
@@ -509,6 +510,7 @@ public class DownloadFragment extends BaseVbFragment<FragmentDownloadBinding> {
             info.setDisplayName(t.fileName == null ? f.getName() : t.fileName);
             info.setTitle(info.getDisplayName());
             info.setSize(f.length());
+            info.setEpisodeId(t.episodeId); // 统一剧集标识:回跳详情页/本地播放联动用
             videos.add(info);
         }
         videos.sort(Comparator.comparing(VideoInfo::getDisplayName));

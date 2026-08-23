@@ -18,6 +18,7 @@ import com.github.tvbox.osc.ui.dialog.BackupDialog
 import com.github.tvbox.osc.ui.dialog.LiveApiDialog
 import com.github.tvbox.osc.ui.dialog.SelectDialog
 import com.github.tvbox.osc.util.AppLog
+import com.github.tvbox.osc.util.DownloadConfig
 import com.github.tvbox.osc.util.FastClickCheckUtil
 import com.github.tvbox.osc.util.FileUtils
 import com.github.tvbox.osc.util.HawkConfig
@@ -48,6 +49,9 @@ class SettingActivity : BaseVbActivity<ActivitySettingBinding>() {
 
         mBinding.titleBar.leftView.setOnClickListener { onBackPressed() }
         mBinding.tvMediaCodec.text = Hawk.get(HawkConfig.IJK_CODEC, "")
+
+        // 下载设置:仅WiFi / 并发数 / 保存位置(与下载页标题栏齿轮共用 DownloadConfig,单一事实源)
+        initDownloadSettings()
 
         mBinding.tvDns.text = OkGoHelper.dnsHttpsList[Hawk.get(HawkConfig.DOH_URL, 0)]
         mBinding.tvHomeRec.text = getHomeRecName(Hawk.get(HawkConfig.HOME_REC, 0))
@@ -466,6 +470,44 @@ class SettingActivity : BaseVbActivity<ActivitySettingBinding>() {
             FastClickCheckUtil.check(v)
             jumpActivity(LogActivity::class.java)
         }
+    }
+
+    /** 下载设置分组:仅WiFi开关 + 并发数选择 + 保存位置只读,统一走 DownloadConfig */
+    private fun initDownloadSettings() {
+        // 仅 Wi-Fi 下载开关
+        mBinding.switchDlWifiOnly.setChecked(DownloadConfig.isWifiOnly())
+        mBinding.llDlWifiOnly.setOnClickListener {
+            val newVal = !DownloadConfig.isWifiOnly()
+            DownloadConfig.setWifiOnly(newVal)
+            mBinding.switchDlWifiOnly.setChecked(newVal)
+            AppBubble.toast("仅 Wi-Fi 下载已" + if (newVal) "开启" else "关闭")
+        }
+        // 同时下载任务数(1-5)
+        val refreshConcurrent = {
+            mBinding.tvDlConcurrent.text = DownloadConfig.getMaxConcurrent().toString() + " 个"
+        }
+        refreshConcurrent()
+        mBinding.llDlConcurrent.setOnClickListener {
+            FastClickCheckUtil.check(it)
+            val types = ArrayList<String>()
+            for (i in 1..5) types.add("并发 " + i)
+            val defaultPos = DownloadConfig.getMaxConcurrent() - 1
+            val dialog = SelectDialog<String>(this@SettingActivity)
+            dialog.setTip("选择同时下载任务数")
+            dialog.setAdapter(object : SelectDialogInterface<String?> {
+                override fun click(value: String?, pos: Int) {
+                    DownloadConfig.setMaxConcurrent(pos + 1)
+                    refreshConcurrent()
+                }
+
+                override fun getDisplay(name: String?): String {
+                    return name ?: ""
+                }
+            }, SelectDialogAdapter.stringDiff, types, defaultPos)
+            dialog.show()
+        }
+        // 保存位置(只读展示)
+        mBinding.tvDlSaveDir.text = DownloadConfig.getSaveDir().absolutePath
     }
 
     override fun onBackPressed() {

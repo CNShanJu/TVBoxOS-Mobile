@@ -18,6 +18,16 @@ public class VideoInfo {
     private String bucketDisplayName = null;
     private Bitmap thumbnail = null;
     private String bookmark = null;
+    /** 统一剧集标识(sourceKey|vodId|playFlag|playIndex):下载完成的本地视频项写入,用于回跳详情页/本地播放联动 */
+    private String episodeId = null;
+
+    public String getEpisodeId() {
+        return episodeId;
+    }
+
+    public void setEpisodeId(String episodeId) {
+        this.episodeId = episodeId;
+    }
 
     public boolean isChecked() {
         return checked;
