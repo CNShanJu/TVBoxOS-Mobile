@@ -531,6 +531,8 @@ class SettingActivity : BaseVbActivity<ActivitySettingBinding>() {
                     break
                 }
             }
+            // 切换前的动画名:弹窗关闭后若有变化,与主题切换一致,重启主页立即生效
+            val oldAnim = LoadingAnim.getAnimName()
             val dialog = SelectDialog<String>(this@SettingActivity)
             dialog.setTip("选择加载动画")
             dialog.setAdapter(object : SelectDialogInterface<String?> {
@@ -539,13 +541,20 @@ class SettingActivity : BaseVbActivity<ActivitySettingBinding>() {
                     val selected = files[pos]
                     Hawk.put(HawkConfig.LOADING_ANIM, if (selected == LoadingAnim.DEFAULT_NAME) "" else selected)
                     refresh()
-                    AppBubble.toast("加载动画已切换,下次进入加载页面生效")
                 }
 
                 override fun getDisplay(name: String?): String {
                     return name ?: ""
                 }
             }, SelectDialogAdapter.stringDiff, display, defaultPos)
+            // 与主题颜色切换同一套"重启"逻辑:值有变化时带缓存配置重载主页,立即生效,不再提示"下次启动生效"
+            dialog.setOnDismissListener { dialog1: DialogInterface? ->
+                if (oldAnim != LoadingAnim.getAnimName()) {
+                    val bundle = Bundle()
+                    bundle.putBoolean(IntentKey.CACHE_CONFIG_CHANGED, true)
+                    jumpActivity(MainActivity::class.java, bundle)
+                }
+            }
             dialog.show()
         }
     }

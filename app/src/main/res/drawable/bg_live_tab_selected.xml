@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<shape xmlns:android="http://schemas.android.com/apk/res/android">
+    <corners android:radius="@dimen/common_corners" />
+    <!-- 直播页选中 tab 填充背景:浅色深蓝灰 / 暗色深灰(select_bg),配白字清晰 -->
+    <solid android:color="@color/select_bg" />
+</shape>

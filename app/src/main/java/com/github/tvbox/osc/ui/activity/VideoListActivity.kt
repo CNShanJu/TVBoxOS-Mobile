@@ -3,8 +3,8 @@ package com.github.tvbox.osc.ui.activity
 import android.os.Bundle
 import android.os.Handler
 import android.view.View
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
-import com.blankj.utilcode.util.ColorUtils
 import com.blankj.utilcode.util.FileUtils
 import com.blankj.utilcode.util.GsonUtils
 import com.blankj.utilcode.util.SPUtils
@@ -74,10 +74,10 @@ class VideoListActivity : BaseVbActivity<ActivityMovieFoldersBinding>() {
             mSelectedCount = count
             if (mSelectedCount > 0) {
                 mBinding.tvDelete.isEnabled = true
-                mBinding.tvDelete.setTextColor(ColorUtils.getColor(R.color.colorPrimary))
+                mBinding.tvDelete.setTextColor(ContextCompat.getColor(this, R.color.colorPrimary))
             } else {
                 mBinding.tvDelete.isEnabled = false
-                mBinding.tvDelete.setTextColor(ColorUtils.getColor(R.color.disable_text))
+                mBinding.tvDelete.setTextColor(ContextCompat.getColor(this, R.color.disable_text))
             }
         }
 

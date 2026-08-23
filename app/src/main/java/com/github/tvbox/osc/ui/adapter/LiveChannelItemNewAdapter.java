@@ -3,7 +3,6 @@ package com.github.tvbox.osc.ui.adapter;
 import android.view.View;
 import android.widget.TextView;
 
-import com.blankj.utilcode.util.ColorUtils;
 import com.chad.library.adapter.base.BaseQuickAdapter;
 import com.chad.library.adapter.base.BaseViewHolder;
 import com.github.tvbox.osc.R;
@@ -36,10 +35,10 @@ public class LiveChannelItemNewAdapter extends BaseQuickAdapter<LiveChannelItem,
         if (channelIndex == selectedChannelIndex && channelIndex != focusedChannelIndex) {
             tvChannelNum.setTextColor(mContext.getResources().getColor(R.color.white));
             tvChannel.setTextColor(mContext.getResources().getColor(R.color.white));
-            root.setBackground(mContext.getResources().getDrawable(R.drawable.bg_r_common_solid_primary));
+            root.setBackground(mContext.getResources().getDrawable(R.drawable.bg_live_tab_selected));
         } else{
-            tvChannelNum.setTextColor(ColorUtils.getColor(R.color.text_foreground));
-            tvChannel.setTextColor(ColorUtils.getColor(R.color.text_foreground));
+            tvChannelNum.setTextColor(mContext.getResources().getColor(R.color.text_foreground));
+            tvChannel.setTextColor(mContext.getResources().getColor(R.color.text_foreground));
             root.setBackground(mContext.getResources().getDrawable(R.drawable.bg_transparent));
         }
     }

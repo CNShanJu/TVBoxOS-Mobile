@@ -37,3 +37,6 @@ dependencies {
     //https://mvnrepository.com/artifact/androidx.viewpager/viewpager
     implementation 'androidx.viewpager:viewpager:1.0.0'
 }
+
+// 发布到 GitHub Packages(坐标见 gradle/publish.gradle,可用 ext 覆盖)
+apply from: rootProject.file('gradle/publish.gradle')

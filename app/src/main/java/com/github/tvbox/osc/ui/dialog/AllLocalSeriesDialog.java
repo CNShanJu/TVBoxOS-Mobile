@@ -4,10 +4,10 @@ import android.content.Context;
 import android.view.View;
 
 import androidx.annotation.NonNull;
+import androidx.core.content.ContextCompat;
 import androidx.recyclerview.widget.GridLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
-import com.blankj.utilcode.util.ColorUtils;
 import com.github.tvbox.osc.R;
 import com.github.tvbox.osc.bean.VodInfo;
 import com.github.tvbox.osc.ui.adapter.SeriesAdapter;
@@ -45,7 +45,7 @@ public class AllLocalSeriesDialog extends AppDrawerPopupView {
     protected void onCreate() {
         super.onCreate();
         View bg = findViewById(R.id.bg);
-        bg.setBackgroundColor(ColorUtils.getColor(R.color.bg_popup));
+        bg.setBackgroundColor(ContextCompat.getColor(getContext(), R.color.bg_popup));
         findViewById(R.id.v_gesture_line).setVisibility(GONE);
         RecyclerView rv = findViewById(R.id.rv);
 

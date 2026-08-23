@@ -19,6 +19,7 @@ concurrency:
 
 permissions:
   contents: read
+  packages: write
 
 jobs:
   build:
@@ -56,3 +57,14 @@ jobs:
           name: MBox-release-apk
           path: app/build/outputs/apk/release/*.apk
           if-no-files-found: error
+
+      # 打 tag(v* 触发)时把 5 个库模块的 AAR 发布到 GitHub Packages,
+      # 供其他项目通过 maven 坐标引用(坐标见 gradle/publish.gradle)
+      - name: Publish Library AARs to GitHub Packages
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          chmod +x gradlew
+          ./gradlew publish --no-daemon
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_ACTOR: ${{ github.actor }}

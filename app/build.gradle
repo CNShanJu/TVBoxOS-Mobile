@@ -56,6 +56,8 @@ def defaultColors = [
         bubble_text    : '#1F2937',
         // 聚合页多选圆圈颜色(外环与选中内部填充圆同色,受主题文件管控)
         select_fill    : '#1F2937',
+        // 直播页选中 tab 填充背景(浅色深蓝灰 / 暗色深灰,配白字)
+        select_bg      : '#1F2937',
         // 下载条目左滑操作区背景(舒适红)
         swipe_red      : '#E5484D'
 ]
@@ -72,6 +74,8 @@ def defaultNightColors = [
         bubble_text    : '#FFFFFF',
         // 聚合页多选圆圈颜色(外环与选中内部填充圆同色,受主题文件管控)
         select_fill    : '#E5E7EB',
+        // 直播页选中 tab 填充背景(浅色深蓝灰 / 暗色深灰,配白字)
+        select_bg      : '#374151',
         // 下载条目左滑操作区背景(舒适红)
         swipe_red      : '#E5484D'
 ]

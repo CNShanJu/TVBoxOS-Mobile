@@ -9,5 +9,6 @@
   "bubble_bg": "#F2F3F7",
   "bubble_text": "#1F2937",
   "select_fill": "#1F2937",
+  "select_bg": "#1F2937",
   "swipe_red": "#E5484D"
 }

@@ -2,7 +2,6 @@ package com.github.tvbox.osc.ui.adapter;
 
 import android.widget.TextView;
 
-import com.blankj.utilcode.util.ColorUtils;
 import com.chad.library.adapter.base.BaseQuickAdapter;
 import com.chad.library.adapter.base.BaseViewHolder;
 import com.github.tvbox.osc.R;
@@ -31,7 +30,7 @@ public class LiveSettingItemAdapter extends BaseQuickAdapter<LiveSettingItem, Ba
         if (item.isItemSelected() && itemIndex != focusedItemIndex) {
             tvItemName.setTextColor(mContext.getResources().getColor(R.color.color_1890FF));
         } else {
-            tvItemName.setTextColor(ColorUtils.getColor(R.color.text_foreground));
+            tvItemName.setTextColor(mContext.getResources().getColor(R.color.text_foreground));
         }
     }
 

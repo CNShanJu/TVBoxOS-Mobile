@@ -1,0 +1,59 @@
+// ============================================================
+// 库模块统一发布到 GitHub Packages(Maven 仓库格式)
+// 各库模块 build.gradle 末尾 apply from: rootProject.file('gradle/publish.gradle')
+//
+// 发布坐标(可在模块内用 ext 覆盖):
+//   PUBLISH_GROUP_ID    默认 com.github.tvbox.osc
+//   PUBLISH_ARTIFACT_ID 默认模块名
+//   PUBLISH_VERSION     默认 2.3.0(与 App 版本同步)
+//
+// 认证:CI 用 GITHUB_TOKEN;本地用 gradle.properties 的 gpr.user/gpr.key
+// 发布命令:./gradlew publish
+// 引用:implementation 'com.github.tvbox.osc:player:2.3.0'
+// ============================================================
+apply plugin: 'maven-publish'
+
+def GITHUB_REPO = 'CNShanJu/TVBoxOS-Mobile'
+def PUB_GROUP   = project.hasProperty('PUBLISH_GROUP_ID')   ? project.PUBLISH_GROUP_ID   : 'com.github.tvbox.osc'
+def PUB_ARTIFACT = project.hasProperty('PUBLISH_ARTIFACT_ID') ? project.PUBLISH_ARTIFACT_ID : project.name
+def PUB_VERSION = project.hasProperty('PUBLISH_VERSION')    ? project.PUBLISH_VERSION    : '2.3.0'
+
+afterEvaluate {
+    def releaseComponent = project.components.findByName('release')
+    if (releaseComponent == null) {
+        // AGP 未注册 release 组件时跳过发布配置(不阻塞普通构建)
+        println "### publish.gradle [$project.name]: no release component, skip publishing config"
+        return
+    }
+    publishing {
+        publications {
+            release(MavenPublication) {
+                from releaseComponent
+                groupId = PUB_GROUP
+                artifactId = PUB_ARTIFACT
+                version = PUB_VERSION
+                pom {
+                    name = PUB_ARTIFACT
+                    description = "MBox library module: ${PUB_ARTIFACT}"
+                    url = "https://github.com/${GITHUB_REPO}"
+                    licenses {
+                        license {
+                            name = 'MIT License'
+                            url = 'https://opensource.org/licenses/MIT'
+                        }
+                    }
+                }
+            }
+        }
+        repositories {
+            maven {
+                name = 'GitHubPackages'
+                url = uri("https://maven.pkg.github.com/${GITHUB_REPO}")
+                credentials {
+                    username = project.findProperty('gpr.user') ?: System.getenv('GITHUB_ACTOR')
+                    password = project.findProperty('gpr.key') ?: System.getenv('GITHUB_TOKEN')
+                }
+            }
+        }
+    }
+}
