@@ -1020,7 +1020,7 @@ public class DetailActivity extends BaseVbActivity<ActivityDetailBinding> {
     }
 
     /**
-     * 全屏控制栏"下载"按钮:打开下载选择右侧抽屉(样式与选集右侧抽屉一致),不退出全屏。
+     * 全屏控制栏"下载"按钮:立即弹出右侧下载抽屉(内容先 loading),数据后台准备完成后填充,不退出全屏。
      * 仅全屏状态调用(由播放器控制栏触发);非全屏走底部弹窗 showDownloadSeriesDialog。
      */
     public void showDownloadDialogInFullscreen() {
@@ -1033,10 +1033,7 @@ public class DetailActivity extends BaseVbActivity<ActivityDetailBinding> {
             AppBubble.toast("资源异常,请稍后重试");
             return;
         }
-        String sourceName = getDownloadSourceName();
-        String vodName = getDownloadVodName();
-        List<VodInfo.VodSeries> copy = buildDownloadSeriesCopy();
-        int[] states = buildDownloadStates(copy, sourceName, vodName);
+        // 立即弹抽屉(空数据 + loading),避免主线程构建选集/状态造成卡顿
         isDownloadDialogShowing = true;
         mDownloadDialog = new XPopup.Builder(this)
                 .isViewMode(true)
@@ -1046,7 +1043,7 @@ public class DetailActivity extends BaseVbActivity<ActivityDetailBinding> {
                 .popupPosition(com.lxj.xpopup.enums.PopupPosition.Right)
                 .enableDrag(false)
                 .setPopupCallback(downloadDialogCallback())
-                .asCustom(new DownloadSeriesRightDialog(this, copy, states, new DownloadSeriesRightDialog.OnDownloadActionListener() {
+                .asCustom(new DownloadSeriesRightDialog(this, new DownloadSeriesRightDialog.OnDownloadActionListener() {
                     @Override
                     public void onStartDownload(List<VodInfo.VodSeries> selected) {
                         startDownloads(selected);
@@ -1059,6 +1056,19 @@ public class DetailActivity extends BaseVbActivity<ActivityDetailBinding> {
                     }
                 }));
         mDownloadDialog.show();
+        // 后台准备数据(选集副本 + 下载状态批量查询),完成后主线程填充抽屉
+        final String sourceName = getDownloadSourceName();
+        final String vodName = getDownloadVodName();
+        SourceViewModel.spThreadPool.execute(() -> {
+            List<VodInfo.VodSeries> copy = buildDownloadSeriesCopy();
+            int[] states = buildDownloadStates(copy, sourceName, vodName);
+            runOnUiThread(() -> {
+                if (mDownloadDialog != null && mDownloadDialog.isShow()
+                        && mDownloadDialog.getPopupContentView() instanceof DownloadSeriesRightDialog) {
+                    ((DownloadSeriesRightDialog) mDownloadDialog.getPopupContentView()).setData(copy, states);
+                }
+            });
+        });
     }
 
     /** 构建下载选择弹窗的选集副本(带统一剧集标识),供底部弹窗与全屏右侧抽屉复用 */
@@ -1133,23 +1143,19 @@ public class DetailActivity extends BaseVbActivity<ActivityDetailBinding> {
         };
     }
 
-    /** 弹窗主体(退全屏完成后调用) */
+    /** 弹窗主体(退全屏完成后调用):立即弹窗(loading),数据后台准备完成后填充 */
     private void showDownloadSeriesDialogInner() {
         // 防重入:延迟回调已触发过(弹窗已创建),跳过重复创建
         if (isDownloadDialogShowing && mDownloadDialog != null && mDownloadDialog.isShow()) {
             return;
         }
         isDownloadDialogShowing = true;
-        String sourceName = getDownloadSourceName();
-        String vodName = getDownloadVodName();
-        List<VodInfo.VodSeries> copy = buildDownloadSeriesCopy();
-        int[] states = buildDownloadStates(copy, sourceName, vodName);
         mDownloadDialog = new XPopup.Builder(this)
                 .isViewMode(true)
                 .hasNavigationBar(false)
                 // 弹窗关闭(确认/取消/点外部/返回键)后清除防重入标记,允许再次打开
                 .setPopupCallback(downloadDialogCallback())
-                .asCustom(new DownloadSeriesDialog(this, copy, states, new DownloadSeriesDialog.OnDownloadActionListener() {
+                .asCustom(new DownloadSeriesDialog(this, new DownloadSeriesDialog.OnDownloadActionListener() {
                     @Override
                     public void onStartDownload(List<VodInfo.VodSeries> selected) {
                         startDownloads(selected);
@@ -1163,6 +1169,19 @@ public class DetailActivity extends BaseVbActivity<ActivityDetailBinding> {
                     }
                 }));
         mDownloadDialog.show();
+        // 后台准备数据(选集副本 + 下载状态批量查询),完成后主线程填充弹窗
+        final String sourceName = getDownloadSourceName();
+        final String vodName = getDownloadVodName();
+        SourceViewModel.spThreadPool.execute(() -> {
+            List<VodInfo.VodSeries> copy = buildDownloadSeriesCopy();
+            int[] states = buildDownloadStates(copy, sourceName, vodName);
+            runOnUiThread(() -> {
+                if (mDownloadDialog != null && mDownloadDialog.isShow()
+                        && mDownloadDialog.getPopupContentView() instanceof DownloadSeriesDialog) {
+                    ((DownloadSeriesDialog) mDownloadDialog.getPopupContentView()).setData(copy, states);
+                }
+            });
+        });
     }
 
     /**

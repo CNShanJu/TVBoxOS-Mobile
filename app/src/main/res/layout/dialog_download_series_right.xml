@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/bg"
     android:layout_width="match_parent"
@@ -35,6 +36,25 @@
             android:textColor="@color/text_highlight"
             android:textSize="13sp" />
     </LinearLayout>
+
+    <!-- 数据加载中占位:点击立即弹抽屉,内容异步填充 -->
+    <FrameLayout
+        android:id="@+id/fl_loading"
+        android:layout_width="match_parent"
+        android:layout_height="220dp"
+        android:visibility="gone">
+
+        <com.airbnb.lottie.LottieAnimationView
+            android:id="@+id/lottie_loading"
+            android:layout_width="72dp"
+            android:layout_height="72dp"
+            android:layout_gravity="center"
+            app:lottie_autoPlay="true"
+            android:scaleType="centerCrop"
+            app:lottie_speed="1"
+            app:lottie_loop="true"
+            app:lottie_repeatMode="restart"/>
+    </FrameLayout>
 
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/rv"

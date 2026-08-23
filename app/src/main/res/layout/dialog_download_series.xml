@@ -45,6 +45,25 @@
             android:textSize="13sp" />
     </LinearLayout>
 
+    <!-- 数据加载中占位:点击立即弹窗,内容异步填充 -->
+    <FrameLayout
+        android:id="@+id/fl_loading"
+        android:layout_width="match_parent"
+        android:layout_height="200dp"
+        android:visibility="gone">
+
+        <com.airbnb.lottie.LottieAnimationView
+            android:id="@+id/lottie_loading"
+            android:layout_width="72dp"
+            android:layout_height="72dp"
+            android:layout_gravity="center"
+            app:lottie_autoPlay="true"
+            android:scaleType="centerCrop"
+            app:lottie_speed="1"
+            app:lottie_loop="true"
+            app:lottie_repeatMode="restart"/>
+    </FrameLayout>
+
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/rv"
         android:layout_width="match_parent"

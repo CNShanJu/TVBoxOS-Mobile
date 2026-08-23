@@ -4,6 +4,7 @@ import android.content.Context;
 import android.graphics.PorterDuff;
 import android.graphics.drawable.Drawable;
 import android.util.Log;
+import android.view.View;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
@@ -17,6 +18,7 @@ import com.github.tvbox.osc.R;
 import com.github.tvbox.osc.bean.VodInfo;
 import com.github.tvbox.osc.ui.widget.GridSpacingItemDecoration;
 import com.github.tvbox.osc.util.AppBubble;
+import com.github.tvbox.osc.util.LoadingAnim;
 
 import org.jetbrains.annotations.NotNull;
 
@@ -26,8 +28,8 @@ import java.util.List;
 /**
  * 全屏"下载"右侧抽屉:选择下载剧集(网格多选),样式与选集右侧抽屉一致。
  * <p>
- * 复用 DownloadSeriesDialog 的选择逻辑:states 0=可下载;1=已下载(✓置灰);2=下载中/排队(↓置灰)。
- * 与底部弹窗版不同的是:固定右侧抽屉展示,全屏下不退出播放。
+ * 点击"下载"立即弹出抽屉,内容先显示 loading;数据(选集副本+下载状态)异步准备完成后
+ * 通过 {@link #setData(List, int[])} 填充。states:0=可下载;1=已下载(✓置灰);2=下载中/排队(↓置灰)。
  */
 public class DownloadSeriesRightDialog extends AppDrawerPopupView {
 
@@ -39,18 +41,17 @@ public class DownloadSeriesRightDialog extends AppDrawerPopupView {
         void onOpenDownloadManager();
     }
 
-    private final List<VodInfo.VodSeries> mList;
-    private final int[] mStates;
     private final OnDownloadActionListener mListener;
+    private List<VodInfo.VodSeries> mList = new ArrayList<>();
+    private int[] mStates = new int[0];
     private TextView mTvSelected;
+    private RecyclerView mRv;
+    private View mFlLoading;
+    private ItemAdapter mAdapter;
 
     public DownloadSeriesRightDialog(@NonNull @NotNull Context context,
-                                     List<VodInfo.VodSeries> list,
-                                     int[] states,
                                      OnDownloadActionListener listener) {
         super(context);
-        mList = list;
-        mStates = states;
         mListener = listener;
     }
 
@@ -63,19 +64,18 @@ public class DownloadSeriesRightDialog extends AppDrawerPopupView {
     protected void onCreate() {
         super.onCreate();
         mTvSelected = findViewById(R.id.tv_selected);
-        RecyclerView rv = findViewById(R.id.rv);
+        mRv = findViewById(R.id.rv);
+        mFlLoading = findViewById(R.id.fl_loading);
 
-        rv.setLayoutManager(new GridLayoutManager(getContext(), 3));
-        rv.addItemDecoration(new GridSpacingItemDecoration(3, 20, true));
+        // 加载动画跟随设置页"加载动画"选项
+        LoadingAnim.apply(findViewById(R.id.lottie_loading));
 
-        ItemAdapter adapter = new ItemAdapter();
-        rv.setAdapter(adapter);
-        // 网格高度按行数自适应,封顶避免全集数把抽屉撑到全屏
-        int rows = Math.max(1, (int) Math.ceil(mList.size() / 3.0f));
-        int gridHeight = Math.min(rows * dp2px(72), dp2px(340));
-        rv.getLayoutParams().height = gridHeight;
-        rv.requestLayout();
-        adapter.setOnItemClickListener((a, view, position) -> {
+        mRv.setLayoutManager(new GridLayoutManager(getContext(), 3));
+        mRv.addItemDecoration(new GridSpacingItemDecoration(3, 20, true));
+
+        mAdapter = new ItemAdapter();
+        mRv.setAdapter(mAdapter);
+        mAdapter.setOnItemClickListener((a, view, position) -> {
             VodInfo.VodSeries item = mList != null && position >= 0 && position < mList.size() ? mList.get(position) : null;
             if (item == null) return;
             int st = mStates != null && position >= 0 && position < mStates.length ? mStates[position] : 0;
@@ -91,6 +91,12 @@ public class DownloadSeriesRightDialog extends AppDrawerPopupView {
             a.notifyItemChanged(position);
             updateCount();
         });
+
+        // 数据未就绪前显示 loading
+        if (mList == null || mList.isEmpty()) {
+            mFlLoading.setVisibility(View.VISIBLE);
+            mRv.setVisibility(View.GONE);
+        }
 
         updateCount();
         findViewById(R.id.btn_start).setOnClickListener(v -> {
@@ -112,6 +118,25 @@ public class DownloadSeriesRightDialog extends AppDrawerPopupView {
             dismiss();
             if (mListener != null) mListener.onOpenDownloadManager();
         });
+    }
+
+    /** 数据准备完成后填充(主线程调用):显示选集网格,隐藏 loading */
+    public void setData(List<VodInfo.VodSeries> list, int[] states) {
+        mList = list != null ? list : new ArrayList<>();
+        mStates = states != null ? states : new int[0];
+        if (mFlLoading != null) {
+            mFlLoading.setVisibility(View.GONE);
+        }
+        if (mRv != null) {
+            mRv.setVisibility(View.VISIBLE);
+            mAdapter.setNewData(mList);
+            // 网格高度按行数自适应,封顶避免全集数把抽屉撑到全屏
+            int rows = Math.max(1, (int) Math.ceil(mList.size() / 3.0f));
+            int gridHeight = Math.min(rows * dp2px(72), dp2px(340));
+            mRv.getLayoutParams().height = gridHeight;
+            mRv.requestLayout();
+        }
+        updateCount();
     }
 
     private void updateCount() {
