@@ -20,7 +20,7 @@ if (appConfigFile.exists()) {
     }
 }
 def cfgVersionCode = (appConfig.getProperty('versionCode', '41') ?: '41').toInteger()
-def cfgVersionName = appConfig.getProperty('versionName', '2.1.31') ?: '2.1.31'
+def cfgVersionName = appConfig.getProperty('versionName', '2.2.0') ?: '2.2.0'
 def cfgAppName = appConfig.getProperty('appName', 'MBox') ?: 'MBox'
 def cfgAppIcon = appConfig.getProperty('appIcon', '@drawable/app_icon') ?: '@drawable/app_icon'
 
