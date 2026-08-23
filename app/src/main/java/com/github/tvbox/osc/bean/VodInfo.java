@@ -129,6 +129,8 @@ public class VodInfo implements Serializable {
         public String url;
         //选中状态
         public boolean selected;
+        //统一剧集标识(sourceKey|vodId|playFlag|playIndex,详情页构建选集时写入,下载/播放联动用)
+        public String episodeId;
 
         public VodSeries() {
         }

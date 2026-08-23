@@ -999,24 +999,24 @@ public class DetailActivity extends BaseVbActivity<ActivityDetailBinding> {
         if (fullWindows) {
             toggleFullPreview();
         }
-        // 拷贝一份选集,弹窗内的选中状态不影响原选集的选中态
+        // 拷贝一份选集,弹窗内的选中状态不影响原选集的选中态;同时写入统一剧集标识
         List<VodInfo.VodSeries> copy = new ArrayList<>();
+        int copyIdx = 0;
         for (VodInfo.VodSeries s : vodInfo.seriesMap.get(vodInfo.playFlag)) {
             VodInfo.VodSeries c = new VodInfo.VodSeries();
             c.name = s.name;
             c.url = s.url;
             c.selected = false;
+            c.episodeId = DownloadCore.buildEpisodeId(vodInfo.sourceKey, vodInfo.id, vodInfo.playFlag, copyIdx);
+            copyIdx++;
             copy.add(c);
         }
         // 基于 统一剧集标识(EpisodeId) 标记下载状态:0=可下载,1=已下载,2=下载中/排队(弹窗内置灰不可重复选)
         String sourceName = getDownloadSourceName();
         String vodName = getDownloadVodName();
-        String sourceKey = vodInfo.sourceKey;
-        String vodId = vodInfo.id;
-        String playFlag = vodInfo.playFlag;
         int[] states = new int[copy.size()];
         for (int i = 0; i < copy.size(); i++) {
-            states[i] = DownloadCore.getEpisodeState(sourceKey, vodId, playFlag, i, sourceName, vodName, copy.get(i).name);
+            states[i] = DownloadCore.getEpisodeState(copy.get(i).episodeId, sourceName, vodName, copy.get(i).name);
         }
         new XPopup.Builder(this)
                 .isViewMode(true)
@@ -1102,22 +1102,25 @@ public class DetailActivity extends BaseVbActivity<ActivityDetailBinding> {
                         && !s.name.equals(vodName) && !containsResolution(s.name)) {
                     epName = s.name + "_" + resLabel;
                 }
-                // 统一剧集标识(与详情页选集一一对应,精确去重):按集名在完整选集列表中的位置定位索引
+                // 统一剧集标识(与详情页选集一一对应,精确去重):优先用选集携带的 episodeId,旧数据回退按集名定位索引
+                String episodeId = s.episodeId;
                 int idx = 0;
-                for (int i = 0; i < seriesList.size(); i++) {
-                    if (seriesList.get(i).name != null && seriesList.get(i).name.equals(s.name)) {
-                        idx = i;
-                        break;
+                if (episodeId == null || episodeId.isEmpty()) {
+                    for (int i = 0; i < seriesList.size(); i++) {
+                        if (seriesList.get(i).name != null && seriesList.get(i).name.equals(s.name)) {
+                            idx = i;
+                            break;
+                        }
                     }
+                    episodeId = DownloadCore.buildEpisodeId(sourceKey, vodId, playFlag, idx);
                 }
-                String episodeId = DownloadCore.buildEpisodeId(sourceKey, vodId, playFlag, idx);
                 boolean ok = DownloadManager.get().enqueue(url, sourceKey, playFlag, s.url, episodeId, sourceName, vodName, epName);
                 Log.i("TVBox-Download", "  - " + s.name + " enqueue=" + ok + " 文件名=" + epName + " url=" + url);
                 if (ok) {
                     added++;
                 } else {
                     // 已存在:区分"已下载完成"与"已在任务中",提示更精确(方案4.1排队层)
-                    int st = DownloadCore.getEpisodeState(sourceKey, vodId, playFlag, idx, sourceName, vodName, s.name);
+                    int st = DownloadCore.getEpisodeState(episodeId, sourceName, vodName, s.name);
                     if (st == 1) downloadedExisted++;
                     else existedInQueue++;
                 }

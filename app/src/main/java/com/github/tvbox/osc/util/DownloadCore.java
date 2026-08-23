@@ -62,9 +62,13 @@ public class DownloadCore {
      */
     public static int getEpisodeState(String sourceKey, String vodId, String playFlag, int playIndex,
                                       String sourceName, String vodName, String episodeName) {
-        String eid = buildEpisodeId(sourceKey, vodId, playFlag, playIndex);
-        if (eid != null && !eid.contains("||")) {
-            DownloadTask t = getTaskByEpisode(eid);
+        return getEpisodeState(buildEpisodeId(sourceKey, vodId, playFlag, playIndex), sourceName, vodName, episodeName);
+    }
+
+    /** 同 {@link #getEpisodeState(String, String, String, int, String, String, String)},直接传入已构建的 EpisodeId */
+    public static int getEpisodeState(String episodeId, String sourceName, String vodName, String episodeName) {
+        if (episodeId != null && !episodeId.isEmpty() && !episodeId.contains("||")) {
+            DownloadTask t = getTaskByEpisode(episodeId);
             if (t != null) {
                 if (t.state == DownloadTask.STATE_COMPLETED) {
                     return t.savePath != null && new File(t.savePath).exists() ? 1 : 0;
