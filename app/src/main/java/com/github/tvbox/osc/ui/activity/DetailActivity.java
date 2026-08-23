@@ -1262,7 +1262,7 @@ public class DetailActivity extends BaseVbActivity<ActivityDetailBinding> {
                     }
                     episodeId = DownloadCore.buildEpisodeId(sourceKey, vodId, playFlag, idx);
                 }
-                boolean ok = DownloadManager.get().enqueue(url, sourceKey, playFlag, s.url, episodeId, sourceName, vodName, epName);
+                boolean ok = DownloadManager.get().enqueue(url, sourceKey, playFlag, s.url, episodeId, vodInfo.pic, sourceName, vodName, epName);
                 Log.i("TVBox-Download", "  - " + s.name + " enqueue=" + ok + " 文件名=" + epName + " url=" + url);
                 if (ok) {
                     added++;

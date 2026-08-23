@@ -288,7 +288,13 @@ public class DownloadManager {
      */
     public boolean enqueue(String url, String sourceKey, String playFlag, String episodeRawUrl,
                            String episodeId, String sourceName, String vodName, String episodeName) {
-        return enqueueInternal(url, sourceKey, playFlag, episodeRawUrl, episodeId, sourceName, vodName, episodeName);
+        return enqueueInternal(url, sourceKey, playFlag, episodeRawUrl, episodeId, null, sourceName, vodName, episodeName);
+    }
+
+    /** 带 EpisodeId 与封面图 URL 的入队 */
+    public boolean enqueue(String url, String sourceKey, String playFlag, String episodeRawUrl,
+                           String episodeId, String pic, String sourceName, String vodName, String episodeName) {
+        return enqueueInternal(url, sourceKey, playFlag, episodeRawUrl, episodeId, pic, sourceName, vodName, episodeName);
     }
 
     /**
@@ -305,11 +311,11 @@ public class DownloadManager {
      */
     public boolean enqueue(String url, String sourceKey, String playFlag, String episodeRawUrl,
                            String sourceName, String vodName, String episodeName) {
-        return enqueueInternal(url, sourceKey, playFlag, episodeRawUrl, null, sourceName, vodName, episodeName);
+        return enqueueInternal(url, sourceKey, playFlag, episodeRawUrl, null, null, sourceName, vodName, episodeName);
     }
 
     private boolean enqueueInternal(String url, String sourceKey, String playFlag, String episodeRawUrl,
-                                    String episodeId, String sourceName, String vodName, String episodeName) {
+                                    String episodeId, String pic, String sourceName, String vodName, String episodeName) {
         String src = sanitize(sourceName);
         if (src.isEmpty()) src = "未分类";
         String vn = sanitize(vodName);
@@ -371,6 +377,7 @@ public class DownloadManager {
         t.episodeRawUrl = episodeRawUrl;
         t.episodeId = episodeId;
         t.episodeName = episodeName;
+        t.pic = pic;
         t.sourceName = src;
         t.vodName = vn;
         t.groupName = vn;

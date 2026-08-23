@@ -62,11 +62,8 @@ public class DownloadFragment extends BaseVbFragment<FragmentDownloadBinding> {
 
     private int currentTab = TAB_DOWNLOADING;
 
-    /** 正在下载:按剧名分组的文件夹级 adapter */
-    private BaseQuickAdapter<String, BaseViewHolder> vodGroupAdapter;
+    /** 正在下载:直接任务列表 */
     private BaseQuickAdapter<DownloadTask, BaseViewHolder> downloadingAdapter;
-    /** 正在下载的文件级:当前剧名(非空=该剧的任务列表) */
-    private String currentVodGroup = null;
     /** 下载完成:文件夹列表(剧名/来源,两排显示) */
     private BaseQuickAdapter<VideoFolder, BaseViewHolder> folderAdapter;
     private LocalVideoAdapter localVideoAdapter;
@@ -106,39 +103,30 @@ public class DownloadFragment extends BaseVbFragment<FragmentDownloadBinding> {
         // 当前位置导航条:点按返回上一级
         mBinding.llNav.setOnClickListener(v -> onBackPressed());
 
-        // 正在下载:按剧名分组(文件夹级)
-        vodGroupAdapter = new BaseQuickAdapter<String, BaseViewHolder>(R.layout.item_download_vod_group) {
-            @Override
-            protected void convert(BaseViewHolder helper, String vodName) {
-                helper.setText(R.id.tv_vod_name, vodName);
-                int count = 0;
-                int downloading = 0;
-                for (DownloadTask t : DownloadManager.get().getTasks()) {
-                    if (t.state != DownloadTask.STATE_COMPLETED && vodName.equals(vodNameOf(t))) {
-                        count++;
-                        if (t.state == DownloadTask.STATE_DOWNLOADING) downloading++;
-                    }
-                }
-                String desc = count + " 个任务";
-                if (downloading > 0) desc = downloading + " 个下载中 · " + desc;
-                helper.setText(R.id.tv_vod_count, desc);
-            }
-        };
-        vodGroupAdapter.setOnItemClickListener((adapter, view, position) -> {
-            String vodName = vodGroupAdapter.getItem(position);
-            if (vodName == null) return;
-            currentVodGroup = vodName;
-            mBinding.rvDownloading.setAdapter(downloadingAdapter);
-            refreshDownloadingList();
-        });
-        mBinding.rvDownloading.setAdapter(vodGroupAdapter);
-
-        // 正在下载:该剧的任务列表(文件级)
-        downloadingAdapter = new BaseQuickAdapter<DownloadTask, BaseViewHolder>(R.layout.item_download_task) {
+        // 正在下载:直接任务列表(方案9.1.2样式:封面+剧名·集名+状态·进度+大小·速度+来源+操作按钮)
+        downloadingAdapter = new BaseQuickAdapter<DownloadTask, BaseViewHolder>(R.layout.item_download_task_new) {
             @Override
             protected void convert(BaseViewHolder helper, DownloadTask task) {
-                helper.setText(R.id.tv_name, task.fileName);
-                // 状态徽标:下载中/等待中/排队中(调度暂停)/已暂停(用户暂停)/失败
+                // 封面图(Glide 加载,失败灰底)
+                ImageView ivCover = helper.getView(R.id.iv_cover);
+                if (task.pic != null && !task.pic.isEmpty()) {
+                    Glide.with(mContext)
+                            .load(task.pic)
+                            .diskCacheStrategy(DiskCacheStrategy.AUTOMATIC)
+                            .placeholder(R.color.gray_darker_press_alpha)
+                            .centerCrop()
+                            .into(ivCover);
+                } else {
+                    ivCover.setImageDrawable(null);
+                }
+                // 行1:剧名 · 集名
+                String name = task.vodName == null ? "" : task.vodName;
+                String ep = task.episodeName;
+                if (ep != null && !ep.isEmpty() && !ep.equals(task.vodName)) {
+                    name = name + " · " + ep;
+                }
+                helper.setText(R.id.tv_name, name);
+                // 行2:状态 · 进度
                 String status;
                 int statusColor;
                 if (task.state == DownloadTask.STATE_FAILED) {
@@ -154,7 +142,6 @@ public class DownloadFragment extends BaseVbFragment<FragmentDownloadBinding> {
                     status = "等待中";
                     statusColor = ContextCompat.getColor(mContext, R.color.text_sub_foreground);
                 } else {
-                    // 下载中:按 message 显示合并阶段(文件校验中/文件合并中)
                     if (DownloadManager.MSG_VERIFYING.equals(task.message)) {
                         status = DownloadManager.MSG_VERIFYING;
                     } else if (DownloadManager.MSG_MERGING.equals(task.message)) {
@@ -164,39 +151,55 @@ public class DownloadFragment extends BaseVbFragment<FragmentDownloadBinding> {
                     }
                     statusColor = ContextCompat.getColor(mContext, R.color.download_active);
                 }
-                helper.setText(R.id.tv_group, status);
-                ((TextView) helper.getView(R.id.tv_group)).setTextColor(statusColor);
-                int percent = task.getProgressPercent();
-                helper.setText(R.id.tv_percent, buildPercentText(task));
+                TextView tvStatus = helper.getView(R.id.tv_status);
+                tvStatus.setText(status + " · " + task.getProgressPercent() + "%");
+                tvStatus.setTextColor(statusColor);
+                // 行3:大小 · 速度
+                helper.setText(R.id.tv_size_speed, buildPercentText(task));
+                // 行4:来源 · 存储位置
+                String src = task.sourceName == null ? "" : task.sourceName;
+                helper.setText(R.id.tv_source, "来源 " + (src.isEmpty() ? "未知" : src));
+                // 进度条
                 ProgressBar pb = helper.getView(R.id.progress);
-                pb.setProgress(percent);
-                // 进度条状态色:下载中=绿(download_done),其余(暂停/等待/排队/失败)置灰
-                if (task.state == DownloadTask.STATE_DOWNLOADING) {
-                    pb.setProgressTintList(ColorStateList.valueOf(ContextCompat.getColor(mContext, R.color.download_done)));
+                pb.setProgress(task.getProgressPercent());
+                pb.setProgressTintList(ColorStateList.valueOf(
+                        task.state == DownloadTask.STATE_DOWNLOADING
+                                ? ContextCompat.getColor(mContext, R.color.download_done)
+                                : ContextCompat.getColor(mContext, R.color.gray_darker)));
+                // 操作按钮:随状态切换 暂停/继续/重试
+                TextView btnAction = helper.getView(R.id.btn_action);
+                if (task.state == DownloadTask.STATE_PAUSED) {
+                    btnAction.setText("继续");
+                    btnAction.setTextColor(ContextCompat.getColor(mContext, R.color.download_active));
+                } else if (task.state == DownloadTask.STATE_FAILED) {
+                    btnAction.setText("重试");
+                    btnAction.setTextColor(ContextCompat.getColor(mContext, R.color.download_active));
                 } else {
-                    pb.setProgressTintList(ColorStateList.valueOf(ContextCompat.getColor(mContext, R.color.gray_darker)));
+                    btnAction.setText("暂停");
+                    btnAction.setTextColor(ContextCompat.getColor(mContext, R.color.text_foreground));
                 }
-                String btn;
-                if (task.state == DownloadTask.STATE_PAUSED) btn = "继 续";
-                else if (task.state == DownloadTask.STATE_FAILED) btn = "重 试";
-                else btn = "暂 停";
-                helper.setText(R.id.btn_pause, btn);
-                helper.addOnClickListener(R.id.btn_pause, R.id.btn_delete);
+                helper.addOnClickListener(R.id.btn_action);
+                // 更多行:失败显示重试,长按/点更多删除
+                View llMore = helper.getView(R.id.ll_more);
+                llMore.setVisibility(task.state == DownloadTask.STATE_FAILED ? View.VISIBLE : View.GONE);
+                helper.addOnClickListener(R.id.tv_more_delete, R.id.tv_more_retry);
             }
         };
         downloadingAdapter.setOnItemChildClickListener((adapter, view, position) -> {
             List<DownloadTask> data = downloadingAdapter.getData();
             if (position < 0 || position >= data.size()) return;
             DownloadTask t = data.get(position);
-            if (view.getId() == R.id.btn_pause) {
+            int id = view.getId();
+            if (id == R.id.btn_action) {
                 if (t.state == DownloadTask.STATE_PAUSED || t.state == DownloadTask.STATE_FAILED) {
                     DownloadManager.get().resume(t);
                 } else {
                     DownloadManager.get().pause(t);
                 }
-            } else if (view.getId() == R.id.btn_delete) {
-                // 下载中的任务:删除 = 记录 + 过程文件(分片/临时)一起删,不存在"只删记录保留文件"
-                // (过程文件无保留价值);简单确认后直接全删
+            } else if (id == R.id.tv_more_retry) {
+                DownloadManager.get().resume(t);
+            } else if (id == R.id.tv_more_delete) {
+                // 下载中的任务:删除 = 记录 + 过程文件一起删,简单确认后直接全删
                 new XPopup.Builder(mContext)
                         .isDarkTheme(Utils.isDarkTheme())
                         .asConfirm("删除任务", "将删除该任务及其未完成的下载文件,确定?",
@@ -207,8 +210,7 @@ public class DownloadFragment extends BaseVbFragment<FragmentDownloadBinding> {
                         .show();
             }
         });
-        // 注意:不能在这里 setAdapter(downloadingAdapter),否则会顶掉上面的文件夹级适配器,
-        // 导致"正在下载"默认视图永远空白(任务只在点进文件夹后可见)
+        mBinding.rvDownloading.setAdapter(downloadingAdapter);
 
         // 下载完成:文件夹列表(剧名 + 来源/个数,卡片式)
         folderAdapter = new BaseQuickAdapter<VideoFolder, BaseViewHolder>(R.layout.item_download_folder) {
@@ -217,9 +219,13 @@ public class DownloadFragment extends BaseVbFragment<FragmentDownloadBinding> {
                 List<VideoInfo> videoList = folder.getVideoList();
                 // 第一排:电视剧名称
                 helper.setText(R.id.tv_name, folder.getName());
-                // 第二排:来源 / N 个视频
+                // 第二排:来源 / N 个视频 / 总容量
                 String source = folder.getSourceName();
-                helper.setText(R.id.tv_count, (source == null || source.isEmpty() ? "" : source + " / ") + videoList.size() + " 个视频");
+                long totalSize = 0;
+                for (VideoInfo v : videoList) totalSize += v.getSize();
+                String count = videoList.size() + " 个视频";
+                if (totalSize > 0) count += " · " + formatSize(totalSize);
+                helper.setText(R.id.tv_count, (source == null || source.isEmpty() ? "" : source + " / ") + count);
                 Glide.with(mContext)
                         .load(videoList.get(0).getPath())
                         .diskCacheStrategy(DiskCacheStrategy.AUTOMATIC)
@@ -307,12 +313,6 @@ public class DownloadFragment extends BaseVbFragment<FragmentDownloadBinding> {
             backToFolders();
             return true;
         }
-        if (currentVodGroup != null) {
-            currentVodGroup = null;
-            mBinding.rvDownloading.setAdapter(vodGroupAdapter);
-            refreshDownloadingList();
-            return true;
-        }
         return false;
     }
 
@@ -339,9 +339,25 @@ public class DownloadFragment extends BaseVbFragment<FragmentDownloadBinding> {
     private void refresh() {
         refreshDownloadingList();
         refreshDoneList();
+        updateTabCounts();
     }
 
-    /** 刷新"正在下载":文件夹级按剧名分组,文件级显示该剧任务 */
+    /** Tab 数量角标:下载中 (N)  已完成 (M) */
+    private void updateTabCounts() {
+        int downloading = 0;
+        int done = 0;
+        for (DownloadTask t : DownloadManager.get().getTasks()) {
+            if (t.state == DownloadTask.STATE_COMPLETED) {
+                if (t.savePath != null && new File(t.savePath).exists()) done++;
+            } else {
+                downloading++;
+            }
+        }
+        mBinding.tvTabDownloading.setText(downloading > 0 ? "正在下载 (" + downloading + ")" : "正在下载");
+        mBinding.tvTabDone.setText(done > 0 ? "下载完成 (" + done + ")" : "下载完成");
+    }
+
+    /** 刷新"正在下载":直接任务列表(按加入时间排序) */
     private void refreshDownloadingList() {
         List<DownloadTask> all = DownloadManager.get().getTasks();
         List<DownloadTask> downloading = new ArrayList<>();
@@ -351,34 +367,8 @@ public class DownloadFragment extends BaseVbFragment<FragmentDownloadBinding> {
             }
         }
         downloading.sort(Comparator.comparingLong(t -> t.createTime));
-        if (currentVodGroup == null) {
-            // 文件夹级:按剧名分组,组顺序按组内最早加入时间
-            Map<String, Long> firstTime = new LinkedHashMap<>();
-            for (DownloadTask t : downloading) {
-                firstTime.computeIfAbsent(vodNameOf(t), k -> t.createTime);
-            }
-            List<String> groups = new ArrayList<>(firstTime.keySet());
-            groups.sort(Comparator.comparingLong(firstTime::get));
-            vodGroupAdapter.setNewData(groups);
-        } else {
-            // 文件级:该剧的任务,按加入时间排序
-            List<DownloadTask> list = new ArrayList<>();
-            for (DownloadTask t : downloading) {
-                if (currentVodGroup.equals(vodNameOf(t))) list.add(t);
-            }
-            if (list.isEmpty()) {
-                currentVodGroup = null;
-                mBinding.rvDownloading.setAdapter(vodGroupAdapter);
-                refreshDownloadingList();
-                return;
-            }
-            downloadingAdapter.setNewData(list);
-        }
+        downloadingAdapter.setNewData(downloading);
         updateNavBar();
-    }
-
-    private String vodNameOf(DownloadTask t) {
-        return t.vodName == null ? t.groupName : t.vodName;
     }
 
     /** 刷新"下载完成":基于下载完成记录表,先对账清理文件已不存在的失效记录 */
@@ -400,12 +390,10 @@ public class DownloadFragment extends BaseVbFragment<FragmentDownloadBinding> {
         updateNavBar();
     }
 
-    /** 刷新当前位置导航条:进入剧集文件夹后显示"xx › 剧名",点按返回上一级;跟随当前 tab */
+    /** 刷新当前位置导航条:仅"下载完成"进入文件夹后显示;下载中为直接列表无层级 */
     private void updateNavBar() {
         if (currentTab == TAB_DOWNLOADING) {
-            boolean inFolder = currentVodGroup != null;
-            mBinding.llNav.setVisibility(inFolder ? View.VISIBLE : View.GONE);
-            if (inFolder) mBinding.tvNavPath.setText("正在下载 › " + currentVodGroup);
+            mBinding.llNav.setVisibility(View.GONE);
         } else {
             boolean inFolder = currentFolder != null;
             mBinding.llNav.setVisibility(inFolder ? View.VISIBLE : View.GONE);
@@ -421,7 +409,8 @@ public class DownloadFragment extends BaseVbFragment<FragmentDownloadBinding> {
             File dir = DownloadConfig.getSaveDir();
             StatFs stat = new StatFs(dir.getAbsolutePath());
             long free = stat.getAvailableBytes();
-            mBinding.tvStorage.setText("可用存储 " + formatSize(free));
+            String wifi = DownloadConfig.isWifiOnly() ? "仅Wi-Fi" : "Wi-Fi+流量";
+            mBinding.tvStorage.setText("可用 " + formatSize(free) + "  |  " + wifi + " · 并发 " + DownloadConfig.getMaxConcurrent());
             mBinding.tvSavePath.setText("保存: " + dir.getAbsolutePath());
         } catch (Throwable th) {
             mBinding.tvStorage.setText("");
@@ -429,9 +418,9 @@ public class DownloadFragment extends BaseVbFragment<FragmentDownloadBinding> {
         }
     }
 
-    /** 刷新"全部暂停/全部开始"操作行:仅"正在下载"根级且有任务时显示,按钮按状态置灰 */
+    /** 刷新"全部暂停/全部开始"操作行:下载中 Tab 且有任务时显示,按钮按状态置灰 */
     private void updateActionBar() {
-        boolean show = currentTab == TAB_DOWNLOADING && currentVodGroup == null;
+        boolean show = currentTab == TAB_DOWNLOADING;
         if (show) {
             int running = 0;
             int waiting = 0;
@@ -467,7 +456,7 @@ public class DownloadFragment extends BaseVbFragment<FragmentDownloadBinding> {
         Map<String, List<DownloadTask>> groups = new LinkedHashMap<>();
         for (DownloadTask t : DownloadManager.get().getTasks()) {
             if (t.state != DownloadTask.STATE_COMPLETED || t.savePath == null) continue;
-            groups.computeIfAbsent(vodNameOf(t), k -> new ArrayList<>()).add(t);
+            groups.computeIfAbsent(t.vodName == null ? t.groupName : t.vodName, k -> new ArrayList<>()).add(t);
         }
         for (Map.Entry<String, List<DownloadTask>> e : groups.entrySet()) {
             List<VideoInfo> videos = new ArrayList<>();
@@ -497,7 +486,7 @@ public class DownloadFragment extends BaseVbFragment<FragmentDownloadBinding> {
         List<VideoInfo> videos = new ArrayList<>();
         for (DownloadTask t : DownloadManager.get().getTasks()) {
             if (t.state != DownloadTask.STATE_COMPLETED || t.savePath == null) continue;
-            if (!vodName.equals(vodNameOf(t))) continue;
+            if (!vodName.equals(t.vodName == null ? t.groupName : t.vodName)) continue;
             File f = new File(t.savePath);
             if (!f.exists()) continue;
             VideoInfo info = new VideoInfo();

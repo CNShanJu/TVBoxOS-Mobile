@@ -20,6 +20,8 @@ public class DownloadTask {
     public String sourceName;
     /** 剧名,作为二级目录与显示分组 */
     public String vodName;
+    /** 封面图 URL(来自详情页 vodInfo.pic,列表项展示用) */
+    public String pic;
     /** 名称分组(兼容旧字段,现等同剧名) */
     public String groupName;
     /** 保存文件名(剧名_第几集.mp4) */
