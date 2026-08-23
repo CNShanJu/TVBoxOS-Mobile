@@ -1,0 +1,9 @@
+{
+  "bg_body": "#faf8ff",
+  "bg_component": "#ebebf6",
+  "text_main": "#050505",
+  "text_highlight": "#1F2937",
+  "nav_text_normal": "#CCCCCC",
+  "download_active": "#037AFF",
+  "download_done": "#08CA2C"
+}
