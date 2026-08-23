@@ -509,8 +509,6 @@ class SettingActivity : BaseVbActivity<ActivitySettingBinding>() {
             }, SelectDialogAdapter.stringDiff, types, defaultPos)
             dialog.show()
         }
-        // 保存位置(只读展示)
-        mBinding.tvDlSaveDir.text = DownloadConfig.getSaveDir().absolutePath
     }
 
     /** 加载动画选项:默认 + assets/loading/ 下的动画文件夹(每个文件夹一个动画 + config.json) */
