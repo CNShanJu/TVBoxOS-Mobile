@@ -58,7 +58,7 @@ import static xyz.doikki.videoplayer.util.PlayerUtils.stringForTime;
 
 public class VodController extends BaseController {
 
-    /** 是否成功播放过(用于下载前置校验:必须先播放成功才能下载) */
+    /** 是否成功播放过(详情页下载时用于复用当前集的 finalUrl;未播放过也能下载,走后台解析) */
     public volatile boolean hasPlayedOnce = false;
     /** 是否全屏(由 changedLandscape 记录,用于视频加载后校正横竖屏) */
     private boolean mFullWindows = false;
