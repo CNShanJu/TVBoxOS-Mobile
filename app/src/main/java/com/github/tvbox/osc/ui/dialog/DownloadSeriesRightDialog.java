@@ -1,8 +1,6 @@
 package com.github.tvbox.osc.ui.dialog;
 
 import android.content.Context;
-import android.graphics.PorterDuff;
-import android.graphics.drawable.Drawable;
 import android.util.Log;
 import android.view.View;
 import android.widget.TextView;
@@ -17,6 +15,7 @@ import com.chad.library.adapter.base.BaseViewHolder;
 import com.github.tvbox.osc.R;
 import com.github.tvbox.osc.bean.VodInfo;
 import com.github.tvbox.osc.ui.widget.GridSpacingItemDecoration;
+import com.github.tvbox.osc.ui.widget.RoundChip;
 import com.github.tvbox.osc.util.AppBubble;
 import com.github.tvbox.osc.util.LoadingAnim;
 
@@ -26,10 +25,11 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * 全屏"下载"右侧抽屉:选择下载剧集(网格多选),样式与选集右侧抽屉一致。
+ * 全屏"下载"右侧抽屉:选择下载剧集,布局与全屏选集抽屉一致。
  * <p>
- * 点击"下载"立即弹出抽屉,内容先显示 loading;数据(选集副本+下载状态)异步准备完成后
- * 通过 {@link #setData(List, int[])} 填充。states:0=可下载;1=已下载(✓置灰);2=下载中/排队(↓置灰)。
+ * 三 box 布局:标题 box / 集数列表 box(吃满剩余高度,内容超出内部滚动) / 按钮 box。
+ * 点击"下载"立即弹出,数据异步准备完成后通过 {@link #setData(List, int[])} 填充。
+ * states:0=可下载;1=已下载(置灰);2=下载中/排队(置灰)。
  */
 public class DownloadSeriesRightDialog extends AppDrawerPopupView {
 
@@ -70,8 +70,9 @@ public class DownloadSeriesRightDialog extends AppDrawerPopupView {
         // 加载动画跟随设置页"加载动画"选项
         LoadingAnim.apply(findViewById(R.id.lottie_loading));
 
+        // 集数网格:固定3列,条目样式与选集一致(RoundChip 文字,无边框)
         mRv.setLayoutManager(new GridLayoutManager(getContext(), 3));
-        mRv.addItemDecoration(new GridSpacingItemDecoration(3, 20, true));
+        mRv.addItemDecoration(new GridSpacingItemDecoration(3, 14, true));
 
         mAdapter = new ItemAdapter();
         mRv.setAdapter(mAdapter);
@@ -130,11 +131,6 @@ public class DownloadSeriesRightDialog extends AppDrawerPopupView {
         if (mRv != null) {
             mRv.setVisibility(View.VISIBLE);
             mAdapter.setNewData(mList);
-            // 网格高度按行数自适应,封顶避免全集数把抽屉撑到全屏
-            int rows = Math.max(1, (int) Math.ceil(mList.size() / 3.0f));
-            int gridHeight = Math.min(rows * dp2px(72), dp2px(340));
-            mRv.getLayoutParams().height = gridHeight;
-            mRv.requestLayout();
         }
         updateCount();
     }
@@ -149,51 +145,26 @@ public class DownloadSeriesRightDialog extends AppDrawerPopupView {
         mTvSelected.setText("(已选 " + count + ")");
     }
 
-    private int dp2px(float dp) {
-        return (int) (dp * getContext().getResources().getDisplayMetrics().density + 0.5f);
-    }
-
-    /** 弹窗专用适配器:圆角框 + 状态图标(与底部下载弹窗一致) */
+    /** 集数条目:RoundChip 文字样式(与选集抽屉一致,无边框) */
     private class ItemAdapter extends BaseQuickAdapter<VodInfo.VodSeries, BaseViewHolder> {
         ItemAdapter() {
-            super(R.layout.item_download_select, mList);
+            super(R.layout.item_series, mList);
         }
 
         @Override
         protected void convert(BaseViewHolder helper, VodInfo.VodSeries item) {
             int pos = helper.getAdapterPosition();
             int st = mStates != null && pos >= 0 && pos < mStates.length ? mStates[pos] : 0;
-            boolean selected = item.selected;
-            TextView tvName = helper.getView(R.id.tv_name);
-            helper.setText(R.id.tv_name, item.name);
-            if (st == 1) {
-                tvName.setTextColor(ContextCompat.getColor(getContext(), R.color.text_sub_foreground));
-                tvName.setCompoundDrawables(stateIcon(R.drawable.ic_download_done, R.color.download_done), null, null, null);
-                helper.getView(R.id.item_root).setBackgroundResource(R.drawable.bg_episode_chip);
-            } else if (st == 2) {
-                tvName.setTextColor(ContextCompat.getColor(getContext(), R.color.text_sub_foreground));
-                tvName.setCompoundDrawables(stateIcon(R.drawable.ic_download_active, R.color.download_active), null, null, null);
-                helper.getView(R.id.item_root).setBackgroundResource(R.drawable.bg_episode_chip);
+            RoundChip chip = helper.getView(R.id.sl);
+            chip.setTitle(item.name);
+            if (st == 1 || st == 2) {
+                // 已下载 / 下载中:置灰不可选
+                chip.setDisabled(true);
+                chip.setSelected(false);
             } else {
-                tvName.setCompoundDrawables(null, null, null, null);
-                if (selected) {
-                    tvName.setTextColor(ContextCompat.getColor(getContext(), R.color.download_active));
-                    helper.getView(R.id.item_root).setBackgroundResource(R.drawable.bg_episode_chip_selected);
-                } else {
-                    tvName.setTextColor(ContextCompat.getColor(getContext(), R.color.text_foreground));
-                    helper.getView(R.id.item_root).setBackgroundResource(R.drawable.bg_episode_chip);
-                }
+                chip.setDisabled(false);
+                chip.setSelected(item.selected);
             }
-        }
-
-        private Drawable stateIcon(int resId, int colorRes) {
-            Drawable d = ContextCompat.getDrawable(getContext(), resId);
-            if (d != null) {
-                int size = dp2px(16);
-                d.setBounds(0, 0, size, size);
-                d.setColorFilter(ContextCompat.getColor(getContext(), colorRes), PorterDuff.Mode.SRC_IN);
-            }
-            return d;
         }
     }
 }

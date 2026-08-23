@@ -1152,6 +1152,7 @@ public class DetailActivity extends BaseVbActivity<ActivityDetailBinding> {
         mDownloadDialog = new XPopup.Builder(this)
                 .isViewMode(true)
                 .hasNavigationBar(false)
+                .maxHeight(ScreenUtils.getScreenHeight() * 2 / 3) // 底部弹窗封顶2/3屏,列表吃满剩余+滚动,按钮固定底部
                 // 弹窗关闭(确认/取消/点外部/返回键)后清除防重入标记,允许再次打开
                 .setPopupCallback(downloadDialogCallback())
                 .asCustom(new DownloadSeriesDialog(this, new DownloadSeriesDialog.OnDownloadActionListener() {
