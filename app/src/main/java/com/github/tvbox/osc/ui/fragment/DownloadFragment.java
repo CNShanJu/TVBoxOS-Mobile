@@ -1,8 +1,6 @@
 package com.github.tvbox.osc.ui.fragment;
 
-import android.content.Intent;
 import android.content.res.ColorStateList;
-import android.net.Uri;
 import android.os.Bundle;
 import android.os.StatFs;
 import android.util.Log;
@@ -14,10 +12,10 @@ import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.core.content.ContextCompat;
-import androidx.core.content.FileProvider;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.blankj.utilcode.util.ClipboardUtils;
 import com.blankj.utilcode.util.ColorUtils;
 import com.blankj.utilcode.util.GsonUtils;
 import com.github.tvbox.osc.util.AppBubble;
@@ -84,19 +82,14 @@ public class DownloadFragment extends BaseVbFragment<FragmentDownloadBinding> {
         mBinding.tvTabDownloading.setOnClickListener(v -> switchTab(TAB_DOWNLOADING));
         mBinding.tvTabDone.setOnClickListener(v -> switchTab(TAB_DONE));
 
-        // 顶部信息条:保存位置(点击跳系统文件管理器浏览保存目录)
+        // 顶部信息条:保存位置(点击复制路径,系统目录打开兼容性差/易误判为文件)
         mBinding.tvSavePath.setOnClickListener(v -> {
             try {
                 File dir = DownloadConfig.getSaveDir();
-                if (!dir.exists()) dir.mkdirs();
-                Uri uri = FileProvider.getUriForFile(mContext,
-                        mContext.getPackageName() + ".fileprovider", dir);
-                Intent intent = new Intent(Intent.ACTION_VIEW);
-                intent.setDataAndType(uri, "resource/folder");
-                intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-                mContext.startActivity(intent);
+                ClipboardUtils.copyText(dir.getAbsolutePath());
+                AppBubble.toast("已复制保存路径");
             } catch (Throwable th) {
-                AppBubble.toast("无法打开保存目录");
+                AppBubble.toast("无法复制保存路径");
             }
         });
 

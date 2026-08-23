@@ -3,6 +3,7 @@ package com.github.tvbox.osc.ui.widget;
 import android.content.Context;
 import android.util.AttributeSet;
 import android.view.Gravity;
+import android.widget.TextView;
 
 import androidx.core.content.ContextCompat;
 
@@ -38,7 +39,11 @@ public class AppTitleBar extends TitleBar {
         // 右侧图标垂直居中与标题文字对齐:
         // 注意:setRightIconGravity 只接受 LEFT/RIGHT/TOP/BOTTOM(内部lookupswitch),传 CENTER 会导致图标不显示
         if (getRightView() != null) {
-            getRightView().setGravity(Gravity.CENTER);
+            TextView rv = getRightView();
+            rv.setGravity(Gravity.CENTER);
+            // 去掉字体内边距:单行 compound drawable 时 includeFontPadding 会导致图标垂直偏移
+            rv.setIncludeFontPadding(false);
+            rv.setSingleLine(true);
         }
     }
 }
