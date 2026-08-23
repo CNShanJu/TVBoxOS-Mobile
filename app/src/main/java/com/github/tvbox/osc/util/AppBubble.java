@@ -69,7 +69,18 @@ public class AppBubble {
                     } catch (Throwable ignored) {
                     }
                     View view = LayoutInflater.from(themedCtx).inflate(R.layout.view_bubble, null);
-                    ((TextView) view.findViewById(R.id.tv_bubble_text)).setText(msg);
+                    TextView tv = view.findViewById(R.id.tv_bubble_text);
+                    tv.setText(msg);
+                    // 气泡颜色托管给 app 主题设置(浅色/深色),不依赖 values-night 资源限定符:
+                    // 资源限定符只跟随系统深色模式,而 app 内主题通过 AppCompatDelegate 控制,
+                    // 部分 ROM 上二者不同步,导致气泡颜色跟随系统而非 app 设置。
+                    // 这里按 Utils.isDarkTheme()(已含 app 主题判断)直接取色,与 theme_colors 一致。
+                    boolean dark = Utils.isDarkTheme();
+                    android.graphics.drawable.GradientDrawable bg = new android.graphics.drawable.GradientDrawable();
+                    bg.setColor(dark ? 0xFF2E2C36 : 0xFFF2F3F7);
+                    bg.setCornerRadius(dp2px(25));
+                    tv.setBackground(bg);
+                    tv.setTextColor(dark ? 0xFFFFFFFF : 0xFF1F2937);
                     currentPopup = new XPopup.Builder(activity)
                             .isViewMode(true)          // view 模式:不拦截触摸
                             .dismissOnTouchOutside(true)
@@ -94,5 +105,9 @@ public class AppBubble {
             }
             currentPopup = null;
         }
+    }
+
+    private static int dp2px(int dp) {
+        return Math.round(dp * App.getInstance().getResources().getDisplayMetrics().density);
     }
 }
