@@ -123,7 +123,7 @@ public class PlayingControlDialog extends BottomPopupView {
         mBinding.refresh.setOnClickListener(view -> changeAndUpdateText(null,mController.mPlayRefresh));
         mBinding.subtitle.setOnClickListener(view -> dismissWith(() -> changeAndUpdateText(null,mController.mZimuBtn)));
         mBinding.voice.setOnClickListener(view -> dismissWith(() -> changeAndUpdateText(null,mController.mAudioTrackBtn)));
-        mBinding.download.setOnClickListener(view -> dismissWith(mDetailActivity::showDownloadSeriesDialog));
+        mBinding.download.setOnClickListener(view -> dismissWith(mDetailActivity::showDownloadDialogFromPlayer));
     }
 
     private void updateSkipText(boolean start){

@@ -76,6 +76,7 @@ import com.github.tvbox.osc.util.HCallBack;
 import com.github.tvbox.osc.util.HawkConfig;
 import com.github.tvbox.osc.util.HttpClient;
 import com.github.tvbox.osc.util.LOG;
+import com.github.tvbox.osc.util.LoadingAnim;
 import com.github.tvbox.osc.util.MD5;
 import com.github.tvbox.osc.util.PlayerHelper;
 import com.github.tvbox.osc.util.VideoParseRuler;
@@ -210,6 +211,8 @@ public class PlayFragment extends BaseLazyFragment {
         mVideoView = findViewById(R.id.mVideoView);
         mPlayLoadTip = findViewById(R.id.play_load_tip);
         mPlayLoading = findViewById(R.id.play_loading);
+        // 播放器加载动画跟随设置页"加载动画"选项(默认/Glowing Fish)
+        LoadingAnim.apply(mPlayLoading);
         mPlayLoadErr = findViewById(R.id.play_load_error);
         mController = new VodController(requireContext());
         mController.showParse(false);

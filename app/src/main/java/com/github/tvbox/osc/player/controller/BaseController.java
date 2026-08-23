@@ -19,6 +19,7 @@ import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
+import com.github.tvbox.osc.util.LoadingAnim;
 import java.util.Map;
 
 import xyz.doikki.videoplayer.controller.BaseVideoController;
@@ -101,6 +102,8 @@ public abstract class BaseController extends BaseVideoController implements Gest
         setOnTouchListener(this);
         mSlideInfo = findViewWithTag("vod_control_slide_info");
         mLoading = findViewWithTag("vod_control_loading");
+        // 播放器加载动画跟随设置页"加载动画"选项(默认/Glowing Fish)
+        LoadingAnim.apply(mLoading);
     }
 
     @Override

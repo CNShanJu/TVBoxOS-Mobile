@@ -293,6 +293,7 @@ public class DetailActivity extends BaseVbActivity<ActivityDetailBinding> {
         openBackgroundPlay = false;
         playServerSwitch(false);
         pipExitByBack = false; // 回到前台,清除返回键退出标记
+        navigatingAway = false; // 回到前台,清除应用内跳转标记
         mBinding.ivPrivateBrowsing.postDelayed(NotificationUtils::cancelAll, 800);
     }
 
@@ -424,8 +425,10 @@ public class DetailActivity extends BaseVbActivity<ActivityDetailBinding> {
         //   1 开启  :后台继续播放(前台服务+通知)
         //   2 画中画:播放窗口自动进入小窗模式
         // 按返回键退出播放页(Activity 正在销毁)不算"切后台",排除
-        if (pipExitByBack || isFinishing()) {
+        // 应用内跳转(打开下载管理/设置等)也不算"切后台",排除(避免返回时误触小窗/后台播放)
+        if (pipExitByBack || navigatingAway || isFinishing()) {
             pipExitByBack = false;
+            navigatingAway = false;
             return;
         }
         if (playFragment == null || playFragment.getPlayer() == null || !playFragment.getPlayer().isPlaying()) {
@@ -949,6 +952,8 @@ public class DetailActivity extends BaseVbActivity<ActivityDetailBinding> {
     boolean fullWindows = false;
     /** 用户按返回键退出播放页的标记(onUserLeaveHint 里排除,避免"返回退出"被当成"切后台") */
     private boolean pipExitByBack = false;
+    /** 应用内跳转(如打开下载管理/设置等)标记:onUserLeaveHint 里排除,避免"应用内导航"被当成"切后台"触发小窗/后台播放 */
+    private boolean navigatingAway = false;
     /** 画中画(小窗)通用辅助器,封装进入/退出小窗逻辑,详情页与本地播放器复用 */
     private PipHelper pipHelper;
 
@@ -986,6 +991,19 @@ public class DetailActivity extends BaseVbActivity<ActivityDetailBinding> {
     }
 
     /**
+     * 播放器控制抽屉的"下载"入口:先关闭播放控制抽屉,再退全屏回到详情页布局,最后弹下载选择。
+     * 拆成独立方法避免 dismissWith 时序与全屏切换互相干扰(修复:全屏抽屉关闭动画期间退全屏导致残留)。
+     */
+    public void showDownloadDialogFromPlayer() {
+        // 1) 先关闭可能打开的播放控制抽屉(全屏右侧抽屉 / 非全屏底部抽屉)
+        if (playFragment != null) {
+            playFragment.hideAllDialogSuccess();
+        }
+        // 2) 延迟到抽屉关闭动画结束后再退全屏 + 弹下载选择(等布局稳定)
+        mBinding.previewPlayer.postDelayed(this::showDownloadSeriesDialog, 300);
+    }
+
+    /**
      * 打开"选择下载剧集"弹窗:网格多选 + 开始下载/下载管理。
      * 不要求必须先播放成功(未播放时所有集统一走后台解析);全屏时先退出全屏再弹窗,避免小屏叠加。
      */
@@ -998,7 +1016,15 @@ public class DetailActivity extends BaseVbActivity<ActivityDetailBinding> {
         // 全屏播放下发起下载:先退出全屏回到详情页布局,再弹窗(手机小屏上避免播放器与抽屉叠加)
         if (fullWindows) {
             toggleFullPreview();
+            // 等退全屏布局稳定后再弹窗,避免弹窗与全屏切换动画叠加(修复:返回时全屏/抽屉残留)
+            mBinding.previewPlayer.postDelayed(this::showDownloadSeriesDialogInner, 250);
+            return;
         }
+        showDownloadSeriesDialogInner();
+    }
+
+    /** 弹窗主体(退全屏完成后调用) */
+    private void showDownloadSeriesDialogInner() {
         // 拷贝一份选集,弹窗内的选中状态不影响原选集的选中态;同时写入统一剧集标识
         List<VodInfo.VodSeries> copy = new ArrayList<>();
         int copyIdx = 0;
@@ -1029,6 +1055,8 @@ public class DetailActivity extends BaseVbActivity<ActivityDetailBinding> {
 
                     @Override
                     public void onOpenDownloadManager() {
+                        // 应用内跳转:标记避免 onUserLeaveHint 误判为"切后台"触发小窗/后台播放(修复:返回时全屏播放)
+                        navigatingAway = true;
                         jumpActivity(DownloadActivity.class);
                     }
                 }))
