@@ -1,12 +1,20 @@
 <?xml version="1.0" encoding="utf-8"?>
-<TextView xmlns:android="http://schemas.android.com/apk/res/android"
-    android:id="@+id/tv_bubble_text"
+<!-- 根必须是 ViewGroup(不能是 TextView):Android 13+ 会把"根=TextView"的 Toast 判定为
+     text toast,导致 setGravity 失效、自定义背景/文字色(含主题色)不生效。
+     包一层 FrameLayout 即为自定义 view toast,样式完整跟随主题。 -->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="wrap_content"
-    android:layout_height="wrap_content"
-    android:background="@drawable/bg_bubble"
-    android:gravity="center"
-    android:maxWidth="320dp"
-    android:paddingHorizontal="20dp"
-    android:paddingVertical="12dp"
-    android:textColor="@color/bubble_text"
-    android:textSize="14sp" />
+    android:layout_height="wrap_content">
+
+    <TextView
+        android:id="@+id/tv_bubble_text"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:background="@drawable/bg_bubble"
+        android:gravity="center"
+        android:maxWidth="320dp"
+        android:paddingHorizontal="20dp"
+        android:paddingVertical="12dp"
+        android:textColor="@color/bubble_text"
+        android:textSize="14sp" />
+</FrameLayout>
