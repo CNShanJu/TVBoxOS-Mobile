@@ -23,19 +23,26 @@
             android:textSize="22sp" />
     </LinearLayout>
 
+    <!-- 外层整体滚动(与设置页一致):MBox 标题吸顶固定,选项卡片+版本号随内容滚动 -->
     <ScrollView
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1"
-        android:layout_margin="20dp"
-        android:background="@drawable/bg_large_round_gray"
         android:scrollbars="none"
+        android:fillViewport="true"
         >
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
-            android:paddingVertical="20dp">
+            android:layout_margin="20dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:paddingVertical="20dp"
+                android:background="@drawable/bg_large_round_gray">
 
             <LinearLayout
                 android:id="@+id/llSubscription"
@@ -427,19 +434,20 @@
 
             </LinearLayout>
 
+            <!-- 选项卡片结束 -->
+            </LinearLayout>
+
+            <TextView
+                android:id="@+id/tv_version"
+                android:textSize="11sp"
+                tools:text="v0.01"
+                android:paddingVertical="8dp"
+                android:layout_gravity="center_horizontal"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textColor="@color/gray_darker"
+                />
         </LinearLayout>
-
     </ScrollView>
-
-    <TextView
-        android:id="@+id/tv_version"
-        android:textSize="11sp"
-        tools:text="v0.01"
-        android:paddingBottom="6dp"
-        android:layout_gravity="center_horizontal"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:textColor="@color/gray_darker"
-        />
 </LinearLayout>
 
