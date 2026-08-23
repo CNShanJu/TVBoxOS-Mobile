@@ -1,30 +1,31 @@
 package com.github.tvbox.osc.util;
 
-import android.content.Context;
 import android.content.res.Configuration;
 import android.os.Handler;
 import android.os.Looper;
-import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.widget.TextView;
-import android.widget.Toast;
 
 import com.github.tvbox.osc.R;
 import com.github.tvbox.osc.base.App;
+import com.lxj.xpopup.XPopup;
+import com.lxj.xpopup.core.BasePopupView;
 
 /**
  * 统一提醒气泡组件:
  * 圆角气泡 + 跟随主题配色(浅色柔和灰白底深字 / 深色深底白字),底部居中弹出。
  * <p>
- * 自定义 view 根必须是 ViewGroup(不能是 TextView):Android 13+ 会把"根=TextView"的
- * Toast 判定为 text toast,导致 setGravity 失效、自定义背景/文字色(含主题色)不生效,
- * 显示成系统默认样式(白底黑字小圆角)。见 view_bubble.xml。
+ * 实现:XPopup 自绘气泡(无遮罩、淡入淡出、自动消失),完全脱离系统 Toast 渲染,
+ * 规避 Android 13+ 及魅族 Flyme ROM 把自定义 Toast view 判为 "text toast"
+ * 显示系统默认样式(白底黑字小圆角、setGravity 失效)的问题。
  * 用法:AppBubble.toast("xxx") / AppBubble.toastLong("xxx")
  */
 public class AppBubble {
 
     private static final Handler MAIN = new Handler(Looper.getMainLooper());
+    /** 当前显示的气泡,新气泡弹出前先关闭旧的 */
+    private static BasePopupView currentPopup;
 
     private AppBubble() {
     }
@@ -51,32 +52,47 @@ public class AppBubble {
             @Override
             public void run() {
                 try {
-                    Context ctx = App.getInstance();
-                    // AppCompat 的夜间模式只作用于 Activity 上下文,Application 上下文的资源配置不会跟着切换,
-                    // 直接用 App 上下文 inflate 会让气泡永远解析成浅色主题(深色主题下仍是白底)。
-                    // 这里按当前主题构造配置上下文,保证气泡背景/文字跟随主题。
-                    Context themedCtx = ctx;
+                    // 关闭上一个气泡(避免叠加)
+                    dismiss();
+                    // 需要 Activity 上下文:取当前栈顶 Activity;无前台 Activity 时静默丢弃
+                    final android.app.Activity activity = AppManager.getInstance().currentActivity();
+                    if (activity == null || activity.isFinishing() || activity.isDestroyed()) {
+                        return;
+                    }
+                    // 主题上下文(深色切换)
+                    android.content.Context themedCtx = activity;
                     try {
-                        Configuration config = new Configuration(ctx.getResources().getConfiguration());
+                        Configuration config = new Configuration(activity.getResources().getConfiguration());
                         int night = Utils.isDarkTheme() ? Configuration.UI_MODE_NIGHT_YES : Configuration.UI_MODE_NIGHT_NO;
                         config.uiMode = (config.uiMode & ~Configuration.UI_MODE_NIGHT_MASK) | night;
-                        themedCtx = ctx.createConfigurationContext(config);
+                        themedCtx = activity.createConfigurationContext(config);
                     } catch (Throwable ignored) {
                     }
-                    Toast toast = new Toast(ctx);
                     View view = LayoutInflater.from(themedCtx).inflate(R.layout.view_bubble, null);
                     ((TextView) view.findViewById(R.id.tv_bubble_text)).setText(msg);
-                    toast.setView(view);
-                    toast.setGravity(Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL, 0, dp2px(ctx, 120));
-                    toast.setDuration(longDuration ? Toast.LENGTH_LONG : Toast.LENGTH_SHORT);
-                    toast.show();
+                    currentPopup = new XPopup.Builder(activity)
+                            .isViewMode(true)          // view 模式:不拦截触摸
+                            .dismissOnTouchOutside(true)
+                            .dismissOnBackPressed(false)
+                            .shadowBgColor(android.graphics.Color.TRANSPARENT) // 无遮罩
+                            .asCustom(new BubblePopupView(activity, view));
+                    // 自动消失(短/长),关闭后清引用
+                    currentPopup.delayDismissWith(longDuration ? 3500 : 2000, () -> dismiss());
+                    currentPopup.show();
                 } catch (Throwable ignored) {
                 }
             }
         });
     }
 
-    private static int dp2px(Context ctx, int dp) {
-        return Math.round(dp * ctx.getResources().getDisplayMetrics().density);
+    /** 关闭当前气泡(幂等) */
+    private static void dismiss() {
+        if (currentPopup != null) {
+            try {
+                currentPopup.dismiss();
+            } catch (Throwable ignored) {
+            }
+            currentPopup = null;
+        }
     }
 }
