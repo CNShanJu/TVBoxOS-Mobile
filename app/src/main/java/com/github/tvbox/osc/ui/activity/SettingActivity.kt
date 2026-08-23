@@ -52,6 +52,8 @@ class SettingActivity : BaseVbActivity<ActivitySettingBinding>() {
 
         // 下载设置:仅WiFi / 并发数 / 保存位置(与下载页标题栏齿轮共用 DownloadConfig,单一事实源)
         initDownloadSettings()
+        // 加载动画:默认 / Glowing Fish(全局 LoadSir 加载动画,播放器与下载不受影响)
+        initLoadingAnimSetting()
 
         mBinding.tvDns.text = OkGoHelper.dnsHttpsList[Hawk.get(HawkConfig.DOH_URL, 0)]
         mBinding.tvHomeRec.text = getHomeRecName(Hawk.get(HawkConfig.HOME_REC, 0))
@@ -508,6 +510,35 @@ class SettingActivity : BaseVbActivity<ActivitySettingBinding>() {
         }
         // 保存位置(只读展示)
         mBinding.tvDlSaveDir.text = DownloadConfig.getSaveDir().absolutePath
+    }
+
+    /** 加载动画选项:0=默认,1=Glowing Fish(全局 LoadSir 加载动画) */
+    private fun initLoadingAnimSetting() {
+        val names = arrayOf("默认", "Glowing Fish")
+        val refresh = {
+            mBinding.tvLoadingAnim.text = names[Hawk.get(HawkConfig.LOADING_ANIM, 0)]
+        }
+        refresh()
+        mBinding.llLoadingAnim.setOnClickListener {
+            FastClickCheckUtil.check(it)
+            val defaultPos = Hawk.get(HawkConfig.LOADING_ANIM, 0)
+            val types = ArrayList<String>()
+            for (n in names) types.add(n)
+            val dialog = SelectDialog<String>(this@SettingActivity)
+            dialog.setTip("选择加载动画")
+            dialog.setAdapter(object : SelectDialogInterface<String?> {
+                override fun click(value: String?, pos: Int) {
+                    Hawk.put(HawkConfig.LOADING_ANIM, pos)
+                    refresh()
+                    AppBubble.toast("加载动画已切换,下次进入加载页面生效")
+                }
+
+                override fun getDisplay(name: String?): String {
+                    return name ?: ""
+                }
+            }, SelectDialogAdapter.stringDiff, types, defaultPos)
+            dialog.show()
+        }
     }
 
     override fun onBackPressed() {

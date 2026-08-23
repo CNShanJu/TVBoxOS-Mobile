@@ -67,6 +67,10 @@ public class HawkConfig {
      */
     public static final String VIDEO_SPEED = "video_speed";
     /**
+     * 加载动画:0=默认(anim_loading.json),1=Glowing Fish(glowing_fish_loader.json)
+     */
+    public static final String LOADING_ANIM = "loading_anim";
+    /**
      * 搜索记录
      */
     public static final String HISTORY_SEARCH = "history_search";
