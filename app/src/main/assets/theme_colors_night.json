@@ -5,5 +5,7 @@
   "text_highlight": "#E5E7EB",
   "nav_text_normal": "#7A7A7A",
   "download_active": "#037AFF",
-  "download_done": "#08CA2C"
+  "download_done": "#08CA2C",
+  "bubble_bg": "#2E2C36",
+  "bubble_text": "#FFFFFF"
 }

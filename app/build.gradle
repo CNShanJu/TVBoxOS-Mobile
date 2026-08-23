@@ -42,7 +42,10 @@ def defaultColors = [
         nav_text_normal: '#CCCCCC',
         // 下载状态色:进行中(蓝) / 完成(绿)
         download_active: '#037AFF',
-        download_done  : '#08CA2C'
+        download_done  : '#08CA2C',
+        // 消息提示气泡:背景(浅色柔和灰白,避免纯白刺眼) / 文字
+        bubble_bg      : '#F2F3F7',
+        bubble_text    : '#1F2937'
 ]
 def defaultNightColors = [
         bg_body        : '#141218',
@@ -51,7 +54,10 @@ def defaultNightColors = [
         text_highlight : '#E5E7EB',
         nav_text_normal: '#7A7A7A',
         download_active: '#037AFF',
-        download_done  : '#08CA2C'
+        download_done  : '#08CA2C',
+        // 消息提示气泡:背景(深色) / 文字
+        bubble_bg      : '#2E2C36',
+        bubble_text    : '#FFFFFF'
 ]
 
 static def readColors(def file, def defaults) {

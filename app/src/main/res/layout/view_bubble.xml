@@ -8,5 +8,5 @@
     android:maxWidth="320dp"
     android:paddingHorizontal="20dp"
     android:paddingVertical="12dp"
-    android:textColor="@color/text_foreground"
+    android:textColor="@color/bubble_text"
     android:textSize="14sp" />
