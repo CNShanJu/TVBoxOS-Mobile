@@ -56,7 +56,7 @@ import xyz.doikki.videoplayer.util.PlayerUtils;
 
 import static xyz.doikki.videoplayer.util.PlayerUtils.stringForTime;
 
-public class VodController extends BaseController {
+public class VodController extends BaseController implements PlaybackSettingsController {
 
     /** 是否成功播放过(详情页下载时用于复用当前集的 finalUrl;未播放过也能下载,走后台解析) */
     public volatile boolean hasPlayedOnce = false;
@@ -335,7 +335,9 @@ public class VodController extends BaseController {
             }
         });
 
-        mTopRoot1.setOnClickListener(view -> listener.exit());
+        // 返回icon退出;标题区域不再整块响应退出(与本地播放一致)
+        mTopRoot1.setOnClickListener(null);
+        findViewById(R.id.iv_title_back).setOnClickListener(view -> listener.exit());
 
         mPlayRetry = findViewById(R.id.play_retry);
         mPlayRetry.setOnClickListener(v -> {
@@ -774,6 +776,65 @@ public class VodController extends BaseController {
         } catch (JSONException e) {
             return 0;
         }
+    }
+
+    // ------------------------------------------------------------------
+    // PlaybackSettingsController:设置抽屉(在线全屏与本地共用)取控制器按钮/状态
+    // ------------------------------------------------------------------
+
+    @Override
+    public TextView settingsPlayerBtn() {
+        return mPlayerBtn;
+    }
+
+    @Override
+    public TextView settingsScaleBtn() {
+        return mPlayerScaleBtn;
+    }
+
+    @Override
+    public TextView settingsIjkBtn() {
+        return mPlayerIJKBtn;
+    }
+
+    @Override
+    public TextView settingsTimeStartBtn() {
+        return mPlayerTimeStartBtn;
+    }
+
+    @Override
+    public TextView settingsTimeSkipBtn() {
+        return mPlayerTimeSkipBtn;
+    }
+
+    @Override
+    public TextView settingsTimeResetBtn() {
+        return mPlayerTimeResetBtn;
+    }
+
+    @Override
+    public TextView settingsRetryBtn() {
+        return mPlayRetry;
+    }
+
+    @Override
+    public TextView settingsRefreshBtn() {
+        return mPlayRefresh;
+    }
+
+    @Override
+    public TextView settingsZimuBtn() {
+        return mZimuBtn;
+    }
+
+    @Override
+    public TextView settingsAudioBtn() {
+        return mAudioTrackBtn;
+    }
+
+    @Override
+    public TextView settingsLandscapeBtn() {
+        return mLandscapePortraitBtn;
     }
 
     public void setTitle(String playTitleInfo) {

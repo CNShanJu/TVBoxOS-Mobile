@@ -1,5 +1,6 @@
 package com.github.tvbox.osc.ui.dialog;
 
+import android.app.Activity;
 import android.content.Context;
 import android.view.View;
 import android.widget.TextView;
@@ -11,8 +12,7 @@ import androidx.recyclerview.widget.DiffUtil;
 import com.github.tvbox.osc.R;
 import com.github.tvbox.osc.databinding.DialogPlayingControlBinding;
 import com.github.tvbox.osc.player.MyVideoView;
-import com.github.tvbox.osc.player.controller.VodController;
-import com.github.tvbox.osc.ui.activity.DetailActivity;
+import com.github.tvbox.osc.player.controller.PlaybackSettingsController;
 import com.github.tvbox.osc.ui.adapter.SelectDialogAdapter;
 import com.github.tvbox.osc.util.PlayerHelper;
 
@@ -21,11 +21,16 @@ import org.jetbrains.annotations.NotNull;
 import java.util.ArrayList;
 import java.util.Arrays;
 
+/**
+ * 播放设置右侧抽屉:在线全屏播放与本地播放共用(PlaybackSettingsController),
+ * 功能保持一致;下载入口仅在线播放显示。
+ */
 public class PlayingControlRightDialog extends AppDrawerPopupView {
 
     @NonNull
-    private final DetailActivity mDetailActivity;
-    private final VodController mController;
+    private final Activity mActivity;
+    private final PlaybackSettingsController mController;
+    private final boolean mShowDownload;
     MyVideoView mPlayer;
     private DialogPlayingControlBinding mBinding;
 
@@ -41,11 +46,13 @@ public class PlayingControlRightDialog extends AppDrawerPopupView {
         }
     };
 
-    public PlayingControlRightDialog(@NonNull @NotNull Context context, VodController controller, MyVideoView videoView) {
+    public PlayingControlRightDialog(@NonNull @NotNull Context context, PlaybackSettingsController controller,
+                                     MyVideoView videoView, boolean showDownload) {
         super(context);
-        mDetailActivity = (DetailActivity) context;
+        mActivity = context instanceof Activity ? (Activity) context : null;
         mController = controller;
         mPlayer = videoView;
+        mShowDownload = showDownload;
     }
 
     @Override
@@ -64,14 +71,15 @@ public class PlayingControlRightDialog extends AppDrawerPopupView {
     }
 
     private void initView(){
-        mBinding.scale.setText(mController.mPlayerScaleBtn.getText());
-        mBinding.playTimeStart.setText(mController.mPlayerTimeStartBtn.getText());
-        mBinding.playTimeEnd.setText(mController.mPlayerTimeSkipBtn.getText());
-        mBinding.player.setText(mController.mPlayerBtn.getText());
-        mBinding.decode.setText(mController.mPlayerIJKBtn.getText());
+        mBinding.scale.setText(mController.settingsScaleBtn().getText());
+        mBinding.playTimeStart.setText(mController.settingsTimeStartBtn().getText());
+        mBinding.playTimeEnd.setText(mController.settingsTimeSkipBtn().getText());
+        mBinding.player.setText(mController.settingsPlayerBtn().getText());
+        mBinding.decode.setText(mController.settingsIjkBtn().getText());
         //全屏的设置弹窗显示
         mBinding.landscapePortrait.setVisibility(View.VISIBLE);
-        mBinding.download.setVisibility(View.VISIBLE);
+        //下载入口仅在线播放显示(本地播放无下载弹窗)
+        mBinding.download.setVisibility(mShowDownload ? View.VISIBLE : View.GONE);
         updateAboutIjkVisible();
         updateSpeedUi();
     }
@@ -88,16 +96,16 @@ public class PlayingControlRightDialog extends AppDrawerPopupView {
 
         //播放器
         mBinding.scale.setOnClickListener(view -> showScaleDialog());
-        mBinding.playTimeStart.setOnClickListener(view -> changeAndUpdateText(mBinding.playTimeStart,mController.mPlayerTimeStartBtn));
-        mBinding.playTimeEnd.setOnClickListener(view -> changeAndUpdateText(mBinding.playTimeEnd,mController.mPlayerTimeSkipBtn));
+        mBinding.playTimeStart.setOnClickListener(view -> changeAndUpdateText(mBinding.playTimeStart, mController.settingsTimeStartBtn()));
+        mBinding.playTimeEnd.setOnClickListener(view -> changeAndUpdateText(mBinding.playTimeEnd, mController.settingsTimeSkipBtn()));
         mBinding.playTimeStart.setOnLongClickListener(view -> {
-            mController.mPlayerTimeStartBtn.performLongClick();
-            mBinding.playTimeStart.setText(mController.mPlayerTimeStartBtn.getText());
+            mController.settingsTimeStartBtn().performLongClick();
+            mBinding.playTimeStart.setText(mController.settingsTimeStartBtn().getText());
             return true;
         });
         mBinding.playTimeEnd.setOnLongClickListener(view -> {
-            mController.mPlayerTimeSkipBtn.performLongClick();
-            mBinding.playTimeEnd.setText(mController.mPlayerTimeSkipBtn.getText());
+            mController.settingsTimeSkipBtn().performLongClick();
+            mBinding.playTimeEnd.setText(mController.settingsTimeSkipBtn().getText());
             return true;
         });
         mBinding.increaseStart.setOnClickListener(view -> {
@@ -117,23 +125,30 @@ public class PlayingControlRightDialog extends AppDrawerPopupView {
             updateSkipText(false);
         });
         mBinding.player.setOnClickListener(view -> showPlayerDialog());
-        mBinding.decode.setOnClickListener(view -> changeAndUpdateText(mBinding.decode,mController.mPlayerIJKBtn));
+        mBinding.decode.setOnClickListener(view -> changeAndUpdateText(mBinding.decode, mController.settingsIjkBtn()));
 
         //其他
-        mBinding.landscapePortrait.setOnClickListener(view -> dismissWith(() ->changeAndUpdateText(null,mController.mLandscapePortraitBtn)));
+        mBinding.landscapePortrait.setOnClickListener(view -> dismissWith(() -> changeAndUpdateText(null, mController.settingsLandscapeBtn())));
         mBinding.startEndReset.setOnClickListener(view -> resetSkipStartEnd());
-        mBinding.replay.setOnClickListener(view -> changeAndUpdateText(null,mController.mPlayRetry));
-        mBinding.refresh.setOnClickListener(view -> changeAndUpdateText(null,mController.mPlayRefresh));
-        mBinding.subtitle.setOnClickListener(view -> dismissWith(() -> changeAndUpdateText(null,mController.mZimuBtn)));
-        mBinding.voice.setOnClickListener(view -> dismissWith(() -> changeAndUpdateText(null,mController.mAudioTrackBtn)));
-        mBinding.download.setOnClickListener(view -> dismissWith(mDetailActivity::showDownloadDialogInFullscreen));
+        mBinding.replay.setOnClickListener(view -> changeAndUpdateText(null, mController.settingsRetryBtn()));
+        mBinding.refresh.setOnClickListener(view -> changeAndUpdateText(null, mController.settingsRefreshBtn()));
+        mBinding.subtitle.setOnClickListener(view -> dismissWith(() -> changeAndUpdateText(null, mController.settingsZimuBtn())));
+        mBinding.voice.setOnClickListener(view -> dismissWith(() -> changeAndUpdateText(null, mController.settingsAudioBtn())));
+        if (mShowDownload) {
+            mBinding.download.setOnClickListener(view -> {
+                dismiss();
+                if (mActivity instanceof com.github.tvbox.osc.ui.activity.DetailActivity) {
+                    ((com.github.tvbox.osc.ui.activity.DetailActivity) mActivity).showDownloadDialogInFullscreen();
+                }
+            });
+        }
     }
 
     private void updateSkipText(boolean start){
         if (start){
-            mBinding.playTimeStart.setText(mController.mPlayerTimeStartBtn.getText());
+            mBinding.playTimeStart.setText(mController.settingsTimeStartBtn().getText());
         }else {
-            mBinding.playTimeEnd.setText(mController.mPlayerTimeSkipBtn.getText());
+            mBinding.playTimeEnd.setText(mController.settingsTimeSkipBtn().getText());
         }
     }
 
@@ -160,7 +175,7 @@ public class PlayingControlRightDialog extends AppDrawerPopupView {
     /** 缩放:列出所有选项直接选择 */
     private void showScaleDialog() {
         final int cur = mController.getScaleType();
-        SelectDialog<Integer> dialog = new SelectDialog<>(mDetailActivity);
+        SelectDialog<Integer> dialog = new SelectDialog<>(mActivity);
         dialog.setTip("选择缩放");
         dialog.setAdapter(new SelectDialogAdapter.SelectDialogInterface<Integer>() {
             @Override
@@ -184,7 +199,7 @@ public class PlayingControlRightDialog extends AppDrawerPopupView {
     private void showPlayerDialog() {
         final int cur = mController.getPlayerType();
         final ArrayList<Integer> players = PlayerHelper.getExistPlayerTypes();
-        SelectDialog<Integer> dialog = new SelectDialog<>(mDetailActivity);
+        SelectDialog<Integer> dialog = new SelectDialog<>(mActivity);
         dialog.setTip("选择播放器");
         dialog.setAdapter(new SelectDialogAdapter.SelectDialogInterface<Integer>() {
             @Override
@@ -224,16 +239,16 @@ public class PlayingControlRightDialog extends AppDrawerPopupView {
      * 如切换/使用的是ijk,解码和音轨按钮才显示
      */
     public void updateAboutIjkVisible(){
-        mBinding.decode.setVisibility(mController.mPlayerIJKBtn.getVisibility());
+        mBinding.decode.setVisibility(mController.settingsIjkBtn().getVisibility());
     }
 
     /**
      * 重置片头/尾,刷新文字
      */
     private void resetSkipStartEnd(){
-        changeAndUpdateText(null,mController.mPlayerTimeResetBtn);
-        mBinding.playTimeStart.setText(mController.mPlayerTimeStartBtn.getText());
-        mBinding.playTimeEnd.setText(mController.mPlayerTimeSkipBtn.getText());
+        changeAndUpdateText(null, mController.settingsTimeResetBtn());
+        mBinding.playTimeStart.setText(mController.settingsTimeStartBtn().getText());
+        mBinding.playTimeEnd.setText(mController.settingsTimeSkipBtn().getText());
     }
 
 }

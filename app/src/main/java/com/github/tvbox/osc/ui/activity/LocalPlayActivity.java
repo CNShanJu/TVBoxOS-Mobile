@@ -2,14 +2,18 @@ package com.github.tvbox.osc.ui.activity;
 
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.res.Configuration;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
 
+import com.blankj.utilcode.util.ConvertUtils;
 import com.blankj.utilcode.util.GsonUtils;
+import com.blankj.utilcode.util.NotificationUtils;
 import com.blankj.utilcode.util.SPUtils;
 import com.github.tvbox.osc.util.AppBubble;
 import com.github.tvbox.osc.base.BaseVbActivity;
+import com.github.tvbox.osc.bean.CastVideo;
 import com.github.tvbox.osc.bean.ParseBean;
 import com.github.tvbox.osc.bean.VideoInfo;
 import com.github.tvbox.osc.bean.VodInfo;
@@ -20,8 +24,11 @@ import com.github.tvbox.osc.player.MyVideoView;
 import com.github.tvbox.osc.player.controller.LocalVideoController;
 import com.github.tvbox.osc.receiver.BatteryReceiver;
 import com.github.tvbox.osc.ui.dialog.AllLocalSeriesDialog;
+import com.github.tvbox.osc.ui.dialog.CastListDialog;
+import com.github.tvbox.osc.ui.dialog.PlayingControlRightDialog;
 import com.github.tvbox.osc.util.BroadcastUtils;
 import com.github.tvbox.osc.util.HawkConfig;
+import com.github.tvbox.osc.util.PipHelper;
 import com.github.tvbox.osc.util.PlayerHelper;
 import com.google.common.reflect.TypeToken;
 import com.lxj.xpopup.XPopup;
@@ -52,6 +59,7 @@ public class LocalPlayActivity extends BaseVbActivity<ActivityLocalPlayBinding> 
     private int mPosition;
     BatteryReceiver mBatteryReceiver = new BatteryReceiver();
     private BasePopupView mAllSeriesRightDialog;
+    private PipHelper pipHelper;
     @Override
     protected void init() {
         BroadcastUtils.registerReceiverNotExported(this, mBatteryReceiver, new IntentFilter(Intent.ACTION_BATTERY_CHANGED));
@@ -63,6 +71,7 @@ public class LocalPlayActivity extends BaseVbActivity<ActivityLocalPlayBinding> 
         mPosition = bundle.getInt("position", 0);
 
         initController();
+        initPipHelper();
         initPlayerCfg();
         mVideoView.setVideoController(mController); //设置控制器
         play(false);
@@ -202,8 +211,95 @@ public class LocalPlayActivity extends BaseVbActivity<ActivityLocalPlayBinding> 
             public void exit() {
                 finish();
             }
+
+            @Override
+            public void showSetting() {
+                // 本地播放设置:与在线全屏播放共用播放设置抽屉(功能一致,无下载入口)
+                mController.hideBottom();
+                new XPopup.Builder(LocalPlayActivity.this)
+                        .isViewMode(true)
+                        .hasNavigationBar(false)
+                        .popupHeight(com.blankj.utilcode.util.ScreenUtils.getScreenHeight())
+                        .popupPosition(PopupPosition.Right)
+                        .asCustom(new PlayingControlRightDialog(LocalPlayActivity.this, mController, mVideoView, false))
+                        .show();
+            }
+
+            @Override
+            public void cast() {
+                showCastDialog();
+            }
+
+            @Override
+            public void pip() {
+                enterPip();
+            }
         });
 
+    }
+
+    /** 初始化画中画(小窗)辅助器:本地播放器复用详情页同一套逻辑 */
+    private void initPipHelper() {
+        pipHelper = new PipHelper(this, new PipHelper.Callback() {
+            @Override
+            public boolean isPlaying() {
+                return mVideoView != null && mVideoView.isPlaying();
+            }
+
+            @Override
+            public void togglePlay() {
+                if (mController != null) {
+                    mController.togglePlay();
+                }
+            }
+
+            @Override
+            public void pause() {
+                if (mVideoView != null) {
+                    mVideoView.pause();
+                }
+            }
+
+            @Override
+            public void playPrevious() {
+                if (mPosition > 0) {
+                    mPosition--;
+                    play(true);
+                }
+            }
+
+            @Override
+            public void playNext() {
+                if (mPosition < mVideoList.size() - 1) {
+                    mPosition++;
+                    play(true);
+                }
+            }
+
+            @Override
+            public boolean isFullscreen() {
+                return true; // 本地播放始终全屏
+            }
+
+            @Override
+            public void enterFullscreen() {
+            }
+
+            @Override
+            public void exitFullscreen() {
+            }
+
+            @Override
+            public int[] getVideoSize() {
+                return mVideoView == null ? null : mVideoView.getVideoSize();
+            }
+
+            @Override
+            public void onClose() {
+                finish();
+                NotificationUtils.cancelAll();
+            }
+        });
     }
 
     void initPlayerCfg() {
@@ -237,15 +333,55 @@ public class LocalPlayActivity extends BaseVbActivity<ActivityLocalPlayBinding> 
     }
 
     @Override
+    protected void onStart() {
+        super.onStart();
+        if (pipHelper != null) pipHelper.onActivityStarted();
+    }
+
+    @Override
     protected void onPause() {
         super.onPause();
-        mVideoView.pause();
+        // 进入小窗也会触发 onPause,此时不能暂停视频
+        if (!isInPictureInPictureMode()) {
+            mVideoView.pause();
+        }
     }
 
     @Override
     protected void onResume() {
         super.onResume();
+        if (pipHelper != null) pipHelper.onActivityResumed(); // 点X关闭带回前台:立即补暂停
         mVideoView.resume();
+    }
+
+    @Override
+    public void onPictureInPictureModeChanged(boolean isInPictureInPictureMode) {
+        super.onPictureInPictureModeChanged(isInPictureInPictureMode);
+        if (pipHelper != null) pipHelper.onPictureInPictureModeChanged(isInPictureInPictureMode);
+    }
+
+    @Override
+    public void onConfigurationChanged(Configuration newConfig) {
+        super.onConfigurationChanged(newConfig);
+        // 兜底:部分设备点X关闭不触发 onPictureInPictureModeChanged(false),由 PipHelper 延迟判断
+        if (pipHelper != null) pipHelper.onConfigurationChanged();
+    }
+
+    /** 进入画中画(小窗) */
+    public void enterPip() {
+        if (pipHelper != null) {
+            pipHelper.enterPip();
+            mController.hideBottom();
+        }
+    }
+
+    /** 投屏弹窗(桩实现:暂不可用,与在线播放一致) */
+    public void showCastDialog() {
+        VideoInfo info = mVideoList.get(mPosition);
+        new XPopup.Builder(this)
+                .maxWidth(ConvertUtils.dp2px(360))
+                .asCustom(new CastListDialog(this, new CastVideo(info.getDisplayName(), "file://" + info.getPath())))
+                .show();
     }
 
     @Override

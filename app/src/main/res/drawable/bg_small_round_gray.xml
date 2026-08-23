@@ -5,6 +5,6 @@
 			android:color="@color/bg_gray" />
 
 	<corners 
-			android:radius="10dp" />
+			android:radius="@dimen/radius_card" />
 
 </shape>

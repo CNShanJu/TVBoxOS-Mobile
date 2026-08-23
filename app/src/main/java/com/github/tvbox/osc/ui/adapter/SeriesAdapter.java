@@ -20,10 +20,16 @@ import java.util.ArrayList;
  */
 public class SeriesAdapter extends BaseQuickAdapter<VodInfo.VodSeries, BaseViewHolder> {
     private boolean isGird;
+    private float chipTextSize = 12f;
 
     public SeriesAdapter(boolean isGird) {
         super(R.layout.item_series, new ArrayList<>());
         this.isGird = isGird;
+    }
+
+    /** 全屏右侧抽屉用:调大条目文字(详情页保持默认,关闭抽屉时需重置) */
+    public void setChipTextSize(float sp) {
+        chipTextSize = sp;
     }
 
     @Override
@@ -31,6 +37,7 @@ public class SeriesAdapter extends BaseQuickAdapter<VodInfo.VodSeries, BaseViewH
         RoundChip chip = helper.getView(R.id.sl);
         chip.setSelected(item.selected);
         chip.setTitle(item.name);
+        chip.setChipTextSize(chipTextSize);
 
         if (!isGird){// 详情页横向展示时固定宽度
             ViewGroup.LayoutParams layoutParams = chip.getLayoutParams();

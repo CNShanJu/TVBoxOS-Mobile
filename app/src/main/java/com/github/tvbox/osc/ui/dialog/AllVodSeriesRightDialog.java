@@ -60,6 +60,7 @@ public class AllVodSeriesRightDialog extends AppDrawerPopupView {
             rv.setLayoutManager(new GridLayoutManager(getContext(),Utils.getSeriesSpanCount(mDetailActivity.seriesAdapter.getData())));
             rv.addItemDecoration(new GridSpacingItemDecoration(Utils.getSeriesSpanCount(mDetailActivity.seriesAdapter.getData()), 20, true));
             mDetailActivity.seriesAdapter.setGird(true);
+            mDetailActivity.seriesAdapter.setChipTextSize(16f); // 全屏选集文字调大
             mDetailActivity.seriesAdapter.notifyDataSetChanged();
             rv.setAdapter(mDetailActivity.seriesAdapter);
 
@@ -79,6 +80,7 @@ public class AllVodSeriesRightDialog extends AppDrawerPopupView {
         super.onDismiss();
         if (mDetailActivity.seriesAdapter!=null){//重置状态,避免竖屏时显示异常
             mDetailActivity.seriesAdapter.setGird(false);
+            mDetailActivity.seriesAdapter.setChipTextSize(12f); // 恢复详情页默认字号
             mDetailActivity.seriesAdapter.notifyDataSetChanged();
         }
     }

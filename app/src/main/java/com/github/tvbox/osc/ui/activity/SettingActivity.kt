@@ -513,26 +513,22 @@ class SettingActivity : BaseVbActivity<ActivitySettingBinding>() {
         mBinding.tvDlSaveDir.text = DownloadConfig.getSaveDir().absolutePath
     }
 
-    /** 加载动画选项:0=默认,1=Glowing Fish(全局 LoadSir 加载动画) */
-    /** 加载动画选项:默认 + assets/loading/ 目录下的 json(动态扫描注册,目录为空只显示默认) */
+    /** 加载动画选项:默认 + assets/loading/ 下的动画文件夹(每个文件夹一个动画 + config.json) */
     private fun initLoadingAnimSetting() {
         val files = LoadingAnim.getAvailableAnimFiles()
         val display = ArrayList<String>()
         for (f in files) display.add(LoadingAnim.displayName(f))
         val refresh = {
-            val current = LoadingAnim.getAnimFileName()
-            val currentBare = if (current.contains("/")) current.substring(current.lastIndexOf('/') + 1) else current
-            mBinding.tvLoadingAnim.text = LoadingAnim.displayName(currentBare)
+            mBinding.tvLoadingAnim.text = LoadingAnim.displayName(LoadingAnim.getAnimName())
         }
         refresh()
         mBinding.llLoadingAnim.setOnClickListener {
             FastClickCheckUtil.check(it)
             // 当前选中项定位到选项列表(找不到默认第0项)
             var defaultPos = 0
-            val cur = LoadingAnim.getAnimFileName()
-            val curBare = if (cur.contains("/")) cur.substring(cur.lastIndexOf('/') + 1) else cur
+            val cur = LoadingAnim.getAnimName()
             for (i in files.indices) {
-                if (files[i] == curBare || LoadingAnim.displayName(files[i]) == LoadingAnim.displayName(curBare)) {
+                if (files[i] == cur || LoadingAnim.displayName(files[i]) == LoadingAnim.displayName(cur)) {
                     defaultPos = i
                     break
                 }
@@ -541,9 +537,9 @@ class SettingActivity : BaseVbActivity<ActivitySettingBinding>() {
             dialog.setTip("选择加载动画")
             dialog.setAdapter(object : SelectDialogInterface<String?> {
                 override fun click(value: String?, pos: Int) {
-                    // 存文件名:默认存空串(回退默认),其余存文件名
+                    // 存动画文件夹名:默认存空串(回退默认),其余存文件夹名
                     val selected = files[pos]
-                    Hawk.put(HawkConfig.LOADING_ANIM, if (selected == LoadingAnim.DEFAULT_FILE) "" else selected)
+                    Hawk.put(HawkConfig.LOADING_ANIM, if (selected == LoadingAnim.DEFAULT_NAME) "" else selected)
                     refresh()
                     AppBubble.toast("加载动画已切换,下次进入加载页面生效")
                 }

@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <shape xmlns:android="http://schemas.android.com/apk/res/android"
     android:shape="rectangle">
-    <corners android:radius="25dp" />
-    <!-- 气泡背景色由主题配置文件 theme_colors.json / theme_colors_night.json 的 bubble_bg 生成 -->
+    <corners android:radius="@dimen/radius_dialog" />
+    <!-- 气泡背景色由主题配置文件 theme/theme_colors.json / theme_colors_night.json 的 bubble_bg 生成 -->
     <solid android:color="@color/bubble_bg" />
 </shape>

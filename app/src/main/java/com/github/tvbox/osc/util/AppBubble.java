@@ -68,7 +68,7 @@ public class AppBubble {
                     boolean dark = Utils.isAppDarkTheme();
                     android.graphics.drawable.GradientDrawable bg = new android.graphics.drawable.GradientDrawable();
                     bg.setColor(dark ? 0xFF2E2C36 : 0xFFF2F3F7);
-                    bg.setCornerRadius(dp2px(ctx, 25));
+                    bg.setCornerRadius(ctx.getResources().getDimension(R.dimen.radius_dialog));
                     tv.setBackground(bg);
                     tv.setTextColor(dark ? 0xFFFFFFFF : 0xFF1F2937);
 

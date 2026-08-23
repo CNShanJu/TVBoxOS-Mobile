@@ -1232,13 +1232,22 @@ public class DetailActivity extends BaseVbActivity<ActivityDetailBinding> {
             int downloadedExisted = 0;
             int existedInQueue = 0;
             for (VodInfo.VodSeries s : selected) {
-                String url;
+                // 解析真实地址 + 源要求的请求头(防盗链源下载必须携带,否则"能播不能下")
+                PlayUrlResolver.ResolveResult rr = null;
                 if (s.name != null && s.name.equals(currentName) && playFragment != null) {
                     String finalUrl = playFragment.getFinalUrl();
-                    url = TextUtils.isEmpty(finalUrl) ? PlayUrlResolver.resolve(sourceKey, playFlag, s.url) : finalUrl;
-                } else {
-                    url = PlayUrlResolver.resolve(sourceKey, playFlag, s.url);
+                    if (!TextUtils.isEmpty(finalUrl)) {
+                        // 当前集:优先解析头,失败则回退播放地址(WebView 嗅探类源无法批量解析)
+                        rr = PlayUrlResolver.resolveWithHeader(sourceKey, playFlag, s.url);
+                        if (rr == null || TextUtils.isEmpty(rr.url)) {
+                            rr = new PlayUrlResolver.ResolveResult(finalUrl, null);
+                        }
+                    }
                 }
+                if (rr == null) {
+                    rr = PlayUrlResolver.resolveWithHeader(sourceKey, playFlag, s.url);
+                }
+                String url = rr == null ? null : rr.url;
                 if (TextUtils.isEmpty(url) || !(url.startsWith("http://") || url.startsWith("https://"))) {
                     Log.i("TVBox-Download", "  - " + s.name + " 解析失败/无有效地址,跳过");
                     failed++;
@@ -1262,7 +1271,7 @@ public class DetailActivity extends BaseVbActivity<ActivityDetailBinding> {
                     }
                     episodeId = DownloadCore.buildEpisodeId(sourceKey, vodId, playFlag, idx);
                 }
-                boolean ok = DownloadManager.get().enqueue(url, sourceKey, playFlag, s.url, episodeId, vodInfo.pic, sourceName, vodName, epName);
+                boolean ok = DownloadManager.get().enqueue(url, sourceKey, playFlag, s.url, episodeId, vodInfo.pic, rr == null ? null : rr.headers, sourceName, vodName, epName);
                 Log.i("TVBox-Download", "  - " + s.name + " enqueue=" + ok + " 文件名=" + epName + " url=" + url);
                 if (ok) {
                     added++;

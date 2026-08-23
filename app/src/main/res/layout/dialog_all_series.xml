@@ -16,14 +16,17 @@
         android:id="@+id/v_gesture_line"
         android:layout_width="30dp"
         android:layout_height="2dp"
-        app:hl_cornerRadius="10dp"
+        app:hl_cornerRadius="@dimen/radius_card"
         app:hl_layoutBackground="@color/gray_darker" />
 
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/rv"
-        android:layout_width="360dp"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="20dp"
+        android:clipToPadding="false"
+        android:paddingHorizontal="16dp"
+        android:paddingVertical="4dp"
         tools:listitem="@layout/item_series"
         />
 

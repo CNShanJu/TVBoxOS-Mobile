@@ -9,8 +9,8 @@
     android:paddingTop="20dp"
     android:paddingHorizontal="20dp"
     android:gravity="center_horizontal"
-    app:hl_cornerRadius_leftTop="25dp"
-    app:hl_cornerRadius_rightTop="25dp"
+    app:hl_cornerRadius_leftTop="@dimen/radius_dialog"
+    app:hl_cornerRadius_rightTop="@dimen/radius_dialog"
     app:clickable="false">
 
     <LinearLayout

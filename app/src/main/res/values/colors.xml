@@ -2,14 +2,14 @@
 <resources>
 
 
-    <!--应用的主要色调,actionBar默认使用该颜色,Toolbar导航栏的底色(由 theme_colors.json 的 text_highlight 控制)-->
+    <!--应用的主要色调,actionBar默认使用该颜色,Toolbar导航栏的底色(由 theme/theme_colors.json 的 text_highlight 控制)-->
     <color name="colorPrimary">@color/text_highlight</color>
     <!--CheckBox,RadioButton,SwitchCompat等一般控件的选中效果默认采用该颜色-->
     <color name="colorAccent">@color/text_highlight</color>
-    <!--    默认window窗口(activity)背景颜色(由 theme_colors.json 的 bg_body 控制)-->
+    <!--    默认window窗口(activity)背景颜色(由 theme/theme_colors.json 的 bg_body 控制)-->
     <color name="windowBackground">@color/bg_body</color>
 
-    <!-- ============ Material 3 色板(浅色,中性灰白系;主体色由 theme_colors.json 控制) ============ -->
+    <!-- ============ Material 3 色板(浅色,中性灰白系;主体色由 theme/theme_colors.json 控制) ============ -->
     <color name="md_primary">@color/text_highlight</color>
     <color name="md_on_primary">#FFFFFF</color>
     <color name="md_primary_container">@color/bg_component</color>

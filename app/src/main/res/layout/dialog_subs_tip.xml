@@ -65,7 +65,7 @@
         android:id="@+id/btn_cancel"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        app:cornerRadius="20dp"
+        app:cornerRadius="@dimen/radius_dialog"
         android:layout_marginTop="20dp"
         android:textColor="@color/text_foreground"
         style="@style/Widget.MaterialComponents.Button.OutlinedButton"

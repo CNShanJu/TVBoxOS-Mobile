@@ -7,5 +7,8 @@
   "download_active": "#037AFF",
   "download_done": "#08CA2C",
   "bubble_bg": "#2E2C36",
-  "bubble_text": "#FFFFFF"
+  "bubble_text": "#FFFFFF",
+  "select_fill": "#E5E7EB",
+  "swipe_red": "#E5484D"
 }
+

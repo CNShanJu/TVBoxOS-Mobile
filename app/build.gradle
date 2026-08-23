@@ -26,13 +26,21 @@ def cfgAppIcon = appConfig.getProperty('appIcon', '@drawable/app_icon') ?: '@dra
 
 
 // ------------------------------------------------------------------
-// 主题颜色生成:读取 assets/theme_colors.json(浅色)与 theme_colors_night.json(暗色),
+// 主题颜色生成:读取 assets/theme/theme_colors.json(浅色)与 theme_colors_night.json(暗色),
 // 分别生成 res/values 与 res/values-night 的颜色文件;文件不存在时用内置默认值。
 // 两个文件字段一致:bg_body / bg_component / text_main / text_highlight / nav_text_normal
 // ------------------------------------------------------------------
-def themeColorsFile = file('src/main/assets/theme_colors.json')
-def themeColorsNightFile = file('src/main/assets/theme_colors_night.json')
+def themeColorsFile = file('src/main/assets/theme/theme_colors.json')
+def themeColorsNightFile = file('src/main/assets/theme/theme_colors_night.json')
+def themeRadiiFile = file('src/main/assets/theme/theme_radii.json')
 def themeColorsDir = file("${buildDir}/generated/theme_colors")
+
+// 圆角三档(受主题文件 theme/theme_radii.json 统一管控):背景档 / 抽屉弹窗档 / 卡片档
+def defaultRadii = [
+        radius_background: '25dp',
+        radius_dialog    : '18dp',
+        radius_card      : '12dp'
+]
 
 def defaultColors = [
         bg_body        : '#FFFFFF',
@@ -45,7 +53,11 @@ def defaultColors = [
         download_done  : '#08CA2C',
         // 消息提示气泡:背景(浅色柔和灰白,避免纯白刺眼) / 文字
         bubble_bg      : '#F2F3F7',
-        bubble_text    : '#1F2937'
+        bubble_text    : '#1F2937',
+        // 聚合页多选圆圈颜色(外环与选中内部填充圆同色,受主题文件管控)
+        select_fill    : '#1F2937',
+        // 下载条目左滑操作区背景(舒适红)
+        swipe_red      : '#E5484D'
 ]
 def defaultNightColors = [
         bg_body        : '#141218',
@@ -57,7 +69,11 @@ def defaultNightColors = [
         download_done  : '#08CA2C',
         // 消息提示气泡:背景(深色) / 文字
         bubble_bg      : '#2E2C36',
-        bubble_text    : '#FFFFFF'
+        bubble_text    : '#FFFFFF',
+        // 聚合页多选圆圈颜色(外环与选中内部填充圆同色,受主题文件管控)
+        select_fill    : '#E5E7EB',
+        // 下载条目左滑操作区背景(舒适红)
+        swipe_red      : '#E5484D'
 ]
 
 static def readColors(def file, def defaults) {
@@ -76,6 +92,24 @@ static def readColors(def file, def defaults) {
     return colors
 }
 
+static def readRadii(def file, def defaults) {
+    def radii = new LinkedHashMap<>(defaults)
+    if (file.exists()) {
+        try {
+            def json = new groovy.json.JsonSlurper().parse(file)
+            radii.each { k, v ->
+                def uv = json[k]
+                if (uv instanceof String && (uv.endsWith('dp') || uv.endsWith('dip') || uv.endsWith('px'))) {
+                    radii[k] = uv
+                }
+            }
+        } catch (Throwable th) {
+            println "WARN: ${file.name} 解析失败,使用默认圆角: ${th.message}"
+        }
+    }
+    return radii
+}
+
 static def writeColorsXml(def dir, def name, def colors) {
     def valuesDir = new File(dir, name)
     valuesDir.mkdirs()
@@ -86,13 +120,26 @@ static def writeColorsXml(def dir, def name, def colors) {
     f.text = sb.toString()
 }
 
+static def writeRadiiXml(def dir, def name, def radii) {
+    def valuesDir = new File(dir, name)
+    valuesDir.mkdirs()
+    def f = new File(valuesDir, 'theme_radii.xml')
+    def sb = new StringBuilder('<?xml version="1.0" encoding="utf-8"?>\n<resources>\n')
+    radii.each { k, v -> sb.append("    <dimen name=\"${k}\">${v}</dimen>\n") }
+    sb.append('</resources>\n')
+    f.text = sb.toString()
+}
+
 task generateThemeColors {
     inputs.file(themeColorsFile).optional()
     inputs.file(themeColorsNightFile).optional()
+    inputs.file(themeRadiiFile).optional()
     outputs.dir(themeColorsDir)
     doLast {
         writeColorsXml(themeColorsDir, 'values', readColors(themeColorsFile, defaultColors))
         writeColorsXml(themeColorsDir, 'values-night', readColors(themeColorsNightFile, defaultNightColors))
+        // 圆角档位不分明暗主题,写入 values 即可
+        writeRadiiXml(themeColorsDir, 'values', readRadii(themeRadiiFile, defaultRadii))
     }
 }
 preBuild.dependsOn generateThemeColors
@@ -145,25 +192,39 @@ android {
         }
     }
 
+    // 签名文件 TVBoxOSC.jks 被 .gitignore 忽略(*.jks),不会随代码上传到 GitHub。
+    // 本地构建:文件存在,使用正式签名(与之前行为完全一致);
+    // GitHub Actions 等 CI 环境:文件不存在,自动退回 debug 签名,
+    // 保证 CI 打出的 APK 已签名、可直接安装(注意:CI 包与本地正式签名包签名不同,不能覆盖升级)。
+    def releaseStoreFile = file('../TVBoxOSC.jks')
+
     signingConfigs {
         config {
             keyAlias 'TVBoxOSC'
             keyPassword 'TVBoxOSC'
-            storeFile file('..\\TVBoxOSC.jks')
+            storeFile releaseStoreFile
             storePassword 'TVBoxOSC'
         }
     }
 
     buildTypes {
         debug {
-            signingConfig signingConfigs.config
+            if (releaseStoreFile.exists()) {
+                signingConfig signingConfigs.config
+            } else {
+                signingConfig signingConfigs.debug
+            }
             // 调试包使用独立包名,可与设备上已安装的同包名应用共存(避免签名不一致需卸载旧应用)
             applicationIdSuffix ".debug"
             // 调试包应用名见 app/src/debug/res/values/strings.xml,便于在桌面区分正式版与调试版
         }
 
         release {
-            signingConfig signingConfigs.config
+            if (releaseStoreFile.exists()) {
+                signingConfig signingConfigs.config
+            } else {
+                signingConfig signingConfigs.debug
+            }
             minifyEnabled false
         }
     }

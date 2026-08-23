@@ -44,11 +44,11 @@ public class DeleteDownloadDialog extends CenterPopupView {
         super.onCreate();
         CheckBox cb = findViewById(R.id.cb_delete_file);
         View llCheck = findViewById(R.id.ll_check);
-        // 弹窗背景:按 app 主题取色(浅色白 / 深色深),圆角
+        // 弹窗背景:按 app 主题取色(浅色白 / 深色深),圆角统一走主题圆角档(radius_dialog)
         boolean dark = Utils.isAppDarkTheme();
         GradientDrawable bg = new GradientDrawable();
         bg.setColor(dark ? 0xFF2A2D32 : 0xFFFFFFFF);
-        bg.setCornerRadius(dp2px(20));
+        bg.setCornerRadius(getContext().getResources().getDimension(R.dimen.radius_dialog));
         getPopupImplView().setBackground(bg);
         // 点整行切换勾选(勾选行无背景/无涟漪,复选框用默认样式与下载完成多选一致)
         llCheck.setOnClickListener(v -> cb.setChecked(!cb.isChecked()));
@@ -60,9 +60,5 @@ public class DeleteDownloadDialog extends CenterPopupView {
                 mListener.onDelete(deleteFiles);
             }
         });
-    }
-
-    private int dp2px(float dp) {
-        return Math.round(dp * getContext().getResources().getDisplayMetrics().density);
     }
 }

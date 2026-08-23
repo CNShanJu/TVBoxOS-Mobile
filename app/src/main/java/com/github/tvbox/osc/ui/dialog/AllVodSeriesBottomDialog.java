@@ -13,6 +13,7 @@ import com.chad.library.adapter.base.BaseViewHolder;
 import com.github.tvbox.osc.R;
 import com.github.tvbox.osc.bean.VodInfo;
 import com.github.tvbox.osc.ui.widget.GridSpacingItemDecoration;
+import com.github.tvbox.osc.util.Utils;
 import com.lxj.xpopup.core.BottomPopupView;
 import com.lxj.xpopup.interfaces.OnSelectListener;
 
@@ -45,9 +46,10 @@ public class AllVodSeriesBottomDialog extends BottomPopupView {
         super.onCreate();
         RecyclerView rv = findViewById(R.id.rv);
 
-        // 固定3列,圆角框条目(与下载选择弹窗同款)
-        rv.setLayoutManager(new GridLayoutManager(getContext(), 3));
-        rv.addItemDecoration(new GridSpacingItemDecoration(3, 20, true));
+        // 集数网格:最多3列,基于文字长度自适应(1列/2列/3列),圆角框条目(与下载选择弹窗同款)
+        int span = Utils.getSeriesSpanCount(mList);
+        rv.setLayoutManager(new GridLayoutManager(getContext(), span));
+        rv.addItemDecoration(new GridSpacingItemDecoration(span, 20, true));
 
         BaseQuickAdapter<VodInfo.VodSeries, BaseViewHolder> seriesAdapter =
                 new BaseQuickAdapter<VodInfo.VodSeries, BaseViewHolder>(R.layout.item_download_select, mList) {

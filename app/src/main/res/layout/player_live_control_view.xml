@@ -72,7 +72,7 @@
         android:layout_gravity="center"
         app:lottie_autoPlay="true"
         android:scaleType="centerCrop"
-        app:lottie_fileName="anim_loading.json"
+        app:lottie_fileName="loading/anim_loading/anim_loading.json"
         app:lottie_speed="1"
         app:lottie_loop="true"
         app:lottie_repeatMode="restart"

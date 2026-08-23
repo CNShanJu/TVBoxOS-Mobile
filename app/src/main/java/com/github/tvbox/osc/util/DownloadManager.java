@@ -290,7 +290,7 @@ public class DownloadManager {
      * 新增下载任务(简化入口,不含重新解析信息)
      */
     public boolean enqueue(String url, String sourceName, String vodName, String episodeName) {
-        return enqueue(url, null, null, null, null, sourceName, vodName, episodeName);
+        return enqueue(url, null, null, null, null, null, null, sourceName, vodName, episodeName);
     }
 
     /**
@@ -298,13 +298,20 @@ public class DownloadManager {
      */
     public boolean enqueue(String url, String sourceKey, String playFlag, String episodeRawUrl,
                            String episodeId, String sourceName, String vodName, String episodeName) {
-        return enqueueInternal(url, sourceKey, playFlag, episodeRawUrl, episodeId, null, sourceName, vodName, episodeName);
+        return enqueueInternal(url, sourceKey, playFlag, episodeRawUrl, episodeId, null, null, sourceName, vodName, episodeName);
     }
 
     /** 带 EpisodeId 与封面图 URL 的入队 */
     public boolean enqueue(String url, String sourceKey, String playFlag, String episodeRawUrl,
                            String episodeId, String pic, String sourceName, String vodName, String episodeName) {
-        return enqueueInternal(url, sourceKey, playFlag, episodeRawUrl, episodeId, pic, sourceName, vodName, episodeName);
+        return enqueueInternal(url, sourceKey, playFlag, episodeRawUrl, episodeId, pic, null, sourceName, vodName, episodeName);
+    }
+
+    /** 带 EpisodeId、封面图 URL 与解析请求头(防盗链源下载必须携带)的入队 */
+    public boolean enqueue(String url, String sourceKey, String playFlag, String episodeRawUrl,
+                           String episodeId, String pic, Map<String, String> headers,
+                           String sourceName, String vodName, String episodeName) {
+        return enqueueInternal(url, sourceKey, playFlag, episodeRawUrl, episodeId, pic, headers, sourceName, vodName, episodeName);
     }
 
     /**
@@ -321,11 +328,12 @@ public class DownloadManager {
      */
     public boolean enqueue(String url, String sourceKey, String playFlag, String episodeRawUrl,
                            String sourceName, String vodName, String episodeName) {
-        return enqueueInternal(url, sourceKey, playFlag, episodeRawUrl, null, null, sourceName, vodName, episodeName);
+        return enqueueInternal(url, sourceKey, playFlag, episodeRawUrl, null, null, null, sourceName, vodName, episodeName);
     }
 
     private boolean enqueueInternal(String url, String sourceKey, String playFlag, String episodeRawUrl,
-                                    String episodeId, String pic, String sourceName, String vodName, String episodeName) {
+                                    String episodeId, String pic, Map<String, String> headers,
+                                    String sourceName, String vodName, String episodeName) {
         String src = sanitize(sourceName);
         if (src.isEmpty()) src = "未分类";
         String vn = sanitize(vodName);
@@ -388,6 +396,7 @@ public class DownloadManager {
         t.episodeId = episodeId;
         t.episodeName = episodeName;
         t.pic = pic;
+        t.headers = headers;
         t.sourceName = src;
         t.vodName = vn;
         t.groupName = vn;
@@ -802,7 +811,7 @@ public class DownloadManager {
             if (t.url != null && t.url.toLowerCase().contains(".m3u8")) {
                 // m3u8:尝试取播放列表,分片数量 × 单片估算(2MB/片,仅粗略)
                 try {
-                    Response resp = getDownloadResponse(t.url, baseHeaders());
+                    Response resp = getDownloadResponse(t.url, baseHeaders(t));
                     activeResponses.put(t.id, resp);
                     try {
                         if (resp.isSuccessful()) {
@@ -822,12 +831,16 @@ public class DownloadManager {
                 }
                 return 0;
             }
-            // 直链:HEAD 请求拿 Content-Length
-            Request head = new Request.Builder().url(t.url)
-                    .header("User-Agent", "okhttp/3.12.11")
-                    .header("Range", "bytes=0-0") // 部分服务器不支持 HEAD,用首字节 Range 探测
-                    .build();
-            Response resp = downloadClient.newCall(head).execute();
+            // 直链:HEAD 请求拿 Content-Length(带任务请求头,防盗链源 HEAD 也可能校验)
+            Request.Builder headBuilder = new Request.Builder().url(t.url)
+                    .header("Range", "bytes=0-0"); // 部分服务器不支持 HEAD,用首字节 Range 探测
+            Map<String, String> hdrs = baseHeaders(t);
+            for (Map.Entry<String, String> e : hdrs.entrySet()) {
+                if (e.getKey() != null && e.getValue() != null) {
+                    headBuilder.header(e.getKey(), e.getValue());
+                }
+            }
+            Response resp = downloadClient.newCall(headBuilder.build()).execute();
             try {
                 if (resp.isSuccessful()) {
                     String cl = resp.header("Content-Length");
@@ -960,22 +973,29 @@ public class DownloadManager {
     }
 
     /**
-     * 重新解析播放地址(经 SourceViewModel.spThreadPool 串行,避免 quickjs 并发卡死)。
+     * 重新解析播放地址与请求头(经 SourceViewModel.spThreadPool 串行,避免 quickjs 并发卡死)。
+     * 只要解析成功就同步请求头(旧任务缺头时靠 403/404 触发重解析补头,即使地址未变也要继续重试)。
      *
-     * @return true=解析成功且地址已更新
+     * @return true=地址或请求头已更新(调用方应继续重试下载)
      */
     private boolean reResolveUrl(DownloadTask t) {
         if (t.sourceKey == null || t.playFlag == null || t.episodeRawUrl == null) return false;
         try {
-            java.util.concurrent.Future<String> future = SourceViewModel.spThreadPool.submit(() ->
-                    PlayUrlResolver.resolve(t.sourceKey, t.playFlag, t.episodeRawUrl));
-            String newUrl = future.get(20, TimeUnit.SECONDS);
-            if (newUrl != null && !newUrl.isEmpty() && !newUrl.equals(t.url)) {
-                Log.i("TVBox-Download", "重新解析地址成功: " + t.fileName);
-                t.url = newUrl;
-                // 地址已更新:直链进度作废(URL变了,原Range续传可能无效),分片/已下字节保留由下载逻辑按需处理
-                if (t.downloadedBytes > 0 && !t.isHls()) {
-                    t.downloadedBytes = 0;
+            java.util.concurrent.Future<PlayUrlResolver.ResolveResult> future = SourceViewModel.spThreadPool.submit(() ->
+                    PlayUrlResolver.resolveWithHeader(t.sourceKey, t.playFlag, t.episodeRawUrl));
+            PlayUrlResolver.ResolveResult rr = future.get(20, TimeUnit.SECONDS);
+            if (rr != null && rr.url != null && !rr.url.isEmpty()) {
+                boolean urlChanged = !rr.url.equals(t.url);
+                t.headers = rr.headers; // 无论地址是否变化都同步请求头(防盗链源分片校验)
+                if (urlChanged) {
+                    Log.i("TVBox-Download", "重新解析地址成功: " + t.fileName);
+                    t.url = rr.url;
+                    // 地址已更新:直链进度作废(URL变了,原Range续传可能无效),分片/已下字节保留由下载逻辑按需处理
+                    if (t.downloadedBytes > 0 && !t.isHls()) {
+                        t.downloadedBytes = 0;
+                    }
+                } else {
+                    Log.i("TVBox-Download", "重新解析地址无变化,已同步请求头: " + t.fileName);
                 }
                 return true;
             }
@@ -999,7 +1019,7 @@ public class DownloadManager {
     // ------------------------------------------------------------------
 
     private void downloadDirect(DownloadTask t) throws IOException {
-        Map<String, String> headers = baseHeaders();
+        Map<String, String> headers = baseHeaders(t);
         if (t.downloadedBytes > 0) {
             headers.put("Range", "bytes=" + t.downloadedBytes + "-");
         }
@@ -1406,7 +1426,7 @@ public class DownloadManager {
     }
 
     private void downloadSegment(String segUrl, File segFile, long segDone, DownloadTask t) throws IOException {
-        Map<String, String> headers = baseHeaders();
+        Map<String, String> headers = baseHeaders(t);
         if (segDone > 0) {
             headers.put("Range", "bytes=" + segDone + "-");
         }
@@ -1460,7 +1480,7 @@ public class DownloadManager {
     }
 
     private String fetchPlaylist(String url, DownloadTask t) throws IOException {
-        Response resp = getDownloadResponse(url, baseHeaders());
+        Response resp = getDownloadResponse(url, baseHeaders(t));
         activeResponses.put(t.id, resp);
         try {
             if (!resp.isSuccessful()) throw new IOException("m3u8 HTTP " + resp.code());
@@ -1472,7 +1492,7 @@ public class DownloadManager {
                     String l = line.trim();
                     if (l.isEmpty() || l.startsWith("#")) continue;
                     String variant = resolveUrl(url, base, l);
-                    Response resp2 = getDownloadResponse(variant, baseHeaders());
+                    Response resp2 = getDownloadResponse(variant, baseHeaders(t));
                     activeResponses.put(t.id, resp2);
                     try {
                         if (!resp2.isSuccessful()) throw new IOException("variant HTTP " + resp2.code());
@@ -1516,9 +1536,17 @@ public class DownloadManager {
     // 工具
     // ------------------------------------------------------------------
 
-    private Map<String, String> baseHeaders() {
+    /** 请求头:默认 UA + 任务携带的解析请求头(UA/Referer 等,防盗链源分片/文件校验,必须带上) */
+    private Map<String, String> baseHeaders(DownloadTask t) {
         Map<String, String> headers = new HashMap<>();
         headers.put("User-Agent", "okhttp/3.12.11");
+        if (t != null && t.headers != null && !t.headers.isEmpty()) {
+            for (Map.Entry<String, String> e : t.headers.entrySet()) {
+                if (e.getKey() != null && e.getValue() != null) {
+                    headers.put(e.getKey(), e.getValue());
+                }
+            }
+        }
         return headers;
     }
 

@@ -8,6 +8,7 @@ import android.content.Context;
 import android.content.pm.ActivityInfo;
 import android.os.Handler;
 import android.os.Message;
+import android.text.TextUtils;
 import android.view.KeyEvent;
 import android.view.MotionEvent;
 import android.view.View;
@@ -38,6 +39,7 @@ import com.github.tvbox.osc.util.HawkConfig;
 import com.github.tvbox.osc.util.PlayerHelper;
 import com.github.tvbox.osc.util.ScreenUtils;
 import com.github.tvbox.osc.util.SubtitleHelper;
+import com.github.tvbox.osc.util.Utils;
 import com.orhanobut.hawk.Hawk;
 import com.owen.tvrecyclerview.widget.TvRecyclerView;
 import com.owen.tvrecyclerview.widget.V7LinearLayoutManager;
@@ -54,7 +56,7 @@ import java.util.List;
 import xyz.doikki.videoplayer.player.VideoView;
 import xyz.doikki.videoplayer.util.PlayerUtils;
 
-public class LocalVideoController extends BaseController {
+public class LocalVideoController extends BaseController implements PlaybackSettingsController {
 
     private TextView mTvSpeedTip;
     private LinearLayout mLlSpeed;
@@ -77,6 +79,9 @@ public class LocalVideoController extends BaseController {
                         mBottomRoot.setVisibility(VISIBLE);
                         mTopRoot1.setVisibility(VISIBLE);
                         mTopRoot2.setVisibility(VISIBLE);
+                        if (!isLock) {// 未上锁,锁按钮随操作栏显示
+                            mLockView.setVisibility(VISIBLE);
+                        }
                         mNextBtn.requestFocus();
                         break;
                     }
@@ -84,6 +89,9 @@ public class LocalVideoController extends BaseController {
                         mBottomRoot.setVisibility(GONE);
                         mTopRoot1.setVisibility(GONE);
                         mTopRoot2.setVisibility(GONE);
+                        if (!isLock) {// 未上锁,锁按钮随操作栏隐藏
+                            mLockView.setVisibility(GONE);
+                        }
                         break;
                     }
                     case 1004: { // 设置速度
@@ -117,14 +125,16 @@ public class LocalVideoController extends BaseController {
     TextView mPlayLoadNetSpeedRightTop;
     ImageView mNextBtn;
     ImageView mPreBtn;
-    TextView mPlayerScaleBtn;
+    public TextView mPlayerScaleBtn;
     public TextView mPlayerSpeedBtn;
-    TextView mPlayerBtn;
-    TextView mPlayerIJKBtn;
+    public TextView mPlayerBtn;
+    public TextView mPlayerIJKBtn;
     public TextView mPlayerTimeStartEndText;
     public TextView mPlayerTimeStartBtn;
     public TextView mPlayerTimeSkipBtn;
     public TextView mPlayerTimeResetBtn;
+    public TextView mPlayRetry;
+    public TextView mPlayRefresh;
     TextView mPlayPauseTime;
     TextView mPlayLoadNetSpeed;
     TextView mVideoSize;
@@ -134,6 +144,17 @@ public class LocalVideoController extends BaseController {
     public TextView mLandscapePortraitBtn;
     private ImageView mIvPlayStatus;
     public MyBatteryView mMyBatteryView;
+    private ImageView mLockView;
+    private boolean isLock = false;
+    int dismissTimeLock = 2000;//闲置多少毫秒隐藏已上锁按钮
+    private final Runnable lockRunnable = new Runnable() {
+        @Override
+        public void run() {
+            if (isLock) {//上锁的才隐藏,非上锁状态随操作栏显示隐藏
+                mLockView.setVisibility(GONE);
+            }
+        }
+    };
     Handler myHandle;
     Runnable myRunnable;
     int myHandleSeconds = 4000;//闲置多少毫秒秒关闭底栏  默认6秒
@@ -164,11 +185,11 @@ public class LocalVideoController extends BaseController {
     @Override
     protected void initView() {
         super.initView();
-        findViewById(R.id.pip).setVisibility(GONE);
-        findViewById(R.id.cast).setVisibility(GONE);
+        View pip = findViewById(R.id.pip);
+        // 画中画按钮:设备支持小窗就显示(与在线播放一致)
+        pip.setVisibility(Utils.supportsPiPMode() ? VISIBLE : GONE);
         mMyBatteryView = findViewById(R.id.battery);
         findViewById(R.id.container_top_right_device_info).setVisibility(VISIBLE);
-        findViewById(R.id.setting).setVisibility(GONE);
         mCurrentTime = findViewById(R.id.curr_time);
         mTvSpeedTip = findViewById(R.id.tv_speed);
         mLlSpeed = findViewById(R.id.ll_speed);
@@ -203,6 +224,26 @@ public class LocalVideoController extends BaseController {
         mIvPlayStatus = findViewById(R.id.play_status);
         initSubtitleInfo();
 
+        // 锁定按钮:上锁后隐藏操作栏并拦截触摸,点按屏幕短暂显示锁按钮
+        mLockView = findViewById(R.id.iv_lock);
+        mLockView.setOnClickListener(new OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                isLock = !isLock;
+                if (isLock) {// 上了锁
+                    mLockView.setImageResource(R.drawable.ic_lock);
+                    hideBottom();
+                    mHandler.removeCallbacks(lockRunnable);
+                    mHandler.postDelayed(lockRunnable, dismissTimeLock);
+                } else {// 解了锁
+                    mLockView.setImageResource(R.drawable.ic_unlock);
+                    showBottom();
+                    myHandle.removeCallbacks(myRunnable);
+                    myHandle.postDelayed(myRunnable, myHandleSeconds);
+                }
+            }
+        });
+
         //本地播放没小屏播放,直接显示上下集(后续将本地播放的xml独立)
         mPreBtn.setVisibility(VISIBLE);
         mNextBtn.setVisibility(VISIBLE);
@@ -229,6 +270,31 @@ public class LocalVideoController extends BaseController {
                 FastClickCheckUtil.check(view);
                 hideBottom();
                 listener.chooseSeries();
+            }
+        });
+        // 右上角:设置(显示本地播放设置底栏) / 投屏 / 小窗
+        findViewById(R.id.setting).setOnClickListener(new OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                FastClickCheckUtil.check(view);
+                listener.showSetting();
+            }
+        });
+        findViewById(R.id.cast).setOnClickListener(new OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                FastClickCheckUtil.check(view);
+                listener.cast();
+                hideBottom();
+            }
+        });
+        pip.setOnClickListener(new OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                if (isInPlaybackState()) {
+                    listener.pip();
+                    hideBottom();
+                }
             }
         });
         mSeekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
@@ -264,16 +330,20 @@ public class LocalVideoController extends BaseController {
             }
         });
 
-        mPlayTitle1.setOnClickListener(view -> listener.exit());
+        // 返回icon退出;标题不响应退出(与在线全屏播放一致)
+        mPlayTitle1.setOnClickListener(null);
+        findViewById(R.id.iv_title_back).setOnClickListener(view -> listener.exit());
 
-        findViewById(R.id.play_retry).setOnClickListener(new OnClickListener() {
+        mPlayRetry = findViewById(R.id.play_retry);
+        mPlayRefresh = findViewById(R.id.play_refresh);
+        mPlayRetry.setOnClickListener(new OnClickListener() {
             @Override
             public void onClick(View v) {
                 listener.replay(true);
                 hideBottom();
             }
         });
-        findViewById(R.id.play_refresh).setOnClickListener(new OnClickListener() {
+        mPlayRefresh.setOnClickListener(new OnClickListener() {
             @Override
             public void onClick(View v) {
                 listener.replay(false);
@@ -685,6 +755,161 @@ public class LocalVideoController extends BaseController {
         mPlayTitle1.setText(playTitleInfo);
     }
 
+    // ------------------------------------------------------------------
+    // PlaybackSettingsController:设置抽屉(在线全屏与本地共用)取控制器按钮/状态
+    // ------------------------------------------------------------------
+
+    @Override
+    public TextView settingsPlayerBtn() {
+        return mPlayerBtn;
+    }
+
+    @Override
+    public TextView settingsScaleBtn() {
+        return mPlayerScaleBtn;
+    }
+
+    @Override
+    public TextView settingsIjkBtn() {
+        return mPlayerIJKBtn;
+    }
+
+    @Override
+    public TextView settingsTimeStartBtn() {
+        return mPlayerTimeStartBtn;
+    }
+
+    @Override
+    public TextView settingsTimeSkipBtn() {
+        return mPlayerTimeSkipBtn;
+    }
+
+    @Override
+    public TextView settingsTimeResetBtn() {
+        return mPlayerTimeResetBtn;
+    }
+
+    @Override
+    public TextView settingsRetryBtn() {
+        return mPlayRetry;
+    }
+
+    @Override
+    public TextView settingsRefreshBtn() {
+        return mPlayRefresh;
+    }
+
+    @Override
+    public TextView settingsZimuBtn() {
+        return mZimuBtn;
+    }
+
+    @Override
+    public TextView settingsAudioBtn() {
+        return mAudioTrackBtn;
+    }
+
+    @Override
+    public TextView settingsLandscapeBtn() {
+        return mLandscapePortraitBtn;
+    }
+
+    /** 设置倍速;speed 为空表示循环切换(与在线播放一致) */
+    @Override
+    public void setSpeed(String speedStr) {
+        myHandle.removeCallbacks(myRunnable);
+        myHandle.postDelayed(myRunnable, myHandleSeconds);
+        try {
+            float speed = (float) mPlayerConfig.getDouble("sp");
+            if (TextUtils.isEmpty(speedStr)) {
+                speed += 0.25f;
+                if (speed > 3) speed = 0.5f;
+            } else {
+                speed = Float.parseFloat(speedStr);
+            }
+            mPlayerConfig.put("sp", speed);
+            updatePlayerCfgView();
+            listener.updatePlayerCfg();
+            mControlWrapper.setSpeed(speed);
+        } catch (Exception e) {
+            AppBubble.toast("倍速参数异常");
+            e.printStackTrace();
+        }
+    }
+
+    @Override
+    public int getScaleType() {
+        try {
+            return mPlayerConfig.getInt("sc");
+        } catch (JSONException e) {
+            return 0;
+        }
+    }
+
+    @Override
+    public void setScaleType(int scaleType) {
+        try {
+            mPlayerConfig.put("sc", scaleType);
+            updatePlayerCfgView();
+            listener.updatePlayerCfg();
+            mControlWrapper.setScreenScaleType(scaleType);
+        } catch (JSONException e) {
+            e.printStackTrace();
+        }
+    }
+
+    @Override
+    public int getPlayerType() {
+        try {
+            return mPlayerConfig.getInt("pl");
+        } catch (JSONException e) {
+            return 0;
+        }
+    }
+
+    @Override
+    public void setPlayerType(int playerType) {
+        try {
+            mPlayerConfig.put("pl", playerType);
+            updatePlayerCfgView();
+            listener.updatePlayerCfg();
+            listener.replay(false);
+            hideBottom();
+        } catch (JSONException e) {
+            e.printStackTrace();
+        }
+    }
+
+    @Override
+    public void increaseTime(String type) {
+        try {
+            int step = Hawk.get(HawkConfig.PLAY_TIME_STEP, 1);
+            int time = mPlayerConfig.getInt(type);
+            time += step;
+            if (time > 30 * 10) time = 0;
+            mPlayerConfig.put(type, time);
+            updatePlayerCfgView();
+            listener.updatePlayerCfg();
+        } catch (JSONException e) {
+            e.printStackTrace();
+        }
+    }
+
+    @Override
+    public void decreaseTime(String type) {
+        try {
+            int step = Hawk.get(HawkConfig.PLAY_TIME_STEP, 1);
+            int time = mPlayerConfig.getInt(type);
+            time -= step;
+            if (time < 0) time = (30 * 10);
+            mPlayerConfig.put(type, time);
+            updatePlayerCfgView();
+            listener.updatePlayerCfg();
+        } catch (JSONException e) {
+            e.printStackTrace();
+        }
+    }
+
     public void resetSpeed() {
         skipEnd = true;
         mHandler.removeMessages(1004);
@@ -715,6 +940,15 @@ public class LocalVideoController extends BaseController {
         void toggleFullScreen();
 
         void exit();
+
+        /** 右上角设置按钮:本地播放显示设置底栏 */
+        void showSetting();
+
+        /** 右上角投屏按钮 */
+        void cast();
+
+        /** 右上角画中画按钮 */
+        void pip();
     }
 
     public void setListener(VodControlListener listener) {
@@ -852,12 +1086,12 @@ public class LocalVideoController extends BaseController {
         return mBottomRoot.getVisibility() == VISIBLE;
     }
 
-    void showBottom() {
+    public void showBottom() {
         mHandler.removeMessages(1003);
         mHandler.sendEmptyMessage(1002);
     }
 
-    void hideBottom() {
+    public void hideBottom() {
         mHandler.removeMessages(1002);
         mHandler.sendEmptyMessage(1003);
     }
@@ -919,6 +1153,21 @@ public class LocalVideoController extends BaseController {
             mLlSpeed.setVisibility(VISIBLE);
             mTvSpeedTip.setText(speed + "x");
         }
+    }
+
+    @SuppressLint("ClickableViewAccessibility")
+    @Override
+    public boolean onTouch(View v, MotionEvent event) {
+        if (isLock) {
+            // 上锁:消费所有触摸(手势/点按全部屏蔽),点按屏幕短暂显示锁按钮
+            if (event.getAction() == MotionEvent.ACTION_UP) {
+                mLockView.setVisibility(VISIBLE);
+                mHandler.removeCallbacks(lockRunnable);
+                mHandler.postDelayed(lockRunnable, dismissTimeLock);
+            }
+            return true;
+        }
+        return super.onTouch(v, event);
     }
 
     @SuppressLint("ClickableViewAccessibility")

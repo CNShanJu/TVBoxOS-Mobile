@@ -24,16 +24,62 @@ public class Utils {
         return Build.VERSION.SDK_INT >= Build.VERSION_CODES.O;
     }
 
+    /**
+     * 集数网格自适应列数:基于文字平均长度,最多 3 列(1列/2列/3列)。
+     * 平均长度 >= 12 → 1 列;>= 8 → 2 列;否则 3 列。
+     */
     public static int getSeriesSpanCount(List<VodInfo.VodSeries> list) {
-        int spanCount = 4;
+        int spanCount = 3;
+        if (list == null || list.isEmpty()) {
+            return spanCount;
+        }
         int total = 0;
         for (VodInfo.VodSeries item : list) total += item.name.length();
         int offset = (int) Math.ceil((double) total / list.size());
         if (offset >= 12) spanCount = 1;
         else if (offset >= 8) spanCount = 2;
-        else if (offset >= 4) spanCount = 3;
-        else if (offset >= 2) spanCount = 4;
         return spanCount;
+    }
+
+    /**
+     * 网格单卡最大宽度(dp):单卡超过该宽度时自动增加列数,避免卡片被拉得过宽。
+     * 按需在各处调用 getAdaptiveGridSpan(maxCardWidthDp) 时可直接使用此常量。
+     */
+    public static final float GRID_CARD_MAX_WIDTH_DP = 190f;
+
+    /**
+     * 自适应网格列数:按屏幕宽度计算,保证单卡宽度不超过 maxCardWidthDp(屏幕越宽列数越多),
+     * 不强制默认列数(如旧的"最少 3 列"逻辑,窄屏下会让单卡超出最大宽度)。
+     * 可另设最小/最大列数兜底,适用于首页剧集网格、下载聚合、收藏/历史等所有需要
+     * "宽度自适应屏幕"的网格场景,屏幕旋转/尺寸变化时重新调用即可得到新列数。
+     *
+     * @param maxCardWidthDp 单卡最大宽度(dp),必须 > 0
+     * @param minSpan        最小列数(窄屏兜底,<=0 表示不限制,由宽度计算得出)
+     * @param maxSpan        最大列数(超宽屏兜底,<=0 表示不限制)
+     * @return 自适应列数,至少 1 列
+     */
+    public static int getAdaptiveGridSpan(float maxCardWidthDp, int minSpan, int maxSpan) {
+        try {
+            int widthDp = App.getInstance().getResources().getConfiguration().screenWidthDp;
+            int span = (int) Math.ceil(widthDp / maxCardWidthDp);
+            if (minSpan > 0) {
+                span = Math.max(span, minSpan);
+            }
+            if (maxSpan > 0) {
+                span = Math.min(span, maxSpan);
+            }
+            return Math.max(1, span);
+        } catch (Throwable th) {
+            return 1;
+        }
+    }
+
+    /**
+     * 便捷重载:仅按单卡最大宽度自适应,不限制最小/最大列数。
+     * 例:getAdaptiveGridSpan(Utils.GRID_CARD_MAX_WIDTH_DP)
+     */
+    public static int getAdaptiveGridSpan(float maxCardWidthDp) {
+        return getAdaptiveGridSpan(maxCardWidthDp, 0, 0);
     }
 
     public static String stringForTime(long timeMs) {

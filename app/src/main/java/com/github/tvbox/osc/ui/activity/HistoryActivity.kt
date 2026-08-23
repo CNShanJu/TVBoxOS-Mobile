@@ -1,5 +1,6 @@
 package com.github.tvbox.osc.ui.activity
 
+import android.content.res.Configuration
 import android.os.Bundle
 import android.view.View
 import androidx.lifecycle.lifecycleScope
@@ -29,7 +30,8 @@ class HistoryActivity : BaseVbActivity<ActivityHistoryBinding>() {
         setLoadSir(mBinding.mGridView)
 
         mBinding.mGridView.setHasFixedSize(true)
-        mBinding.mGridView.setLayoutManager(GridLayoutManager(this, 3))
+        // 列数自适应:单卡宽度不超过 GRID_CARD_MAX_WIDTH_DP,屏幕越宽列数越多
+        mBinding.mGridView.setLayoutManager(GridLayoutManager(this, Utils.getAdaptiveGridSpan(Utils.GRID_CARD_MAX_WIDTH_DP)))
         historyAdapter = HistoryAdapter()
         mBinding.mGridView.setAdapter(historyAdapter)
 
@@ -97,6 +99,17 @@ class HistoryActivity : BaseVbActivity<ActivityHistoryBinding>() {
                     showEmpty()
                 }
             }
+        }
+    }
+
+    /**
+     * 屏幕旋转 / 窗口尺寸变化(大屏横竖屏切换)时,按新宽度重算列数并刷新
+     */
+    override fun onConfigurationChanged(newConfig: Configuration) {
+        super.onConfigurationChanged(newConfig)
+        val lm = mBinding.mGridView.layoutManager
+        if (lm is GridLayoutManager) {
+            lm.spanCount = Utils.getAdaptiveGridSpan(Utils.GRID_CARD_MAX_WIDTH_DP)
         }
     }
 }

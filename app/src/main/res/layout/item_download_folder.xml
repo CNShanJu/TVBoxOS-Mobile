@@ -25,7 +25,7 @@
         android:layout_width="100dp"
         android:layout_height="60dp"
         app:clickable="false"
-        app:hl_cornerRadius="8dp"
+        app:hl_cornerRadius="@dimen/radius_card"
         app:hl_layoutBackground="@android:color/transparent">
 
         <ImageView

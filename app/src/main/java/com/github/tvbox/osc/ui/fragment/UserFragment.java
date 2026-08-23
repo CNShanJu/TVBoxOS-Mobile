@@ -1,12 +1,14 @@
 package com.github.tvbox.osc.ui.fragment;
 
 import android.content.Intent;
+import android.content.res.Configuration;
 import android.os.Bundle;
 import android.text.TextUtils;
 import android.view.View;
 import android.view.animation.BounceInterpolator;
 import android.widget.LinearLayout;
 
+import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.GridLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
@@ -31,6 +33,7 @@ import com.github.tvbox.osc.util.HCallBack;
 import com.github.tvbox.osc.util.HawkConfig;
 import com.github.tvbox.osc.util.HttpClient;
 import com.github.tvbox.osc.util.UA;
+import com.github.tvbox.osc.util.Utils;
 import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
@@ -75,7 +78,19 @@ public class UserFragment extends BaseLazyFragment {
         super.onFragmentResume();
 
         tvHotList1.setHasFixedSize(true);
-        tvHotList1.setLayoutManager(new GridLayoutManager(this.mContext, 3));
+        // 列数自适应:单卡宽度不超过 GRID_CARD_MAX_WIDTH_DP,屏幕越宽列数越多
+        tvHotList1.setLayoutManager(new GridLayoutManager(this.mContext, Utils.getAdaptiveGridSpan(Utils.GRID_CARD_MAX_WIDTH_DP)));
+    }
+
+    /**
+     * 屏幕旋转 / 窗口尺寸变化(大屏横竖屏切换)时,按新宽度重算列数并刷新
+     */
+    @Override
+    public void onConfigurationChanged(@NonNull Configuration newConfig) {
+        super.onConfigurationChanged(newConfig);
+        if (tvHotList1 != null && tvHotList1.getLayoutManager() instanceof GridLayoutManager) {
+            ((GridLayoutManager) tvHotList1.getLayoutManager()).setSpanCount(Utils.getAdaptiveGridSpan(Utils.GRID_CARD_MAX_WIDTH_DP));
+        }
     }
 
     @Override

@@ -13,7 +13,7 @@
         android:id="@+id/v_gesture_line"
         android:layout_width="30dp"
         android:layout_height="2dp"
-        app:hl_cornerRadius="10dp"
+        app:hl_cornerRadius="@dimen/radius_card"
         app:hl_layoutBackground="@color/gray_darker"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"

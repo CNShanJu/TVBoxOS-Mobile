@@ -326,7 +326,7 @@ public class PlayFragment extends BaseLazyFragment {
                             .hasNavigationBar(false)
                             .popupHeight(ScreenUtils.getScreenHeight())
                             .popupPosition(PopupPosition.Right)
-                            .asCustom(new PlayingControlRightDialog(activity,mController,mVideoView));
+                            .asCustom(new PlayingControlRightDialog(activity, mController, mVideoView, true));
                     mPlayingControlRightDialog.show();
                 }else {
                     mPlayingControlDialog = new XPopup.Builder(activity)

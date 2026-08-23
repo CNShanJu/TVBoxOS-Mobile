@@ -4,12 +4,15 @@
     android:layout_height="match_parent"
     android:background="@color/bg_body">
 
-    <!-- 开屏图:静态 ImageView 居中显示,避免 windowBackground 随系统启动窗口产生缩放动画 -->
+    <!-- 开屏图:静态 ImageView 居中显示,避免 windowBackground 随系统启动窗口产生缩放动画;
+         图标内容留白较多,放大 1.5 倍(四周留白裁切,图标本体变大) -->
     <ImageView
         android:layout_width="360dp"
         android:layout_height="360dp"
         android:layout_gravity="center"
         android:scaleType="fitCenter"
+        android:scaleX="1.5"
+        android:scaleY="1.5"
         android:src="@drawable/iv_splash" />
 
 </FrameLayout>

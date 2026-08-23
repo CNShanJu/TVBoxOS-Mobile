@@ -52,17 +52,14 @@
                         android:textColor="@color/text_foreground"
                         android:textSize="16sp"/>
 
-                    <Space
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1" />
-
                     <TextView
                         android:id="@+id/tvHomeRec"
-                        android:layout_width="wrap_content"
+                        android:layout_width="0dp"
                         android:layout_height="wrap_content"
-
-                        />
+                        android:layout_weight="1"
+                        android:gravity="end"
+                        android:maxLines="1"
+                        android:ellipsize="end" />
 
                     <ImageView
                         android:layout_width="26dp"
@@ -93,17 +90,14 @@
                         android:textSize="16sp"
                         />
 
-                    <Space
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1" />
-
                     <TextView
                         android:id="@+id/showFastSearchText"
-                        android:layout_width="wrap_content"
+                        android:layout_width="0dp"
                         android:layout_height="wrap_content"
-
-                        />
+                        android:layout_weight="1"
+                        android:gravity="end"
+                        android:maxLines="1"
+                        android:ellipsize="end" />
 
                     <ImageView
                         android:layout_width="26dp"
@@ -134,16 +128,14 @@
                         android:textSize="16sp"
                         />
 
-                    <Space
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1" />
-
                     <TextView
                         android:id="@+id/tvTheme"
-                        android:layout_width="wrap_content"
+                        android:layout_width="0dp"
                         android:layout_height="wrap_content"
-                        />
+                        android:layout_weight="1"
+                        android:gravity="end"
+                        android:maxLines="1"
+                        android:ellipsize="end" />
 
                     <ImageView
                         android:layout_width="26dp"
@@ -276,15 +268,14 @@
                         android:textColor="@color/text_foreground"
                         android:textSize="16sp"/>
 
-                    <Space
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1" />
-
                     <TextView
                         android:id="@+id/tvDlConcurrent"
-                        android:layout_width="wrap_content"
+                        android:layout_width="0dp"
                         android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:gravity="end"
+                        android:maxLines="1"
+                        android:ellipsize="end"
                         android:textColor="@color/text_foreground"
                         android:textSize="14sp"/>
 
@@ -297,35 +288,33 @@
                         app:tint="@color/text_foreground"/>
                 </LinearLayout>
 
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:gravity="center_vertical"
-                    android:orientation="horizontal"
-                    android:paddingHorizontal="40dp"
-                    android:paddingTop="4dp">
+                <!--<LinearLayout-->
+                <!--    android:layout_width="match_parent"-->
+                <!--    android:layout_height="wrap_content"-->
+                <!--    android:gravity="center_vertical"-->
+                <!--    android:orientation="horizontal"-->
+                <!--    android:paddingHorizontal="40dp"-->
+                <!--    android:paddingTop="4dp">-->
 
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="保存位置"
-                        android:textColor="@color/text_foreground"
-                        android:textSize="16sp"/>
+                <!--    <TextView-->
+                <!--        android:layout_width="wrap_content"-->
+                <!--        android:layout_height="wrap_content"-->
+                <!--        android:text="保存位置"-->
+                <!--        android:textColor="@color/text_foreground"-->
+                <!--        android:textSize="16sp"/>-->
 
-                    <Space
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1" />
+                <!--    <TextView-->
+                <!--        android:id="@+id/tvDlSaveDir"-->
+                <!--        android:layout_width="0dp"-->
+                <!--        android:layout_height="wrap_content"-->
+                <!--        android:layout_weight="1"-->
+                <!--        android:gravity="end"-->
+                <!--        android:ellipsize="middle"-->
+                <!--        android:maxLines="1"-->
+                <!--        android:textColor="@color/text_sub_foreground"-->
+                <!--        android:textSize="12sp"/>-->
+                <!--</LinearLayout>-->
 
-                    <TextView
-                        android:id="@+id/tvDlSaveDir"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:ellipsize="middle"
-                        android:maxLines="1"
-                        android:textColor="@color/text_sub_foreground"
-                        android:textSize="12sp"/>
-                </LinearLayout>
             </LinearLayout>
 
             <LinearLayout
@@ -354,16 +343,14 @@
                         android:textSize="16sp"
                         />
 
-                    <Space
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1" />
-
                     <TextView
                         android:id="@+id/tvPlay"
-                        android:layout_width="wrap_content"
+                        android:layout_width="0dp"
                         android:layout_height="wrap_content"
-                        />
+                        android:layout_weight="1"
+                        android:gravity="end"
+                        android:maxLines="1"
+                        android:ellipsize="end" />
 
                     <ImageView
                         android:layout_width="26dp"
@@ -482,17 +469,14 @@
                         android:textSize="16sp"
                         />
 
-                    <Space
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1" />
-
                     <TextView
                         android:id="@+id/tvSpeed"
-                        android:layout_width="wrap_content"
+                        android:layout_width="0dp"
                         android:layout_height="wrap_content"
-
-                        />
+                        android:layout_weight="1"
+                        android:gravity="end"
+                        android:maxLines="1"
+                        android:ellipsize="end" />
 
                     <ImageView
                         android:layout_width="26dp"
@@ -522,16 +506,14 @@
                         android:textSize="16sp"
                         />
 
-                    <Space
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1" />
-
                     <TextView
                         android:id="@+id/tvBackgroundPlayType"
-                        android:layout_width="wrap_content"
+                        android:layout_width="0dp"
                         android:layout_height="wrap_content"
-                        />
+                        android:layout_weight="1"
+                        android:gravity="end"
+                        android:maxLines="1"
+                        android:ellipsize="end" />
 
                     <ImageView
                         android:layout_width="26dp"
@@ -560,16 +542,14 @@
                         android:textSize="16sp"
                         />
 
-                    <Space
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1" />
-
                     <TextView
                         android:id="@+id/tvMediaCodec"
-                        android:layout_width="wrap_content"
+                        android:layout_width="0dp"
                         android:layout_height="wrap_content"
-                        />
+                        android:layout_weight="1"
+                        android:gravity="end"
+                        android:maxLines="1"
+                        android:ellipsize="end" />
 
                     <ImageView
                         android:layout_width="26dp"
@@ -598,17 +578,14 @@
                         android:textSize="16sp"
                         />
 
-                    <Space
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1" />
-
                     <TextView
                         android:id="@+id/tvRenderType"
-                        android:layout_width="wrap_content"
+                        android:layout_width="0dp"
                         android:layout_height="wrap_content"
-
-                        />
+                        android:layout_weight="1"
+                        android:gravity="end"
+                        android:maxLines="1"
+                        android:ellipsize="end" />
 
                     <ImageView
                         android:layout_width="26dp"
@@ -636,17 +613,14 @@
                         android:textSize="16sp"
                         />
 
-                    <Space
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1" />
-
                     <TextView
                         android:id="@+id/tvScaleType"
-                        android:layout_width="wrap_content"
+                        android:layout_width="0dp"
                         android:layout_height="wrap_content"
-
-                        />
+                        android:layout_weight="1"
+                        android:gravity="end"
+                        android:maxLines="1"
+                        android:ellipsize="end" />
 
                     <ImageView
                         android:layout_width="26dp"
@@ -674,16 +648,14 @@
                         android:textSize="16sp"
                         />
 
-                    <Space
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1" />
-
                     <TextView
                         android:id="@+id/tvLoadingAnim"
-                        android:layout_width="wrap_content"
+                        android:layout_width="0dp"
                         android:layout_height="wrap_content"
-                        />
+                        android:layout_weight="1"
+                        android:gravity="end"
+                        android:maxLines="1"
+                        android:ellipsize="end" />
 
                     <ImageView
                         android:layout_width="26dp"
@@ -782,16 +754,14 @@
                         android:textColor="@color/text_foreground"
                         android:textSize="16sp"/>
 
-                    <Space
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1" />
-
                     <TextView
                         android:id="@+id/tvDns"
-                        android:layout_width="wrap_content"
+                        android:layout_width="0dp"
                         android:layout_height="wrap_content"
-                        />
+                        android:layout_weight="1"
+                        android:gravity="end"
+                        android:maxLines="1"
+                        android:ellipsize="end" />
 
                     <ImageView
                         android:layout_width="26dp"
@@ -820,17 +790,14 @@
                         android:textSize="16sp"
                         />
 
-                    <Space
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1" />
-
                     <TextView
                         android:id="@+id/tvHistoryNum"
-                        android:layout_width="wrap_content"
+                        android:layout_width="0dp"
                         android:layout_height="wrap_content"
-
-                        />
+                        android:layout_weight="1"
+                        android:gravity="end"
+                        android:maxLines="1"
+                        android:ellipsize="end" />
 
                     <ImageView
                         android:layout_width="26dp"

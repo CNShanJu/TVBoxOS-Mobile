@@ -19,22 +19,39 @@
             android:layout_marginTop="22dp"
             android:orientation="vertical">
 
-            <TextView
-                android:id="@+id/tv_info_name1"
+            <!-- 返回icon与标题分开:仅点返回icon退出,点标题不退出 -->
+            <LinearLayout
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:maxWidth="200dp"
-                android:ellipsize="marquee"
-                android:singleLine="true"
-                tools:text="http://http://http://http://http://http://http://"
-                android:textColor="@color/white"
-                android:drawablePadding="20dp"
-                android:drawableLeft="@drawable/dkplayer_ic_action_arrow_back"
-                android:marqueeRepeatLimit="marquee_forever"
-                android:focusable="true"
-                android:focusableInTouchMode="true"
-                 />
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
 
+                <ImageView
+                    android:id="@+id/iv_title_back"
+                    android:layout_width="24dp"
+                    android:layout_height="24dp"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:padding="3dp"
+                    android:src="@drawable/dkplayer_ic_action_arrow_back" />
+
+                <TextView
+                    android:id="@+id/tv_info_name1"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="8dp"
+                    android:maxWidth="200dp"
+                    android:ellipsize="marquee"
+                    android:singleLine="true"
+                    tools:text="http://http://http://http://http://http://http://"
+                    android:textColor="@color/white"
+                    android:marqueeRepeatLimit="marquee_forever"
+                    android:focusable="true"
+                    android:focusableInTouchMode="true"
+                     />
+            </LinearLayout>
+
+            <!-- 分辨率行:左对齐返回icon可见箭头的最左边(icon内边距3dp,文本补3dp抵消),不对齐标题,文本左对齐 -->
             <TextView
                 android:id="@+id/tv_videosize"
                 android:layout_width="wrap_content"
@@ -42,7 +59,9 @@
                 android:layout_gravity="left"
                 android:ellipsize="end"
                 android:maxLines="1"
-                android:paddingLeft="@dimen/dp_20"
+                android:gravity="left"
+                android:paddingLeft="5dp"
+                android:textAlignment="viewStart"
                 android:tag="vod_video_size"
                 tools:text="1024 x 768"
                 android:textColor="@color/white"
@@ -52,10 +71,11 @@
 
     <ImageView
         android:id="@+id/iv_lock"
-        android:layout_width="40dp"
+        android:layout_width="36dp"
         android:layout_height="40dp"
         android:layout_gravity="right|center"
-        android:layout_marginHorizontal="24dp"
+        android:layout_marginRight="20dp"
+        android:layout_marginLeft="20dp"
         android:clickable="true"
         android:focusable="true"
         android:paddingHorizontal="6dp"
@@ -556,7 +576,7 @@
         android:layout_gravity="center"
         android:orientation="vertical"
         app:hl_layoutBackground="@color/gray_darker_press_alpha"
-        app:hl_cornerRadius="25dp"
+        app:hl_cornerRadius="@dimen/radius_dialog"
         android:visibility="gone"
         tools:visibility="visible">
 
@@ -597,7 +617,7 @@
         android:layout_gravity="center"
         app:lottie_autoPlay="true"
         android:scaleType="centerCrop"
-        app:lottie_fileName="anim_loading.json"
+        app:lottie_fileName="loading/anim_loading/anim_loading.json"
         app:lottie_speed="1"
         app:lottie_loop="true"
         app:lottie_repeatMode="restart"
@@ -635,7 +655,7 @@
             android:scaleY="2"
             app:lottie_autoPlay="true"
             android:scaleType="centerCrop"
-            app:lottie_fileName="forward_speed.json"
+            app:lottie_fileName="anim/forward_speed.json"
             app:lottie_loop="true"
             app:lottie_colorFilter="@color/white"
             app:lottie_repeatMode="restart"/>

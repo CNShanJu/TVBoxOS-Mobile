@@ -11,7 +11,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         app:hl_layoutBackground="#6632364E"
-        app:hl_cornerRadius="10dp"
+        app:hl_cornerRadius="@dimen/radius_card"
         android:layout_marginHorizontal="10dp">
 
         <LinearLayout

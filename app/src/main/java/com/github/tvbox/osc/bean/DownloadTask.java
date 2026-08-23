@@ -1,5 +1,7 @@
 package com.github.tvbox.osc.bean;
 
+import java.util.Map;
+
 /**
  * 下载任务(支持直链与 HLS m3u8,断点续传)
  */
@@ -59,6 +61,8 @@ public class DownloadTask {
     public String episodeName;
     /** 统一剧集标识:sourceKey|vodId|playFlag|playIndex(见 DownloadCore.buildEpisodeId) */
     public String episodeId;
+    /** 播放解析返回的请求头(UA/Referer 等,防盗链源的分片/文件校验,下载必须携带),随任务持久化 */
+    public Map<String, String> headers;
     /** 进程重启后首次启动前是否需要重新解析地址(transient) */
     public transient boolean needReResolve = false;
     /** 本次任务已重新解析地址的次数(transient,限制次数避免无限重解析) */

@@ -99,7 +99,7 @@ public class App extends MultiDexApplication {
         putDefault(HawkConfig.APP_LOG, false);                //运行日志:默认关闭,排查问题时开启
         putDefault(HawkConfig.SUBTITLE_OPEN, false);          //字幕:默认关闭,播放器设置里可开关
         putDefault(HawkConfig.LOADING_ANIM, "");               //加载动画:空=默认,或 assets/loading/ 下的文件名
-        putDefault(HawkConfig.LIVE_URL, "https://live.zbds.top/tv/iptv4.txt"); //直播源:默认地址
+        putDefault(HawkConfig.LIVE_URL, "https://gh-proxy.com/raw.githubusercontent.com/vbskycn/iptv/refs/heads/master/tv/iptv4.txt"); //直播源:默认地址
         putDefaultApi();
         // 运行日志开关已开启时,启动 logcat 完整捕获(与 IDEA Logcat 一致)
         if (Hawk.get(HawkConfig.APP_LOG, false)) {
@@ -194,13 +194,13 @@ public class App extends MultiDexApplication {
     }
 
     /**
-     * 读取本地默认订阅文件 app/src/main/assets/default_subscriptions.json
+     * 读取本地默认订阅文件 app/src/main/assets/config/default_subscriptions.json
      * 格式: [{"name":"订阅名","url":"订阅地址"}, ...]
      * 文件存在(本地打包)则返回默认订阅列表;文件不存在(线上打包)返回 null
      */
     private List<Subscription> readDefaultSubscriptions() {
         try {
-            InputStream is = getAssets().open("default_subscriptions.json");
+            InputStream is = getAssets().open("config/default_subscriptions.json");
             BufferedReader reader = new BufferedReader(new InputStreamReader(is, "UTF-8"));
             StringBuilder sb = new StringBuilder();
             String line;
