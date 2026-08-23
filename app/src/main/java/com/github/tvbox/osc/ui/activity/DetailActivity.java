@@ -954,6 +954,9 @@ public class DetailActivity extends BaseVbActivity<ActivityDetailBinding> {
     private boolean pipExitByBack = false;
     /** 应用内跳转(如打开下载管理/设置等)标记:onUserLeaveHint 里排除,避免"应用内导航"被当成"切后台"触发小窗/后台播放 */
     private boolean navigatingAway = false;
+    /** 下载选择弹窗防重入:短时间内多次点"下载"只弹一个抽屉(延迟链 + 弹窗引用双重保护) */
+    private boolean isDownloadDialogShowing = false;
+    private BasePopupView mDownloadDialog = null;
     /** 画中画(小窗)通用辅助器,封装进入/退出小窗逻辑,详情页与本地播放器复用 */
     private PipHelper pipHelper;
 
@@ -995,6 +998,11 @@ public class DetailActivity extends BaseVbActivity<ActivityDetailBinding> {
      * 拆成独立方法避免 dismissWith 时序与全屏切换互相干扰(修复:全屏抽屉关闭动画期间退全屏导致残留)。
      */
     public void showDownloadDialogFromPlayer() {
+        // 防重入:弹窗已显示或已在延迟排队中,直接忽略本次点击(修复:快速多次点击叠加多个抽屉)
+        if (isDownloadDialogShowing || mDownloadDialog != null && mDownloadDialog.isShow()) {
+            return;
+        }
+        isDownloadDialogShowing = true;
         // 1) 先关闭可能打开的播放控制抽屉(全屏右侧抽屉 / 非全屏底部抽屉)
         if (playFragment != null) {
             playFragment.hideAllDialogSuccess();
@@ -1008,8 +1016,13 @@ public class DetailActivity extends BaseVbActivity<ActivityDetailBinding> {
      * 不要求必须先播放成功(未播放时所有集统一走后台解析);全屏时先退出全屏再弹窗,避免小屏叠加。
      */
     public void showDownloadSeriesDialog() {
+        // 防重入:弹窗已在显示或延迟链已排队,直接忽略(详情页"下载"按钮连点也不会叠抽屉)
+        if (isDownloadDialogShowing || mDownloadDialog != null && mDownloadDialog.isShow()) {
+            return;
+        }
         if (vodInfo == null || vodInfo.seriesMap.get(vodInfo.playFlag) == null
                 || vodInfo.seriesMap.get(vodInfo.playFlag).size() <= 0) {
+            isDownloadDialogShowing = false;
             AppBubble.toast("资源异常,请稍后重试");
             return;
         }
@@ -1025,6 +1038,11 @@ public class DetailActivity extends BaseVbActivity<ActivityDetailBinding> {
 
     /** 弹窗主体(退全屏完成后调用) */
     private void showDownloadSeriesDialogInner() {
+        // 防重入:延迟回调已触发过(弹窗已创建),跳过重复创建
+        if (isDownloadDialogShowing && mDownloadDialog != null && mDownloadDialog.isShow()) {
+            return;
+        }
+        isDownloadDialogShowing = true;
         // 拷贝一份选集,弹窗内的选中状态不影响原选集的选中态;同时写入统一剧集标识
         List<VodInfo.VodSeries> copy = new ArrayList<>();
         int copyIdx = 0;
@@ -1044,9 +1062,51 @@ public class DetailActivity extends BaseVbActivity<ActivityDetailBinding> {
         for (int i = 0; i < copy.size(); i++) {
             states[i] = DownloadCore.getEpisodeState(copy.get(i).episodeId, sourceName, vodName, copy.get(i).name);
         }
-        new XPopup.Builder(this)
+        isDownloadDialogShowing = true;
+        mDownloadDialog = new XPopup.Builder(this)
                 .isViewMode(true)
                 .hasNavigationBar(false)
+                // 弹窗关闭(确认/取消/点外部/返回键)后清除防重入标记,允许再次打开
+                .setPopupCallback(new com.lxj.xpopup.interfaces.XPopupCallback() {
+                    @Override
+                    public void onCreated(BasePopupView popupView) {
+                    }
+
+                    @Override
+                    public void beforeShow(BasePopupView popupView) {
+                    }
+
+                    @Override
+                    public void onShow(BasePopupView popupView) {
+                    }
+
+                    @Override
+                    public void onDismiss(BasePopupView popupView) {
+                        isDownloadDialogShowing = false;
+                        mDownloadDialog = null;
+                    }
+
+                    @Override
+                    public void beforeDismiss(BasePopupView popupView) {
+                    }
+
+                    @Override
+                    public boolean onBackPressed(BasePopupView popupView) {
+                        return false;
+                    }
+
+                    @Override
+                    public void onKeyBoardStateChanged(BasePopupView popupView, int height) {
+                    }
+
+                    @Override
+                    public void onDrag(BasePopupView popupView, int value, float fraction, boolean isScrollShadow) {
+                    }
+
+                    @Override
+                    public void onClickOutside(BasePopupView popupView) {
+                    }
+                })
                 .asCustom(new DownloadSeriesDialog(this, copy, states, new DownloadSeriesDialog.OnDownloadActionListener() {
                     @Override
                     public void onStartDownload(List<VodInfo.VodSeries> selected) {
@@ -1059,8 +1119,8 @@ public class DetailActivity extends BaseVbActivity<ActivityDetailBinding> {
                         navigatingAway = true;
                         jumpActivity(DownloadActivity.class);
                     }
-                }))
-                .show();
+                }));
+        mDownloadDialog.show();
     }
 
     /**
