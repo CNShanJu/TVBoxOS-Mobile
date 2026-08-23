@@ -35,8 +35,8 @@ public class AppTitleBar extends TitleBar {
         // 统一右侧图标尺寸,避免自带矢量图标显示过大
         int iconSize = Math.round(20 * getResources().getDisplayMetrics().density);
         setRightIconSize(iconSize, iconSize);
-        // 右侧图标与标题文字水平对齐:图标在右侧区域垂直居中,去掉默认内边距导致的偏移
-        setRightIconGravity(Gravity.CENTER);
+        // 右侧图标垂直居中与标题文字对齐:
+        // 注意:setRightIconGravity 只接受 LEFT/RIGHT/TOP/BOTTOM(内部lookupswitch),传 CENTER 会导致图标不显示
         if (getRightView() != null) {
             getRightView().setGravity(Gravity.CENTER);
         }
