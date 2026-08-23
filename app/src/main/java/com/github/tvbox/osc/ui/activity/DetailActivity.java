@@ -1063,9 +1063,8 @@ public class DetailActivity extends BaseVbActivity<ActivityDetailBinding> {
             List<VodInfo.VodSeries> copy = buildDownloadSeriesCopy();
             int[] states = buildDownloadStates(copy, sourceName, vodName);
             runOnUiThread(() -> {
-                if (mDownloadDialog != null && mDownloadDialog.isShow()
-                        && mDownloadDialog.getPopupContentView() instanceof DownloadSeriesRightDialog) {
-                    ((DownloadSeriesRightDialog) mDownloadDialog.getPopupContentView()).setData(copy, states);
+                if (mDownloadDialog instanceof DownloadSeriesRightDialog && mDownloadDialog.isShow()) {
+                    ((DownloadSeriesRightDialog) mDownloadDialog).setData(copy, states);
                 }
             });
         });
@@ -1176,9 +1175,8 @@ public class DetailActivity extends BaseVbActivity<ActivityDetailBinding> {
             List<VodInfo.VodSeries> copy = buildDownloadSeriesCopy();
             int[] states = buildDownloadStates(copy, sourceName, vodName);
             runOnUiThread(() -> {
-                if (mDownloadDialog != null && mDownloadDialog.isShow()
-                        && mDownloadDialog.getPopupContentView() instanceof DownloadSeriesDialog) {
-                    ((DownloadSeriesDialog) mDownloadDialog.getPopupContentView()).setData(copy, states);
+                if (mDownloadDialog instanceof DownloadSeriesDialog && mDownloadDialog.isShow()) {
+                    ((DownloadSeriesDialog) mDownloadDialog).setData(copy, states);
                 }
             });
         });

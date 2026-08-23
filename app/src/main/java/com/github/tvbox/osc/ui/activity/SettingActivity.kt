@@ -23,6 +23,7 @@ import com.github.tvbox.osc.util.FastClickCheckUtil
 import com.github.tvbox.osc.util.FileUtils
 import com.github.tvbox.osc.util.HawkConfig
 import com.github.tvbox.osc.util.HistoryHelper
+import com.github.tvbox.osc.util.LoadingAnim
 import com.github.tvbox.osc.util.OkGoHelper
 import com.github.tvbox.osc.util.PlayerHelper
 import com.github.tvbox.osc.util.Utils
@@ -513,22 +514,36 @@ class SettingActivity : BaseVbActivity<ActivitySettingBinding>() {
     }
 
     /** 加载动画选项:0=默认,1=Glowing Fish(全局 LoadSir 加载动画) */
+    /** 加载动画选项:默认 + assets/loading/ 目录下的 json(动态扫描注册,目录为空只显示默认) */
     private fun initLoadingAnimSetting() {
-        val names = arrayOf("默认", "Glowing Fish")
+        val files = LoadingAnim.getAvailableAnimFiles()
+        val display = ArrayList<String>()
+        for (f in files) display.add(LoadingAnim.displayName(f))
         val refresh = {
-            mBinding.tvLoadingAnim.text = names[Hawk.get(HawkConfig.LOADING_ANIM, 0)]
+            val current = LoadingAnim.getAnimFileName()
+            val currentBare = if (current.contains("/")) current.substring(current.lastIndexOf('/') + 1) else current
+            mBinding.tvLoadingAnim.text = LoadingAnim.displayName(currentBare)
         }
         refresh()
         mBinding.llLoadingAnim.setOnClickListener {
             FastClickCheckUtil.check(it)
-            val defaultPos = Hawk.get(HawkConfig.LOADING_ANIM, 0)
-            val types = ArrayList<String>()
-            for (n in names) types.add(n)
+            // 当前选中项定位到选项列表(找不到默认第0项)
+            var defaultPos = 0
+            val cur = LoadingAnim.getAnimFileName()
+            val curBare = if (cur.contains("/")) cur.substring(cur.lastIndexOf('/') + 1) else cur
+            for (i in files.indices) {
+                if (files[i] == curBare || LoadingAnim.displayName(files[i]) == LoadingAnim.displayName(curBare)) {
+                    defaultPos = i
+                    break
+                }
+            }
             val dialog = SelectDialog<String>(this@SettingActivity)
             dialog.setTip("选择加载动画")
             dialog.setAdapter(object : SelectDialogInterface<String?> {
                 override fun click(value: String?, pos: Int) {
-                    Hawk.put(HawkConfig.LOADING_ANIM, pos)
+                    // 存文件名:默认存空串(回退默认),其余存文件名
+                    val selected = files[pos]
+                    Hawk.put(HawkConfig.LOADING_ANIM, if (selected == LoadingAnim.DEFAULT_FILE) "" else selected)
                     refresh()
                     AppBubble.toast("加载动画已切换,下次进入加载页面生效")
                 }
@@ -536,7 +551,7 @@ class SettingActivity : BaseVbActivity<ActivitySettingBinding>() {
                 override fun getDisplay(name: String?): String {
                     return name ?: ""
                 }
-            }, SelectDialogAdapter.stringDiff, types, defaultPos)
+            }, SelectDialogAdapter.stringDiff, display, defaultPos)
             dialog.show()
         }
     }
