@@ -4,7 +4,9 @@ import com.github.tvbox.osc.bean.DownloadTask;
 import com.github.tvbox.osc.bean.VodInfo;
 
 import java.io.File;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * 下载领域服务门面:上层(详情页/播放页/下载页)只关心"这一集的下载状态",不触碰
@@ -54,6 +56,38 @@ public class DownloadCore {
             if (episodeId.equals(t.episodeId)) return t;
         }
         return null;
+    }
+
+    /**
+     * 批量按 EpisodeId 查询下载状态(一次快照,避免逐集重复拷贝任务列表):
+     * 返回数组与 episodeIds 一一对应,0=未下载;1=已下载完成且文件存在;2=已有任务。
+     */
+    public static int[] getEpisodeStates(String[] episodeIds, String sourceName, String vodName, String[] episodeNames) {
+        int[] states = new int[episodeIds == null ? 0 : episodeIds.length];
+        if (episodeIds == null || episodeIds.length == 0) return states;
+        // 一次快照 + 构建 episodeId -> task 索引
+        Map<String, DownloadTask> byEpisode = new java.util.HashMap<>();
+        List<DownloadTask> all = DownloadManager.get().getTasks();
+        for (DownloadTask t : all) {
+            if (t.episodeId != null && !t.episodeId.isEmpty()) {
+                byEpisode.putIfAbsent(t.episodeId, t);
+            }
+        }
+        for (int i = 0; i < episodeIds.length; i++) {
+            String eid = episodeIds[i];
+            if (eid != null && !eid.isEmpty() && !eid.contains("||")) {
+                DownloadTask t = byEpisode.get(eid);
+                if (t != null) {
+                    states[i] = t.state == DownloadTask.STATE_COMPLETED
+                            ? (t.savePath != null && new File(t.savePath).exists() ? 1 : 0) : 2;
+                    continue;
+                }
+            }
+            // 旧任务(无 episodeId)回退:按来源+剧名+集名匹配
+            states[i] = DownloadManager.get().getEpisodeDownloadState(
+                    sourceName, vodName, episodeNames != null && i < episodeNames.length ? episodeNames[i] : null);
+        }
+        return states;
     }
 
     /**

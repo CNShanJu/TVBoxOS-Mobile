@@ -37,11 +37,22 @@ public class LoadingAnim {
                 lav.setRepeatMode(LottieDrawable.RESTART); // 从头循环,不是往返播放(reverse)
                 lav.setRepeatCount(LottieDrawable.INFINITE);
                 lav.setSpeed(1f); // 原速播放(代码设置动画时 XML 的 lottie_speed 不生效,需显式指定)
+                // Glowing Fish 光晕(高斯模糊)超出动画画布:关闭按画布裁剪,避免光晕被边界切掉
+                lav.setClipToCompositionBounds(currentAnimSel() != ANIM_GLOWING_FISH);
                 lav.playAnimation();
             } catch (Throwable th) {
                 // 动画文件异常时静默回退,不阻塞加载页展示
                 th.printStackTrace();
             }
+        }
+    }
+
+    /** 当前选择的动画序号(0=默认,1=Glowing Fish) */
+    private static int currentAnimSel() {
+        try {
+            return Hawk.get(HawkConfig.LOADING_ANIM, ANIM_DEFAULT);
+        } catch (Throwable ignored) {
+            return ANIM_DEFAULT;
         }
     }
 }

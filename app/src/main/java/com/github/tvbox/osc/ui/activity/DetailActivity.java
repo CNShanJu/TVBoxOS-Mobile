@@ -1041,6 +1041,7 @@ public class DetailActivity extends BaseVbActivity<ActivityDetailBinding> {
         mDownloadDialog = new XPopup.Builder(this)
                 .isViewMode(true)
                 .hasNavigationBar(false)
+                .popupWidth(ConvertUtils.dp2px(360)) // 固定抽屉宽度(与选集右侧抽屉一致),避免内容/按钮被挤出可视区
                 .popupHeight(ScreenUtils.getScreenHeight())
                 .popupPosition(com.lxj.xpopup.enums.PopupPosition.Right)
                 .enableDrag(false)
@@ -1076,13 +1077,16 @@ public class DetailActivity extends BaseVbActivity<ActivityDetailBinding> {
         return copy;
     }
 
-    /** 构建下载状态数组:0=可下载,1=已下载,2=下载中/排队 */
+    /** 构建下载状态数组:0=可下载,1=已下载,2=下载中/排队(批量查询,一次快照避免逐集拷贝任务列表) */
     private int[] buildDownloadStates(List<VodInfo.VodSeries> copy, String sourceName, String vodName) {
-        int[] states = new int[copy.size()];
-        for (int i = 0; i < copy.size(); i++) {
-            states[i] = DownloadCore.getEpisodeState(copy.get(i).episodeId, sourceName, vodName, copy.get(i).name);
+        int n = copy.size();
+        String[] episodeIds = new String[n];
+        String[] episodeNames = new String[n];
+        for (int i = 0; i < n; i++) {
+            episodeIds[i] = copy.get(i).episodeId;
+            episodeNames[i] = copy.get(i).name;
         }
-        return states;
+        return DownloadCore.getEpisodeStates(episodeIds, sourceName, vodName, episodeNames);
     }
 
     /** 下载弹窗统一关闭回调:关闭后清除防重入标记,允许再次打开 */
