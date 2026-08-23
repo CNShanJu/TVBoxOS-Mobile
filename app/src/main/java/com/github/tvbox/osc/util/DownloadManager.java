@@ -89,6 +89,8 @@ public class DownloadManager {
     private static final int MAX_RETRY = 2;
     /** 网络错误(断网/切网)重试次数上限(不含首次),配合退避最长约2分钟 */
     private static final int MAX_NETWORK_RETRY = 8;
+    /** 地址可能过期时重新解析地址的次数上限(每次解析后重置下载重试计数) */
+    private static final int MAX_RE_RESOLVE = 3;
     /** 碎片校验后自动补下缺失分片的最大轮数 */
     private static final int MAX_SEGMENT_REPAIR = 3;
     /** 分段信息 TXT 文件名 */
@@ -749,24 +751,10 @@ public class DownloadManager {
             @Override
             public void run() {
                 int retries = 0;
-                // 进程重启后首次启动:代理签名URL通常已过期,重新解析一次。
-                // 注意:爬虫(playerContent)必须经 SourceViewModel.spThreadPool 单线程串行调用,
-                // 否则多下载线程并发访问 quickjs 会卡死/挂起,这里提交并等待结果。
+                // 进程重启后首次启动:代理签名URL通常已过期,先重新解析一次(与下载中过期重解析共用逻辑)
                 if (t.needReResolve) {
                     t.needReResolve = false;
-                    if (t.sourceKey != null && t.playFlag != null && t.episodeRawUrl != null) {
-                        try {
-                            java.util.concurrent.Future<String> future = SourceViewModel.spThreadPool.submit(() ->
-                                    PlayUrlResolver.resolve(t.sourceKey, t.playFlag, t.episodeRawUrl));
-                            String newUrl = future.get(20, TimeUnit.SECONDS);
-                            if (newUrl != null && !newUrl.equals(t.url)) {
-                                Log.i("TVBox-Download", "重启后重新解析地址: " + t.fileName);
-                                t.url = newUrl;
-                            }
-                        } catch (Throwable th4) {
-                            Log.i("TVBox-Download", "重启后重新解析地址失败,用原地址: " + t.fileName);
-                        }
-                    }
+                    reResolveUrl(t);
                 }
                 while (true) {
                     try {
@@ -778,6 +766,27 @@ public class DownloadManager {
                         // 断网/切网等网络错误:允许更多次重试 + 指数退避(最长约2分钟),并标记网络失败待恢复后自动续传
                         boolean netErr = isNetworkError(th);
                         int maxRetry = netErr ? MAX_NETWORK_RETRY : MAX_RETRY;
+                        // 地址可能过期(HTTP 403/404/410 等或 HTML 防盗链响应):重新解析地址后继续,
+                        // 重置下载重试计数;解析次数有限制(MAX_RE_RESOLVE),避免无限重解析
+                        if (!netErr && shouldReResolve(t, th) && t.reResolveCount < MAX_RE_RESOLVE
+                                && t.sourceKey != null && t.playFlag != null && t.episodeRawUrl != null) {
+                            t.reResolveCount++;
+                            retries = 0;
+                            Log.i("TVBox-Download", "地址可能过期,重新解析(" + t.reResolveCount + "/" + MAX_RE_RESOLVE + "): "
+                                    + t.fileName + " " + t.message);
+                            t.message = "地址更新中(" + t.reResolveCount + "/" + MAX_RE_RESOLVE + ")";
+                            persist();
+                            notifyChanged();
+                            try {
+                                Thread.sleep(3000L);
+                            } catch (InterruptedException ie) {
+                                return;
+                            }
+                            if (reResolveUrl(t)) {
+                                continue; // 用新地址继续下载
+                            }
+                            // 解析失败:继续走普通重试逻辑
+                        }
                         if (retries < maxRetry) {
                             retries++;
                             long delay = netErr ? (3000L + retries * 3000L) : 3000L;
@@ -810,6 +819,53 @@ public class DownloadManager {
         }, "tvbox-dl-" + (t.id != null && t.id.length() > 6 ? t.id.substring(0, 6) : "task"));
         th.setDaemon(true);
         th.start();
+    }
+
+    /**
+     * 判断下载失败是否可能因"地址过期"(而非网络/源本身问题):
+     * - 非网络类错误
+     * - 异常信息含 HTTP 4xx(尤其 403 禁止/404 不存在/410 已失效)或 HTML 防盗链提示
+     * 满足条件时尝试重新解析地址。
+     */
+    private boolean shouldReResolve(DownloadTask t, Throwable th) {
+        String msg = th.getMessage();
+        if (msg == null) return false;
+        String m = msg.toLowerCase();
+        if (m.contains("html") || m.contains("防盗链") || m.contains("网页")) return true;
+        // HTTP 状态码
+        java.util.regex.Matcher mat = java.util.regex.Pattern.compile("http\\s*(\\d{3})").matcher(m);
+        if (mat.find()) {
+            int code = Integer.parseInt(mat.group(1));
+            return code == 401 || code == 403 || code == 404 || code == 410 || code == 451;
+        }
+        return false;
+    }
+
+    /**
+     * 重新解析播放地址(经 SourceViewModel.spThreadPool 串行,避免 quickjs 并发卡死)。
+     *
+     * @return true=解析成功且地址已更新
+     */
+    private boolean reResolveUrl(DownloadTask t) {
+        if (t.sourceKey == null || t.playFlag == null || t.episodeRawUrl == null) return false;
+        try {
+            java.util.concurrent.Future<String> future = SourceViewModel.spThreadPool.submit(() ->
+                    PlayUrlResolver.resolve(t.sourceKey, t.playFlag, t.episodeRawUrl));
+            String newUrl = future.get(20, TimeUnit.SECONDS);
+            if (newUrl != null && !newUrl.isEmpty() && !newUrl.equals(t.url)) {
+                Log.i("TVBox-Download", "重新解析地址成功: " + t.fileName);
+                t.url = newUrl;
+                // 地址已更新:直链进度作废(URL变了,原Range续传可能无效),分片/已下字节保留由下载逻辑按需处理
+                if (t.downloadedBytes > 0 && !t.isHls()) {
+                    t.downloadedBytes = 0;
+                }
+                return true;
+            }
+            Log.i("TVBox-Download", "重新解析地址无变化/失败,用原地址: " + t.fileName);
+        } catch (Throwable th4) {
+            Log.i("TVBox-Download", "重新解析地址异常,用原地址: " + t.fileName);
+        }
+        return false;
     }
 
     private void processTask(DownloadTask t) throws IOException {

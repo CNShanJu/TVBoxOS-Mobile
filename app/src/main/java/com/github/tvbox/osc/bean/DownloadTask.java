@@ -59,6 +59,8 @@ public class DownloadTask {
     public String episodeId;
     /** 进程重启后首次启动前是否需要重新解析地址(transient) */
     public transient boolean needReResolve = false;
+    /** 本次任务已重新解析地址的次数(transient,限制次数避免无限重解析) */
+    public transient int reResolveCount = 0;
     /** 是否因网络错误失败(网络恢复后自动续传,transient) */
     public transient boolean networkFailed = false;
 
