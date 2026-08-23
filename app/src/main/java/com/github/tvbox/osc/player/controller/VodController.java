@@ -152,6 +152,7 @@ public class VodController extends BaseController {
     private ImageView mIvPlayStatus;
     private ImageView mIvFullscreen;
     private View mChooseSeries;
+    private View mChooseDownload;
     public MyBatteryView mMyBatteryView;
     private View mTopRightDeviceInfo;
     public TextView mPlayRetry;
@@ -239,6 +240,7 @@ public class VodController extends BaseController {
         mIvPlayStatus = findViewById(R.id.play_status);
         mIvFullscreen = findViewById(R.id.iv_fullscreen);
         mChooseSeries = findViewById(R.id.choose_series);
+        mChooseDownload = findViewById(R.id.choose_download);
         mLockView = findViewById(R.id.iv_lock);
 
         initSubtitleInfo();
@@ -606,6 +608,11 @@ public class VodController extends BaseController {
             hideBottom();
             listener.chooseSeries();
         });
+        mChooseDownload.setOnClickListener(view -> {
+            FastClickCheckUtil.check(view);
+            hideBottom();
+            listener.showDownload();
+        });
 
         findViewById(R.id.container_playing_setting).setOnTouchListener((v, event) -> {
             switch (event.getAction()) {
@@ -793,6 +800,7 @@ public class VodController extends BaseController {
             mPreBtn.setVisibility(VISIBLE);
             mNextBtn.setVisibility(VISIBLE);
             mChooseSeries.setVisibility(VISIBLE);
+            mChooseDownload.setVisibility(VISIBLE);
             mTopRightDeviceInfo.setVisibility(VISIBLE);
         } else {
             // 非全屏(播放详情页):放大按钮显示"聚焦"图标
@@ -801,6 +809,7 @@ public class VodController extends BaseController {
             mPreBtn.setVisibility(GONE);
             mNextBtn.setVisibility(GONE);
             mChooseSeries.setVisibility(GONE);
+            mChooseDownload.setVisibility(GONE);
         }
     }
 
@@ -839,6 +848,9 @@ public class VodController extends BaseController {
         void showSetting();
 
         void pip();
+
+        /** 全屏控制栏"下载"按钮:打开下载选择右侧抽屉(不退出全屏) */
+        void showDownload();
 
         void showParseRoot(boolean show,ParseAdapter adapter);
     }

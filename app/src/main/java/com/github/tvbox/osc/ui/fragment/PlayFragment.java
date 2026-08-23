@@ -343,6 +343,12 @@ public class PlayFragment extends BaseLazyFragment {
             }
 
             @Override
+            public void showDownload() {
+                // 全屏控制栏"下载":打开下载选择右侧抽屉,不退出全屏
+                activity.showDownloadDialogInFullscreen();
+            }
+
+            @Override
             public void showParseRoot(boolean show, ParseAdapter adapter) {
                 DetailActivity activity = (DetailActivity)mActivity;
                 activity.showParseRoot(show,adapter);
