@@ -10,6 +10,7 @@ import android.os.Build;
 import android.os.Environment;
 import android.os.Handler;
 import android.os.Looper;
+import android.os.StatFs;
 import android.util.Log;
 
 import com.github.tvbox.osc.base.App;
@@ -91,6 +92,10 @@ public class DownloadManager {
     private static final int MAX_NETWORK_RETRY = 8;
     /** 地址可能过期时重新解析地址的次数上限(每次解析后重置下载重试计数) */
     private static final int MAX_RE_RESOLVE = 3;
+    /** 磁盘空间安全余量:下载完成后至少保留的可用空间(避免手机因空间耗尽卡死/无法开机) */
+    private static final long MIN_FREE_SPACE = 1536L * 1024 * 1024; // 1.5GB
+    /** 磁盘空间不足时的兜底检查:可用空间低于该值直接拒绝(防止极端情况) */
+    private static final long MIN_ABSOLUTE_FREE = 512L * 1024 * 1024; // 512MB
     /** 碎片校验后自动补下缺失分片的最大轮数 */
     private static final int MAX_SEGMENT_REPAIR = 3;
     /** 分段信息 TXT 文件名 */
@@ -741,6 +746,89 @@ public class DownloadManager {
     }
 
     /** 启动一个任务(独立线程下载,支持并发;失败自动重试) */
+    /**
+     * 下载前磁盘空间预检:估算文件大小,检查保存目录所在磁盘剩余空间。
+     * 要求:下载完成后可用空间仍 ≥ MIN_FREE_SPACE(1.5GB),不足则拒绝启动并提示需清理的量级。
+     *
+     * @return null=空间充足;否则返回错误提示文案
+     */
+    private String checkDiskSpace(DownloadTask t) {
+        try {
+            long size = estimateFileSize(t);
+            if (size <= 0) return null; // 无法估算(如服务器不返回大小),不阻塞
+            File dir = new File(t.savePath).getParentFile();
+            if (dir == null || !dir.exists()) return null;
+            StatFs stat = new StatFs(dir.getAbsolutePath());
+            long free = stat.getAvailableBytes();
+            long needAfter = free - size; // 下载完后的剩余
+            if (needAfter < MIN_FREE_SPACE) {
+                long needClean = (MIN_FREE_SPACE - needAfter + 1024 * 1024 - 1) / (1024 * 1024);
+                return "磁盘空间不足:文件约 " + formatSize(size) + ",完成后可用仅 "
+                        + formatSize(Math.max(0, needAfter)) + ",需清理约 " + needClean + "MB";
+            }
+            return null;
+        } catch (Throwable th) {
+            return null; // 预检异常不阻塞下载
+        }
+    }
+
+    /**
+     * 估算文件大小:直链用 HEAD/首字节响应 Content-Length;
+     * m3u8 用播放列表分片数 × 每片估算(无法精确时返回 0 表示不阻塞)。
+     */
+    private long estimateFileSize(DownloadTask t) {
+        try {
+            // 优先用已知大小(断点续传时已记录)
+            if (t.totalBytes > 0) return t.totalBytes;
+            if (t.url != null && t.url.toLowerCase().contains(".m3u8")) {
+                // m3u8:尝试取播放列表,分片数量 × 单片估算(2MB/片,仅粗略)
+                try {
+                    Response resp = getDownloadResponse(t.url, baseHeaders());
+                    activeResponses.put(t.id, resp);
+                    try {
+                        if (resp.isSuccessful()) {
+                            String text = resp.body().string();
+                            int segs = 0;
+                            for (String line : text.split("\n")) {
+                                String l = line.trim();
+                                if (!l.isEmpty() && !l.startsWith("#")) segs++;
+                            }
+                            if (segs > 0) return segs * 2L * 1024 * 1024; // 粗略 2MB/片
+                        }
+                    } finally {
+                        activeResponses.remove(t.id);
+                        resp.close();
+                    }
+                } catch (Throwable ignored) {
+                }
+                return 0;
+            }
+            // 直链:HEAD 请求拿 Content-Length
+            Request head = new Request.Builder().url(t.url)
+                    .header("User-Agent", "okhttp/3.12.11")
+                    .header("Range", "bytes=0-0") // 部分服务器不支持 HEAD,用首字节 Range 探测
+                    .build();
+            Response resp = downloadClient.newCall(head).execute();
+            try {
+                if (resp.isSuccessful()) {
+                    String cl = resp.header("Content-Length");
+                    if (cl != null) return Long.parseLong(cl.trim());
+                }
+            } finally {
+                resp.close();
+            }
+        } catch (Throwable ignored) {
+        }
+        return 0;
+    }
+
+    /** 格式化大小(供磁盘空间提示) */
+    private static String formatSize(long bytes) {
+        if (bytes < 1024 * 1024) return String.format("%.0fKB", bytes / 1024.0);
+        if (bytes < 1024L * 1024 * 1024) return String.format("%.1fMB", bytes / 1024.0 / 1024.0);
+        return String.format("%.2fGB", bytes / 1024.0 / 1024.0 / 1024.0);
+    }
+
     private void startTask(final DownloadTask t) {
         t.state = DownloadTask.STATE_DOWNLOADING;
         t.message = "";
@@ -750,6 +838,17 @@ public class DownloadManager {
         Thread th = new Thread(new Runnable() {
             @Override
             public void run() {
+                // 下载前磁盘空间预检:不足则直接失败并提示需清理量级(避免下载中空间耗尽损坏设备)
+                String spaceErr = checkDiskSpace(t);
+                if (spaceErr != null) {
+                    t.state = DownloadTask.STATE_FAILED;
+                    t.message = spaceErr;
+                    Log.i("TVBox-Download", "磁盘空间预检失败: " + t.fileName + " " + spaceErr);
+                    persist();
+                    notifyChanged();
+                    wakeWorker();
+                    return;
+                }
                 int retries = 0;
                 // 进程重启后首次启动:代理签名URL通常已过期,先重新解析一次(与下载中过期重解析共用逻辑)
                 if (t.needReResolve) {
@@ -1123,6 +1222,30 @@ public class DownloadManager {
         t.message = MSG_MERGING;
         persist();
         notifyChanged();
+
+        // 合并前空间检查:合并需额外写入约一个最终文件大小的 merged.tmp(分片已占空间),
+        // 不足则失败并提示,避免合并中空间耗尽损坏
+        long mergeSize = 0;
+        for (int i = 0; i < segments.size(); i++) {
+            mergeSize += new File(tmpDir, String.format("%05d.ts", i)).length();
+        }
+        if (mergeSize > 0) {
+            try {
+                File dir = new File(t.savePath).getParentFile();
+                if (dir != null && dir.exists()) {
+                    StatFs stat = new StatFs(dir.getAbsolutePath());
+                    long free = stat.getAvailableBytes();
+                    if (free - mergeSize < MIN_FREE_SPACE) {
+                        throw new IOException("磁盘空间不足,无法合并(完成后可用仅 "
+                                + formatSize(Math.max(0, free - mergeSize)) + ",需清理约 "
+                                + ((MIN_FREE_SPACE - (free - mergeSize) + 1024 * 1024 - 1) / (1024 * 1024)) + "MB)");
+                    }
+                }
+            } catch (IOException e) {
+                throw e; // 空间不足直接失败,保留分片现场待清理后重试
+            } catch (Throwable ignored) {
+            }
+        }
 
         // 合并分片 -> mp4(双阶段原子合并):
         // 1) 先合并到分段目录内的 merged.tmp(过程文件,与成果隔离,崩溃最多损坏它)
