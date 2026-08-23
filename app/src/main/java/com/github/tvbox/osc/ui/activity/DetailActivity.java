@@ -1081,6 +1081,8 @@ public class DetailActivity extends BaseVbActivity<ActivityDetailBinding> {
             int added = 0;
             int duplicated = 0;
             int failed = 0;
+            int downloadedExisted = 0;
+            int existedInQueue = 0;
             for (VodInfo.VodSeries s : selected) {
                 String url;
                 if (s.name != null && s.name.equals(currentName) && playFragment != null) {
@@ -1114,11 +1116,16 @@ public class DetailActivity extends BaseVbActivity<ActivityDetailBinding> {
                 if (ok) {
                     added++;
                 } else {
-                    duplicated++;
+                    // 已存在:区分"已下载完成"与"已在任务中",提示更精确(方案4.1排队层)
+                    int st = DownloadCore.getEpisodeState(sourceKey, vodId, playFlag, idx, sourceName, vodName, s.name);
+                    if (st == 1) downloadedExisted++;
+                    else existedInQueue++;
                 }
             }
             final int fAdded = added;
             final int fDup = duplicated;
+            final int fDownloaded = downloadedExisted;
+            final int fInQueue = existedInQueue;
             final int fFailed = failed;
             runOnUiThread(() -> {
                 if (fAdded > 0) {
@@ -1126,7 +1133,13 @@ public class DetailActivity extends BaseVbActivity<ActivityDetailBinding> {
                             ? "已加入 " + fAdded + " 个下载任务," + fDup + " 个已存在"
                             : "已加入 " + fAdded + " 个下载任务,可在\"我的-下载\"查看");
                 } else if (fDup > 0) {
-                    AppBubble.toast("所选剧集均已下载过或已在任务中");
+                    if (fDownloaded > 0 && fInQueue > 0) {
+                        AppBubble.toast(fDownloaded + " 集已下载," + fInQueue + " 集已在任务中");
+                    } else if (fDownloaded > 0) {
+                        AppBubble.toast("所选剧集均已下载完成");
+                    } else {
+                        AppBubble.toast("所选剧集已在下载任务中");
+                    }
                 } else if (fFailed > 0) {
                     AppBubble.toast("所选剧集解析失败,无法下载");
                 } else {
