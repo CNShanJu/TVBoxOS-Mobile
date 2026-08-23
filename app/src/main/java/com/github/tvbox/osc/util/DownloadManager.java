@@ -985,7 +985,8 @@ public class DownloadManager {
 
         long speedWindowStart = System.currentTimeMillis();
         long speedWindowBytes = 0;
-        for (int i = t.doneSegments; i < segments.size(); i++) {
+        // 只下载缺失的分片(跳过已存在且非空的分片),支持非连续缺失续传(如第3、7片被删)
+        for (int i = 0; i < segments.size(); i++) {
             if (t.state == DownloadTask.STATE_PAUSED || t.state == DownloadTask.STATE_SYSTEM_PAUSED) {
                 t.speed = 0;
                 persist();
@@ -993,9 +994,13 @@ public class DownloadManager {
                 return;
             }
             File segFile = new File(tmpDir, String.format("%05d.ts", i));
-            long segDone = (i == t.doneSegments) ? t.segmentBytes : 0;
+            if (segFile.exists() && segFile.length() > 0) {
+                if (t.doneSegments <= i) t.doneSegments = i + 1;
+                continue; // 已存在,跳过
+            }
+            long segDone = 0; // 缺失分片从头下(无残留字节)
             downloadSegment(segments.get(i), segFile, segDone, t);
-            t.doneSegments = i + 1;
+            if (t.doneSegments <= i) t.doneSegments = i + 1;
             t.segmentBytes = 0;
             writeSegmentsInfo(t, tmpDir, segments, t.doneSegments); // 每片完成即写入TXT进度
             // 实时网速:按已完成分片的字节增量估算
@@ -1021,36 +1026,37 @@ public class DownloadManager {
         notifyChanged();
         int repair = 0;
         while (true) {
-            // 全盘扫描:找出缺失(不存在/空文件)的分片,缺失则补下;全部存在即通过
-            int firstMissing = -1;
-            for (int i = 0; i < segments.size(); i++) {
-                File segFile = new File(tmpDir, String.format("%05d.ts", i));
-                if (!segFile.exists() || segFile.length() <= 0) {
-                    firstMissing = i;
-                    break;
+            // 缺失分片列表:优先读 TXT 逐片状态(精确到片,支持非连续缺失);
+            // TXT 无状态行(旧格式)时全盘扫描兜底。
+            List<Integer> missing = readMissingSegments(tmpDir, segments.size());
+            if (missing == null) {
+                missing = new ArrayList<>();
+                for (int i = 0; i < segments.size(); i++) {
+                    File segFile = new File(tmpDir, String.format("%05d.ts", i));
+                    if (!segFile.exists() || segFile.length() <= 0) missing.add(i);
                 }
             }
-            if (firstMissing < 0) break; // 全部分片存在,校验通过
+            if (missing.isEmpty()) break; // 全部分片存在,校验通过
             if (repair >= MAX_SEGMENT_REPAIR) {
-                throw new IOException("碎片校验不一致,自动补下" + MAX_SEGMENT_REPAIR + "轮后仍缺失(缺第" + firstMissing + "片)");
+                throw new IOException("碎片校验不一致,自动补下" + MAX_SEGMENT_REPAIR + "轮后仍缺失(缺 " + missing.size() + " 片,如第"
+                        + missing.get(0) + "片)");
             }
             repair++;
-            Log.i("TVBox-Download", "碎片校验缺失,第" + repair + "/" + MAX_SEGMENT_REPAIR + "轮补下缺失分片(从第"
-                    + firstMissing + "片起): " + t.fileName);
+            Log.i("TVBox-Download", "碎片校验缺失 " + missing.size() + " 片,第" + repair + "/" + MAX_SEGMENT_REPAIR
+                    + "轮补下: " + t.fileName + " 缺失首片=" + missing.get(0));
             boolean allOk = true;
-            for (int i = firstMissing; i < segments.size(); i++) {
-                File segFile = new File(tmpDir, String.format("%05d.ts", i));
+            for (int idx : missing) {
+                File segFile = new File(tmpDir, String.format("%05d.ts", idx));
                 if (!segFile.exists() || segFile.length() <= 0) {
-                    downloadSegment(segments.get(i), segFile, 0, t); // 失败抛异常由外层重试
+                    downloadSegment(segments.get(idx), segFile, 0, t); // 失败抛异常由外层重试
                 }
                 if (segFile.exists() && segFile.length() > 0) {
-                    t.doneSegments = i + 1;
+                    if (t.doneSegments <= idx) t.doneSegments = idx + 1;
                 } else {
-                    allOk = false;
-                    break; // 还有缺失,留到下一轮
+                    allOk = false; // 仍有缺失,留到下一轮
                 }
             }
-            writeSegmentsInfo(t, tmpDir, segments, t.doneSegments); // 补下进度写回TXT
+            writeSegmentsInfo(t, tmpDir, segments, t.doneSegments); // 补下进度+逐片状态写回TXT
             if (allOk) break;
         }
         t.doneSegments = segments.size(); // 全部就绪,进度=已下载分片数
@@ -1099,8 +1105,9 @@ public class DownloadManager {
     }
 
     /**
-     * 在分段目录记录/更新分段信息 TXT:来源/剧名/集数/碎片数/解析地址/分片列表/已完成。
-     * 已完成 = 已下载完的分片数,每片完成与补下后都更新,校验/补下以 TXT 记录为准。
+     * 在分段目录记录/更新分段信息 TXT:来源/剧名/集数/碎片数/解析地址/分片列表/已完成/分片状态。
+     * 已完成 = 已下载完的连续分片数(断点续传起点);分片状态 = 逐片 1/0 标记(1=完成,0=缺失),
+     * 支持非连续缺失(如用户删了第3、7片)时精确识别缺失分片。
      */
     private void writeSegmentsInfo(DownloadTask t, File tmpDir, List<String> segments, int doneCount) {
         try {
@@ -1117,6 +1124,14 @@ public class DownloadManager {
             }
             sb.append('\n');
             sb.append("已完成=").append(Math.max(0, Math.min(doneCount, segments.size()))).append('\n');
+            // 逐片状态:1=完成(存在且非空),0=缺失。全盘扫描磁盘实况,不依赖计数推断。
+            sb.append("分片状态=");
+            for (int i = 0; i < segments.size(); i++) {
+                if (i > 0) sb.append(',');
+                File segFile = new File(tmpDir, String.format("%05d.ts", i));
+                sb.append(segFile.exists() && segFile.length() > 0 ? '1' : '0');
+            }
+            sb.append('\n');
             File f = new File(tmpDir, SEGMENTS_INFO);
             java.io.FileWriter fw = new java.io.FileWriter(f);
             try {
@@ -1149,6 +1164,36 @@ public class DownloadManager {
             return Math.max(0, done);
         } catch (Throwable th) {
             return 0;
+        }
+    }
+
+    /**
+     * 读取分段信息 TXT 的"分片状态"(逐片 1/0),返回缺失分片索引列表。
+     * 支持非连续缺失(如第3、7片被删);TXT 缺失/无状态行时返回 null(调用方回退全盘扫描)。
+     */
+    private List<Integer> readMissingSegments(File tmpDir, int total) {
+        try {
+            File info = new File(tmpDir, SEGMENTS_INFO);
+            if (!info.exists()) return null;
+            java.io.BufferedReader br = new java.io.BufferedReader(new java.io.FileReader(info));
+            String line;
+            String statusLine = null;
+            while ((line = br.readLine()) != null) {
+                if (line.startsWith("分片状态=")) {
+                    statusLine = line.substring("分片状态=".length());
+                    break;
+                }
+            }
+            br.close();
+            if (statusLine == null || statusLine.isEmpty()) return null;
+            String[] parts = statusLine.split(",");
+            List<Integer> missing = new ArrayList<>();
+            for (int i = 0; i < parts.length && i < total; i++) {
+                if (!"1".equals(parts[i].trim())) missing.add(i);
+            }
+            return missing;
+        } catch (Throwable th) {
+            return null;
         }
     }
 
