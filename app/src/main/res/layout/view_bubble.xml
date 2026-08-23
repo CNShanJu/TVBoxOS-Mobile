@@ -4,7 +4,8 @@
      包一层 FrameLayout 即为自定义 view toast,样式完整跟随主题。 -->
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="wrap_content"
-    android:layout_height="wrap_content">
+    android:layout_height="wrap_content"
+    android:background="@android:color/transparent">
 
     <TextView
         android:id="@+id/tv_bubble_text"
