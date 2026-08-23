@@ -3,6 +3,7 @@ package com.github.tvbox.osc.util;
 import android.view.View;
 
 import com.airbnb.lottie.LottieAnimationView;
+import com.airbnb.lottie.LottieDrawable;
 import com.github.tvbox.osc.R;
 import com.orhanobut.hawk.Hawk;
 
@@ -33,7 +34,8 @@ public class LoadingAnim {
             LottieAnimationView lav = (LottieAnimationView) view;
             try {
                 lav.setAnimation(getAnimFileName());
-                lav.loop(true);
+                lav.setRepeatMode(LottieDrawable.RESTART); // 从头循环,不是往返播放(reverse)
+                lav.setRepeatCount(LottieDrawable.INFINITE);
                 lav.setSpeed(1f); // 原速播放(代码设置动画时 XML 的 lottie_speed 不生效,需显式指定)
                 lav.playAnimation();
             } catch (Throwable th) {
