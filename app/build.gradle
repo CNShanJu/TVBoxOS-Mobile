@@ -294,6 +294,7 @@ dependencies {
     implementation project(":player-api")
     implementation project(":common")
     implementation project(":spider")
+    implementation project(":download")
     implementation 'net.sourceforge.streamsupport:android-retrofuture:1.7.4'
 
     // implementation 'com.tencent.bugly:crashreport_upgrade:latest.release'

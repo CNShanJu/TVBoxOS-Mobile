@@ -9,7 +9,7 @@ import android.util.Log;
 
 import com.github.catvod.crawler.PlayUrlResolver;
 import com.github.catvod.crawler.SpiderApi;
-import com.github.tvbox.osc.base.App;
+
 import com.github.tvbox.osc.bean.DownloadTask;
 import com.github.tvbox.osc.download.DownloadLog;
 import com.github.tvbox.osc.download.DownloadSubType;
@@ -66,7 +66,7 @@ public class DownloadScheduler {
     /** 注册网络状态监听(断网/切网后网络恢复时自动续传) */
     void registerNetworkCallback() {
         try {
-            ConnectivityManager cm = (ConnectivityManager) App.getInstance().getSystemService(Context.CONNECTIVITY_SERVICE);
+            ConnectivityManager cm = (ConnectivityManager) dm.appContext.getSystemService(Context.CONNECTIVITY_SERVICE);
             if (cm == null) return;
             NetworkRequest request = new NetworkRequest.Builder()
                     .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)

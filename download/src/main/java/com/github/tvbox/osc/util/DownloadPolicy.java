@@ -6,7 +6,7 @@ import android.net.Network;
 import android.net.NetworkCapabilities;
 import android.os.StatFs;
 
-import com.github.tvbox.osc.base.App;
+
 import com.github.tvbox.osc.bean.DownloadTask;
 import com.github.tvbox.osc.state.SystemEvent;
 import com.github.tvbox.osc.state.SystemStateMonitor;
@@ -101,7 +101,7 @@ public class DownloadPolicy {
     /** 当前网络是否为移动网络(蜂窝) */
     static boolean isMobileNetwork() {
         try {
-            ConnectivityManager cm = (ConnectivityManager) App.getInstance().getSystemService(Context.CONNECTIVITY_SERVICE);
+            ConnectivityManager cm = (ConnectivityManager) DownloadManager.appContext.getSystemService(Context.CONNECTIVITY_SERVICE);
             if (cm == null) return false;
             Network network = cm.getActiveNetwork();
             if (network == null) return false;

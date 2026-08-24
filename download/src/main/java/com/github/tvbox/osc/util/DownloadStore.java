@@ -2,7 +2,7 @@ package com.github.tvbox.osc.util;
 
 import android.util.Log;
 
-import com.github.tvbox.osc.base.App;
+import android.content.Context;
 import com.github.tvbox.osc.bean.DownloadTask;
 import com.orhanobut.hawk.Hawk;
 
@@ -24,6 +24,13 @@ import okhttp3.Response;
  * 数据与持久化（Hawk）在下载模块内部维护，对外经 DownloadManager 门面访问。
  */
 public class DownloadStore {
+
+    /** 注入的 application context(独立模块 :download, 海报目录用) */
+    private static volatile Context appContext;
+
+    static void setAppContext(Context c) {
+        appContext = c == null ? null : c.getApplicationContext();
+    }
 
     private final DownloadManager dm;
 
@@ -169,7 +176,7 @@ public class DownloadStore {
 
     /** 剧集海报目录:应用私有目录 poster/<剧名> */
     static File getPosterDir(String vodName) {
-        return new File(new File(App.getInstance().getFilesDir(), "poster"), DownloadManager.sanitizeName(vodName));
+        return new File(new File(appContext.getFilesDir(), "poster"), DownloadManager.sanitizeName(vodName));
     }
 
     /** 剧集海报本地文件:已存在返回 File,否则返回 null(调用方显示占位图) */

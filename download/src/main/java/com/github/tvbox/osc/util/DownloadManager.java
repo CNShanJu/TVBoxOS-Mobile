@@ -41,6 +41,9 @@ public class DownloadManager {
 
     private static DownloadManager instance;
 
+    /** 注入的 application context（独立模块 :download，App 启动时 init 注入） */
+    static volatile android.content.Context appContext;
+
     final List<DownloadTask> tasks = new ArrayList<>();
     final Object lock = new Object();
 
@@ -115,6 +118,14 @@ public class DownloadManager {
             instance = new DownloadManager();
         }
         return instance;
+    }
+
+    /** App 启动时调用一次：注入 context（保存目录/海报/网络监听等用，独立模块不依赖 app 类） */
+    public static void init(android.content.Context context) {
+        appContext = context == null ? null : context.getApplicationContext();
+        FileCleaner.setAppContext(appContext);
+        DownloadStore.setAppContext(appContext);
+        com.github.tvbox.osc.download.DownloadNotifier.init(context);
     }
 
     // ------------------------------------------------------------------

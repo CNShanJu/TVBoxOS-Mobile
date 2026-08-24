@@ -12,8 +12,8 @@ import android.os.Build;
 import androidx.core.app.NotificationCompat;
 import androidx.core.content.FileProvider;
 
-import com.github.tvbox.osc.R;
-import com.github.tvbox.osc.base.App;
+import com.github.tvbox.osc.download.R;
+
 import com.github.tvbox.osc.bean.DownloadTask;
 
 import java.io.File;
@@ -27,6 +27,7 @@ public final class DownloadNotifier {
 
     private static final String CHANNEL_ID = "download";
     private static volatile boolean initialized = false;
+    private static volatile Context appContext;
 
     private DownloadNotifier() {
     }
@@ -42,6 +43,7 @@ public final class DownloadNotifier {
                 nm.createNotificationChannel(channel);
             }
             initialized = true;
+            appContext = context == null ? null : context.getApplicationContext();
         } catch (Throwable ignored) {
         }
     }
@@ -50,7 +52,7 @@ public final class DownloadNotifier {
     public static void notifyCompleted(DownloadTask t) {
         if (t == null || t.savePath == null || !initialized) return;
         try {
-            Context ctx = App.getInstance();
+            Context ctx = appContext;
             if (ctx == null) return;
             if (Build.VERSION.SDK_INT >= 33
                     && ctx.checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS)

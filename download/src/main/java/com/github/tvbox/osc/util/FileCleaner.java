@@ -3,7 +3,7 @@ package com.github.tvbox.osc.util;
 import android.os.Build;
 import android.os.Environment;
 
-import com.github.tvbox.osc.base.App;
+import android.content.Context;
 import com.github.tvbox.osc.bean.DownloadTask;
 
 import java.io.File;
@@ -20,6 +20,13 @@ import java.util.Set;
  * Bug5 增加孤儿 tmpDir 回收；孤儿 tmpDir 增强在后续阶段落地。
  */
 public class FileCleaner {
+
+    /** 注入的 application context(独立模块 :download) */
+    private static volatile Context appContext;
+
+    static void setAppContext(Context c) {
+        appContext = c == null ? null : c.getApplicationContext();
+    }
 
     private FileCleaner() {
     }
@@ -75,8 +82,8 @@ public class FileCleaner {
         if (Build.VERSION.SDK_INT >= 30 && Environment.isExternalStorageManager()) {
             base = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), "TVBox");
         } else {
-            File ext = App.getInstance().getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS);
-            base = ext == null ? new File(App.getInstance().getFilesDir(), "downloads") : new File(ext, "TVBox");
+            File ext = appContext.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS);
+            base = ext == null ? new File(appContext.getFilesDir(), "downloads") : new File(ext, "TVBox");
         }
         if (!base.exists()) base.mkdirs();
         return base;
