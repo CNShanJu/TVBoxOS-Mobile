@@ -79,6 +79,7 @@ public class DownloadManager {
     /** 合并阶段状态文案(下载中任务的 message 标记) */
     public static final String MSG_VERIFYING = "文件校验中";
     public static final String MSG_MERGING = "文件合并中";
+    public static final String MSG_REMUX = "文件封装中";
 
     /** 变更事件去抖:进度高频刷新合并为至多每 500ms 广播一次 */
     private final Handler notifyHandler = new Handler(Looper.getMainLooper());

@@ -1,5 +1,9 @@
 package com.github.tvbox.osc.util;
 
+import android.media.MediaCodec;
+import android.media.MediaExtractor;
+import android.media.MediaFormat;
+import android.media.MediaMuxer;
 import android.net.Uri;
 import android.util.Log;
 
@@ -12,6 +16,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -353,6 +358,26 @@ public class DownloadExecutor {
         if (!mergeTmp.renameTo(finalFile)) {
             FileCleaner.copyFile(mergeTmp, finalFile);
             FileCleaner.deleteQuietly(mergeTmp);
+        }
+        // Bug3: 合并产物是 TS 字节流(rename 成 .mp4 只是换后缀,时间戳不连续 -> 相册显示 1 秒)。
+        // 重封装为标准 MP4(MediaExtractor demux + MediaMuxer mux,时长/缩略图正确);
+        // 失败回退 .ts 后缀(不伪装 mp4),日志记录回退原因。
+        t.message = DownloadManager.MSG_REMUX;
+        dm.persist();
+        dm.notifyChanged();
+        if (remuxTsToMp4(finalFile)) {
+            DownloadLog.LOG.success(DownloadSubType.REMUX, "重封装完成: " + t.fileName, DownloadLog.extras(t.episodeId));
+        } else {
+            if (t.savePath.toLowerCase(Locale.ROOT).endsWith(".mp4")) {
+                String tsPath = t.savePath.substring(0, t.savePath.length() - 4) + ".ts";
+                File tsFile = new File(tsPath);
+                if (finalFile.renameTo(tsFile)) {
+                    t.savePath = tsPath;
+                    t.fileName = tsFile.getName();
+                }
+            }
+            DownloadLog.LOG.warn(DownloadSubType.REMUX, "重封装失败,回退 .ts 后缀: " + t.fileName,
+                    DownloadLog.extras(t.episodeId));
         }
         // 合成完成后清理:删本任务分片目录(父级 tmp 保留)
         deleteSegmentsDir(t);
@@ -716,6 +741,110 @@ public class DownloadExecutor {
                 || t.state == DownloadTask.STATE_SYSTEM_PAUSED
                 || t.state == DownloadTask.STATE_NETWORK_PAUSED
                 || t.state == DownloadTask.STATE_CANCELLED;
+    }
+
+    /**
+     * Bug3: 把 TS 拼接产物重封装为标准 MP4（MediaExtractor demux + MediaMuxer mux）。
+     * Android MediaExtractor 支持 demux MPEG-TS，mux 出的 MP4 时长/缩略图正确（无需 ffmpeg）。
+     *
+     * @return true=重封装成功并已替换源文件;false=失败(调用方回退 .ts 后缀)
+     */
+    private static boolean remuxTsToMp4(File src) {
+        MediaExtractor extractor = null;
+        MediaMuxer muxer = null;
+        try {
+            extractor = new MediaExtractor();
+            extractor.setDataSource(src.getAbsolutePath());
+            int videoTrack = -1;
+            int audioTrack = -1;
+            MediaFormat videoFormat = null;
+            MediaFormat audioFormat = null;
+            for (int i = 0; i < extractor.getTrackCount(); i++) {
+                MediaFormat f = extractor.getTrackFormat(i);
+                String mime = f.getString(MediaFormat.KEY_MIME);
+                if (mime == null) continue;
+                if (mime.startsWith("video/") && videoTrack < 0) {
+                    videoTrack = i;
+                    videoFormat = f;
+                } else if (mime.startsWith("audio/") && audioTrack < 0) {
+                    audioTrack = i;
+                    audioFormat = f;
+                }
+            }
+            if (videoTrack < 0 && audioTrack < 0) return false; // 无可用轨,无法重封装
+
+            File outTmp = new File(src.getParentFile(), "remux_" + System.currentTimeMillis() + ".mp4");
+            muxer = new MediaMuxer(outTmp.getAbsolutePath(), MediaMuxer.OutputFormat.MUXER_OUTPUT_MPEG_4);
+            int muxVideo = -1;
+            int muxAudio = -1;
+            if (videoTrack >= 0) {
+                extractor.selectTrack(videoTrack);
+                muxVideo = muxer.addTrack(videoFormat);
+            }
+            if (audioTrack >= 0) {
+                extractor.selectTrack(audioTrack);
+                muxAudio = muxer.addTrack(audioFormat);
+            }
+            muxer.start();
+            MediaCodec.BufferInfo info = new MediaCodec.BufferInfo();
+            ByteBuffer buffer = ByteBuffer.allocate(1024 * 1024);
+            while (true) {
+                int track = extractor.getSampleTrackIndex();
+                if (track < 0) break;
+                int size = extractor.readSampleData(buffer, 0);
+                if (size <= 0) {
+                    extractor.advance();
+                    continue;
+                }
+                long pts = extractor.getSampleTime();
+                int flags = extractor.getSampleFlags();
+                buffer.position(0);
+                buffer.limit(size);
+                info.offset = 0;
+                info.size = size;
+                info.presentationTimeUs = pts;
+                info.flags = flags;
+                if (track == videoTrack && muxVideo >= 0) {
+                    muxer.writeSampleData(muxVideo, buffer, info);
+                } else if (track == audioTrack && muxAudio >= 0) {
+                    muxer.writeSampleData(muxAudio, buffer, info);
+                }
+                extractor.advance();
+            }
+            muxer.stop();
+            muxer.release();
+            muxer = null;
+            extractor.release();
+            extractor = null;
+            // 用重封装产物替换原拼接文件
+            if (!outTmp.renameTo(src)) {
+                if (src.exists()) {
+                    //noinspection ResultOfMethodCallIgnored
+                    src.delete();
+                }
+                if (!outTmp.renameTo(src)) {
+                    FileCleaner.copyFile(outTmp, src);
+                    FileCleaner.deleteQuietly(outTmp);
+                }
+            }
+            return true;
+        } catch (Throwable th) {
+            Log.i("TVBox-Download", "重封装失败: " + src.getName() + " -> " + th.getMessage());
+            return false;
+        } finally {
+            if (muxer != null) {
+                try {
+                    muxer.release();
+                } catch (Throwable ignored) {
+                }
+            }
+            if (extractor != null) {
+                try {
+                    extractor.release();
+                } catch (Throwable ignored) {
+                }
+            }
+        }
     }
 
     /** Bug5: 确保目录内写入 .nomedia(媒体扫描器忽略该目录,碎片不进相册) */
