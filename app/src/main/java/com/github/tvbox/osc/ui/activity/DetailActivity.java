@@ -71,7 +71,7 @@ import com.github.tvbox.osc.util.HCallBack;
 import com.github.tvbox.osc.util.HawkConfig;
 import com.github.tvbox.osc.util.HttpClient;
 import com.github.tvbox.osc.util.PipHelper;
-import com.github.tvbox.osc.util.PlayUrlResolver;
+import com.github.catvod.crawler.PlayUrlResolver;
 import com.github.tvbox.osc.util.ScreenShotListenManager;
 import com.github.tvbox.osc.util.SearchHelper;
 import com.github.tvbox.osc.util.SubtitleHelper;

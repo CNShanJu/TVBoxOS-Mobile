@@ -114,7 +114,7 @@ public class RemoteServer extends NanoHTTPD {
                     params.putAll(session.getHeaders());
                     params.put("request-headers", new Gson().toJson(session.getHeaders()));
                     if (params.containsKey("do")) {
-                        Object[] rs = ApiConfig.get().proxyLocal(params);
+                        Object[] rs = com.github.catvod.crawler.SpiderApi.proxyLocal(params);
                         //if (rs[0] instanceof Response) {
                         //    return (Response) rs[0];
                         //}

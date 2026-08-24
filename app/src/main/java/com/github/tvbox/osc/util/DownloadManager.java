@@ -13,10 +13,11 @@ import android.os.Looper;
 import android.os.StatFs;
 import android.util.Log;
 
+import com.github.catvod.crawler.PlayUrlResolver;
+import com.github.catvod.crawler.SpiderApi;
 import com.github.tvbox.osc.base.App;
 import com.github.tvbox.osc.bean.DownloadTask;
 import com.github.tvbox.osc.event.DownloadEvent;
-import com.github.tvbox.osc.viewmodel.SourceViewModel;
 import com.orhanobut.hawk.Hawk;
 
 import org.greenrobot.eventbus.EventBus;
@@ -973,17 +974,15 @@ public class DownloadManager {
     }
 
     /**
-     * 重新解析播放地址与请求头(经 SourceViewModel.spThreadPool 串行,避免 quickjs 并发卡死)。
-     * 只要解析成功就同步请求头(旧任务缺头时靠 403/404 触发重解析补头,即使地址未变也要继续重试)。
+     * 重新解析播放地址与请求头（经 SpiderApi 串行执行，避免 quickjs 并发卡死）。
+     * 只要解析成功就同步请求头（旧任务缺头时靠 403/404 触发重解析补头，即使地址未变也要继续重试）。
      *
      * @return true=地址或请求头已更新(调用方应继续重试下载)
      */
     private boolean reResolveUrl(DownloadTask t) {
         if (t.sourceKey == null || t.playFlag == null || t.episodeRawUrl == null) return false;
         try {
-            java.util.concurrent.Future<PlayUrlResolver.ResolveResult> future = SourceViewModel.spThreadPool.submit(() ->
-                    PlayUrlResolver.resolveWithHeader(t.sourceKey, t.playFlag, t.episodeRawUrl));
-            PlayUrlResolver.ResolveResult rr = future.get(20, TimeUnit.SECONDS);
+            PlayUrlResolver.ResolveResult rr = SpiderApi.resolvePlayUrl(t.sourceKey, t.playFlag, t.episodeRawUrl);
             if (rr != null && rr.url != null && !rr.url.isEmpty()) {
                 boolean urlChanged = !rr.url.equals(t.url);
                 t.headers = rr.headers; // 无论地址是否变化都同步请求头(防盗链源分片校验)

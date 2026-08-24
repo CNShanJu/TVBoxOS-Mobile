@@ -72,7 +72,8 @@ public class SourceViewModel extends ViewModel {
         playResult = new MutableLiveData<>();
     }
 
-    public static final ExecutorService spThreadPool = Executors.newSingleThreadExecutor();
+    /** 爬虫串行池：统一委托 SpiderApi（quickjs 单线程限制，全模块共用同一串行执行器） */
+    public static final ExecutorService spThreadPool = com.github.catvod.crawler.SpiderApi.serialExecutor();
 
     // homeContent
     public void getSort(String sourceKey) {
