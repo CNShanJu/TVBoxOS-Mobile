@@ -1117,6 +1117,8 @@ public class DetailActivity extends BaseVbActivity<ActivityDetailBinding> {
             public void onDismiss(BasePopupView popupView) {
                 isDownloadDialogShowing = false;
                 mDownloadDialog = null;
+                // 实时刷新: 弹窗关闭后注销下载状态订阅
+                com.github.tvbox.osc.download.DownloadFacade.get().unregister(downloadStatusListener);
             }
 
             @Override
@@ -1169,7 +1171,21 @@ public class DetailActivity extends BaseVbActivity<ActivityDetailBinding> {
                     }
                 }));
         mDownloadDialog.show();
+        // 实时刷新: 订阅下载状态变化(下载中进度/完成/失败 → 弹窗实时更新勾选态)
+        com.github.tvbox.osc.download.DownloadFacade.get().register(downloadStatusListener);
         // 后台准备数据(选集副本 + 下载状态批量查询),完成后主线程填充弹窗
+        refreshDownloadDialogStates();
+    }
+
+    /** 下载状态变化监听(DownloadFacade 去抖 500ms 回调,主线程): 弹窗仍显示则重查并填充 */
+    private final com.github.tvbox.osc.download.DownloadFacade.DownloadStatusListener downloadStatusListener = () -> {
+        if (mDownloadDialog instanceof DownloadSeriesDialog && mDownloadDialog.isShow()) {
+            refreshDownloadDialogStates();
+        }
+    };
+
+    /** 后台准备弹窗数据(选集副本 + 下载状态批量查询),完成后主线程填充弹窗 */
+    private void refreshDownloadDialogStates() {
         final String sourceName = getDownloadSourceName();
         final String vodName = getDownloadVodName();
         SourceViewModel.spThreadPool.execute(() -> {
