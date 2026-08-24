@@ -879,20 +879,20 @@ public class DownloadFragment extends BaseVbFragment<FragmentDownloadBinding> {
         return list;
     }
 
-    /** 该剧(剧名+来源)下已完成且文件存在的视频列表(记录驱动,按文件名排序) */
+    /** 该剧(剧名+来源)下已完成且文件存在的视频列表(档案表驱动,按文件名排序) */
     private List<VideoInfo> buildFolderVideosFromRecords(String vodName, String sourceName) {
         List<VideoInfo> videos = new ArrayList<>();
-        for (DownloadTask t : DownloadManager.get().getTasks()) {
-            if (t.state != DownloadTask.STATE_COMPLETED || t.savePath == null) continue;
-            if (!inGroup(t, vodName, sourceName)) continue;
-            File f = new File(t.savePath);
+        for (com.github.tvbox.osc.download.ArchiveItem it :
+                com.github.tvbox.osc.download.DownloadArchive.get().queryByVod(vodName, sourceName)) {
+            if (it.savePath == null) continue;
+            File f = new File(it.savePath);
             if (!f.exists()) continue;
             VideoInfo info = new VideoInfo();
             info.setPath(f.getAbsolutePath());
-            info.setDisplayName(t.fileName == null ? f.getName() : t.fileName);
-            info.setTitle(info.getDisplayName());
+            info.setDisplayName(f.getName());
+            info.setTitle(f.getName());
             info.setSize(f.length());
-            info.setEpisodeId(t.episodeId); // 统一剧集标识:回跳详情页/本地播放联动用
+            info.setEpisodeId(it.episodeId); // 统一剧集标识:回跳详情页/本地播放联动用
             videos.add(info);
         }
         videos.sort(Comparator.comparing(VideoInfo::getDisplayName));

@@ -58,6 +58,7 @@ public final class DownloadArchive {
         it.episodeId = t.episodeId;
         it.videoId = videoIdOf(t);
         it.sourceKey = t.sourceKey;
+        it.sourceName = t.sourceName;
         it.vodName = t.vodName;
         it.episodeName = t.episodeName;
         it.savePath = t.savePath;
@@ -80,6 +81,21 @@ public final class DownloadArchive {
         if (videoId == null) return out;
         for (ArchiveItem it : items) {
             if (videoId.equals(it.videoId)) out.add(it);
+        }
+        return out;
+    }
+
+    /** 按 剧名(+来源) 查询已下载列表（下载管理页"下载完成"tab 数据源；旧档案无 sourceName 时放行） */
+    public synchronized List<ArchiveItem> queryByVod(String vodName, String sourceName) {
+        List<ArchiveItem> out = new ArrayList<>();
+        if (vodName == null) return out;
+        for (ArchiveItem it : items) {
+            if (!vodName.equals(it.vodName)) continue;
+            if (sourceName != null && !sourceName.isEmpty()
+                    && it.sourceName != null && !sourceName.equals(it.sourceName)) {
+                continue;
+            }
+            out.add(it);
         }
         return out;
     }

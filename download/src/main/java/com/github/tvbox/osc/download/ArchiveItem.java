@@ -13,6 +13,9 @@ public class ArchiveItem {
 
     public String sourceKey;
 
+    /** 来源名称（下载管理页按 来源+剧名 分组展示用） */
+    public String sourceName;
+
     public String vodName;
 
     public String episodeName;
