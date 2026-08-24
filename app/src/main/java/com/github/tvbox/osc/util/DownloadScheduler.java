@@ -33,6 +33,10 @@ public class DownloadScheduler {
         @Override
         public void onAvailable(Network network) {
             Log.i("TVBox-Download", "网络恢复:自动续传因网络失败的任务");
+            // Bug1: 仅WiFi开启且当前是蜂窝时,网络恢复也不续传(维持 NETWORK_PAUSED 语义)
+            if (dm.policy.isWifiOnly() && DownloadPolicy.isMobileNetwork()) {
+                return;
+            }
             boolean changed = false;
             synchronized (dm.tasks) {
                 for (DownloadTask t : dm.tasks) {
@@ -184,6 +188,16 @@ public class DownloadScheduler {
         Thread th = new Thread(new Runnable() {
             @Override
             public void run() {
+                // Bug4: 存储权限硬门槛,启动前检查(权限被撤销则拒绝启动)
+                if (!FileCleaner.hasStoragePermission()) {
+                    t.state = DownloadTask.STATE_FAILED;
+                    t.message = "未授权存储权限,无法下载";
+                    Log.i("TVBox-Download", "启动失败:无存储权限 " + t.fileName);
+                    dm.persist();
+                    dm.notifyChanged();
+                    wakeWorker();
+                    return;
+                }
                 // 下载前磁盘空间预检:不足则直接失败并提示需清理量级(避免下载中空间耗尽损坏设备)
                 String spaceErr = dm.policy.checkDiskSpace(t);
                 if (spaceErr != null) {
@@ -207,7 +221,7 @@ public class DownloadScheduler {
                         return; // 成功
                     } catch (Throwable th) {
                         th.printStackTrace();
-                        if (t.state == DownloadTask.STATE_PAUSED || t.state == DownloadTask.STATE_SYSTEM_PAUSED) return; // 暂停(用户/调度),不再重试
+                        if (isTaskStopped(t)) return; // 暂停(用户/调度/网络)或已取消,不再重试
                         // 断网/切网等网络错误:允许更多次重试 + 指数退避(最长约2分钟),并标记网络失败待恢复后自动续传
                         boolean netErr = isNetworkError(th);
                         int maxRetry = netErr ? DownloadManager.MAX_NETWORK_RETRY : DownloadManager.MAX_RETRY;
@@ -386,6 +400,12 @@ public class DownloadScheduler {
             fileName = vn + "_" + dm.sanitize(ep) + ext;
         }
 
+        // Bug4: 存储权限是硬门槛,无权限不入队、不触发调度
+        if (!FileCleaner.hasStoragePermission()) {
+            Log.i("TVBox-Download", "enqueue 拒绝:无存储权限 " + fileName);
+            return false;
+        }
+
         File dir = new File(dm.getSaveDir(), src + File.separator + vn);
         if (!dir.exists()) dir.mkdirs();
         File finalFile = new File(dir, fileName);
@@ -433,8 +453,11 @@ public class DownloadScheduler {
             }
         }
         if (lower.contains(".m3u8")) {
-            // 分段目录:对应剧集目录下的 tmp/<任务id>,删除/完成时整体清理
-            t.tmpDir = new File(dir, "tmp" + File.separator + t.id).getAbsolutePath();
+            // Bug2: tmpDir 由 episodeId 派生(稳定可复用)——重入队同 episodeId 复用旧碎片续传,
+            // 不再因 taskId 变化导致全部重下;无 episodeId 的旧任务回退 taskId
+            String dirKey = (episodeId != null && !episodeId.isEmpty())
+                    ? Integer.toHexString(episodeId.hashCode()) : t.id;
+            t.tmpDir = new File(dir, "tmp" + File.separator + dirKey).getAbsolutePath();
         }
         t.state = DownloadTask.STATE_WAITING;
         synchronized (dm.tasks) {
@@ -556,6 +579,14 @@ public class DownloadScheduler {
         }
     }
 
+    /** 任务是否已停止(暂停/调度暂停/网络暂停/取消) */
+    private static boolean isTaskStopped(DownloadTask t) {
+        return t.state == DownloadTask.STATE_PAUSED
+                || t.state == DownloadTask.STATE_SYSTEM_PAUSED
+                || t.state == DownloadTask.STATE_NETWORK_PAUSED
+                || t.state == DownloadTask.STATE_CANCELLED;
+    }
+
     /**
      * 删除任务
      *
@@ -563,7 +594,9 @@ public class DownloadScheduler {
      * @param deleteFiles true=连本地文件(.part/成品/临时分片)一起删;false=只删记录保留文件
      */
     void remove(DownloadTask t, boolean deleteFiles) {
+        // Bug2: 先置 CANCELLED 再关连接——下载线程每步检查 CANCELLED 立即中止,不落最终文件
         if (t.state == DownloadTask.STATE_DOWNLOADING) {
+            t.state = DownloadTask.STATE_CANCELLED;
             Response r = dm.activeResponses.remove(t.id);
             if (r != null) {
                 try {
@@ -584,5 +617,52 @@ public class DownloadScheduler {
         dm.persist();
         dm.notifyChanged();
         wakeWorker(); // 删除后重新调度
+    }
+
+    /**
+     * Bug1: 仅WiFi开启且网络变为蜂窝/断开 → 全部任务置 NETWORK_PAUSED(关闭连接),
+     * WiFi 恢复后自动恢复(见 {@link #resumeAllNetwork})。
+     */
+    void pauseAllNetwork() {
+        boolean changed = false;
+        synchronized (dm.tasks) {
+            for (DownloadTask t : dm.tasks) {
+                if (t.state == DownloadTask.STATE_DOWNLOADING
+                        || t.state == DownloadTask.STATE_WAITING
+                        || t.state == DownloadTask.STATE_SYSTEM_PAUSED) {
+                    t.state = DownloadTask.STATE_NETWORK_PAUSED;
+                    changed = true;
+                    Response r = dm.activeResponses.remove(t.id);
+                    if (r != null) {
+                        try {
+                            r.close();
+                        } catch (Throwable ignored) {
+                        }
+                    }
+                }
+            }
+        }
+        if (changed) {
+            dm.persist();
+            dm.notifyChanged();
+        }
+    }
+
+    /** Bug1: WiFi 恢复 → 自动恢复 NETWORK_PAUSED 任务(用户手动 PAUSED 不自动恢复) */
+    void resumeAllNetwork() {
+        boolean changed = false;
+        synchronized (dm.tasks) {
+            for (DownloadTask t : dm.tasks) {
+                if (t.state == DownloadTask.STATE_NETWORK_PAUSED) {
+                    t.state = DownloadTask.STATE_WAITING;
+                    changed = true;
+                }
+            }
+        }
+        if (changed) {
+            dm.persist();
+            dm.notifyChanged();
+            wakeWorker();
+        }
     }
 }

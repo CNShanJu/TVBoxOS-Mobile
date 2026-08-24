@@ -100,6 +100,8 @@ public class DownloadManager {
         executor = new DownloadExecutor(this);
         policy = new DownloadPolicy(this);
         store.load();
+        // Bug5: 孤儿 tmpDir 回收(启动时任务已加载,无写入中,安全)
+        FileCleaner.cleanupOrphanTmpDirs(tasks);
         scheduler.startWorker();
         scheduler.registerNetworkCallback();
     }
@@ -229,9 +231,9 @@ public class DownloadManager {
         scheduler.startAll();
     }
 
-    /** 删除任务与文件 */
+    /** 删除任务(默认只删记录保留碎片——Bug2: 重入队同 episodeId 复用碎片续传,不白下) */
     public void remove(DownloadTask t) {
-        scheduler.remove(t, true);
+        scheduler.remove(t, false);
     }
 
     /** 删除任务(deleteFiles=true 连本地文件一起删;false 只删记录保留文件) */

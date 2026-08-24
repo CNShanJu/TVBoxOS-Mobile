@@ -8,6 +8,8 @@ import android.os.StatFs;
 
 import com.github.tvbox.osc.base.App;
 import com.github.tvbox.osc.bean.DownloadTask;
+import com.github.tvbox.osc.state.SystemEvent;
+import com.github.tvbox.osc.state.SystemStateMonitor;
 import com.orhanobut.hawk.Hawk;
 
 import java.io.File;
@@ -40,6 +42,21 @@ public class DownloadPolicy {
         } catch (Throwable ignored) {
         }
         maxConcurrent = Math.max(1, Math.min(5, savedConcurrent));
+        // Bug1: 订阅全局状态监控(②)的网络事件——仅WiFi开启时切蜂窝/断网 → 暂停全部;
+        // WiFi 恢复 → 自动恢复。决策器只下发指令,执行在 Scheduler。
+        SystemStateMonitor monitor = SystemStateMonitor.get();
+        if (monitor != null) {
+            monitor.register((SystemEvent e) -> {
+                if (!SystemStateMonitor.TYPE_NETWORK.equals(e.type)) return;
+                if (!isWifiOnly()) return;
+                if (SystemStateMonitor.VAL_CELLULAR.equals(e.value)
+                        || SystemStateMonitor.VAL_NONE.equals(e.value)) {
+                    dm.scheduler.pauseAllNetwork();
+                } else if (SystemStateMonitor.VAL_WIFI.equals(e.value)) {
+                    dm.scheduler.resumeAllNetwork();
+                }
+            }, SystemStateMonitor.TYPE_NETWORK);
+        }
     }
 
     int getMaxConcurrent() {

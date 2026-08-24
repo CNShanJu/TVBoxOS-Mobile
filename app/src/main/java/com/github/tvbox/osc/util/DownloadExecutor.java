@@ -121,7 +121,7 @@ public class DownloadExecutor {
             long lastSpeedTime = System.currentTimeMillis();
             long lastSpeedBytes = t.downloadedBytes;
             while ((n = is.read(buf)) > 0) {
-                if (t.state == DownloadTask.STATE_PAUSED || t.state == DownloadTask.STATE_SYSTEM_PAUSED) {
+                if (isInterrupted(t)) {
                     os.flush();
                     os.close();
                     t.speed = 0;
@@ -148,7 +148,7 @@ public class DownloadExecutor {
             os.flush();
             os.close();
             t.speed = 0;
-            if (t.state == DownloadTask.STATE_PAUSED || t.state == DownloadTask.STATE_SYSTEM_PAUSED) {
+            if (isInterrupted(t)) {
                 dm.persist();
                 dm.notifyChanged();
                 return;
@@ -194,6 +194,7 @@ public class DownloadExecutor {
         // 若仍用 t.doneSegments 会跳过缺失分片直接合并导致失败。
         File tmpDir = segmentsDirOf(t);
         if (!tmpDir.exists()) tmpDir.mkdirs();
+        ensureNoMedia(tmpDir); // Bug5: 碎片目录放 .nomedia,防止 TS 碎片进系统相册
         int existing = countExistingSegments(tmpDir, segments.size());
         if (existing < t.doneSegments) {
             Log.i("TVBox-Download", "分片缺失(磁盘" + existing + "/" + segments.size() + ",记录" + t.doneSegments
@@ -208,7 +209,7 @@ public class DownloadExecutor {
         long speedWindowBytes = 0;
         // 只下载缺失的分片(跳过已存在且非空的分片),支持非连续缺失续传(如第3、7片被删)
         for (int i = 0; i < segments.size(); i++) {
-            if (t.state == DownloadTask.STATE_PAUSED || t.state == DownloadTask.STATE_SYSTEM_PAUSED) {
+            if (isInterrupted(t)) {
                 t.speed = 0;
                 dm.persist();
                 dm.notifyChanged();
@@ -324,6 +325,9 @@ public class DownloadExecutor {
         OutputStream out = new FileOutputStream(mergeTmp);
         try {
             for (int i = 0; i < segments.size(); i++) {
+                if (t.state == DownloadTask.STATE_CANCELLED) {
+                    throw new IOException("cancelled"); // Bug2: 删除记录后合并立即中止,不落最终文件
+                }
                 File segFile = new File(tmpDir, String.format("%05d.ts", i));
                 FileCleaner.copyFile(segFile, out);
             }
@@ -468,6 +472,7 @@ public class DownloadExecutor {
                 resp.close();
                 dm.activeResponses.remove(t.id);
                 FileCleaner.deleteQuietly(segFile);
+                FileCleaner.deleteQuietly(new File(segFile.getAbsolutePath() + ".part"));
                 segDone = 0;
                 headers.remove("Range");
                 resp = getDownloadResponse(segUrl, headers);
@@ -482,12 +487,15 @@ public class DownloadExecutor {
             }
             File parent = segFile.getParentFile();
             if (parent != null && !parent.exists()) parent.mkdirs();
-            OutputStream os = new FileOutputStream(segFile, segDone > 0);
+            // Bug2: 分片先写 .part 再 rename 原子落盘——进程被杀不产生"残缺但非空"的 .ts,
+            // 续传/校验只信任 rename 后的完整分片
+            File partFile = new File(segFile.getAbsolutePath() + ".part");
+            OutputStream os = new FileOutputStream(partFile, segDone > 0);
             InputStream is = resp.body().byteStream();
             byte[] buf = new byte[DownloadManager.BUFFER];
             int n;
             while ((n = is.read(buf)) > 0) {
-                if (t.state == DownloadTask.STATE_PAUSED || t.state == DownloadTask.STATE_SYSTEM_PAUSED) {
+                if (isInterrupted(t)) {
                     os.flush();
                     os.close();
                     t.segmentBytes = segDone;
@@ -500,6 +508,10 @@ public class DownloadExecutor {
             }
             os.flush();
             os.close();
+            if (!partFile.renameTo(segFile)) {
+                FileCleaner.copyFile(partFile, segFile);
+                FileCleaner.deleteQuietly(partFile);
+            }
         } finally {
             dm.activeResponses.remove(t.id);
             resp.close();
@@ -684,6 +696,26 @@ public class DownloadExecutor {
         } catch (Throwable th) {
         }
         return null;
+    }
+
+    /** 任务被暂停(用户/调度/网络)或已取消(删除记录)时,下载循环应中止 */
+    private static boolean isInterrupted(DownloadTask t) {
+        return t.state == DownloadTask.STATE_PAUSED
+                || t.state == DownloadTask.STATE_SYSTEM_PAUSED
+                || t.state == DownloadTask.STATE_NETWORK_PAUSED
+                || t.state == DownloadTask.STATE_CANCELLED;
+    }
+
+    /** Bug5: 确保目录内写入 .nomedia(媒体扫描器忽略该目录,碎片不进相册) */
+    private static void ensureNoMedia(File dir) {
+        try {
+            File nm = new File(dir, ".nomedia");
+            if (!nm.exists()) {
+                //noinspection ResultOfMethodCallIgnored
+                nm.createNewFile();
+            }
+        } catch (Throwable ignored) {
+        }
     }
 
     /** 格式化大小(供磁盘空间提示) */

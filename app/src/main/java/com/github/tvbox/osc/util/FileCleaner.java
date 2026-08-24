@@ -4,20 +4,69 @@ import android.os.Build;
 import android.os.Environment;
 
 import com.github.tvbox.osc.base.App;
+import com.github.tvbox.osc.bean.DownloadTask;
 
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 
 /**
- * 文件清理器（File-Cleaner）：临时碎片 / 产物落盘 / 目录回收等文件操作。
- * 5.1 先收敛纯文件工具（delete/copy/saveDir）；孤儿 tmpDir 回收等增强在后续阶段落地。
+ * 文件清理器（File-Cleaner）：临时碎片 / 产物落盘 / 目录回收 / 存储权限 等文件操作。
+ * Bug5 增加孤儿 tmpDir 回收；孤儿 tmpDir 增强在后续阶段落地。
  */
 public class FileCleaner {
 
     private FileCleaner() {
+    }
+
+    /** Bug4: 存储权限硬门槛(Android 10+ 需要 MANAGE_EXTERNAL_STORAGE 才能写公共目录) */
+    static boolean hasStoragePermission() {
+        return Build.VERSION.SDK_INT < 30 || Environment.isExternalStorageManager();
+    }
+
+    /**
+     * Bug5: 孤儿 tmpDir 回收——扫描保存根目录下所有 tmp/<任务目录>,
+     * 无对应存活任务(含正在写入的任务按快照比对)即递归删除。
+     * 调用时机:App 启动 / 下载页打开(任务已加载,安全)。
+     */
+    static void cleanupOrphanTmpDirs(List<DownloadTask> liveTasks) {
+        try {
+            Set<String> liveDirs = new HashSet<>();
+            if (liveTasks != null) {
+                for (DownloadTask t : liveTasks) {
+                    if (t.tmpDir != null && !t.tmpDir.isEmpty()) {
+                        liveDirs.add(new File(t.tmpDir).getAbsolutePath());
+                    }
+                }
+            }
+            scanAndClean(getSaveDir(), liveDirs);
+        } catch (Throwable ignored) {
+        }
+    }
+
+    private static void scanAndClean(File dir, Set<String> liveDirs) {
+        File[] files = dir.listFiles();
+        if (files == null) return;
+        for (File f : files) {
+            if (!f.isDirectory()) continue;
+            if ("tmp".equals(f.getName())) {
+                File[] sub = f.listFiles();
+                if (sub != null) {
+                    for (File s : sub) {
+                        if (s.isDirectory() && !liveDirs.contains(s.getAbsolutePath())) {
+                            deleteRecursive(s);
+                        }
+                    }
+                }
+            } else {
+                scanAndClean(f, liveDirs);
+            }
+        }
     }
 
     /** 下载保存根目录:有存储管理权限用公共 Download,否则用应用私有目录 */

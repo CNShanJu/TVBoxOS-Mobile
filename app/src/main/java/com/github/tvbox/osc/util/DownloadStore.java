@@ -65,6 +65,32 @@ public class DownloadStore {
             dm.persist();
             Log.i("TVBox-Download", "进程重启:未完成任务置为暂停,等待用户手动开始(继续时自动重新解析地址)");
         }
+        // 启动磁盘对账(4.5):内存计数被杀后滞后,以磁盘实况修正
+        synchronized (dm.tasks) {
+            for (DownloadTask t : dm.tasks) {
+                if (t.state == DownloadTask.STATE_COMPLETED) continue;
+                // 直链:downloadedBytes 以 .part 实际长度为准(修复 Range 续传错位产生空洞)
+                if (t.partPath != null) {
+                    File part = new File(t.partPath);
+                    if (part.exists() && part.length() > 0) {
+                        t.downloadedBytes = part.length();
+                    }
+                }
+                // HLS:丢弃残缺 .part(分片原子写后只信任 rename 的 .ts),避免被当成完整片
+                if (t.tmpDir != null) {
+                    File tmp = new File(t.tmpDir);
+                    File[] segs = tmp.listFiles();
+                    if (segs != null) {
+                        for (File seg : segs) {
+                            if (seg.isFile() && seg.getName().endsWith(".part")) {
+                                //noinspection ResultOfMethodCallIgnored
+                                seg.delete();
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 
     /** 任务快照(安全遍历,避免外部迭代与任务增删并发冲突) */

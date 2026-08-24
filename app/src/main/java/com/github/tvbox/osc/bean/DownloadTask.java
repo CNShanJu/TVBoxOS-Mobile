@@ -15,6 +15,10 @@ public class DownloadTask {
     public static final int STATE_FAILED = 4;
     /** 调度暂停(并发满被挤下):等待调度,有空位自动恢复 */
     public static final int STATE_SYSTEM_PAUSED = 5;
+    /** 网络暂停(仅WiFi开启时切蜂窝/断WiFi):条件恢复后自动恢复,区别于用户手动暂停 */
+    public static final int STATE_NETWORK_PAUSED = 6;
+    /** 已取消(删除记录):下载线程立即中止,不落最终文件,碎片保留 */
+    public static final int STATE_CANCELLED = 7;
 
     public String id;
     public String url;
