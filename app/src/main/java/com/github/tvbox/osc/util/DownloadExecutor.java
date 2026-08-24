@@ -138,6 +138,7 @@ public class DownloadExecutor {
                 }
                 os.write(buf, 0, n);
                 t.downloadedBytes += n;
+                throttle(t, n); // 5.4 增强: 每任务限速
                 long now = System.currentTimeMillis();
                 if (now - lastPersist > 800) {
                     // 实时网速:按时间窗口内的字节增量计算
@@ -180,7 +181,9 @@ public class DownloadExecutor {
         }
         t.state = DownloadTask.STATE_COMPLETED;
         t.downloadedBytes = t.totalBytes;
+        DownloadLog.LOG.success(DownloadSubType.SAVE, "下载完成: " + t.fileName, DownloadLog.extras(t.episodeId));
         dm.archive.add(t); // 5.3: 完成写已下载档案(长期,先于清理)
+        com.github.tvbox.osc.download.DownloadNotifier.notifyCompleted(t); // 可选增强: 完成通知
         dm.persist();
         dm.notifyChanged();
     }
@@ -386,6 +389,7 @@ public class DownloadExecutor {
         t.state = DownloadTask.STATE_COMPLETED;
         DownloadLog.LOG.success(DownloadSubType.SAVE, "下载完成: " + t.fileName, DownloadLog.extras(t.episodeId));
         dm.archive.add(t); // 5.3: 完成写已下载档案(长期,先于清理)
+        com.github.tvbox.osc.download.DownloadNotifier.notifyCompleted(t); // 可选增强: 完成通知
         dm.persist();
         dm.notifyChanged();
     }
@@ -542,6 +546,7 @@ public class DownloadExecutor {
                 os.write(buf, 0, n);
                 segDone += n;
                 t.segmentBytes = segDone;
+                throttle(t, n); // 5.4 增强: 每任务限速
             }
             os.flush();
             os.close();
@@ -733,6 +738,32 @@ public class DownloadExecutor {
         } catch (Throwable th) {
         }
         return null;
+    }
+
+    /**
+     * 5.4 增强: 每任务限速（t.speedLimit 字节/秒, 0=不限速）。
+     * 500ms 窗口滑动节流; 限速不会改变行为, 只是放慢写入。
+     */
+    private static void throttle(DownloadTask t, int written) {
+        if (t.speedLimit <= 0) return;
+        long windowBytes = written;
+        long windowStart = System.currentTimeMillis();
+        while (t.speedLimit > 0 && !isInterrupted(t)) {
+            long now = System.currentTimeMillis();
+            long elapsed = now - windowStart;
+            if (elapsed < 500) return; // 窗口未满, 继续
+            long expect = t.speedLimit * elapsed / 1000;
+            if (windowBytes <= expect) return; // 未超速
+            long over = windowBytes - expect;
+            long delay = over * 1000 / Math.max(1, t.speedLimit);
+            try {
+                Thread.sleep(Math.min(delay, 2000));
+            } catch (InterruptedException ignored) {
+                return;
+            }
+            windowStart = now;
+            windowBytes = 0;
+        }
     }
 
     /** 任务被暂停(用户/调度/网络)或已取消(删除记录)时,下载循环应中止 */

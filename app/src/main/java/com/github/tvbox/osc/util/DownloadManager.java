@@ -268,6 +268,13 @@ public class DownloadManager {
         policy.setMaxConcurrent(n);
     }
 
+    /** 每任务限速(字节/秒;0=不限速)。5.4 增强,仅内存生效(重启需重新设置) */
+    public void setSpeedLimit(DownloadTask t, long bytesPerSecond) {
+        if (t != null) {
+            t.speedLimit = Math.max(0, bytesPerSecond);
+        }
+    }
+
     /** 是否仅 WiFi 下载(默认开启) */
     public boolean isWifiOnly() {
         return policy.isWifiOnly();

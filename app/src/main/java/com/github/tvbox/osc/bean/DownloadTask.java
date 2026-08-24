@@ -55,6 +55,9 @@ public class DownloadTask {
     /** 实时下载速度(字节/秒),仅内存使用不持久化(transient) */
     public transient long speed = 0;
 
+    /** 每任务限速(字节/秒),0=不限速;仅内存使用(transient,5.4 增强) */
+    public transient long speedLimit = 0;
+
     /** 来源 key(重启后重新解析地址用) */
     public String sourceKey;
     /** 线路名(重启后重新解析地址用) */

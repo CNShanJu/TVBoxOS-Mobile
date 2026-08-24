@@ -86,6 +86,8 @@ public class App extends MultiDexApplication {
         AppLog.log("运行", "应用启动(Android " + android.os.Build.VERSION.RELEASE + ")");
         // 崩溃捕获:未捕获异常落库(log 模块)
         LogStore.get().installCrashHandler();
+        // 下载完成通知渠道(可选增强)
+        com.github.tvbox.osc.download.DownloadNotifier.init(this);
         // 全局系统状态监控(网络/前后台/横竖屏/电量/磁盘, 基座层)
         SystemStateMonitor.init(this);
     }
