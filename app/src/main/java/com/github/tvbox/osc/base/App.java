@@ -28,6 +28,8 @@ import com.orhanobut.hawk.Hawk;
 import com.p2p.P2PClass;
 import com.whl.quickjs.android.QuickJSLoader;
 
+import okhttp3.OkHttpClient;
+
 import org.json.JSONArray;
 import org.json.JSONObject;
 
@@ -60,8 +62,10 @@ public class App extends MultiDexApplication {
         super.onCreate();
         instance = this;
         initParams();
-        // OKGo
-        OkGoHelper.init(); //台标获取
+        // OKGo: 全局 OkHttpClient 初始化(common 模块, context 注入); Exo/Picasso 初始化拆回 app 侧
+        OkGoHelper.init(this);
+        initExoOkHttpClient();
+        initPicasso();
         EpgUtil.init();
         // 初始化Web服务器
         ControlManager.init(this);
@@ -265,6 +269,65 @@ public class App extends MultiDexApplication {
         } catch (Exception e) {
             LOG.e(e.toString());
             return null;
+        }
+    }
+
+    /** Exo 播放内核使用下载专用 OkHttpClient（原 OkGoHelper.initExoOkHttpClient 拆回 app 侧） */
+    private void initExoOkHttpClient() {
+        try {
+            OkHttpClient.Builder builder = new OkHttpClient.Builder();
+            okhttp3.logging.HttpLoggingInterceptor loggingInterceptor = new okhttp3.logging.HttpLoggingInterceptor();
+            if (Hawk.get(HawkConfig.DEBUG_OPEN, false)) {
+                loggingInterceptor.setLevel(okhttp3.logging.HttpLoggingInterceptor.Level.BODY);
+            } else {
+                loggingInterceptor.setLevel(okhttp3.logging.HttpLoggingInterceptor.Level.NONE);
+            }
+            builder.addInterceptor(loggingInterceptor);
+            builder.connectionSpecs(OkGoHelper.getConnectionSpec());
+            builder.addInterceptor(new com.github.tvbox.osc.util.urlhttp.BrotliInterceptor());
+            builder.retryOnConnectionFailure(true);
+            builder.followRedirects(true);
+            builder.followSslRedirects(true);
+            setOkHttpSsl(builder);
+            if (OkGoHelper.dnsOverHttps != null) {
+                builder.dns(OkGoHelper.dnsOverHttps);
+            }
+            xyz.doikki.videoplayer.exo.ExoMediaSourceHelper.getInstance(this).setOkClient(builder.build());
+        } catch (Throwable th) {
+            th.printStackTrace();
+        }
+    }
+
+    /** Picasso 全局单例（原 OkGoHelper.initPicasso 拆回 app 侧） */
+    private void initPicasso() {
+        try {
+            OkHttpClient client = OkGoHelper.getDefaultClient();
+            if (client == null) return;
+            client.dispatcher().setMaxRequestsPerHost(32);
+            com.github.tvbox.osc.picasso.MyOkhttpDownLoader downloader = new com.github.tvbox.osc.picasso.MyOkhttpDownLoader(client);
+            com.squareup.picasso.Picasso picasso = new com.squareup.picasso.Picasso.Builder(this)
+                    .downloader(downloader)
+                    .executor(com.github.tvbox.osc.util.HeavyTaskUtil.getBigTaskExecutorService())
+                    .defaultBitmapConfig(android.graphics.Bitmap.Config.RGB_565)
+                    .build();
+            com.squareup.picasso.Picasso.setSingletonInstance(picasso);
+        } catch (Throwable th) {
+            th.printStackTrace();
+        }
+    }
+
+    private static synchronized void setOkHttpSsl(OkHttpClient.Builder builder) {
+        try {
+            final javax.net.ssl.SSLSocketFactory sslSocketFactory = new com.github.catvod.net.SSLCompat();
+            builder.sslSocketFactory(sslSocketFactory, com.github.catvod.net.SSLCompat.TM);
+            builder.hostnameVerifier(new javax.net.ssl.HostnameVerifier() {
+                @Override
+                public boolean verify(String hostname, javax.net.ssl.SSLSession session) {
+                    return true;
+                }
+            });
+        } catch (Exception e) {
+            throw new RuntimeException(e);
         }
     }
 

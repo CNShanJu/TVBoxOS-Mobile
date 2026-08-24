@@ -5,14 +5,11 @@ import static okhttp3.ConnectionSpec.COMPATIBLE_TLS;
 import static okhttp3.ConnectionSpec.MODERN_TLS;
 import static okhttp3.ConnectionSpec.RESTRICTED_TLS;
 
-import android.graphics.Bitmap;
+import android.content.Context;
 
 import com.github.catvod.net.SSLCompat;
-import com.github.tvbox.osc.base.App;
-import com.github.tvbox.osc.picasso.MyOkhttpDownLoader;
 import com.github.tvbox.osc.util.urlhttp.BrotliInterceptor;
 import com.orhanobut.hawk.Hawk;
-import com.squareup.picasso.Picasso;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -31,41 +28,16 @@ import okhttp3.HttpUrl;
 import okhttp3.OkHttpClient;
 import okhttp3.dnsoverhttps.DnsOverHttps;
 import okhttp3.logging.HttpLoggingInterceptor;
-import xyz.doikki.videoplayer.exo.ExoMediaSourceHelper;
 
 /**
- * 全局 OkHttpClient 初始化(原 OkGo 初始化改造)
+ * 全局 OkHttpClient 初始化（独立模块 :common）。
+ * Context 由 {@link #init(Context)} 注入（不依赖 app 类）；
+ * Exo 播放内核与 Picasso 的初始化已拆回 app 侧（依赖 :player / picasso）。
  */
 public class OkGoHelper {
     public static final long DEFAULT_MILLISECONDS = 10000;      //默认的超时时间
 
-    static void initExoOkHttpClient() {
-        OkHttpClient.Builder builder = new OkHttpClient.Builder();
-        HttpLoggingInterceptor loggingInterceptor = new HttpLoggingInterceptor();
-
-        if (Hawk.get(HawkConfig.DEBUG_OPEN, false)) {
-            loggingInterceptor.setLevel(HttpLoggingInterceptor.Level.BODY);
-        } else {
-            loggingInterceptor.setLevel(HttpLoggingInterceptor.Level.NONE);
-        }
-        builder.addInterceptor(loggingInterceptor);
-        builder.connectionSpecs(getConnectionSpec());
-        builder.addInterceptor(new BrotliInterceptor());
-        builder.retryOnConnectionFailure(true);
-        builder.followRedirects(true);
-        builder.followSslRedirects(true);
-
-        try {
-            setOkHttpSsl(builder);
-        } catch (Throwable th) {
-            th.printStackTrace();
-        }
-        if (dnsOverHttps != null) {
-            builder.dns(dnsOverHttps);
-        }
-
-        ExoMediaSourceHelper.getInstance(App.getInstance()).setOkClient(builder.build());
-    }
+    private static Context appContext;
 
     public static DnsOverHttps dnsOverHttps = null;
 
@@ -112,7 +84,9 @@ public class OkGoHelper {
             th.printStackTrace();
         }
         builder.connectionSpecs(getConnectionSpec());
-        builder.cache(new Cache(new File(App.getInstance().getCacheDir().getAbsolutePath(), "dohcache"), 10 * 1024 * 1024));
+        if (appContext != null) {
+            builder.cache(new Cache(new File(appContext.getCacheDir().getAbsolutePath(), "dohcache"), 10 * 1024 * 1024));
+        }
         OkHttpClient dohClient = builder.build();
         String dohUrl = getDohUrl(Hawk.get(HawkConfig.DOH_URL, 0));
         if (dohUrl.isEmpty()) {
@@ -121,6 +95,7 @@ public class OkGoHelper {
             dnsOverHttps = new DnsOverHttps.Builder().client(dohClient).url(HttpUrl.get(dohUrl)).build();
         }
     }
+
     static OkHttpClient defaultClient = null;
     static OkHttpClient noRedirectClient = null;
 
@@ -140,7 +115,9 @@ public class OkGoHelper {
         return noRedirectClient;
     }
 
-    public static void init() {
+    /** App 启动时调用一次（context 注入；Exo/Picasso 初始化由 app 侧在 init 后自行完成） */
+    public static void init(Context context) {
+        appContext = context == null ? null : context.getApplicationContext();
         initDnsOverHttps();
 
         OkHttpClient.Builder builder = new OkHttpClient.Builder();
@@ -177,25 +154,10 @@ public class OkGoHelper {
         builder.followRedirects(false);
         builder.followSslRedirects(false);
         noRedirectClient = builder.build();
-
-        initExoOkHttpClient();
-        initPicasso(okHttpClient);
-    }
-
-    static void initPicasso(OkHttpClient client) {
-        client.dispatcher().setMaxRequestsPerHost(32);
-        MyOkhttpDownLoader downloader = new MyOkhttpDownLoader(client);
-        Picasso picasso = new Picasso.Builder(App.getInstance())
-                .downloader(downloader)
-                .executor(HeavyTaskUtil.getBigTaskExecutorService())
-                .defaultBitmapConfig(Bitmap.Config.RGB_565)
-                .build();
-        Picasso.setSingletonInstance(picasso);
     }
 
     private static synchronized void setOkHttpSsl(OkHttpClient.Builder builder) {
         try {
-
             final SSLSocketFactory sslSocketFactory = new SSLCompat();
             builder.sslSocketFactory(sslSocketFactory, SSLCompat.TM);
             builder.hostnameVerifier(new HostnameVerifier() {
@@ -208,6 +170,4 @@ public class OkGoHelper {
             throw new RuntimeException(e);
         }
     }
-
-
 }
