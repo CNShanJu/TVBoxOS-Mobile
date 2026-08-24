@@ -11,6 +11,7 @@ import com.github.tvbox.osc.bean.VodInfo;
 import com.github.tvbox.osc.callback.EmptyCallback;
 import com.github.tvbox.osc.callback.LoadingCallback;
 import com.github.tvbox.osc.data.AppDataManager;
+import com.github.tvbox.osc.log.LogStore;
 import com.github.tvbox.osc.server.ControlManager;
 import com.github.tvbox.osc.ui.activity.MainActivity;
 import com.github.tvbox.osc.util.AppLog;
@@ -82,6 +83,8 @@ public class App extends MultiDexApplication {
         initCrashConfig();
         Utils.initTheme();
         AppLog.log("运行", "应用启动(Android " + android.os.Build.VERSION.RELEASE + ")");
+        // 崩溃捕获:未捕获异常落库(log 模块)
+        LogStore.get().installCrashHandler();
     }
 
     private void initParams() {
@@ -101,10 +104,8 @@ public class App extends MultiDexApplication {
         putDefault(HawkConfig.LOADING_ANIM, "");               //加载动画:空=默认,或 assets/loading/ 下的文件名
         putDefault(HawkConfig.LIVE_URL, "https://gh-proxy.com/raw.githubusercontent.com/vbskycn/iptv/refs/heads/master/tv/iptv4.txt"); //直播源:默认地址
         putDefaultApi();
-        // 运行日志开关已开启时,启动 logcat 完整捕获(与 IDEA Logcat 一致)
-        if (Hawk.get(HawkConfig.APP_LOG, false)) {
-            AppLog.startLogcatCapture();
-        }
+        // 日志模块初始化:按 LogConfig 同步开关(默认关),开启时自动启动 logcat 捕获(package:mine)
+        LogStore.init(this);
     }
 
     private void putDefaultApi() {

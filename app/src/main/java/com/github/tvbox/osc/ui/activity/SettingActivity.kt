@@ -5,6 +5,7 @@ import android.os.Build
 import android.os.Bundle
 import android.view.View
 import androidx.recyclerview.widget.DiffUtil
+import com.github.tvbox.osc.log.LogConfig
 import com.github.tvbox.osc.util.AppBubble
 import com.github.tvbox.osc.R
 import com.github.tvbox.osc.api.ApiConfig
@@ -451,24 +452,18 @@ class SettingActivity : BaseVbActivity<ActivitySettingBinding>() {
             mBinding.switchIjkCachePlay.setChecked(newConfig)
             Hawk.put(HawkConfig.IJK_CACHE_PLAY, newConfig)
         }
-        // 运行日志开关(默认关闭,排查问题时开启) -------------------------------------
-        mBinding.switchSubscriptionLog.setChecked(Hawk.get(HawkConfig.APP_LOG, false))
+        // 运行日志开关(默认关闭,排查问题时开启):走 LogConfig 配置门面(查询+发通知+订阅) ----
+        mBinding.switchSubscriptionLog.setChecked(LogConfig.isEnabled())
         mBinding.llSubscriptionLog.setOnClickListener { v: View? ->
             FastClickCheckUtil.check(v)
-            val newConfig = !Hawk.get(HawkConfig.APP_LOG, false)
+            val newConfig = !LogConfig.isEnabled()
             mBinding.switchSubscriptionLog.setChecked(newConfig)
-            Hawk.put(HawkConfig.APP_LOG, newConfig)
+            LogConfig.setEnabled(newConfig) // 内部持久化 + 联动 logcat 捕获 + 广播变更
             mBinding.llSubscriptionLogView.visibility =
                 if (newConfig) View.VISIBLE else View.GONE
-            // 开关联动 logcat 完整捕获
-            if (newConfig) {
-                AppLog.startLogcatCapture()
-            } else {
-                AppLog.stopLogcatCapture()
-            }
         }
         mBinding.llSubscriptionLogView.visibility =
-            if (Hawk.get(HawkConfig.APP_LOG, false)) View.VISIBLE else View.GONE
+            if (LogConfig.isEnabled()) View.VISIBLE else View.GONE
         mBinding.llSubscriptionLogView.setOnClickListener { v: View? ->
             FastClickCheckUtil.check(v)
             jumpActivity(LogActivity::class.java)
