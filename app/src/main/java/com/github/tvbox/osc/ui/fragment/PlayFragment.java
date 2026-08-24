@@ -500,13 +500,7 @@ public class PlayFragment extends BaseLazyFragment {
     void selectMyAudioTrack() {
         AbstractPlayer mediaPlayer = mVideoView.getMediaPlayer();
 
-        TrackInfo trackInfo = null;
-        if (mediaPlayer instanceof IjkMediaPlayer) {
-            trackInfo = ((IjkMediaPlayer) mediaPlayer).getTrackInfo();
-        }
-        if (mediaPlayer instanceof EXOmPlayer) {
-            trackInfo = ((EXOmPlayer) mediaPlayer).getTrackInfo();
-        }
+        TrackInfo trackInfo = com.github.tvbox.osc.player.PlayerTrackHelper.getTrackInfo(mediaPlayer);
 
         if (trackInfo == null) {
             AppBubble.toast("没有音轨");
@@ -525,12 +519,7 @@ public class PlayFragment extends BaseLazyFragment {
                     }
                     mediaPlayer.pause();
                     long progress = mediaPlayer.getCurrentPosition();//保存当前进度，ijk 切换轨道 会有快进几秒
-                    if (mediaPlayer instanceof IjkMediaPlayer) {
-                        ((IjkMediaPlayer) mediaPlayer).setTrack(value.trackId);
-                    }
-                    if (mediaPlayer instanceof EXOmPlayer) {
-                        ((EXOmPlayer) mediaPlayer).selectExoTrack(value);
-                    }
+                    com.github.tvbox.osc.player.PlayerTrackHelper.selectTrack(mediaPlayer, value);
                     new Handler().postDelayed(new Runnable() {
                         @Override
                         public void run() {
@@ -567,13 +556,7 @@ public class PlayFragment extends BaseLazyFragment {
 
     void selectMyInternalSubtitle() {
         AbstractPlayer mediaPlayer = mVideoView.getMediaPlayer();
-        TrackInfo trackInfo = null;
-        if (mediaPlayer instanceof EXOmPlayer) {
-            trackInfo = ((EXOmPlayer)mediaPlayer).getTrackInfo();
-        }
-        if (mediaPlayer instanceof IjkMediaPlayer) {
-            trackInfo = ((IjkMediaPlayer)mediaPlayer).getTrackInfo();
-        }
+        TrackInfo trackInfo = com.github.tvbox.osc.player.PlayerTrackHelper.getTrackInfo(mediaPlayer);
 
         if (trackInfo == null) {
             AppBubble.toast("没有内置字幕");
@@ -598,7 +581,7 @@ public class PlayFragment extends BaseLazyFragment {
                     mController.mSubtitleView.isInternal = true;
 
                     if (mediaPlayer instanceof IjkMediaPlayer) {
-                        ((IjkMediaPlayer)mediaPlayer).setTrack(value.trackId);
+                        com.github.tvbox.osc.player.PlayerTrackHelper.selectTrack(mediaPlayer, value);
                         new Handler().postDelayed(new Runnable() {
                             @Override
                             public void run() {
@@ -608,7 +591,7 @@ public class PlayFragment extends BaseLazyFragment {
                         }, 800);
                     }
                     if (mediaPlayer instanceof EXOmPlayer) {
-                        ((EXOmPlayer)mediaPlayer).selectExoTrack(value);
+                        com.github.tvbox.osc.player.PlayerTrackHelper.selectTrack(mediaPlayer, value);
                         new Handler().postDelayed(new Runnable() {
                             @Override
                             public void run() {
