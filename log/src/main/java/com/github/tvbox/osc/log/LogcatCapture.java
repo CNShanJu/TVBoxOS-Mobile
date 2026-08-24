@@ -51,8 +51,9 @@ public final class LogcatCapture {
         return appContext;
     }
 
-    /** 启动捕获（幂等）；release 上 --uid 受限时自动回退无过滤并提示 */
+    /** 启动捕获（幂等）；未注入 context（模块未初始化/降级模式）时静默不启动 */
     public static void start() {
+        if (appContext() == null) return;
         if (thread != null && thread.isAlive()) return;
         synchronized (LOCK) {
             if (thread != null && thread.isAlive()) return;

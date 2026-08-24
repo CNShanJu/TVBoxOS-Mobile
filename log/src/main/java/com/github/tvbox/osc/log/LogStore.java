@@ -53,6 +53,8 @@ public final class LogStore {
     private static final long DAY_MS = 24L * 3600 * 1000;
 
     private static volatile LogStore instance;
+    /** 未初始化时的降级空实现（no-op）：任何模块在 :log 未 init/未引入时调用也安全，日志静默丢弃 */
+    private static volatile LogStore noopInstance;
 
     private final LogDatabase db;
     /** 写库/查询统一走单线程，避免 Room 并发写 */
@@ -79,11 +81,29 @@ public final class LogStore {
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
 
     private LogStore(Context context) {
-        db = LogDatabase.get(context);
+        this(context, false);
     }
 
+    /** noop=true 时不建数据库（降级空实现，无任何副作用） */
+    private LogStore(Context context, boolean noop) {
+        db = noop ? null : LogDatabase.get(context);
+    }
+
+    /**
+     * 门面入口（降级安全）：未 {@link #init(Context)} 时返回 no-op 空实现——
+     * 其他模块即使没引入/没初始化 :log 也能正常工作（日志不记录、查询返回空）。
+     * 永不返回 null。
+     */
     public static LogStore get() {
-        return instance;
+        if (instance != null) return instance;
+        if (noopInstance == null) {
+            synchronized (LogStore.class) {
+                if (noopInstance == null) {
+                    noopInstance = new LogStore(null, true);
+                }
+            }
+        }
+        return noopInstance;
     }
 
     /** App 启动时调用一次；内部按 LogConfig 同步开关并启动 logcat 捕获（如已开启） */
@@ -174,6 +194,7 @@ public final class LogStore {
     }
 
     private void flushNow() {
+        if (db == null) return; // 降级模式: 不落库
         final List<LogEntry> batch;
         synchronized (pendingLock) {
             if (pending.isEmpty()) return;
@@ -196,15 +217,17 @@ public final class LogStore {
     // 查询
     // ------------------------------------------------------------------
 
-    /** 组合筛选查询（阻塞至结果返回；页面调用建议放后台线程） */
+    /** 组合筛选查询（阻塞至结果返回；页面调用建议放后台线程）；降级模式返回 null */
     public List<LogEntry> query(final LogFilter f) {
+        if (db == null) return null;
         return await(() -> db.logDao().query(
                 f.category, f.subType, f.minLevel, f.taskKey,
                 f.fromTs, f.toTs, f.keyword, f.limit, f.offset));
     }
 
-    /** 任务维度视图（"任务详情→查看日志"） */
+    /** 任务维度视图（"任务详情→查看日志"）；降级模式返回 null */
     public List<LogEntry> queryByTask(String taskKey, int limit, int offset) {
+        if (db == null) return null;
         return await(() -> db.logDao().queryByTask(taskKey, limit, offset));
     }
 
@@ -257,8 +280,9 @@ public final class LogStore {
     // 运维
     // ------------------------------------------------------------------
 
-    /** 按保留天数清理（默认 7 天；只删日志，不碰任务元数据与档案） */
+    /** 按保留天数清理（默认 7 天；只删日志，不碰任务元数据与档案）；降级模式空操作 */
     public void clear(int retentionDays) {
+        if (db == null) return;
         final long before = System.currentTimeMillis() - Math.max(1, retentionDays) * DAY_MS;
         ioExecutor.execute(() -> {
             try {
@@ -269,8 +293,9 @@ public final class LogStore {
         });
     }
 
-    /** 清空全部业务日志 */
+    /** 清空全部业务日志；降级模式空操作 */
     public void clearAll() {
+        if (db == null) return;
         ioExecutor.execute(() -> {
             try {
                 db.logDao().clearAll();
@@ -280,8 +305,9 @@ public final class LogStore {
         });
     }
 
-    /** 按当前筛选导出 txt（放 cacheDir，可 FileProvider 分享）；无结果返回 null */
+    /** 按当前筛选导出 txt（放 cacheDir，可 FileProvider 分享）；无结果/降级模式返回 null */
     public File export(LogFilter f) {
+        if (db == null) return null;
         List<LogEntry> entries = query(f);
         if (entries == null || entries.isEmpty()) return null;
         try {
