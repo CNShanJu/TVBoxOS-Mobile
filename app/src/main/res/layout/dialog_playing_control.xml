@@ -176,7 +176,7 @@
                     android:id="@+id/decrease_start"
                     android:layout_width="26dp"
                     android:layout_height="26dp"
-                    android:src="@drawable/icon_back"
+                    android:src="@drawable/ic_back"
                     app:tint="@color/text_foreground"
                     />
                 <TextView
@@ -195,7 +195,7 @@
                     android:id="@+id/increase_start"
                     android:layout_width="26dp"
                     android:layout_height="26dp"
-                    android:src="@drawable/icon_pre"
+                    android:src="@drawable/ic_pre"
                     app:tint="@color/text_foreground"
                     />
 
@@ -203,7 +203,7 @@
                     android:id="@+id/decrease_end"
                     android:layout_width="26dp"
                     android:layout_height="26dp"
-                    android:src="@drawable/icon_back"
+                    android:src="@drawable/ic_back"
                     app:tint="@color/text_foreground"
                     android:layout_marginStart="10dp"
                     />
@@ -223,7 +223,7 @@
                     android:id="@+id/increase_end"
                     android:layout_width="26dp"
                     android:layout_height="26dp"
-                    android:src="@drawable/icon_pre"
+                    android:src="@drawable/ic_pre"
                     app:tint="@color/text_foreground"
                     />
 

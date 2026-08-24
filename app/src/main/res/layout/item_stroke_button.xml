@@ -31,7 +31,7 @@
         android:clickable="true"
         android:focusable="true"
         android:padding="12dp"
-        android:src="@drawable/icon_delete"
+        android:src="@drawable/ic_delete"
         app:tint="@color/red" />
 
 </LinearLayout>

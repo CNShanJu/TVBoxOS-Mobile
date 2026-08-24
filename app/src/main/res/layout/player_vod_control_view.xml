@@ -594,7 +594,7 @@
                 android:layout_height="30dp"
                 android:focusable="false"
                 android:focusableInTouchMode="false"
-                tools:src="@drawable/icon_back" />
+                tools:src="@drawable/ic_back" />
 
             <TextView
                 android:id="@+id/tv_progress_text"

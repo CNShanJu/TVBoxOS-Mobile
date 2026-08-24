@@ -79,7 +79,7 @@
             android:layout_gravity="center"
             android:layout_marginLeft="6dp"
             android:alpha="0.75"
-            android:src="@drawable/icon_pre"
+            android:src="@drawable/ic_pre"
             app:tint="@color/text_foreground" />
     </LinearLayout>
 

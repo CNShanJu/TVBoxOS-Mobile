@@ -124,7 +124,7 @@
 				android:id="@+id/ic_pre_source"
 				android:layout_width="30dp"
 				android:layout_height="30dp"
-				android:src="@drawable/icon_pre"
+				android:src="@drawable/ic_pre"
 				app:tint="@color/text_foreground"
 				android:rotation="-180"
 				android:padding="4dp"
@@ -142,7 +142,7 @@
 				android:id="@+id/ic_next_source"
 				android:layout_width="30dp"
 				android:layout_height="30dp"
-				android:src="@drawable/icon_pre"
+				android:src="@drawable/ic_pre"
 				app:tint="@color/text_foreground"
 				android:padding="4dp"
 				/>

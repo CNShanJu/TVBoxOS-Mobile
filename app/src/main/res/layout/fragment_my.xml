@@ -85,7 +85,7 @@
                     android:layout_height="26dp"
                     android:layout_gravity="center"
                     android:alpha="0.75"
-                    android:src="@drawable/icon_pre"
+                    android:src="@drawable/ic_pre"
                     app:tint="@color/text_foreground" />
 
             </LinearLayout>
@@ -129,7 +129,7 @@
                     android:layout_height="26dp"
                     android:layout_gravity="center"
                     android:alpha="0.75"
-                    android:src="@drawable/icon_pre"
+                    android:src="@drawable/ic_pre"
                     app:tint="@color/text_foreground" />
 
             </LinearLayout>
@@ -172,7 +172,7 @@
                     android:layout_height="26dp"
                     android:layout_gravity="center"
                     android:alpha="0.75"
-                    android:src="@drawable/icon_pre"
+                    android:src="@drawable/ic_pre"
                     app:tint="@color/text_foreground" />
 
             </LinearLayout>
@@ -215,7 +215,7 @@
                     android:layout_height="26dp"
                     android:layout_gravity="center"
                     android:alpha="0.75"
-                    android:src="@drawable/icon_pre"
+                    android:src="@drawable/ic_pre"
                     app:tint="@color/text_foreground" />
 
             </LinearLayout>
@@ -258,7 +258,7 @@
                     android:layout_height="26dp"
                     android:layout_gravity="center"
                     android:alpha="0.75"
-                    android:src="@drawable/icon_pre"
+                    android:src="@drawable/ic_pre"
                     app:tint="@color/text_foreground" />
 
             </LinearLayout>
@@ -301,7 +301,7 @@
                     android:layout_height="26dp"
                     android:layout_gravity="center"
                     android:alpha="0.75"
-                    android:src="@drawable/icon_pre"
+                    android:src="@drawable/ic_pre"
                     app:tint="@color/text_foreground" />
 
             </LinearLayout>
@@ -345,7 +345,7 @@
                     android:layout_height="26dp"
                     android:layout_gravity="center"
                     android:alpha="0.75"
-                    android:src="@drawable/icon_pre"
+                    android:src="@drawable/ic_pre"
                     app:tint="@color/text_foreground" />
 
             </LinearLayout>
@@ -388,7 +388,7 @@
                     android:layout_height="26dp"
                     android:layout_gravity="center"
                     android:alpha="0.75"
-                    android:src="@drawable/icon_pre"
+                    android:src="@drawable/ic_pre"
                     app:tint="@color/text_foreground" />
 
             </LinearLayout>
@@ -431,7 +431,7 @@
                     android:layout_height="26dp"
                     android:layout_gravity="center"
                     android:alpha="0.75"
-                    android:src="@drawable/icon_pre"
+                    android:src="@drawable/ic_pre"
                     app:tint="@color/text_foreground" />
 
             </LinearLayout>
