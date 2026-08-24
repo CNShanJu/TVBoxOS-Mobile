@@ -12,6 +12,7 @@ public enum SystemSubType implements SubType {
     ORIENTATION("orientation", "横竖屏"),
     BATTERY("battery", "电量"),
     DISK("disk", "磁盘"),
+    PERMISSION("permission", "权限"),
     TIME("time", "时间"),
     BOOT("boot", "启动");
 

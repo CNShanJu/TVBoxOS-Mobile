@@ -675,4 +675,34 @@ public class DownloadScheduler {
             wakeWorker();
         }
     }
+
+    /**
+     * Bug4: 存储权限被撤销 → 暂停全部运行任务(置用户暂停并提示,避免半截文件)。
+     * 权限恢复后由用户手动继续(startTask 启动前也会再检查权限)。
+     */
+    void pauseAllPermission() {
+        boolean changed = false;
+        synchronized (dm.tasks) {
+            for (DownloadTask t : dm.tasks) {
+                if (t.state == DownloadTask.STATE_DOWNLOADING
+                        || t.state == DownloadTask.STATE_WAITING
+                        || t.state == DownloadTask.STATE_SYSTEM_PAUSED) {
+                    t.state = DownloadTask.STATE_PAUSED;
+                    t.message = "存储权限已撤销";
+                    changed = true;
+                    Response r = dm.activeResponses.remove(t.id);
+                    if (r != null) {
+                        try {
+                            r.close();
+                        } catch (Throwable ignored) {
+                        }
+                    }
+                }
+            }
+        }
+        if (changed) {
+            dm.persist();
+            dm.notifyChanged();
+        }
+    }
 }

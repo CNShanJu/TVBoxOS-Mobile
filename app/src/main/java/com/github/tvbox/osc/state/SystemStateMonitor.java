@@ -50,6 +50,7 @@ public final class SystemStateMonitor {
     public static final String TYPE_ORIENTATION = "orientation";
     public static final String TYPE_BATTERY = "battery";
     public static final String TYPE_DISK = "disk";
+    public static final String TYPE_PERMISSION = "permission";
     public static final String TYPE_TIME = "time";
 
     public static final String VAL_NONE = "NONE";
@@ -64,6 +65,8 @@ public final class SystemStateMonitor {
     public static final String VAL_LOW = "LOW";
     public static final String VAL_NORMAL = "NORMAL";
     public static final String VAL_CHARGING = "CHARGING";
+    public static final String VAL_PERMISSION_GRANTED = "GRANTED";
+    public static final String VAL_PERMISSION_REVOKED = "REVOKED";
 
     /** 低电量阈值：20% */
     private static final float LOW_BATTERY_RATIO = 0.2f;
@@ -93,6 +96,8 @@ public final class SystemStateMonitor {
 
     private int startedActivityCount = 0;
     private String pendingNetwork = null;
+    /** 存储权限状态(前后台切换时检查,变化即广播) */
+    private boolean permissionGranted = true;
 
     private SystemStateMonitor() {
     }
@@ -279,6 +284,7 @@ public final class SystemStateMonitor {
                         state.appForeground = true;
                         log.info(SystemSubType.FOREGROUND, "应用回到前台", null);
                         emit(TYPE_FOREGROUND, VAL_FOREGROUND);
+                        checkStoragePermission();
                     }
                 }
 
@@ -301,6 +307,15 @@ public final class SystemStateMonitor {
         } catch (Throwable th) {
             Log.e("SystemState", "前后台监听注册失败", th);
         }
+    }
+
+    /** 存储权限变化检测(Android 10+ MANAGE_EXTERNAL_STORAGE;权限撤销时业务模块据此暂停任务) */
+    private void checkStoragePermission() {
+        boolean granted = android.os.Build.VERSION.SDK_INT < 30 || android.os.Environment.isExternalStorageManager();
+        if (granted == permissionGranted) return;
+        permissionGranted = granted;
+        log.info(SystemSubType.PERMISSION, granted ? "存储权限已授予" : "存储权限被撤销", null);
+        emit(TYPE_PERMISSION, granted ? VAL_PERMISSION_GRANTED : VAL_PERMISSION_REVOKED);
     }
 
     // ── 横竖屏（DisplayManager）──

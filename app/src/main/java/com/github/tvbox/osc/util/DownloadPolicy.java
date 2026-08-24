@@ -56,6 +56,13 @@ public class DownloadPolicy {
                     dm.scheduler.resumeAllNetwork();
                 }
             }, SystemStateMonitor.TYPE_NETWORK);
+            // Bug4: 存储权限被撤销 → 暂停全部(避免半截文件)
+            monitor.register((SystemEvent e) -> {
+                if (!SystemStateMonitor.TYPE_PERMISSION.equals(e.type)) return;
+                if (SystemStateMonitor.VAL_PERMISSION_REVOKED.equals(e.value)) {
+                    dm.scheduler.pauseAllPermission();
+                }
+            }, SystemStateMonitor.TYPE_PERMISSION);
         }
     }
 
