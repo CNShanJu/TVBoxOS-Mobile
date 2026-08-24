@@ -2,7 +2,6 @@ package com.github.tvbox.osc.player.api;
 
 import android.content.Context;
 
-import com.github.tvbox.osc.util.HawkConfig;
 import com.orhanobut.hawk.Hawk;
 
 import java.util.Map;
@@ -46,8 +45,8 @@ public final class PlayerFactory {
         return null;
     }
 
-    /** 默认内核（用户当前选中：0 系统 / 1 IJK / 2 Exo / 10 MXPlayer 等，见 PlayerHelper） */
+    /** 默认内核（用户当前选中：0 系统 / 1 IJK / 2 Exo / 10 MXPlayer 等；key 内联，独立模块不依赖 app 的 HawkConfig） */
     public static int defaultPlayType() {
-        return Hawk.get(HawkConfig.PLAY_TYPE, 0);
+        return Hawk.get("play_type", 0);
     }
 }
