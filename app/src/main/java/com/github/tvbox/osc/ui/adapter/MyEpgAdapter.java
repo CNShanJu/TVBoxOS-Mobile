@@ -65,7 +65,7 @@ public class MyEpgAdapter extends BaseAdapter {
     @Override
     public View getView(int i, View view, ViewGroup viewGroup) {
         if(view ==null){
-            view =  LayoutInflater.from(context).inflate(R.layout.epglist_item,viewGroup,false);
+            view =  LayoutInflater.from(context).inflate(R.layout.item_epglist,viewGroup,false);
         }
         TextView textview = (TextView)view.findViewById(R.id.tv_epg_name);
         TextView timeview = (TextView)view.findViewById(R.id.tv_epg_time);
