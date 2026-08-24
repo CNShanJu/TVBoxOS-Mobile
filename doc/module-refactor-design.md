@@ -878,6 +878,23 @@ File getSaveDir();  boolean hasStoragePermission();  void requestStoragePermissi
 | **P2 :ui-common 模块** | 建 `:ui-common`，公共资源迁入；app 只留页面级资源 | 构建通过、UI 无回归 |
 | **P3 模块树（按需）** | crawler / download / state / log 独立 gradle 模块 | 按需评估 |
 
+### 落地状态（执行记录）
+
+| 项 | 状态 | 说明 |
+|---|---|---|
+| ③ LogStore + LogConfig | ✅ 已落地 | log 独立包、register/CategoryLogger、Room + logcat `--uid`、LogConfig 配置门面、设置页日志开关改造、LogActivity 双 Tab（业务日志筛选） |
+| ② SystemStateMonitor | ✅ 已落地 | state 独立包、网络/前后台/锁屏/横竖屏/电量/磁盘/权限维度、订阅 API |
+| ④ SpiderModule | ✅ 已落地 | SpiderApi 全能力门面、SpiderExecutor 串行收口、PlayUrlResolver 迁入、下载 reResolve 不再依赖 UI 线程池 |
+| ⑥ PlayerModule（契约层） | ✅ 已落地 | PlayerApi 引擎无关契约 + PlayerFactory（Media3 升级铺路） |
+| ⑥ 适配器层 + PlayFragment 薄层化 | ⏳ 待真机回归 | 18 个播放器类收敛为 PlayerApiAdapter、消除 `instanceof EXOmPlayer` 强转 |
+| ① 5.1 纯拆分 | ✅ 已落地 | DownloadManager 门面 + Store/Scheduler/Executor/Policy/Cleaner 5 组件 |
+| ① 5.2 修 5 Bug | ✅ 已落地 | Bug5 .nomedia+孤儿回收 / Bug1 网络暂停恢复 / Bug2 CANCELLED+碎片复用+原子写 / Bug4 权限硬门槛+撤销暂停 / 启动对账 |
+| ① 5.3 门面+日志中心 | ✅ 已落地 | DownloadFacade（5 态快照/聚合/订阅/日志/档案管理）、DownloadArchive、任务日志接 LogStore；详情页/下载页 UI 迁移 ⏳ 待真机 |
+| ① 5.4 重封装 | ✅ 已落地 | TS→MP4 MediaMuxer 重封装（失败回退 .ts）+ MSG_REMUX |
+| P1 资源命名规范 | ✅ 脚本 + 两批治理 | check-res-naming.ps1 校验；icon_*→ic_*、layout 归位；剩余第三方库风格改名 ⏳ 收益递减 |
+| P2 :ui-common | ⏳ 待排期 | 公共资源迁移（依赖 P1 完成度） |
+| 可选增强 | ⏳ 未做 | 限速 setSpeedLimit / DownloadNotifier / 前台服务（依赖任务对象抽象层） |
+
 ---
 
 ## 七、风险点
