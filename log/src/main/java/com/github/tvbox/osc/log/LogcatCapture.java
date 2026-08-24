@@ -3,8 +3,6 @@ package com.github.tvbox.osc.log;
 import android.content.Context;
 import android.util.Log;
 
-import com.github.tvbox.osc.base.App;
-
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileOutputStream;
@@ -23,6 +21,7 @@ import java.util.Locale;
  * <p>
  * 与业务日志（Room）互补：业务日志结构化可筛选，这里保留原始 logcat 流（"全部日志"）。
  * 开关由 {@link LogStore#setEnabled(boolean)} 联动（默认关）。
+ * Context 由 {@link LogStore#init(Context)} 注入（独立模块，不依赖 app 类）。
  */
 public final class LogcatCapture {
 
@@ -37,12 +36,19 @@ public final class LogcatCapture {
     private static final Object LOCK = new Object();
     private static volatile Process process;
     private static volatile Thread thread;
+    private static volatile Context appContext;
 
     private LogcatCapture() {
     }
 
-    public static Context appContext() {
-        return App.getInstance();
+    /** 由 LogStore.init 注入 application context（独立模块不依赖 app 类） */
+    static void setAppContext(Context context) {
+        appContext = context == null ? null : context.getApplicationContext();
+    }
+
+    /** 包内可见: LogStore.export 需要 cacheDir */
+    static Context appContext() {
+        return appContext;
     }
 
     /** 启动捕获（幂等）；release 上 --uid 受限时自动回退无过滤并提示 */

@@ -95,6 +95,7 @@ public final class LogStore {
                 }
             }
         }
+        LogcatCapture.setAppContext(context); // 独立模块: context 注入,不依赖 app 类
         instance.enabled = LogConfig.isEnabled();
         instance.minLevel = LogConfig.getLevel();
         if (instance.enabled) {

@@ -1,6 +1,5 @@
 package com.github.tvbox.osc.log;
 
-import com.github.tvbox.osc.util.HawkConfig;
 import com.orhanobut.hawk.Hawk;
 
 import java.util.List;
@@ -16,12 +15,13 @@ import java.util.concurrent.CopyOnWriteArrayList;
  *       {@link #setRetentionDays(int)}</li>
  *   <li>订阅：{@link #subscribe(Listener)}——设置页等关注方刷新 UI</li>
  * </ul>
- * 持久化 key：开关沿用 {@link HawkConfig#APP_LOG}（与旧设置兼容），级别/保留天数新增独立 key。
+ * 持久化 key：开关沿用旧应用 key "app_log"（与历史设置兼容，独立模块不依赖 app 的 HawkConfig），
+ * 级别/保留天数用独立 key。
  */
 public final class LogConfig {
 
-    /** 开关（沿用旧 key，兼容历史设置） */
-    private static final String KEY_ENABLED = HawkConfig.APP_LOG;
+    /** 开关（沿用旧应用 key "app_log"，兼容历史设置；独立模块内联，不依赖 app 的 HawkConfig） */
+    private static final String KEY_ENABLED = "app_log";
     private static final String KEY_LEVEL = "log_level";
     private static final String KEY_RETENTION = "log_retention";
 
