@@ -85,6 +85,11 @@ public final class DownloadArchive {
         return out;
     }
 
+    /** 全部档案（新→旧；下载管理页聚合根级用） */
+    public synchronized List<ArchiveItem> getAll() {
+        return new ArrayList<>(items);
+    }
+
     /** 按 剧名(+来源) 查询已下载列表（下载管理页"下载完成"tab 数据源；旧档案无 sourceName 时放行） */
     public synchronized List<ArchiveItem> queryByVod(String vodName, String sourceName) {
         List<ArchiveItem> out = new ArrayList<>();

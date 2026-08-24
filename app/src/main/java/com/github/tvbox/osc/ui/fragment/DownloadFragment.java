@@ -105,6 +105,8 @@ public class DownloadFragment extends BaseVbFragment<FragmentDownloadBinding> {
         String name;        // 剧名
         String sourceName;
         List<DownloadTask> tasks = new ArrayList<>();
+        /** 已完成集（档案表长期数据源） */
+        List<com.github.tvbox.osc.download.ArchiveItem> doneItems = new ArrayList<>();
     }
 
     @Override
@@ -155,15 +157,14 @@ public class DownloadFragment extends BaseVbFragment<FragmentDownloadBinding> {
                     helper.setText(R.id.tv_source, src);
                 }
                 helper.setText(R.id.tv_name, group.name);
-                // 聚合状态:任务数(未完成) + 已完成集数
+                // 聚合状态:任务数(未完成) + 已完成集数(档案表)
                 int tasks = 0;
                 int done = 0;
                 for (DownloadTask t : group.tasks) {
-                    if (t.state == DownloadTask.STATE_COMPLETED) {
-                        if (t.savePath != null && new File(t.savePath).exists()) done++;
-                    } else {
-                        tasks++;
-                    }
+                    if (t.state != DownloadTask.STATE_COMPLETED) tasks++;
+                }
+                for (com.github.tvbox.osc.download.ArchiveItem it : group.doneItems) {
+                    if (it.savePath != null && new File(it.savePath).exists()) done++;
                 }
                 String note = tasks > 0 ? tasks + " 个任务" : "";
                 if (done > 0) {
@@ -548,18 +549,18 @@ public class DownloadFragment extends BaseVbFragment<FragmentDownloadBinding> {
         }
     }
 
-    /** 详情页 Tab 数量角标(该剧维度):正在下载 (N)  已完成 (M) */
+    /** 详情页 Tab 数量角标(该剧维度):正在下载 (N)  已完成 (M, 档案表) */
     private void updateTabCounts() {
         if (currentVodGroup == null) return;
         int downloading = 0;
-        int done = 0;
         for (DownloadTask t : DownloadManager.get().getTasks()) {
-            if (!inGroup(t, currentVodGroup, currentSourceName)) continue;
-            if (t.state == DownloadTask.STATE_COMPLETED) {
-                if (t.savePath != null && new File(t.savePath).exists()) done++;
-            } else {
-                downloading++;
-            }
+            if (t.state == DownloadTask.STATE_COMPLETED) continue;
+            if (inGroup(t, currentVodGroup, currentSourceName)) downloading++;
+        }
+        int done = 0;
+        for (com.github.tvbox.osc.download.ArchiveItem it :
+                com.github.tvbox.osc.download.DownloadArchive.get().queryByVod(currentVodGroup, currentSourceName)) {
+            if (it.savePath != null && new File(it.savePath).exists()) done++;
         }
         mBinding.tvTabDownloading.setText(downloading > 0 ? "正在下载 (" + downloading + ")" : "正在下载");
         mBinding.tvTabDone.setText(done > 0 ? "下载完成 (" + done + ")" : "下载完成");
@@ -830,10 +831,9 @@ public class DownloadFragment extends BaseVbFragment<FragmentDownloadBinding> {
     private List<DownloadGroup> buildAggregateGroups() {
         Map<String, DownloadGroup> map = new LinkedHashMap<>();
         Map<String, Long> firstTime = new LinkedHashMap<>();
+        // 下载中/未完成任务（运行态）
         for (DownloadTask t : DownloadManager.get().getTasks()) {
-            if (t.state == DownloadTask.STATE_COMPLETED && (t.savePath == null || !new File(t.savePath).exists())) {
-                continue;
-            }
+            if (t.state == DownloadTask.STATE_COMPLETED) continue; // 已完成走档案
             String src = t.sourceName == null ? "" : t.sourceName;
             String name = vodNameOf(t);
             String key = src + "\u0001" + name;
@@ -848,21 +848,42 @@ public class DownloadFragment extends BaseVbFragment<FragmentDownloadBinding> {
             }
             g.tasks.add(t);
         }
+        // 已完成集（档案表长期数据源）
+        for (com.github.tvbox.osc.download.ArchiveItem it :
+                com.github.tvbox.osc.download.DownloadArchive.get().getAll()) {
+            if (it.savePath == null || !new File(it.savePath).exists()) continue;
+            String src = it.sourceName == null ? "" : it.sourceName;
+            String name = it.vodName == null ? "" : it.vodName;
+            String key = src + "\u0001" + name;
+            DownloadGroup g = map.get(key);
+            if (g == null) {
+                g = new DownloadGroup();
+                g.key = key;
+                g.name = name;
+                g.sourceName = src;
+                map.put(key, g);
+                firstTime.put(key, it.downloadTime);
+            }
+            g.doneItems.add(it);
+        }
         List<DownloadGroup> groups = new ArrayList<>(map.values());
         groups.sort(Comparator.comparingLong(g -> firstTime.get(g.key)));
         return groups;
     }
 
-    /** 该剧(剧名+来源)是否仍存在于聚合(用于详情页自动退回) */
+    /** 该剧(剧名+来源)是否仍存在于聚合(用于详情页自动退回):有下载中任务 或 有已完成档案 */
     private boolean isGroupPresent(String name, String source) {
         String wantSrc = source == null ? "" : source;
         for (DownloadTask t : DownloadManager.get().getTasks()) {
             if (!name.equals(vodNameOf(t))) continue;
             if (!wantSrc.equals(t.sourceName == null ? "" : t.sourceName)) continue;
-            if (t.state != DownloadTask.STATE_COMPLETED
-                    || (t.savePath != null && new File(t.savePath).exists())) {
-                return true;
-            }
+            if (t.state != DownloadTask.STATE_COMPLETED) return true;
+        }
+        for (com.github.tvbox.osc.download.ArchiveItem it :
+                com.github.tvbox.osc.download.DownloadArchive.get().getAll()) {
+            if (!name.equals(it.vodName)) continue;
+            if (!wantSrc.equals(it.sourceName == null ? "" : it.sourceName)) continue;
+            if (it.savePath != null && new File(it.savePath).exists()) return true;
         }
         return false;
     }
