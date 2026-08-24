@@ -1,6 +1,7 @@
 package com.github.tvbox.osc.api;
 
 import android.app.Activity;
+import android.content.Context;
 import android.net.Uri;
 import android.text.TextUtils;
 import android.util.Base64;
@@ -8,13 +9,11 @@ import android.util.Base64;
 import com.github.catvod.crawler.JarLoader;
 import com.github.catvod.crawler.JsLoader;
 import com.github.catvod.crawler.Spider;
-import com.github.tvbox.osc.base.App;
 import com.github.tvbox.osc.bean.LiveChannelGroup;
 import com.github.tvbox.osc.bean.IJKCode;
 import com.github.tvbox.osc.bean.LiveChannelItem;
 import com.github.tvbox.osc.bean.ParseBean;
 import com.github.tvbox.osc.bean.SourceBean;
-import com.github.tvbox.osc.server.ControlManager;
 import com.github.tvbox.osc.util.AES;
 import com.github.tvbox.osc.util.AdBlocker;
 import com.github.tvbox.osc.util.DefaultConfig;
@@ -55,6 +54,34 @@ import java.util.regex.Pattern;
  * @description:
  */
 public class ApiConfig {
+    /** 注入的 application context（独立模块 :spider，不依赖 app 类） */
+    private static volatile Context appContext;
+    /** 局域网地址前缀（由 app 侧 ControlManager 初始化后注入，替代直接依赖） */
+    private static volatile String lanBase = "";
+
+    /** App 启动时注入 context（配置缓存目录等用；同步给爬虫 loader / FileUtils / UA） */
+    public static void setAppContext(Context context) {
+        appContext = context == null ? null : context.getApplicationContext();
+        com.github.catvod.crawler.JarLoader.setContext(context);
+        com.github.catvod.crawler.JsLoader.setContext(context);
+        com.github.tvbox.osc.util.FileUtils.setContext(context);
+        com.github.tvbox.osc.util.UA.setContext(context);
+    }
+
+    /** 局域网地址前缀注入（app 侧 ControlManager.get().getAddress(true) 设置） */
+    public static void setLanBase(String base) {
+        lanBase = base == null ? "" : base;
+    }
+
+    /** 局域网地址前缀（util.js 等用） */
+    public static String getLanBase() {
+        return lanBase;
+    }
+
+    private static Context getAppContext() {
+        return appContext;
+    }
+
     private static ApiConfig instance;
     private LinkedHashMap<String, SourceBean> sourceBeanList;
     private SourceBean mHomeSource;
@@ -156,7 +183,7 @@ public class ApiConfig {
             callback.error("-1");
             return;
         }
-        File cache = new File(App.getInstance().getFilesDir().getAbsolutePath() + "/" + MD5.encode(apiUrl));
+        File cache = new File(getAppContext().getFilesDir().getAbsolutePath() + "/" + MD5.encode(apiUrl));
         if (useCache && cache.exists()) {
             try {
                 parseJson(apiUrl, cache);
@@ -249,7 +276,7 @@ public class ApiConfig {
         String[] urls = spider.split(";md5;");
         String jarUrl = urls[0];
         String md5 = urls.length > 1 ? urls[1].trim() : "";
-        File cache = new File(App.getInstance().getFilesDir().getAbsolutePath() + "/csp.jar");
+        File cache = new File(getAppContext().getFilesDir().getAbsolutePath() + "/csp.jar");
         AppLog.log("更新", "开始更新订阅: " + jarUrl + (md5.isEmpty() ? "" : "  md5=" + md5));
 
         if (!md5.isEmpty() || useCache) {
@@ -876,7 +903,7 @@ public class ApiConfig {
 
     String clanToAddress(String lanLink) {
         if (lanLink.startsWith("clan://localhost/")) {
-            return lanLink.replace("clan://localhost/", ControlManager.get().getAddress(true) + "file/");
+            return lanLink.replace("clan://localhost/", lanBase + "file/");
         } else {
             String link = lanLink.substring(7);
             int end = link.indexOf('/');

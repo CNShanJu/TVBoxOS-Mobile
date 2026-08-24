@@ -1,7 +1,7 @@
 package com.github.catvod.crawler;
 
 
-import com.github.tvbox.osc.base.App;
+import android.content.Context;
 import com.github.tvbox.osc.util.HttpClient;
 import com.github.tvbox.osc.util.LOG;
 import com.github.tvbox.osc.util.MD5;
@@ -14,6 +14,13 @@ import java.util.concurrent.ConcurrentHashMap;
 import dalvik.system.DexClassLoader;
 
 public class JsLoader {
+    /** 注入的 application context（独立模块 :spider，由 ApiConfig.setAppContext 同步设置） */
+    private static volatile Context context;
+
+    public static void setContext(Context c) {
+        context = c == null ? null : c.getApplicationContext();
+    }
+
     private static ConcurrentHashMap<String, Spider> spiders = new ConcurrentHashMap<>();
     private static ConcurrentHashMap<String, Class<?>> classs = new ConcurrentHashMap<>();
 
@@ -36,7 +43,7 @@ public class JsLoader {
         boolean success = false;
         Class<?> classInit = null;
         try {
-            File cacheDir = new File(App.getInstance().getCacheDir().getAbsolutePath() + "/catvod_jsapi");
+            File cacheDir = new File(context.getCacheDir().getAbsolutePath() + "/catvod_jsapi");
             if (!cacheDir.exists())
                 cacheDir.mkdirs();
             // Android 8+ 禁止加载可写的 dex/jar 文件,加载前置为只读
@@ -44,7 +51,7 @@ public class JsLoader {
             if (jarFile.exists()) {
                 jarFile.setReadOnly();
             }
-            DexClassLoader classLoader = new DexClassLoader(jar, cacheDir.getAbsolutePath(), null, App.getInstance().getClassLoader());
+            DexClassLoader classLoader = new DexClassLoader(jar, cacheDir.getAbsolutePath(), null, context.getClassLoader());
             // make force wait here, some device async dex load
             int count = 0;
             do {
@@ -74,7 +81,7 @@ public class JsLoader {
     private Class<?> loadJarInternal(String jar, String md5, String key) {
         if (classs.contains(key))
             return classs.get(key);
-        File cache = new File(App.getInstance().getFilesDir().getAbsolutePath() + "/" + key + ".jar");
+        File cache = new File(context.getFilesDir().getAbsolutePath() + "/" + key + ".jar");
         if (!md5.isEmpty()) {
             if (cache.exists() && MD5.getFileMd5(cache).equalsIgnoreCase(md5)) {
                 loadClassLoader(cache.getAbsolutePath(), key);
@@ -107,7 +114,7 @@ public class JsLoader {
             return spiders.get(key);
         try {
             Spider sp = new JsSpider(key, api, classLoader);
-            sp.init(App.getInstance(), ext);
+            sp.init(context, ext);
             spiders.put(key, sp);
             return sp;
         } catch (Throwable th) {

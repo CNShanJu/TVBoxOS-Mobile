@@ -9,7 +9,7 @@ import android.text.TextUtils;
 import com.github.tvbox.osc.api.ApiConfig;
 import com.github.tvbox.osc.bean.MovieSort;
 import com.github.tvbox.osc.bean.SourceBean;
-import com.github.tvbox.osc.server.ControlManager;
+
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 
@@ -174,7 +174,7 @@ public class DefaultConfig {
 
     public static String checkReplaceProxy(String urlOri) {
         if (!TextUtils.isEmpty(urlOri) && urlOri.startsWith("proxy://")) {
-            return urlOri.replace("proxy://", ControlManager.get().getAddress(true) + "proxy?");
+            return urlOri.replace("proxy://", com.github.tvbox.osc.api.ApiConfig.getLanBase() + "proxy?");
         }else {
             return urlOri;
         }

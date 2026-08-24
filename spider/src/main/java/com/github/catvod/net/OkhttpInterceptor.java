@@ -3,7 +3,7 @@ package com.github.catvod.net;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
-import com.google.common.net.HttpHeaders;
+
 
 import java.io.IOException;
 import java.util.zip.Inflater;
@@ -22,7 +22,7 @@ public class OkhttpInterceptor implements Interceptor {
     @Override
     public Response intercept(@NonNull Chain chain) throws IOException {
         Response response = chain.proceed(chain.request());
-        String encoding = response.header(HttpHeaders.CONTENT_ENCODING);
+        String encoding = response.header("Content-Encoding");
         if (response.body() == null || encoding == null || !encoding.equals("deflate")) return response;
         InflaterInputStream is = new InflaterInputStream(response.body().byteStream(), new Inflater(true));
         return response.newBuilder().headers(response.headers()).body(new ResponseBody() {

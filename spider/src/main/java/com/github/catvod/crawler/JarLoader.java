@@ -2,7 +2,7 @@ package com.github.catvod.crawler;
 
 import android.content.Context;
 
-import com.github.tvbox.osc.base.App;
+import android.content.Context;
 import com.github.tvbox.osc.util.HttpClient;
 import com.github.tvbox.osc.util.MD5;
 
@@ -19,6 +19,13 @@ import dalvik.system.DexClassLoader;
 import okhttp3.Response;
 
 public class JarLoader {
+    /** 注入的 application context（独立模块 :spider，由 ApiConfig.setAppContext 同步设置） */
+    private static volatile Context context;
+
+    public static void setContext(Context c) {
+        context = c == null ? null : c.getApplicationContext();
+    }
+
     private ConcurrentHashMap<String, DexClassLoader> classLoaders = new ConcurrentHashMap<>();
     private ConcurrentHashMap<String, Method> proxyMethods = new ConcurrentHashMap<>();
     private ConcurrentHashMap<String, Spider> spiders = new ConcurrentHashMap<>();
@@ -40,7 +47,7 @@ public class JarLoader {
     private boolean loadClassLoader(String jar, String key) {
         boolean success = false;
         try {
-            File cacheDir = new File(App.getInstance().getCacheDir().getAbsolutePath() + "/catvod_csp");
+            File cacheDir = new File(context.getCacheDir().getAbsolutePath() + "/catvod_csp");
             if (!cacheDir.exists())
                 cacheDir.mkdirs();
             // Android 8+ 禁止加载可写的 dex/jar 文件(FileOutputStream 创建的文件为 0666,组/其他用户可写),
@@ -49,7 +56,7 @@ public class JarLoader {
             if (jarFile.exists()) {
                 jarFile.setReadOnly();
             }
-            DexClassLoader classLoader = new DexClassLoader(jar, cacheDir.getAbsolutePath(), null, App.getInstance().getClassLoader());
+            DexClassLoader classLoader = new DexClassLoader(jar, cacheDir.getAbsolutePath(), null, context.getClassLoader());
             // make force wait here, some device async dex load
             int count = 0;
             do {
@@ -57,7 +64,7 @@ public class JarLoader {
                     Class classInit = classLoader.loadClass("com.github.catvod.spider.Init");
                     if (classInit != null) {
                         Method method = classInit.getMethod("init", Context.class);
-                        method.invoke(null, App.getInstance());
+                        method.invoke(null, context);
                         System.out.println("自定义爬虫代码加载成功!");
                         success = true;
                         try {
@@ -88,7 +95,7 @@ public class JarLoader {
     private DexClassLoader loadJarInternal(String jar, String md5, String key) {
         if (classLoaders.contains(key))
             return classLoaders.get(key);
-        File cache = new File(App.getInstance().getFilesDir().getAbsolutePath() + "/" + key + ".jar");
+        File cache = new File(context.getFilesDir().getAbsolutePath() + "/" + key + ".jar");
         if (!md5.isEmpty()) {
             if (cache.exists() && MD5.getFileMd5(cache).equalsIgnoreCase(md5)) {
                 loadClassLoader(cache.getAbsolutePath(), key);
@@ -131,7 +138,7 @@ public class JarLoader {
             return new SpiderNull();
         try {
             Spider sp = (Spider) classLoader.loadClass("com.github.catvod.spider." + clsKey).newInstance();
-            sp.init(App.getInstance(), ext);
+            sp.init(context, ext);
 //            if (!jar.isEmpty()) {
 //                sp.homeContent(false); // 增加此行 应该可以解决部分写的有问题源的历史记录问题 但会增加这个源的首次加载时间 不需要可以已删掉
 //            }

@@ -2,7 +2,7 @@ package com.github.catvod.net;
 
 import android.net.Uri;
 
-import androidx.collection.ArrayMap;
+import java.util.HashMap;
 
 import com.github.catvod.utils.Path;
 import com.github.catvod.utils.Util;
@@ -104,7 +104,7 @@ public class OkHttp {
         return client().newCall(new Request.Builder().url(url).headers(headers).build());
     }
 
-    public static Call newCall(String url, Headers headers, ArrayMap<String, String> params) {
+    public static Call newCall(String url, Headers headers, HashMap<String, String> params) {
         return client().newCall(new Request.Builder().url(buildUrl(url, params)).headers(headers).build());
     }
 
@@ -116,13 +116,13 @@ public class OkHttp {
         return client.newCall(new Request.Builder().url(url).post(body).build());
     }
 
-    public static FormBody toBody(ArrayMap<String, String> params) {
+    public static FormBody toBody(HashMap<String, String> params) {
         FormBody.Builder body = new FormBody.Builder();
         for (Map.Entry<String, String> entry : params.entrySet()) body.add(entry.getKey(), entry.getValue());
         return body.build();
     }
 
-    private static HttpUrl buildUrl(String url, ArrayMap<String, String> params) {
+    private static HttpUrl buildUrl(String url, HashMap<String, String> params) {
         HttpUrl.Builder builder = Objects.requireNonNull(HttpUrl.parse(url)).newBuilder();
         for (Map.Entry<String, String> entry : params.entrySet()) builder.addQueryParameter(entry.getKey(), entry.getValue());
         return builder.build();

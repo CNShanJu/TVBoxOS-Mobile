@@ -3,7 +3,7 @@ package com.github.tvbox.osc.util.js;
 import androidx.annotation.Keep;
 import androidx.annotation.NonNull;
 
-import com.github.tvbox.osc.server.ControlManager;
+
 import com.github.tvbox.osc.util.rsa.RSAEncrypt;
 import com.whl.quickjs.wrapper.ContextSetter;
 import com.whl.quickjs.wrapper.Function;
@@ -38,7 +38,7 @@ public class Global {
     @Keep
     @Function
     public String getProxy(boolean local) {
-        return ControlManager.get().getAddress(local) + "proxy?do=js";
+        return com.github.tvbox.osc.api.ApiConfig.getLanBase() + "proxy?do=js";
     }
 
     @Keep

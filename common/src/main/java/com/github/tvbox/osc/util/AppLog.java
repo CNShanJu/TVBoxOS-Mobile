@@ -1,6 +1,7 @@
 package com.github.tvbox.osc.util;
 
-import com.github.tvbox.osc.base.App;
+import android.content.Context;
+
 import com.orhanobut.hawk.Hawk;
 
 import java.io.BufferedReader;
@@ -39,6 +40,14 @@ public class AppLog {
     /** logcat 捕获进程与线程(开关开启时持续写入完整运行日志) */
     private static volatile Process logcatProcess;
     private static volatile Thread logcatThread;
+
+    /** 注入的 application context（独立模块，不依赖 app 类） */
+    private static volatile Context appContext;
+
+    /** App 启动时注入 context（AppLog 按天文件/导出用） */
+    public static void setAppContext(Context context) {
+        appContext = context == null ? null : context.getApplicationContext();
+    }
 
     private AppLog() {
     }
@@ -158,7 +167,7 @@ public class AppLog {
     }
 
     private static File logDir() {
-        return new File(App.getInstance().getFilesDir().getAbsolutePath() + "/" + LOG_DIR);
+        return new File(appContext.getFilesDir().getAbsolutePath() + "/" + LOG_DIR);
     }
 
     /** 按天列出日志文件(新的在前) */
@@ -242,7 +251,7 @@ public class AppLog {
         try {
             List<File> files = listLogFiles();
             if (files.isEmpty()) return null;
-            File out = new File(App.getInstance().getCacheDir().getAbsolutePath() + "/app_log_export.txt");
+            File out = new File(appContext.getCacheDir().getAbsolutePath() + "/app_log_export.txt");
             FileWriter fw = new FileWriter(out, false);
             for (File f : files) {
                 fw.write("===== " + f.getName() + " =====\n");

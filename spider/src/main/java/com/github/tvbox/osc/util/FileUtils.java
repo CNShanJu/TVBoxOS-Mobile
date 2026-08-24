@@ -5,8 +5,8 @@ import android.os.Environment;
 import android.text.TextUtils;
 import android.util.Base64;
 
-import com.github.tvbox.osc.base.App;
-import com.github.tvbox.osc.server.ControlManager;
+import android.content.Context;
+
 import com.github.tvbox.osc.util.StringUtils;
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
@@ -34,8 +34,15 @@ import okhttp3.Response;
 
 public class FileUtils {
 
+    /** 注入的 application context（独立模块 :spider，由 ApiConfig.setAppContext 同步设置） */
+    private static volatile Context context;
+
+    public static void setContext(Context c) {
+        context = c == null ? null : c.getApplicationContext();
+    }
+
     public static File open(String str) {
-        return new File(App.getInstance()
+        return new File(context
             .getExternalCacheDir()
             .getAbsolutePath() + "/qjscache_" + str + ".js");
     }
@@ -164,12 +171,12 @@ public class FileUtils {
             } else if (isAsFile(name, "js/lib")) {
                 return getAsOpen("js/lib/" + name);
             } else if (name.startsWith("file://")) {
-                return get(ControlManager.get()
-                    .getAddress(true) + "file/" + name.replace("file:///", "")
+                return get(com.github.tvbox.osc.api.ApiConfig.getLanBase()
+                    + "file/" + name.replace("file:///", "")
                     .replace("file://", ""));
             } else if (name.startsWith("clan://localhost/")) {
-                return get(ControlManager.get()
-                    .getAddress(true) + "file/" + name.replace("clan://localhost/", ""));
+                return get(com.github.tvbox.osc.api.ApiConfig.getLanBase()
+                    + "file/" + name.replace("clan://localhost/", ""));
             } else if (name.startsWith("clan://")) {
                 String substring = name.substring(7);
                 int indexOf = substring.indexOf(47);
@@ -184,7 +191,7 @@ public class FileUtils {
 
     public static boolean isAsFile(String name, String path) {
         try {
-            for (String fname: App.getInstance()
+            for (String fname: context
                 .getAssets()
                 .list(path)) {
                 if (fname.equals(name.trim())) {
@@ -199,7 +206,7 @@ public class FileUtils {
 
     public static String getAsOpen(String name) {
         try {
-            InputStream is = App.getInstance()
+            InputStream is = context
                 .getAssets()
                 .open(name);
             byte[] data = new byte[is.available()];
@@ -283,11 +290,11 @@ public class FileUtils {
     }
 
     public static File getCacheDir() {
-        return App.getInstance()
+        return context
             .getCacheDir();
     }
     public static File getExternalCacheDir() {
-        return App.getInstance()
+        return context
             .getExternalCacheDir();
     }
     public static String getExternalCachePath() {

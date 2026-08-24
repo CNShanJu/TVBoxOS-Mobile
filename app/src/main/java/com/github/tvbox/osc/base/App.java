@@ -62,6 +62,8 @@ public class App extends MultiDexApplication {
         super.onCreate();
         instance = this;
         initParams();
+        // AppLog(common) context 注入: 按天文件/导出用
+        AppLog.setAppContext(this);
         // OKGo: 全局 OkHttpClient 初始化(common 模块, context 注入); Exo/Picasso 初始化拆回 app 侧
         OkGoHelper.init(this);
         initExoOkHttpClient();
@@ -69,6 +71,9 @@ public class App extends MultiDexApplication {
         EpgUtil.init();
         // 初始化Web服务器
         ControlManager.init(this);
+        // ApiConfig(:spider 模块) context + 局域网地址注入(替代直接依赖)
+        com.github.tvbox.osc.api.ApiConfig.setAppContext(this);
+        com.github.tvbox.osc.api.ApiConfig.setLanBase(ControlManager.get().getAddress(true));
         //初始化数据库
         AppDataManager.init();
         LoadSir.beginBuilder()

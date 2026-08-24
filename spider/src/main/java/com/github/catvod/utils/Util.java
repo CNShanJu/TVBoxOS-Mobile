@@ -7,7 +7,7 @@ import android.text.TextUtils;
 import android.util.Base64;
 
 import com.github.catvod.Init;
-import com.google.common.net.HttpHeaders;
+
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -128,7 +128,13 @@ public class Util {
 
     public static String format(StringBuilder builder, Formatter formatter, long timeMs) {
         try {
-            return com.google.android.exoplayer2.util.Util.getStringForTime(builder, formatter, timeMs);
+                    long totalSeconds = (timeMs + 500) / 1000;
+        long seconds = totalSeconds % 60;
+        long minutes = (totalSeconds / 60) % 60;
+        long hours = totalSeconds / 3600;
+        builder.append(hours > 0 ? String.format("%d:%02d:%02d", hours, minutes, seconds)
+                : String.format("%d:%02d", minutes, seconds));
+        return formatter.format(builder.toString()).toString();
         } catch (Exception e) {
             return "";
         }
@@ -139,9 +145,9 @@ public class Util {
     }
 
     public static String fixHeader(String key) {
-        if (key.equalsIgnoreCase(HttpHeaders.USER_AGENT)) return HttpHeaders.USER_AGENT;
-        if (key.equalsIgnoreCase(HttpHeaders.REFERER)) return HttpHeaders.REFERER;
-        if (key.equalsIgnoreCase(HttpHeaders.COOKIE)) return HttpHeaders.COOKIE;
+        if (key.equalsIgnoreCase("User-Agent")) return "User-Agent";
+        if (key.equalsIgnoreCase("Referer")) return "Referer";
+        if (key.equalsIgnoreCase("Cookie")) return "Cookie";
         return key;
     }
 
