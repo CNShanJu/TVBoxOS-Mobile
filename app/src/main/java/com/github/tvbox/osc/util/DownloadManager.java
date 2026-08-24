@@ -93,12 +93,15 @@ public class DownloadManager {
     final DownloadScheduler scheduler;
     final DownloadExecutor executor;
     final DownloadPolicy policy;
+    /** 已下载档案（长期保留，5.3） */
+    final com.github.tvbox.osc.download.DownloadArchive archive;
 
     private DownloadManager() {
         store = new DownloadStore(this);
         scheduler = new DownloadScheduler(this);
         executor = new DownloadExecutor(this);
         policy = new DownloadPolicy(this);
+        archive = com.github.tvbox.osc.download.DownloadArchive.get();
         store.load();
         // Bug5: 孤儿 tmpDir 回收(启动时任务已加载,无写入中,安全)
         FileCleaner.cleanupOrphanTmpDirs(tasks);

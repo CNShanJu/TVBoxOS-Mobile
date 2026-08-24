@@ -4,6 +4,8 @@ import android.net.Uri;
 import android.util.Log;
 
 import com.github.tvbox.osc.bean.DownloadTask;
+import com.github.tvbox.osc.download.DownloadLog;
+import com.github.tvbox.osc.download.DownloadSubType;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -173,6 +175,7 @@ public class DownloadExecutor {
         }
         t.state = DownloadTask.STATE_COMPLETED;
         t.downloadedBytes = t.totalBytes;
+        dm.archive.add(t); // 5.3: 完成写已下载档案(长期,先于清理)
         dm.persist();
         dm.notifyChanged();
     }
@@ -246,6 +249,8 @@ public class DownloadExecutor {
         t.message = DownloadManager.MSG_VERIFYING;
         dm.persist();
         dm.notifyChanged();
+        DownloadLog.LOG.info(DownloadSubType.VERIFY, "校验开始: 分片 " + segments.size() + " 片",
+                DownloadLog.extras(t.episodeId));
         int repair = 0;
         while (true) {
             // 缺失分片列表:优先读 TXT 逐片状态(精确到片,支持非连续缺失);
@@ -266,6 +271,9 @@ public class DownloadExecutor {
             repair++;
             Log.i("TVBox-Download", "碎片校验缺失 " + missing.size() + " 片,第" + repair + "/" + DownloadManager.MAX_SEGMENT_REPAIR
                     + "轮补下: " + t.fileName + " 缺失首片=" + missing.get(0));
+            DownloadLog.LOG.info(DownloadSubType.REPAIR,
+                    "补片第 " + repair + "/" + DownloadManager.MAX_SEGMENT_REPAIR + " 轮: 缺失 " + missing.size() + " 片",
+                    DownloadLog.extras(t.episodeId));
             boolean allOk = true;
             for (int idx : missing) {
                 File segFile = new File(tmpDir, String.format("%05d.ts", idx));
@@ -289,6 +297,8 @@ public class DownloadExecutor {
         t.message = DownloadManager.MSG_MERGING;
         dm.persist();
         dm.notifyChanged();
+        DownloadLog.LOG.info(DownloadSubType.MERGE, "合并开始: " + segments.size() + " 片, 目标 " + t.savePath,
+                DownloadLog.extras(t.episodeId));
 
         // 合并前空间检查:合并需额外写入约一个最终文件大小的 merged.tmp(分片已占空间),
         // 不足则失败并提示,避免合并中空间耗尽损坏
@@ -349,6 +359,8 @@ public class DownloadExecutor {
         t.tmpDir = null;
         t.message = "";
         t.state = DownloadTask.STATE_COMPLETED;
+        DownloadLog.LOG.success(DownloadSubType.SAVE, "下载完成: " + t.fileName, DownloadLog.extras(t.episodeId));
+        dm.archive.add(t); // 5.3: 完成写已下载档案(长期,先于清理)
         dm.persist();
         dm.notifyChanged();
     }

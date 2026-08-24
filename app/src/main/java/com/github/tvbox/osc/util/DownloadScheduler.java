@@ -11,6 +11,8 @@ import com.github.catvod.crawler.PlayUrlResolver;
 import com.github.catvod.crawler.SpiderApi;
 import com.github.tvbox.osc.base.App;
 import com.github.tvbox.osc.bean.DownloadTask;
+import com.github.tvbox.osc.download.DownloadLog;
+import com.github.tvbox.osc.download.DownloadSubType;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -267,6 +269,8 @@ public class DownloadScheduler {
                             t.networkFailed = true; // 网络恢复后自动续传
                             t.message = t.message + "(网络恢复后自动继续)";
                         }
+                        DownloadLog.LOG.fail(DownloadSubType.FAIL, "任务失败: " + t.fileName + " | " + t.message,
+                                DownloadLog.extras(t.episodeId));
                         dm.persist();
                         dm.notifyChanged();
                         return;
@@ -464,6 +468,8 @@ public class DownloadScheduler {
             dm.tasks.add(t);
         }
         Log.i("TVBox-Download", "enqueue 加入任务: " + episodeName + " -> " + t.savePath + " url=" + url);
+        DownloadLog.LOG.info(DownloadSubType.ENQUEUE, "加入任务: " + episodeName + " -> " + t.fileName,
+                DownloadLog.extras(episodeId));
         dm.persist();
         dm.notifyChanged();
         wakeWorker();
