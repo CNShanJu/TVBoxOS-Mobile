@@ -619,6 +619,10 @@ public class DownloadScheduler {
             FileCleaner.deleteQuietly(new File(t.savePath));
             // 分段目录递归删除,父级 tmp 仅当为空才删
             dm.executor.deleteSegmentsDir(t);
+            // 5.3: 删文件联动删档案(已下载档案长期保留,与文件生命周期一致)
+            if (t.episodeId != null && !t.episodeId.isEmpty()) {
+                dm.archive.remove(t.episodeId, false);
+            }
         }
         dm.persist();
         dm.notifyChanged();
