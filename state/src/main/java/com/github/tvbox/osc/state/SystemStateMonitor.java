@@ -19,7 +19,6 @@ import android.os.StatFs;
 import android.util.Log;
 import android.view.Display;
 
-import com.github.tvbox.osc.base.App;
 import com.github.tvbox.osc.log.Category;
 import com.github.tvbox.osc.log.CategoryLogger;
 import com.github.tvbox.osc.log.LogStore;
@@ -93,6 +92,8 @@ public final class SystemStateMonitor {
 
     private CategoryLogger<SystemSubType> log;
     private ScheduledExecutorService diskTimer;
+    /** 注入的 application context（独立模块，不依赖 app 类） */
+    private Context appContext;
 
     private int startedActivityCount = 0;
     private String pendingNetwork = null;
@@ -117,7 +118,6 @@ public final class SystemStateMonitor {
             }
         }
     }
-
     // ------------------------------------------------------------------
     // 对外 API
     // ------------------------------------------------------------------
@@ -150,10 +150,11 @@ public final class SystemStateMonitor {
         return state;
     }
 
-    /** 当前网络是否为移动网络（蜂窝）——迁自 DownloadManager.isMobileNetwork */
-    public static boolean isMobileNetwork() {
+    /** 当前网络是否为移动网络（蜂窝）——需先 init 注入 context */
+    public boolean isMobileNetwork() {
         try {
-            ConnectivityManager cm = (ConnectivityManager) App.getInstance().getSystemService(Context.CONNECTIVITY_SERVICE);
+            if (appContext == null) return false;
+            ConnectivityManager cm = (ConnectivityManager) appContext.getSystemService(Context.CONNECTIVITY_SERVICE);
             if (cm == null) return false;
             Network network = cm.getActiveNetwork();
             if (network == null) return false;
@@ -164,10 +165,11 @@ public final class SystemStateMonitor {
         }
     }
 
-    /** 当前网络是否为 WiFi */
-    public static boolean isWifiNetwork() {
+    /** 当前网络是否为 WiFi——需先 init 注入 context */
+    public boolean isWifiNetwork() {
         try {
-            ConnectivityManager cm = (ConnectivityManager) App.getInstance().getSystemService(Context.CONNECTIVITY_SERVICE);
+            if (appContext == null) return false;
+            ConnectivityManager cm = (ConnectivityManager) appContext.getSystemService(Context.CONNECTIVITY_SERVICE);
             if (cm == null) return false;
             Network network = cm.getActiveNetwork();
             if (network == null) return false;
@@ -183,16 +185,17 @@ public final class SystemStateMonitor {
     // ------------------------------------------------------------------
 
     private void start(Context context) {
+        appContext = context.getApplicationContext();
         log = LogStore.get().register(Category.SYSTEM, SystemSubType.class);
         state.appForeground = true;
         state.screenOn = true;
 
-        registerNetworkSource(context);
-        registerForegroundSource(context);
-        registerOrientationSource(context);
-        registerScreenSource(context);
-        registerBatterySource(context);
-        registerTimeSource(context);
+        registerNetworkSource(appContext);
+        registerForegroundSource(appContext);
+        registerOrientationSource(appContext);
+        registerScreenSource(appContext);
+        registerBatterySource(appContext);
+        registerTimeSource(appContext);
         startDiskTimer();
 
         log.info(SystemSubType.BOOT, "SystemStateMonitor 已启动", null);
@@ -236,7 +239,7 @@ public final class SystemStateMonitor {
 
     private void updateNetwork() {
         try {
-            ConnectivityManager cm = (ConnectivityManager) App.getInstance().getSystemService(Context.CONNECTIVITY_SERVICE);
+            ConnectivityManager cm = (ConnectivityManager) appContext.getSystemService(Context.CONNECTIVITY_SERVICE);
             String transport = VAL_NONE;
             if (cm != null) {
                 Network active = cm.getActiveNetwork();
@@ -341,7 +344,7 @@ public final class SystemStateMonitor {
 
     private void updateOrientation() {
         try {
-            DisplayManager dm = App.getInstance().getSystemService(DisplayManager.class);
+            DisplayManager dm = appContext.getSystemService(DisplayManager.class);
             if (dm == null) return;
             Display display = dm.getDisplay(Display.DEFAULT_DISPLAY);
             if (display == null) return;
@@ -410,7 +413,7 @@ public final class SystemStateMonitor {
         try {
             Intent battery = intent;
             if (battery == null || !Intent.ACTION_BATTERY_CHANGED.equals(battery.getAction())) {
-                Intent sticky = App.getInstance().registerReceiver(null,
+                Intent sticky = appContext.registerReceiver(null,
                         new IntentFilter(Intent.ACTION_BATTERY_CHANGED));
                 if (sticky != null) battery = sticky;
             }

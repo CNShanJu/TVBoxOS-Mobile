@@ -290,6 +290,7 @@ dependencies {
     implementation project(":player")
     implementation project(":quickjs")
     implementation project(":log")
+    implementation project(":state")
     implementation 'net.sourceforge.streamsupport:android-retrofuture:1.7.4'
 
     // implementation 'com.tencent.bugly:crashreport_upgrade:latest.release'
