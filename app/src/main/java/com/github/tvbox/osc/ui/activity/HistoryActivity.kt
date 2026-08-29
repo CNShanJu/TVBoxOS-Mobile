@@ -27,8 +27,7 @@ class HistoryActivity : BaseVbActivity<ActivityHistoryBinding>() {
     }
 
     private fun initView() {
-        setLoadSir(mBinding.mGridView)
-
+        // 空态使用显式视图(与订阅/下载页统一),不再依赖 LoadSir 注册
         mBinding.mGridView.setHasFixedSize(true)
         // 列数自适应:单卡宽度不超过 GRID_CARD_MAX_WIDTH_DP,屏幕越宽列数越多
         mBinding.mGridView.setLayoutManager(GridLayoutManager(this, Utils.getAdaptiveGridSpan(Utils.GRID_CARD_MAX_WIDTH_DP)))
@@ -41,9 +40,7 @@ class HistoryActivity : BaseVbActivity<ActivityHistoryBinding>() {
                 val vodInfo = historyAdapter!!.data[position]
                 historyAdapter!!.remove(position)
                 RoomDataManger.deleteVodRecord(vodInfo.sourceKey, vodInfo)
-                if (historyAdapter!!.data.isEmpty()) {
-                    mBinding.topTip.visibility = View.GONE
-                }
+                updateEmptyState()
                 true
             }
 
@@ -60,7 +57,7 @@ class HistoryActivity : BaseVbActivity<ActivityHistoryBinding>() {
                             dismissLoadingDialog()
                             historyAdapter!!.setNewData(ArrayList())
                             mBinding.topTip.visibility = View.GONE
-                            showEmpty()
+                            updateEmptyState()
                         }
                     }
 
@@ -93,13 +90,20 @@ class HistoryActivity : BaseVbActivity<ActivityHistoryBinding>() {
             withContext(Dispatchers.Main) {
                 historyAdapter!!.setNewData(vodInfoList)
                 if (vodInfoList.isNotEmpty()) {
-                    showSuccess()
                     mBinding.topTip.visibility = View.VISIBLE
                 } else {
-                    showEmpty()
+                    mBinding.topTip.visibility = View.GONE
                 }
+                updateEmptyState()
             }
         }
+    }
+
+    /** 历史列表空态:无记录时展示空态占位,否则展示列表 */
+    private fun updateEmptyState() {
+        val empty = historyAdapter!!.data.isEmpty()
+        mBinding.mGridView.visibility = if (empty) View.GONE else View.VISIBLE
+        mBinding.llEmpty.visibility = if (empty) View.VISIBLE else View.GONE
     }
 
     /**

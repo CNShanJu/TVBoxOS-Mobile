@@ -50,6 +50,7 @@ class SubscriptionActivity : BaseVbActivity<ActivitySubscriptionBinding>() {
         })
 
         mSubscriptionAdapter.setNewData(mSubscriptions)
+        updateEmptyState()
         mBinding.ivUseTip.setOnClickListener {
             XPopup.Builder(this)
                 .asCustom(SubsTipDialog(this))
@@ -107,6 +108,7 @@ class SubscriptionActivity : BaseVbActivity<ActivitySubscriptionBinding>() {
                         mSubscriptions.removeAt(position)
                         //删除/选择只刷新,不触发重新排序
                         mSubscriptionAdapter.notifyDataSetChanged()
+                        updateEmptyState()
                     }.show()
             }
         }
@@ -177,6 +179,15 @@ class SubscriptionActivity : BaseVbActivity<ActivitySubscriptionBinding>() {
             }
     }
 
+    /**
+     * 订阅列表空态:无订阅时展示空态占位(列表隐藏),否则展示列表
+     */
+    private fun updateEmptyState() {
+        val empty = mSubscriptions.isEmpty()
+        mBinding.rv.visibility = if (empty) View.GONE else View.VISIBLE
+        mBinding.llEmpty.visibility = if (empty) View.VISIBLE else View.GONE
+    }
+
     private fun showPermissionTipPopup(checked: Boolean) {
         XPopup.Builder(this@SubscriptionActivity)
             .isDarkTheme(Utils.isDarkTheme())
@@ -241,6 +252,7 @@ class SubscriptionActivity : BaseVbActivity<ActivitySubscriptionBinding>() {
         if (url.startsWith("clan://")) {
             addSub2List(name, url, checked)
             mSubscriptionAdapter.setNewData(mSubscriptions)
+            updateEmptyState()
         } else if (url.startsWith("http")) {
             showLoadingDialog()
             AppLog.log("订阅管理", "新增订阅: " + name + "  " + url)
@@ -306,6 +318,7 @@ class SubscriptionActivity : BaseVbActivity<ActivitySubscriptionBinding>() {
                             addSub2List(name, url, checked)
                         }
                         mSubscriptionAdapter.setNewData(mSubscriptions)
+                        updateEmptyState()
                     }
 
                     override fun onError(e: Throwable) {
