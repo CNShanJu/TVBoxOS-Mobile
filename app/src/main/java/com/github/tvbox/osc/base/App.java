@@ -62,8 +62,6 @@ public class App extends MultiDexApplication {
         super.onCreate();
         instance = this;
         initParams();
-        // 全局 Toast 捕获(仅 debug):jar 爬虫等不经 AppBubble 直接弹的系统 Toast 也能溯源; release 为空实现
-        com.github.tvbox.osc.util.ToastCatcher.install();
         // AppLog(common) context 注入: 按天文件/导出用
         AppLog.setAppContext(this);
         // OKGo: 全局 OkHttpClient 初始化(common 模块, context 注入); Exo/Picasso 初始化拆回 app 侧

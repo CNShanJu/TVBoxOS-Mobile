@@ -18,6 +18,7 @@ import java.util.concurrent.ExecutorService;
  */
 public final class SpiderApi {
 
+    private static final String TRACE_TAG = "SpiderTrace";
     private static final long DEFAULT_TIMEOUT = 20_000;
 
     private static final SpiderExecutor EXECUTOR = new SpiderExecutor();
@@ -51,28 +52,28 @@ public final class SpiderApi {
     // ------------------------------------------------------------------
 
     public static String home(String sourceKey, boolean filter) {
-        return callSpider(sourceKey, sp -> sp.homeContent(filter));
+        return callSpider(sourceKey, "homeContent", sp -> sp.homeContent(filter));
     }
 
     public static String category(String sourceKey, String tid, String pg, boolean filter, Map<String, String> extend) {
-        return callSpider(sourceKey, sp -> sp.categoryContent(tid, pg, filter, toHashMap(extend)));
+        return callSpider(sourceKey, "categoryContent", sp -> sp.categoryContent(tid, pg, filter, toHashMap(extend)));
     }
 
     public static String detail(String sourceKey, List<String> ids) {
-        return callSpider(sourceKey, sp -> sp.detailContent(ids));
+        return callSpider(sourceKey, "detailContent", sp -> sp.detailContent(ids));
     }
 
     public static String search(String sourceKey, String key, boolean quick) {
-        return callSpider(sourceKey, sp -> sp.searchContent(key, quick));
+        return callSpider(sourceKey, "searchContent", sp -> sp.searchContent(key, quick));
     }
 
     public static String search(String sourceKey, String key, boolean quick, String pg) {
-        return callSpider(sourceKey, sp -> sp.searchContent(key, quick, pg));
+        return callSpider(sourceKey, "searchContent", sp -> sp.searchContent(key, quick, pg));
     }
 
     /** 播放信息 JSON（播放器用） */
     public static String play(String sourceKey, String flag, String id, List<String> vipFlags) {
-        return callSpider(sourceKey, sp -> sp.playerContent(flag, id, vipFlags));
+        return callSpider(sourceKey, "playerContent", sp -> sp.playerContent(flag, id, vipFlags));
     }
 
     // ------------------------------------------------------------------
@@ -120,10 +121,20 @@ public final class SpiderApi {
         String call(Spider sp) throws Exception;
     }
 
-    private static String callSpider(String sourceKey, SpiderCall fn) {
+    private static String callSpider(String sourceKey, String method, SpiderCall fn) {
         SourceBean sb = ApiConfig.get().getSource(sourceKey);
         if (sb == null) return null;
-        return EXECUTOR.call(DEFAULT_TIMEOUT, () -> fn.call(ApiConfig.get().getCSP(sb)));
+        long start = System.currentTimeMillis();
+        try {
+            String result = EXECUTOR.call(DEFAULT_TIMEOUT, () -> fn.call(ApiConfig.get().getCSP(sb)));
+            android.util.Log.i(TRACE_TAG, "[spider] " + sb.getName() + " " + method + " 完成 耗时="
+                    + (System.currentTimeMillis() - start) + "ms");
+            return result;
+        } catch (Throwable th) {
+            android.util.Log.i(TRACE_TAG, "[spider] " + sb.getName() + " " + method + " 异常 耗时="
+                    + (System.currentTimeMillis() - start) + "ms " + th.getMessage());
+            throw th;
+        }
     }
 
     private static java.util.HashMap<String, String> toHashMap(Map<String, String> map) {
