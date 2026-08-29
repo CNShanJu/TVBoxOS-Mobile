@@ -59,9 +59,14 @@ public final class DownloadTaskRegistry {
     public static BaseDownloadTask create(DownloadTask t, TaskListener listener, DownloadExecutor executor) {
         for (Entry e : ENTRIES) {
             if (e.feature.matches(t)) {
+                android.util.Log.i("TVBox-Download", "任务分发: " + (t == null || t.fileName == null ? "?" : t.fileName)
+                        + " -> " + e.factory.getClass().getSimpleName()
+                        + " url=" + (t == null ? "null" : t.url));
                 return e.factory.create(t, listener, executor);
             }
         }
+        android.util.Log.i("TVBox-Download", "任务分发(兜底直链): " + (t == null || t.fileName == null ? "?" : t.fileName)
+                + " url=" + (t == null ? "null" : t.url));
         return new NormalFileDownloadTask(t, listener, executor);
     }
 }

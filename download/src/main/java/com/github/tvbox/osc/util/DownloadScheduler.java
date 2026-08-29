@@ -376,6 +376,14 @@ public class DownloadScheduler {
             if (rr != null && rr.url != null && !rr.url.isEmpty()) {
                 boolean urlChanged = !rr.url.equals(t.url);
                 t.headers = rr.headers; // 无论地址是否变化都同步请求头(防盗链源分片校验)
+                // 类型保护: 原地址是 m3u8 而新解析结果不是(或反之), 说明解析不稳定/源结构变化,
+                // 保留原地址——HLS↔直链切换会让下载算法完全错位(如 m3u8 被当直链下出播放列表)
+                boolean oldHls = t.url != null && t.url.toLowerCase().contains(".m3u8");
+                boolean newHls = rr.url.toLowerCase().contains(".m3u8");
+                if (urlChanged && oldHls != newHls) {
+                    Log.i("TVBox-Download", "重新解析地址类型变化(m3u8↔直链),保留原地址: " + t.fileName);
+                    urlChanged = false;
+                }
                 if (urlChanged) {
                     Log.i("TVBox-Download", "重新解析地址成功: " + t.fileName);
                     t.url = rr.url;
