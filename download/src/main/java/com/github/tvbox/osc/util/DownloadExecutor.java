@@ -382,13 +382,15 @@ public class DownloadExecutor {
             DownloadLog.LOG.warn(DownloadSubType.REMUX, "重封装失败,回退 .ts 后缀: " + t.fileName,
                     DownloadLog.extras(t.episodeId));
         }
-        // 合成完成后清理:删本任务分片目录(父级 tmp 保留)
-        deleteSegmentsDir(t);
-        t.tmpDir = null;
+        // 顺序铁律: 落盘 → 写档案 → 清理 → COMPLETED。
+        // 清理(删碎片)是危险操作, 只有档案写成功后才允许; 档案写失败则保留碎片现场可重试。
         t.message = "";
         t.state = DownloadTask.STATE_COMPLETED;
         DownloadLog.LOG.success(DownloadSubType.SAVE, "下载完成: " + t.fileName, DownloadLog.extras(t.episodeId));
-        dm.archive.add(t); // 5.3: 完成写已下载档案(长期,先于清理)
+        dm.archive.add(t); // 先写档案(长期)
+        // 档案写成功后才清理分片目录(父级 tmp 保留)
+        deleteSegmentsDir(t);
+        t.tmpDir = null;
         com.github.tvbox.osc.download.DownloadNotifier.notifyCompleted(t); // 可选增强: 完成通知
         dm.persist();
         dm.notifyChanged();
