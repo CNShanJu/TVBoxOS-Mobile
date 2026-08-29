@@ -235,7 +235,7 @@ public class DownloadExecutor {
             downloadSegment(segments.get(i), segFile, segDone, t);
             if (t.doneSegments <= i) t.doneSegments = i + 1;
             t.segmentBytes = 0;
-            writeSegmentsInfo(t, tmpDir, segments, t.doneSegments); // 每片完成即写入TXT进度
+            // 注意: 不逐片写 segments.txt(每片全扫太浪费)——TXT 在校验/补片阶段统一写
             // 实时网速:按已完成分片的字节增量估算
             speedWindowBytes += segFile.length();
             long now = System.currentTimeMillis();
@@ -252,26 +252,21 @@ public class DownloadExecutor {
         }
         t.speed = 0;
 
-        // 碎片下载完,进入"文件校验中"。校验以磁盘实况为准:每轮全盘扫描缺失分片并补下,
-        // 不信任 TXT 计数(用户可能删过分片文件,计数会失真导致跳过补下直接合并失败)。
+        // 碎片下载完,进入"文件校验中"。缺失清单驱动(4.7③): 首次全盘比对生成缺失清单(仅此一次全扫),
+        // 每轮只补缺失清单项 + 只复检清单项(不反复全盘扫), 3 轮上限。
         t.message = DownloadManager.MSG_VERIFYING;
         dm.persist();
         dm.notifyChanged();
         DownloadLog.LOG.info(DownloadSubType.VERIFY, "校验开始: 分片 " + segments.size() + " 片",
                 DownloadLog.extras(t.episodeId));
+        // 首次全盘比对, 生成缺失清单(仅此一次 O(total))
+        List<Integer> missing = new ArrayList<>();
+        for (int i = 0; i < segments.size(); i++) {
+            File segFile = new File(tmpDir, String.format("%05d.ts", i));
+            if (!segFile.exists() || segFile.length() <= 0) missing.add(i);
+        }
         int repair = 0;
-        while (true) {
-            // 缺失分片列表:优先读 TXT 逐片状态(精确到片,支持非连续缺失);
-            // TXT 无状态行(旧格式)时全盘扫描兜底。
-            List<Integer> missing = readMissingSegments(tmpDir, segments.size());
-            if (missing == null) {
-                missing = new ArrayList<>();
-                for (int i = 0; i < segments.size(); i++) {
-                    File segFile = new File(tmpDir, String.format("%05d.ts", i));
-                    if (!segFile.exists() || segFile.length() <= 0) missing.add(i);
-                }
-            }
-            if (missing.isEmpty()) break; // 全部分片存在,校验通过
+        while (!missing.isEmpty()) {
             if (repair >= DownloadManager.MAX_SEGMENT_REPAIR) {
                 throw new IOException("碎片校验不一致,自动补下" + DownloadManager.MAX_SEGMENT_REPAIR + "轮后仍缺失(缺 " + missing.size() + " 片,如第"
                         + missing.get(0) + "片)");
@@ -282,20 +277,26 @@ public class DownloadExecutor {
             DownloadLog.LOG.info(DownloadSubType.REPAIR,
                     "补片第 " + repair + "/" + DownloadManager.MAX_SEGMENT_REPAIR + " 轮: 缺失 " + missing.size() + " 片",
                     DownloadLog.extras(t.episodeId));
-            boolean allOk = true;
+            // 只补缺失清单项; 单片失败不整体抛(留待下一轮, 3 轮内仍缺才失败)
+            List<Integer> stillMissing = new ArrayList<>();
             for (int idx : missing) {
                 File segFile = new File(tmpDir, String.format("%05d.ts", idx));
                 if (!segFile.exists() || segFile.length() <= 0) {
-                    downloadSegment(segments.get(idx), segFile, 0, t); // 失败抛异常由外层重试
+                    try {
+                        downloadSegment(segments.get(idx), segFile, 0, t);
+                    } catch (IOException e) {
+                        Log.i("TVBox-Download", "补片失败(留待下轮): 片" + idx + " " + e.getMessage());
+                    }
                 }
+                // 只复检缺失清单项(不扫全目录)
                 if (segFile.exists() && segFile.length() > 0) {
                     if (t.doneSegments <= idx) t.doneSegments = idx + 1;
                 } else {
-                    allOk = false; // 仍有缺失,留到下一轮
+                    stillMissing.add(idx);
                 }
             }
-            writeSegmentsInfo(t, tmpDir, segments, t.doneSegments); // 补下进度+逐片状态写回TXT
-            if (allOk) break;
+            missing = stillMissing;
+            writeSegmentsInfo(t, tmpDir, segments, t.doneSegments); // 每轮结束写一次 TXT(非每片)
         }
         t.doneSegments = segments.size(); // 全部就绪,进度=已下载分片数
         t.segmentBytes = 0;
