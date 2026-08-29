@@ -115,6 +115,14 @@ public class RemoteServer extends NanoHTTPD {
                     params.put("request-headers", new Gson().toJson(session.getHeaders()));
                     if (params.containsKey("do")) {
                         Object[] rs = com.github.catvod.crawler.SpiderApi.proxyLocal(params);
+                        // jar 代理方法缺失/未加载时 proxyLocal 返回 null(还有异常吞掉的情况),
+                        // 直接返回错误响应, 避免 rs[0] 读 null 数组崩溃
+                        if (rs == null || rs.length < 2) {
+                            return NanoHTTPD.newFixedLengthResponse(
+                                    NanoHTTPD.Response.Status.INTERNAL_ERROR,
+                                    "text/plain",
+                                    "proxy unavailable");
+                        }
                         //if (rs[0] instanceof Response) {
                         //    return (Response) rs[0];
                         //}
