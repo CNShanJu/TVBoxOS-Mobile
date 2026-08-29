@@ -96,6 +96,8 @@ class VideoListActivity : BaseVbActivity<ActivityMovieFoldersBinding>() {
                                 // 删除缓存的影片时长、进度
                                 SPUtils.getInstance(CacheConst.VIDEO_DURATION_SP).remove(item.path)
                                 SPUtils.getInstance(CacheConst.VIDEO_PROGRESS_SP).remove(item.path)
+                                // 联动清理已下载档案: 否则详情页仍显示"已下载"且档案表残留脏数据
+                                com.github.tvbox.osc.download.DownloadArchive.get().removeByPath(item.path)
                                 // 文件增删需要通知系统扫描,否则删除文件后还能查出来
                                 // 这个工具类直接传文件路径不知道为啥通知失败,手动获取一下
                                 FileUtils.notifySystemToScan(FileUtils.getDirName(item.path))

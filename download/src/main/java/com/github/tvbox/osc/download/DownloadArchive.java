@@ -123,6 +123,20 @@ public final class DownloadArchive {
         return null;
     }
 
+    /** 按文件路径删除档案记录（本地视频页删除文件时联动; 文件已由调用方删除, 这里不重复删） */
+    public synchronized boolean removeByPath(String savePath) {
+        if (savePath == null) return false;
+        boolean changed = false;
+        for (int i = items.size() - 1; i >= 0; i--) {
+            if (savePath.equals(items.get(i).savePath)) {
+                items.remove(i);
+                changed = true;
+            }
+        }
+        if (changed) persist();
+        return changed;
+    }
+
     /** 删除档案（deleteFile=true 连文件一起删） */
     public synchronized boolean remove(String episodeId, boolean deleteFile) {
         for (int i = items.size() - 1; i >= 0; i--) {
