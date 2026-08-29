@@ -9,7 +9,6 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.view.Window;
 import android.view.WindowManager;
-
 import androidx.annotation.NonNull;
 
 import com.github.tvbox.osc.R;
@@ -34,6 +33,18 @@ public class BaseDialog extends Dialog {
         CutoutUtil.adaptCutoutAboveAndroidP(this, true);//设置刘海
         super.onCreate(savedInstanceState);
 
+        // 统一底部弹窗背景(顶部圆角 + bg_popup 主题色):与 AppBottomPopupView 一致,
+        // 子类布局里的 background 被此处覆盖,调主题只改基类/公共 drawable
+        try {
+            View decor = getWindow() != null ? getWindow().getDecorView() : null;
+            if (decor != null) {
+                View content = ((ViewGroup) decor).getChildAt(0);
+                if (content != null) {
+                    content.setBackgroundResource(R.drawable.bg_bottom_dialog);
+                }
+            }
+        } catch (Throwable ignored) {
+        }
 
         WindowManager.LayoutParams lp = new WindowManager.LayoutParams();
         lp.copyFrom(getWindow().getAttributes());

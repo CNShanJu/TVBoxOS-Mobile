@@ -1,7 +1,9 @@
 package com.github.tvbox.osc.ui.dialog;
 
 import android.content.Context;
+import android.util.TypedValue;
 import android.view.View;
+import android.view.ViewGroup;
 
 import androidx.annotation.NonNull;
 
@@ -11,7 +13,8 @@ import com.lxj.xpopup.core.CenterPopupView;
 /**
  * 统一的居中弹窗基类:
  * 背景统一使用 {@link R.drawable#bg_large_round_popup}(全圆角 + bg_popup 主题色),
- * 内部组件由各页面自行决定。调主题背景只改基类/公共 drawable,一处生效全部居中弹窗。
+ * 内容宽度统一限制为 {@link DialogStyle#CENTER_MAX_WIDTH_DP}(窄屏自适应)。
+ * 调主题背景/宽度只改基类/常量,一处生效全部居中弹窗。
  * 子类只需实现 {@link #getImplLayoutId()} 与各自 {@link #onCreate()}。
  */
 public abstract class AppCenterPopupView extends CenterPopupView {
@@ -27,6 +30,18 @@ public abstract class AppCenterPopupView extends CenterPopupView {
         View root = getPopupImplView();
         if (root != null) {
             root.setBackgroundResource(R.drawable.bg_large_round_popup);
+            // 统一宽度:内容 ≤ CENTER_MAX_WIDTH_DP(布局 match_parent 时不再撑满全屏)
+            ViewGroup.LayoutParams lp = root.getLayoutParams();
+            if (lp != null) {
+                int maxPx = Math.round(DialogStyle.CENTER_MAX_WIDTH_DP
+                        * getContext().getResources().getDisplayMetrics().density);
+                if (lp.width == ViewGroup.LayoutParams.MATCH_PARENT
+                        || lp.width == ViewGroup.LayoutParams.WRAP_CONTENT
+                        || lp.width > maxPx) {
+                    lp.width = maxPx;
+                    root.setLayoutParams(lp);
+                }
+            }
         }
     }
 }
