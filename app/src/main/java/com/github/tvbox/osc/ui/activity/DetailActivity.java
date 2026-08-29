@@ -1369,7 +1369,10 @@ public class DetailActivity extends BaseVbActivity<ActivityDetailBinding> {
                         AppBubble.toast("所选剧集已在下载任务中");
                     }
                 } else if (fFailed > 0) {
-                    AppBubble.toast("所选剧集解析失败,无法下载");
+                    // 嗅探型源(WebView 解析)无法批量解析: 提示引导先播放目标集
+                    AppBubble.toast(fFailed > 1
+                            ? "所选剧集解析失败(" + fFailed + " 集),该源可能仅支持下载当前播放的剧集"
+                            : "该集解析失败,该源可能仅支持下载当前播放的剧集,请先播放该集再试");
                 } else {
                     AppBubble.toast("所选剧集地址无效,无法下载");
                 }

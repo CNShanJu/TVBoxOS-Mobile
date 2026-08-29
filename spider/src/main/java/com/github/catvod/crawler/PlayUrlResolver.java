@@ -123,9 +123,14 @@ public class PlayUrlResolver {
     private static ResolveResult resolveJx(String flag, String input) {
         try {
             com.github.tvbox.osc.bean.ParseBean pb = ApiConfig.get().getDefaultParse();
+            Log.i(TAG, "jx解析: 解析器=" + (pb == null ? "null" : (pb.getName() + " type=" + pb.getType()))
+                    + " input=" + input);
             if (pb == null) return null;
             int type = pb.getType();
-            if (type == 0) return null; // WebView 嗅探, 批量不支持
+            if (type == 0) {
+                Log.i(TAG, "jx解析: 解析器为 WebView 嗅探型(type0), 批量不支持, 跳过: " + input);
+                return null;
+            }
             if (type == 1) {
                 // json 解析接口(带解析器 ext 的 header)
                 Map<String, String> reqHeaders = new HashMap<>();
@@ -142,6 +147,8 @@ public class PlayUrlResolver {
                 } catch (Throwable ignored) {
                 }
                 String json = HttpClient.getSync(pb.getUrl() + encode(input), reqHeaders);
+                Log.i(TAG, "jx解析(json): resp=" + (json == null ? "null"
+                        : json.substring(0, Math.min(200, json.length()))));
                 JSONObject rs = parseJsonResult(input, json);
                 String real = rs == null ? null : rs.optString("url", "");
                 if (TextUtils.isEmpty(real)) return null;
