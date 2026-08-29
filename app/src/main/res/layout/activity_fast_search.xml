@@ -38,9 +38,9 @@
 
         <ImageView
             android:id="@+id/iv_filter"
-            android:layout_width="30dp"
-            android:layout_height="30dp"
-            android:padding="3dp"
+            android:layout_width="24dp"
+            android:layout_height="24dp"
+            android:padding="2dp"
             android:src="@drawable/ic_filter_list"
             app:tint="@color/text_foreground"
             android:layout_marginRight="4dp"/>
