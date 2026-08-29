@@ -106,5 +106,7 @@
 
     <!-- 底部导航栏磨砂遮罩(毛玻璃):亮色 88% 页面背景色, 降低模糊内容透出显灰 -->
     <color name="bg_float">#E6FAF8FF</color>
+    <!-- 悬浮按钮磨砂遮罩:亮色 78%, 比底栏更透(按钮小, 模糊更明显) -->
+    <color name="bg_float_fab">#C7FAF8FF</color>
 
 </resources>

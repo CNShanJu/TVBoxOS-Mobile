@@ -42,5 +42,7 @@
 
     <!-- 底部导航栏磨砂遮罩(毛玻璃):暗色 75% 页面背景色, 透出下层模糊 -->
     <color name="bg_float">#BF141218</color>
+    <!-- 悬浮按钮磨砂遮罩:暗色 65%, 比底栏更透 -->
+    <color name="bg_float_fab">#A6141218</color>
 
 </resources>
