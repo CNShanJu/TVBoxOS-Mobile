@@ -52,7 +52,8 @@ public class DownloadExecutor {
     // 直链下载(断点续传)
     // ------------------------------------------------------------------
 
-    private void downloadDirect(DownloadTask t) throws IOException {
+    /** 直链下载算法入口（4.6 任务对象化: 由 NormalFileDownloadTask.doRun 委托） */
+    public void downloadDirect(DownloadTask t) throws IOException {
         Map<String, String> headers = baseHeaders(t);
         if (t.downloadedBytes > 0) {
             headers.put("Range", "bytes=" + t.downloadedBytes + "-");
@@ -192,7 +193,8 @@ public class DownloadExecutor {
     // HLS(m3u8)分段下载 + 合并
     // ------------------------------------------------------------------
 
-    private void downloadHls(DownloadTask t) throws IOException {
+    /** HLS 分段下载算法入口（4.6 任务对象化: 由 M3u8DownloadTask.doRun 委托） */
+    public void downloadHls(DownloadTask t) throws IOException {
         String playlistUrl = t.url;
         String playlist = fetchPlaylist(playlistUrl, t);
         // fetchPlaylist 遇到主播放列表时会切换到具体变体(t.url 已更新),分片需按实际播放列表解析

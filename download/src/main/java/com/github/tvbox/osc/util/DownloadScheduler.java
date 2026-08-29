@@ -13,6 +13,9 @@ import com.github.catvod.crawler.SpiderApi;
 import com.github.tvbox.osc.bean.DownloadTask;
 import com.github.tvbox.osc.download.DownloadLog;
 import com.github.tvbox.osc.download.DownloadSubType;
+import com.github.tvbox.osc.download.task.BaseDownloadTask;
+import com.github.tvbox.osc.download.task.DownloadTaskRegistry;
+import com.github.tvbox.osc.download.task.TaskListener;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -62,6 +65,27 @@ public class DownloadScheduler {
     DownloadScheduler(DownloadManager dm) {
         this.dm = dm;
     }
+
+    /**
+     * 任务对象上报通道（4.6）: 目前执行器内部已直连 dm 持久化/广播,
+     * 此处先保持空转发(协议就位,行为零变化); 4.7 重封装时把 持久化/广播/日志 收敛到此通道。
+     */
+    private final TaskListener taskListener = new TaskListener() {
+        @Override
+        public void onProgress(DownloadTask t) {
+            // 进度持久化由执行器内部 800ms 合并完成
+        }
+
+        @Override
+        public void onState(DownloadTask t, int state, String message) {
+            // 状态落库/广播由执行器内部完成(顺序铁律: 落盘→档案→清理→COMPLETED)
+        }
+
+        @Override
+        public void onCleanupRequest(DownloadTask t) {
+            // 清理请求由框架仲裁(当前清理时序已由执行器按铁律执行)
+        }
+    };
 
     /** 注册网络状态监听(断网/切网后网络恢复时自动续传) */
     void registerNetworkCallback() {
@@ -231,7 +255,9 @@ public class DownloadScheduler {
                 }
                 while (true) {
                     try {
-                        dm.executor.processTask(t);
+                        // 4.6 任务对象化: 经注册表创建任务对象执行(直链/HLS 按特征分发,行为与 processTask 一致)
+                        BaseDownloadTask obj = DownloadTaskRegistry.create(t, taskListener, dm.executor);
+                        obj.start();
                         return; // 成功
                     } catch (Throwable th) {
                         th.printStackTrace();
