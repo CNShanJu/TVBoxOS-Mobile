@@ -25,9 +25,9 @@
         android:layout_alignParentEnd="true"
         android:layout_alignParentBottom="true"
         android:layout_margin="20dp"
-        android:backgroundTint="@color/color_highlight"
+        android:backgroundTint="@color/bg_component"
         app:borderWidth="0dp"
         android:src="@drawable/ic_filter_list"
-        app:tint="@android:color/white"
+        app:tint="@color/nav_text_normal"
         />
 </RelativeLayout>
