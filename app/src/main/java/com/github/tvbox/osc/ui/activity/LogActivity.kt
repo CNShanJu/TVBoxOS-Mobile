@@ -1,7 +1,6 @@
 package com.github.tvbox.osc.ui.activity
 
 import android.content.Intent
-import android.graphics.Typeface
 import android.view.View
 import android.widget.TextView
 import com.github.tvbox.osc.log.Category
@@ -72,10 +71,11 @@ class LogActivity : BaseVbActivity<ActivityLogBinding>() {
 
     private fun switchTab(tab: Int) {
         currentTab = tab
-        mBinding.tvTabBiz.setTypeface(null, if (tab == 0) Typeface.BOLD else Typeface.NORMAL)
-        mBinding.tvTabAll.setTypeface(null, if (tab == 1) Typeface.BOLD else Typeface.NORMAL)
-        mBinding.tvTabBiz.setTextColor(if (tab == 0) colorOf(R.color.text_foreground) else colorOf(R.color.text_sub_foreground))
-        mBinding.tvTabAll.setTextColor(if (tab == 1) colorOf(R.color.text_foreground) else colorOf(R.color.text_sub_foreground))
+        // Tab 选中态:背景用 selector_filter_chip 的 selected 高亮, 文字选中白/未选灰
+        mBinding.tvTabBiz.isSelected = tab == 0
+        mBinding.tvTabAll.isSelected = tab == 1
+        mBinding.tvTabBiz.setTextColor(if (tab == 0) colorOf(R.color.white) else colorOf(R.color.text_sub_foreground))
+        mBinding.tvTabAll.setTextColor(if (tab == 1) colorOf(R.color.white) else colorOf(R.color.text_sub_foreground))
         val isBiz = tab == 0
         mBinding.tvTip.visibility = if (isBiz) View.GONE else View.VISIBLE
         mBinding.llFilter.visibility = if (isBiz) View.VISIBLE else View.GONE
@@ -104,8 +104,9 @@ class LogActivity : BaseVbActivity<ActivityLogBinding>() {
     }
 
     private fun setFilterSelected(tv: TextView, selected: Boolean) {
-        tv.setTypeface(null, if (selected) Typeface.BOLD else Typeface.NORMAL)
-        tv.setTextColor(colorOf(if (selected) R.color.text_foreground else R.color.text_sub_foreground))
+        // 选中态:背景高亮(selector_filter_chip) + 白字; 未选中灰底灰字
+        tv.isSelected = selected
+        tv.setTextColor(colorOf(if (selected) R.color.white else R.color.text_sub_foreground))
     }
 
     private fun colorOf(res: Int): Int = getColor(res)
@@ -149,7 +150,7 @@ class LogActivity : BaseVbActivity<ActivityLogBinding>() {
         }.start()
     }
 
-    /** Tab2 全部日志：AppLog 按天文件，显示尾部 SHOW_MAX_LINES 行 */
+    /** Tab2 全部日志：AppLog 按天文件，后台线程读取,避免大文件卡主线程 */
     private fun loadAllLogs() {
         dayFiles.clear()
         dayFiles.addAll(AppLog.listLogFiles())
@@ -162,15 +163,22 @@ class LogActivity : BaseVbActivity<ActivityLogBinding>() {
         if (selectedFile == null || !dayFiles.contains(selectedFile)) {
             selectedFile = dayFiles[0]
         }
-        updateSelectedDayText()
-        renderAllLogs()
-    }
-
-    private fun updateSelectedDayText() {
-        val f = selectedFile ?: return
-        val count = AppLog.readTail(f, 100000).size
-        val date = f.name.replace("app-", "").replace("logcat-", "").replace(".log", "")
-        mBinding.tvSelectedDay.text = "$date ($count 条)"
+        mBinding.tvSelectedDay.text = selectedFile?.name
+            ?.replace("app-", "")?.replace("logcat-", "")?.replace(".log", "") ?: "暂无日志"
+        Thread {
+            val lines = selectedFile?.let { AppLog.readTail(it, SHOW_MAX_LINES) } ?: emptyList()
+            val sb = StringBuilder(lines.size * 64)
+            for (line in lines) sb.append(line).append("\n")
+            if (sb.isEmpty()) {
+                runOnUiThread { mBinding.tvContent.text = "暂无内容" }
+            } else {
+                sb.append("\n—— 仅显示最近 ").append(lines.size).append(" 行 ——")
+                runOnUiThread {
+                    mBinding.tvContent.text = sb.toString()
+                    mBinding.scrollLog.post { mBinding.scrollLog.fullScroll(View.FOCUS_DOWN) }
+                }
+            }
+        }.start()
     }
 
     /** 底部抽屉选择日期 */
@@ -181,15 +189,14 @@ class LogActivity : BaseVbActivity<ActivityLogBinding>() {
         }
         val display = Array(dayFiles.size) { i ->
             val f = dayFiles[i]
-            val count = AppLog.readTail(f, 100000).size
-            f.name.replace("app-", "").replace("logcat-", "").replace(".log", "") + " ($count 条)"
+            f.name.replace("app-", "").replace("logcat-", "").replace(".log", "")
         }
         XPopup.Builder(this)
             .asBottomList("选择日期", display) { position, _ ->
                 if (position in dayFiles.indices) {
                     selectedFile = dayFiles[position]
-                    updateSelectedDayText()
-                    renderAllLogs()
+                    mBinding.tvSelectedDay.text = display[position]
+                    refreshContent()
                 }
             }
             .show()

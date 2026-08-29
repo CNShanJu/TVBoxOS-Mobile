@@ -44,8 +44,7 @@
             android:id="@+id/tv_tab_biz"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:background="@drawable/bg_large_round_gray"
-            android:foreground="?android:selectableItemBackground"
+            android:background="@drawable/selector_filter_chip"
             android:paddingHorizontal="16dp"
             android:paddingVertical="6dp"
             android:text="业务日志"
@@ -57,8 +56,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginStart="10dp"
-            android:background="@drawable/bg_large_round_gray"
-            android:foreground="?android:selectableItemBackground"
+            android:background="@drawable/selector_filter_chip"
             android:paddingHorizontal="16dp"
             android:paddingVertical="6dp"
             android:text="全部日志"
@@ -66,88 +64,89 @@
             android:textSize="13sp" />
     </LinearLayout>
 
-    <!-- 业务日志模块筛选:大类型 + 仅错误 -->
-    <LinearLayout
+    <!-- 业务日志模块筛选:大类型 + 仅错误(横向可滚动,窄屏不换行挤压) -->
+    <HorizontalScrollView
         android:id="@+id/ll_filter"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginHorizontal="14dp"
         android:layout_marginTop="8dp"
-        android:orientation="horizontal"
+        android:scrollbars="none"
         android:visibility="gone">
 
-        <TextView
-            android:id="@+id/ft_all"
+        <LinearLayout
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginEnd="8dp"
-            android:background="@drawable/bg_large_round_gray"
-            android:foreground="?android:selectableItemBackground"
-            android:paddingHorizontal="12dp"
-            android:paddingVertical="5dp"
-            android:text="全部"
-            android:textColor="@color/text_sub_foreground"
-            android:textSize="12sp" />
-        <TextView
-            android:id="@+id/ft_download"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginEnd="8dp"
-            android:background="@drawable/bg_large_round_gray"
-            android:foreground="?android:selectableItemBackground"
-            android:paddingHorizontal="12dp"
-            android:paddingVertical="5dp"
-            android:text="下载"
-            android:textColor="@color/text_sub_foreground"
-            android:textSize="12sp" />
-        <TextView
-            android:id="@+id/ft_player"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginEnd="8dp"
-            android:background="@drawable/bg_large_round_gray"
-            android:foreground="?android:selectableItemBackground"
-            android:paddingHorizontal="12dp"
-            android:paddingVertical="5dp"
-            android:text="播放"
-            android:textColor="@color/text_sub_foreground"
-            android:textSize="12sp" />
-        <TextView
-            android:id="@+id/ft_subscription"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginEnd="8dp"
-            android:background="@drawable/bg_large_round_gray"
-            android:foreground="?android:selectableItemBackground"
-            android:paddingHorizontal="12dp"
-            android:paddingVertical="5dp"
-            android:text="订阅"
-            android:textColor="@color/text_sub_foreground"
-            android:textSize="12sp" />
-        <TextView
-            android:id="@+id/ft_system"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginEnd="8dp"
-            android:background="@drawable/bg_large_round_gray"
-            android:foreground="?android:selectableItemBackground"
-            android:paddingHorizontal="12dp"
-            android:paddingVertical="5dp"
-            android:text="系统"
-            android:textColor="@color/text_sub_foreground"
-            android:textSize="12sp" />
-        <TextView
-            android:id="@+id/ft_error"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:background="@drawable/bg_large_round_gray"
-            android:foreground="?android:selectableItemBackground"
-            android:paddingHorizontal="12dp"
-            android:paddingVertical="5dp"
-            android:text="仅错误"
-            android:textColor="@color/text_sub_foreground"
-            android:textSize="12sp" />
-    </LinearLayout>
+            android:orientation="horizontal"
+            android:paddingVertical="2dp">
+
+            <TextView
+                android:id="@+id/ft_all"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="8dp"
+                android:background="@drawable/selector_filter_chip"
+                android:paddingHorizontal="14dp"
+                android:paddingVertical="6dp"
+                android:text="全部"
+                android:textColor="@color/text_sub_foreground"
+                android:textSize="12sp" />
+            <TextView
+                android:id="@+id/ft_download"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="8dp"
+                android:background="@drawable/selector_filter_chip"
+                android:paddingHorizontal="14dp"
+                android:paddingVertical="6dp"
+                android:text="下载"
+                android:textColor="@color/text_sub_foreground"
+                android:textSize="12sp" />
+            <TextView
+                android:id="@+id/ft_player"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="8dp"
+                android:background="@drawable/selector_filter_chip"
+                android:paddingHorizontal="14dp"
+                android:paddingVertical="6dp"
+                android:text="播放"
+                android:textColor="@color/text_sub_foreground"
+                android:textSize="12sp" />
+            <TextView
+                android:id="@+id/ft_subscription"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="8dp"
+                android:background="@drawable/selector_filter_chip"
+                android:paddingHorizontal="14dp"
+                android:paddingVertical="6dp"
+                android:text="订阅"
+                android:textColor="@color/text_sub_foreground"
+                android:textSize="12sp" />
+            <TextView
+                android:id="@+id/ft_system"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="8dp"
+                android:background="@drawable/selector_filter_chip"
+                android:paddingHorizontal="14dp"
+                android:paddingVertical="6dp"
+                android:text="系统"
+                android:textColor="@color/text_sub_foreground"
+                android:textSize="12sp" />
+            <TextView
+                android:id="@+id/ft_error"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:background="@drawable/selector_filter_chip"
+                android:paddingHorizontal="14dp"
+                android:paddingVertical="6dp"
+                android:text="仅错误"
+                android:textColor="@color/text_sub_foreground"
+                android:textSize="12sp" />
+        </LinearLayout>
+    </HorizontalScrollView>
 
     <!-- 日期选择入口:点击弹出底部抽屉选择日期 -->
     <LinearLayout
