@@ -169,6 +169,22 @@ public class DownloadManager {
         // 去抖:高频进度事件(每任务每800ms一次)合并,避免下载页被刷屏
         notifyHandler.removeCallbacks(notifyRunnable);
         notifyHandler.postDelayed(notifyRunnable, 500);
+        // 前台服务保活:调度状态变化后同步(有下载中→启动/刷新, 无→停止)
+        updateForegroundService();
+    }
+
+    /** 前台服务保活(可选增强):存在下载中/等待任务时拉起,全部结束停止;进度通知去抖由 persist 频控 */
+    private void updateForegroundService() {
+        if (appContext == null) return;
+        try {
+            List<DownloadTask> snapshot;
+            synchronized (tasks) {
+                snapshot = new ArrayList<>(tasks);
+            }
+            com.github.tvbox.osc.download.DownloadForegroundService.startIfNeeded(appContext, snapshot);
+            com.github.tvbox.osc.download.DownloadForegroundService.stopIfIdle(appContext, snapshot);
+        } catch (Throwable ignored) {
+        }
     }
 
     void wakeWorker() {
