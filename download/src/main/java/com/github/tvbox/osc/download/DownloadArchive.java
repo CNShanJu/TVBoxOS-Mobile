@@ -105,6 +105,26 @@ public final class DownloadArchive {
         return out;
     }
 
+    /** 清理某剧的文件不存在档案(详情页打开下载抽屉时调用: 本地删文件后立即恢复"未下载", 无需重启/逐集查询) */
+    public synchronized int removeOrphansByVod(String vodName, String sourceName) {
+        if (vodName == null) return 0;
+        int removed = 0;
+        for (int i = items.size() - 1; i >= 0; i--) {
+            ArchiveItem it = items.get(i);
+            if (!vodName.equals(it.vodName)) continue;
+            if (sourceName != null && !sourceName.isEmpty()
+                    && it.sourceName != null && !sourceName.equals(it.sourceName)) {
+                continue;
+            }
+            if (it.savePath == null || !new File(it.savePath).exists()) {
+                items.remove(i);
+                removed++;
+            }
+        }
+        if (removed > 0) persist();
+        return removed;
+    }
+
     /** 单集档案 */
     public synchronized ArchiveItem get(String episodeId) {
         if (episodeId == null) return null;
