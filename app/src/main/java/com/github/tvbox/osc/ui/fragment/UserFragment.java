@@ -4,14 +4,17 @@ import android.content.Intent;
 import android.content.res.Configuration;
 import android.os.Bundle;
 import android.text.TextUtils;
+import android.view.Gravity;
 import android.view.View;
 import android.view.animation.BounceInterpolator;
 import android.widget.LinearLayout;
+import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.GridLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.blankj.utilcode.util.ConvertUtils;
 import com.github.tvbox.osc.util.AppBubble;
 import com.chad.library.adapter.base.BaseQuickAdapter;
 import com.github.tvbox.osc.R;
@@ -140,8 +143,23 @@ public class UserFragment extends BaseLazyFragment {
         });
 
         tvHotList1.setAdapter(homeHotVodAdapter);
+        addEndFooter();
         setLoadSir2(tvHotList1);
         initHomeHotVod(homeHotVodAdapter);
+    }
+
+    /**
+     * 列表末尾"到底了"提示:滚动到最底可见,空态由 LoadSir 覆盖层接管不受影响
+     */
+    private void addEndFooter() {
+        TextView footer = new TextView(mContext);
+        footer.setText("—— 到底了 ——");
+        footer.setTextColor(getResources().getColor(R.color.text_sub_foreground));
+        footer.setTextSize(12);
+        footer.setGravity(Gravity.CENTER);
+        int pad = ConvertUtils.dp2px(16f);
+        footer.setPadding(pad, pad, pad, pad);
+        homeHotVodAdapter.addFooterView(footer);
     }
 
     private void initHomeHotVod(GridAdapter adapter) {
