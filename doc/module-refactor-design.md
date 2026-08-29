@@ -886,7 +886,7 @@ File getSaveDir();  boolean hasStoragePermission();  void requestStoragePermissi
 | ② SystemStateMonitor | ✅ 已落地 | state 独立包、网络/前后台/锁屏/横竖屏/电量/磁盘/权限维度、订阅 API |
 | ④ SpiderModule | ✅ 已落地 | SpiderApi 全能力门面、SpiderExecutor 串行收口、PlayUrlResolver 迁入、下载 reResolve 不再依赖 UI 线程池 |
 | ⑥ PlayerModule（契约层） | ✅ 已落地 | PlayerApi 引擎无关契约 + PlayerFactory（Media3 升级铺路） |
-| ⑥ 适配器层 + PlayFragment 薄层化 | ⏳ 待真机回归 | 18 个播放器类收敛为 PlayerApiAdapter、消除 `instanceof EXOmPlayer` 强转 |
+| ⑥ 适配器层 + PlayFragment 薄层化 | ✅ 代码侧完成，⏳ 真机回归 | 18 个播放器类收敛为 PlayerApiAdapter、消除 `instanceof EXOmPlayer` 强转；PlayFragment 全部 6 处内核强转收敛进 PlayerTrackHelper（轨道切换/字幕回调/中文轨道选择），内核 import 清零 |
 | ① 5.1 纯拆分 | ✅ 已落地 | DownloadManager 门面 + Store/Scheduler/Executor/Policy/Cleaner 5 组件 |
 | ① 5.2 修 5 Bug | ✅ 已落地 | Bug5 .nomedia+孤儿回收 / Bug1 网络暂停恢复 / Bug2 CANCELLED+碎片复用+原子写 / Bug4 权限硬门槛+撤销暂停 / 启动对账 |
 | ① 5.3 门面+日志中心 | ✅ 已落地 | DownloadFacade（5 态快照/聚合/订阅/日志/档案管理）、DownloadArchive、任务日志接 LogStore；详情页/下载页 UI 迁移 ⏳ 待真机 |
