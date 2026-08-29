@@ -110,9 +110,21 @@ public class PlayUrlResolver {
         if (rr == null || TextUtils.isEmpty(rr.url)) {
             return new ResolveResult(fallbackUrl, playbackHeaders);
         }
-        if ((rr.headers == null || rr.headers.isEmpty())
-                && playbackHeaders != null && !playbackHeaders.isEmpty()) {
-            return new ResolveResult(rr.url, playbackHeaders);
+        // 合并请求头: 解析结果为底, 播放器请求头(UA/Referer 等)补充缺失键——
+        // 防盗链代理(如 jx.91by.top)校验 Referer/UA, 解析结果往往只带 UA 缺 Referer,
+        // 仅"headers 为空才补"会漏, 必须逐键合并
+        if (playbackHeaders != null && !playbackHeaders.isEmpty()) {
+            Map<String, String> merged = rr.headers != null ? new HashMap<>(rr.headers) : new HashMap<>();
+            boolean changed = false;
+            for (Map.Entry<String, String> e : playbackHeaders.entrySet()) {
+                if (e.getKey() != null && e.getValue() != null && !merged.containsKey(e.getKey())) {
+                    merged.put(e.getKey(), e.getValue());
+                    changed = true;
+                }
+            }
+            if (changed || rr.headers == null || rr.headers.isEmpty()) {
+                return new ResolveResult(rr.url, merged);
+            }
         }
         return rr;
     }
