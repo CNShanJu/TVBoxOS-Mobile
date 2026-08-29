@@ -895,7 +895,8 @@ File getSaveDir();  boolean hasStoragePermission();  void requestStoragePermissi
 | ① 4.7 日志粒度收尾 | ✅ 已落地 | 校验/开始（含完整缺失清单）、补片轮次（开始目标/单项成功失败/轮末 补K成功K1失败K2剩余J）、补片 FAILED 全量清单、合并（开始含 size/重试含上次原因/完成含耗时/失败含第k次+碎片保留） |
 | 3.6 配置门面 PlayConfig | ✅ 已落地 | player-api 内自持 内核/渲染/缩放/步进/解码/缓存/后台播放/净化/倍速/字幕 12 项；设置页播放区 + 播放内核消费方 12 文件收敛；沿用旧 Hawk key 兼容历史设置 |
 | 3.6 配置门面 SystemConfig | ✅ 已落地 | common 内自持 DNS/主题/动画/首页/历史/直播源/无痕 7 项；设置页系统区 + 系统键消费方 9 文件收敛；设置页 44 处 Hawk 直连清零（四门面 下载/日志/播放/系统） |
-| P1 资源命名规范 | ✅ 脚本 + 两批治理 | check-res-naming.ps1 校验；icon_*→ic_*、layout 归位；剩余第三方库风格改名 ⏳ 收益递减 |
+| 3.7 P2 :ui-common | ✅ 已落地 | 公共 UI 资源独立成模块：主题生成任务 + styles/colors/attrs/dimens + values-night + 通用 drawable 99 个 + anim 4 个；app 仅留页面级资源；主题 JSON 统一在 ui-common/assets/theme；assembleDebug 通过（行为零变化） |
+| P1 资源命名规范 | ✅ 脚本 + 两批治理 | check-res-naming.ps1 校验（含 :ui-common）；icon_*→ic_*、layout 归位；剩余第三方库风格改名 ⏳ 收益递减 |
 | P2 :ui-common | ⏳ 待排期 | 公共资源迁移（依赖 P1 完成度） |
 | 可选增强 | ⏳ 未做 | 限速 setSpeedLimit / DownloadNotifier / 前台服务（依赖任务对象抽象层） |
 
