@@ -28,7 +28,7 @@
         android:backgroundTint="@color/bg_component"
         app:borderWidth="0dp"
         android:src="@drawable/ic_live_tv_48"
-        app:tint="@color/nav_text_normal"
+        app:tint="@color/text_highlight"
         />
 
 </RelativeLayout>
