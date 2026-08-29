@@ -21,6 +21,9 @@ import com.github.tvbox.osc.base.App;
  * 颜色由代码按 app 主题设置直接指定(不依赖 values-night 资源限定符,后者只跟随系统深色)。
  * 系统 Toast 由系统队列管理,轻量不卡顿,setGravity 底部位置准确。
  * 用法:AppBubble.toast("xxx") / AppBubble.toastLong("xxx")
+ * <p>
+ * 调试辅助(仅 debug 构建):toast 触发时经 {@link ToastTracer} 打印调用栈到 logcat(tag=ToastTrace),
+ * 定位"不知道哪里冒出来的 toast";release 构建 ToastTracer 为空实现,产物零残留。
  */
 public class AppBubble {
 
@@ -47,6 +50,7 @@ public class AppBubble {
 
     private static void show(final CharSequence msg, final boolean longDuration) {
         if (msg == null || msg.length() == 0) return;
+        ToastTracer.log(msg); // debug:打印触发调用栈; release:no-op
         MAIN.post(new Runnable() {
             @Override
             public void run() {
