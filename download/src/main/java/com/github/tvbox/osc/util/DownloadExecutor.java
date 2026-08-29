@@ -307,6 +307,10 @@ public class DownloadExecutor {
                         + missing.get(0) + "片)");
             }
             repair++;
+            // 补片进度:每轮更新剩余片数,让"补片中(剩K片)"可见(而非一直卡在校验/合并入口)
+            t.message = DownloadManager.MSG_REPAIRING + "(剩" + missing.size() + "片)";
+            dm.persist();
+            dm.notifyChanged();
             Log.i("TVBox-Download", "碎片校验缺失 " + missing.size() + " 片,第" + repair + "/" + DownloadManager.MAX_SEGMENT_REPAIR
                     + "轮补下: " + t.fileName + " 缺失首片=" + missing.get(0));
             // 每轮补片开始: 目标[序号], 轮次 k/3
@@ -397,12 +401,22 @@ public class DownloadExecutor {
 
             OutputStream out = new FileOutputStream(mergeTmp);
             try {
+                long mergedBytes = 0;
                 for (int i = 0; i < segments.size(); i++) {
                     if (t.state == DownloadTask.STATE_CANCELLED) {
                         throw new IOException("cancelled"); // Bug2: 删除记录后合并立即中止,不落最终文件
                     }
                     File segFile = new File(tmpDir, String.format("%05d.ts", i));
                     FileCleaner.copyFile(segFile, out);
+                    mergedBytes += segFile.length();
+                    // 合并进度:每 20 片或最后一片更新一次(避免频繁写盘),"文件合并中(x%)"可见
+                    // (否则几百MB拼接期间进度一直卡在 100% 不动,用户不知道进行到哪一步)
+                    if (i % 20 == 0 || i == segments.size() - 1) {
+                        int pct = (int) (mergedBytes * 100 / Math.max(1L, mergeSize));
+                        t.message = DownloadManager.MSG_MERGING + "(" + pct + "%)";
+                        dm.persist();
+                        dm.notifyChanged();
+                    }
                 }
                 out.flush();
             } finally {

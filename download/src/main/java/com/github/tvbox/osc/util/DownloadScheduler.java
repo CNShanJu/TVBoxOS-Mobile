@@ -258,6 +258,17 @@ public class DownloadScheduler {
                     t.needReResolve = false;
                     reResolveUrl(t);
                 }
+                // 方案A:嗅探型源(type0)首次启动——入队地址是剧集页(非视频),先嗅探真实播放地址
+                if (t.sourceKey != null && t.playFlag != null && t.episodeRawUrl != null
+                        && t.reResolveCount == 0 && !isPlayableUrl(t.url)) {
+                    t.reResolveCount++;
+                    t.message = "地址嗅探中(1/" + DownloadManager.MAX_RE_RESOLVE + ")";
+                    dm.persist();
+                    dm.notifyChanged();
+                    if (!sniffResolve(t)) {
+                        Log.i("TVBox-Download", "首次嗅探未命中,按原地址尝试: " + t.fileName);
+                    }
+                }
                 while (true) {
                     try {
                         // 4.6 任务对象化: 经注册表创建任务对象执行(直链/HLS 按特征分发,行为与 processTask 一致)
@@ -408,13 +419,65 @@ public class DownloadScheduler {
                 }
                 return true;
             }
-            Log.i("TVBox-Download", "重新解析地址无变化/失败,用原地址: " + t.fileName);
+            // 嗅探型源(type0):爬虫解析不出地址 → 无头 WebView 嗅探剧集页(方案A)
+            if (sniffResolve(t)) return true;
+            Log.i("TVBox-Download", "重新解析地址失败/无有效地址,用原地址: " + t.fileName);
             DownloadLog.LOG.warn(DownloadSubType.RESOLVE, "重新解析地址失败/无有效地址,用原地址: " + t.fileName,
                     DownloadLog.extras(t.episodeId));
         } catch (Throwable th4) {
             Log.i("TVBox-Download", "重新解析地址异常,用原地址: " + t.fileName);
         }
         return false;
+    }
+
+    /** 是否可直接下载的地址(视频格式或 m3u8;剧集页 html/空/非 http 返回 false,需嗅探) */
+    private static boolean isPlayableUrl(String url) {
+        if (url == null || url.isEmpty() || !url.startsWith("http")) return false;
+        String u = url.toLowerCase();
+        if (u.contains(".m3u8") || u.contains(".mp4") || u.contains(".mkv") || u.contains(".flv")
+                || u.contains(".ts") || u.contains(".webm") || u.contains(".avi")) return true;
+        try {
+            return com.github.tvbox.osc.util.DefaultConfig.isVideoFormat(url);
+        } catch (Throwable ignored) {
+            return false;
+        }
+    }
+
+    /** 方案A:无头 WebView 嗅探剧集页拿真实播放地址+请求头(串行复用 DownloadManager 注册的嗅探器) */
+    private boolean sniffResolve(DownloadTask t) {
+        com.github.tvbox.osc.download.DownloadUrlSniffer sniffer = DownloadManager.getUrlSniffer();
+        if (sniffer == null || t.episodeRawUrl == null) return false;
+        try {
+            com.github.tvbox.osc.download.DownloadUrlSniffer.SniffResult sr =
+                    sniffer.sniff(t.sourceKey, t.playFlag, t.episodeRawUrl, 20000L);
+            if (sr == null || sr.url == null || sr.url.isEmpty()) {
+                Log.i("TVBox-Download", "嗅探未命中(超时/无视频): " + t.fileName);
+                DownloadLog.LOG.warn(DownloadSubType.RESOLVE, "嗅探未命中(超时/无视频): " + t.fileName,
+                        DownloadLog.extras(t.episodeId));
+                return false;
+            }
+            t.headers = sr.headers; // 分片/文件校验必须携带(UA/Referer/Cookie)
+            boolean urlChanged = !sr.url.equals(t.url);
+            boolean oldHls = t.url != null && t.url.toLowerCase().contains(".m3u8");
+            boolean newHls = sr.url.toLowerCase().contains(".m3u8");
+            if (urlChanged && oldHls != newHls) {
+                Log.i("TVBox-Download", "嗅探结果类型变化(m3u8↔直链),保留原地址: " + t.fileName);
+                DownloadLog.LOG.info(DownloadSubType.RESOLVE,
+                        "嗅探结果类型变化(m3u8↔直链),保留原地址: " + t.fileName,
+                        DownloadLog.extras(t.episodeId));
+                return false;
+            }
+            t.url = sr.url;
+            if (t.downloadedBytes > 0 && !t.isHls()) t.downloadedBytes = 0;
+            Log.i("TVBox-Download", "嗅探命中: " + t.fileName + " " + sr.url);
+            DownloadLog.LOG.success(DownloadSubType.RESOLVE, "嗅探命中: " + t.fileName
+                            + " -> " + (sr.url.length() > 120 ? sr.url.substring(0, 120) + "..." : sr.url),
+                    DownloadLog.extras(t.episodeId));
+            return true;
+        } catch (Throwable th) {
+            Log.i("TVBox-Download", "嗅探异常: " + t.fileName + " " + th.getMessage());
+            return false;
+        }
     }
 
     // ------------------------------------------------------------------

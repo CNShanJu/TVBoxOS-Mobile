@@ -101,6 +101,8 @@ public class App extends MultiDexApplication {
         LogStore.get().installCrashHandler();
         // 下载模块(:download) context 注入(保存目录/海报/网络监听/通知)
         com.github.tvbox.osc.util.DownloadManager.init(this);
+        // 方案A:注册无头 WebView 嗅探器(嗅探型源任务启动前用它拿真实播放地址,串行复用保会话)
+        com.github.tvbox.osc.util.DownloadManager.setUrlSniffer(com.github.tvbox.osc.util.WebSniffResolver.get());
         // 下载完成通知渠道(可选增强)
         com.github.tvbox.osc.download.DownloadNotifier.init(this);
         // 全局系统状态监控(网络/前后台/横竖屏/电量/磁盘, 基座层)

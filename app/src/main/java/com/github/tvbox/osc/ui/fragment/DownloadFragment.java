@@ -4,6 +4,7 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.StatFs;
+import android.text.TextUtils;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewConfiguration;
@@ -17,6 +18,7 @@ import androidx.recyclerview.widget.GridLayoutManager;
 import androidx.recyclerview.widget.LinearLayoutManager;
 
 import com.blankj.utilcode.util.GsonUtils;
+import com.blankj.utilcode.util.SPUtils;
 import com.github.tvbox.osc.util.AppBubble;
 import com.bumptech.glide.Glide;
 import com.bumptech.glide.load.engine.DiskCacheStrategy;
@@ -27,6 +29,7 @@ import com.github.tvbox.osc.base.BaseVbFragment;
 import com.github.tvbox.osc.bean.DownloadTask;
 import com.github.tvbox.osc.bean.VideoInfo;
 import com.github.tvbox.osc.databinding.FragmentDownloadBinding;
+import com.github.tvbox.osc.constant.CacheConst;
 import com.github.tvbox.osc.event.DownloadEvent;
 import com.github.tvbox.osc.ui.activity.LocalPlayActivity;
 import com.github.tvbox.osc.ui.adapter.LocalVideoAdapter;
@@ -45,6 +48,7 @@ import org.greenrobot.eventbus.ThreadMode;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -232,21 +236,35 @@ public class DownloadFragment extends BaseVbFragment<FragmentDownloadBinding> {
                     status = "已取消";
                     statusColor = ContextCompat.getColor(mContext, R.color.text_sub_foreground);
                 } else {
-                    if (DownloadManager.MSG_VERIFYING.equals(task.message)) {
-                        status = DownloadManager.MSG_VERIFYING;
-                    } else if (DownloadManager.MSG_MERGING.equals(task.message)) {
-                        status = DownloadManager.MSG_MERGING;
+                    // 收尾阶段(message 带阶段+进度,如 "文件合并中(45%)"/"补片中(剩3片)"/"文件封装中"),前缀匹配
+                    if (task.message != null && task.message.startsWith(DownloadManager.MSG_REPAIRING)) {
+                        status = task.message;
+                    } else if (task.message != null && task.message.startsWith(DownloadManager.MSG_VERIFYING)) {
+                        status = task.message;
+                    } else if (task.message != null && task.message.startsWith(DownloadManager.MSG_MERGING)) {
+                        status = task.message;
+                    } else if (task.message != null && task.message.startsWith(DownloadManager.MSG_REMUX)) {
+                        status = task.message;
                     } else {
                         status = "下载中";
                     }
                     statusColor = ContextCompat.getColor(mContext, R.color.download_active);
                 }
                 TextView tvStatus = helper.getView(R.id.tv_status);
-                String statusText = status + " · " + task.getProgressPercent() + "%";
+                // 收尾阶段 message 自带进度(合并x%/剩K片),不再追加整体百分比(此时进度恒为100%)
+                boolean stageHasProgress = task.message != null
+                        && (task.message.startsWith(DownloadManager.MSG_MERGING)
+                        || task.message.startsWith(DownloadManager.MSG_REPAIRING));
+                String statusText = stageHasProgress
+                        ? status
+                        : status + " · " + task.getProgressPercent() + "%";
                 // 实时网速:仅真正下载中显示,放在"下载中 xx%"后面(大小行不显示,避免被挤压)
                 if (task.state == DownloadTask.STATE_DOWNLOADING
-                        && !DownloadManager.MSG_VERIFYING.equals(task.message)
-                        && !DownloadManager.MSG_MERGING.equals(task.message)
+                        && task.message != null
+                        && !task.message.startsWith(DownloadManager.MSG_VERIFYING)
+                        && !task.message.startsWith(DownloadManager.MSG_MERGING)
+                        && !task.message.startsWith(DownloadManager.MSG_REMUX)
+                        && !task.message.startsWith(DownloadManager.MSG_REPAIRING)
                         && task.speed > 0) {
                     statusText += " · " + formatSpeed(task.speed);
                 }
@@ -523,7 +541,7 @@ public class DownloadFragment extends BaseVbFragment<FragmentDownloadBinding> {
         mBinding.llDetail.setVisibility(inDetail ? View.VISIBLE : View.GONE);
         if (inDetail) {
             String src = currentSourceName == null || currentSourceName.isEmpty() ? "未知" : currentSourceName;
-            mBinding.tvNavPath.setText(currentVodGroup + " · " + src);
+            mBinding.tvNavPath.setText(src + " · " + currentVodGroup);
             // 该剧没有下载中的任务:隐藏 正在下载/下载完成 tab,直接展示下载完成内容
             boolean hasActive = hasInProgressInGroup();
             mBinding.llTabs.setVisibility(hasActive ? View.VISIBLE : View.GONE);
@@ -934,8 +952,11 @@ public class DownloadFragment extends BaseVbFragment<FragmentDownloadBinding> {
     /** 该剧(剧名+来源)下已完成且文件存在的视频列表(档案表驱动,按文件名排序) */
     private List<VideoInfo> buildFolderVideosFromRecords(String vodName, String sourceName) {
         List<VideoInfo> videos = new ArrayList<>();
+        // 播放过的集索引集合(SP key=sourceKey|vodId);episodeId 取第一条推导
+        Set<String> played = null;
         for (com.github.tvbox.osc.download.ArchiveItem it :
                 com.github.tvbox.osc.download.DownloadArchive.get().queryByVod(vodName, sourceName)) {
+            if (played == null) played = playedIndicesOf(it.episodeId);
             if (it.savePath == null) continue;
             File f = new File(it.savePath);
             if (!f.exists()) continue;
@@ -945,10 +966,80 @@ public class DownloadFragment extends BaseVbFragment<FragmentDownloadBinding> {
             info.setTitle(f.getName());
             info.setSize(f.length());
             info.setEpisodeId(it.episodeId); // 统一剧集标识:回跳详情页/本地播放联动用
+            info.setVodName(vodName); // 主标题:剧名
+            // 集数名(第1集_720P 去清晰度后缀;无则按索引推导 第N集;仍无则文件名)
+            info.setEpisodeName(episodeTitleOf(it, f.getName()));
+            // 来源名 + 清晰度(从集数名/文件名解析 480P/720P...)
+            info.setSourceName(it.sourceName);
+            info.setResolution(resolutionOf(it, f.getName()));
+            // 播放过的剧集标题置灰
+            if (played != null && it.episodeId != null) {
+                String idx = lastSegment(it.episodeId);
+                info.setPlayed(idx != null && played.contains(idx));
+            }
             videos.add(info);
         }
         videos.sort(Comparator.comparing(VideoInfo::getDisplayName));
         return videos;
+    }
+
+    /**
+     * 播放过的集索引集合:SP key=sourceKey|vodId(由 episodeId 前两段推导);
+     * 无 SP 记录时回填 Room 观看记录里的"上次看到"集(老数据无播放记录);结果按 videoId 缓存。
+     */
+    private final Map<String, Set<String>> playedCache = new HashMap<>();
+
+    private Set<String> playedIndicesOf(String episodeId) {
+        if (episodeId == null) return null;
+        int first = episodeId.indexOf('|');
+        if (first < 0) return null;
+        int second = episodeId.indexOf('|', first + 1);
+        if (second < 0) return null;
+        String videoId = episodeId.substring(0, second);
+        Set<String> cached = playedCache.get(videoId);
+        if (cached != null) return cached;
+        Set<String> set = SPUtils.getInstance(CacheConst.VIDEO_PLAYED_SP).getStringSet(videoId, null);
+        if (set == null) set = new LinkedHashSet<>();
+        // 历史回填:观看记录里"上次看到"的集也算播放过(功能上线前的老数据)
+        try {
+            com.github.tvbox.osc.bean.VodInfo rec = com.github.tvbox.osc.cache.RoomDataManger.getVodInfo(
+                    episodeId.substring(0, first), episodeId.substring(first + 1, second));
+            if (rec != null && rec.playIndex >= 0) set.add(String.valueOf(rec.playIndex));
+        } catch (Throwable ignored) {
+        }
+        playedCache.put(videoId, set);
+        return set;
+    }
+
+    /** episodeId 最后一段(playIndex) */
+    private static String lastSegment(String episodeId) {
+        int i = episodeId.lastIndexOf('|');
+        return i >= 0 ? episodeId.substring(i + 1) : null;
+    }
+
+    /** 集数名:优先档案 episodeName(去清晰度后缀),空则按索引推导 第N集,再空用文件名(去扩展名) */
+    private static String episodeTitleOf(com.github.tvbox.osc.download.ArchiveItem it, String fileName) {
+        String label = it.episodeName;
+        if (TextUtils.isEmpty(label) && it.episodeId != null) {
+            String idx = lastSegment(it.episodeId);
+            if (idx != null && idx.matches("\\d+")) label = "第" + idx + "集";
+        }
+        if (TextUtils.isEmpty(label)) {
+            label = fileName;
+            int dot = label.lastIndexOf('.');
+            if (dot > 0) label = label.substring(0, dot);
+        }
+        return label.replaceAll("(?i)_?(\\d{3,4}p|4k|2k|8k|sd|hd|fhd|uhd)$", "").trim();
+    }
+
+    /** 清晰度:从集数名/文件名解析最后一个 480P/720P/1080P/4K... 段;无则 null */
+    private static String resolutionOf(com.github.tvbox.osc.download.ArchiveItem it, String fileName) {
+        String s = TextUtils.isEmpty(it.episodeName) ? fileName : it.episodeName;
+        if (TextUtils.isEmpty(s)) return null;
+        java.util.regex.Matcher m = java.util.regex.Pattern.compile("(?i)(\\d{3,4}p|4k|2k|8k|sd|hd|fhd|uhd)").matcher(s);
+        String last = null;
+        while (m.find()) last = m.group(1);
+        return last == null ? null : last.toUpperCase();
     }
 
     // ------------------------------------------------------------------
@@ -1184,8 +1275,8 @@ public class DownloadFragment extends BaseVbFragment<FragmentDownloadBinding> {
     }
 
     private static String formatSize(long bytes) {
-        if (bytes < 1024 * 1024) return String.format("%.0fKB", bytes / 1024.0);
-        if (bytes < 1024L * 1024 * 1024) return String.format("%.1fMB", bytes / 1024.0 / 1024.0);
+        if (bytes < 1024 * 1024) return (bytes / 1024) + "KB";
+        if (bytes < 1024L * 1024 * 1024) return (bytes / 1024 / 1024) + "MB";
         return String.format("%.2fGB", bytes / 1024.0 / 1024.0 / 1024.0);
     }
 }

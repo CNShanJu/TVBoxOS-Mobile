@@ -42,6 +42,7 @@ import com.blankj.utilcode.util.ColorUtils;
 import com.blankj.utilcode.util.LogUtils;
 import com.blankj.utilcode.util.RegexUtils;
 import com.blankj.utilcode.util.ScreenUtils;
+import com.blankj.utilcode.util.SPUtils;
 import com.blankj.utilcode.util.SpanUtils;
 import com.github.tvbox.osc.util.AppBubble;
 import com.github.catvod.crawler.Spider;
@@ -54,6 +55,7 @@ import com.github.tvbox.osc.bean.SourceBean;
 import com.github.tvbox.osc.bean.Subtitle;
 import com.github.tvbox.osc.bean.VodInfo;
 import com.github.tvbox.osc.cache.CacheManager;
+import com.github.tvbox.osc.constant.CacheConst;
 import com.github.tvbox.osc.event.RefreshEvent;
 import com.github.tvbox.osc.player.MyVideoView;
 import com.github.tvbox.osc.player.TrackInfo;
@@ -101,11 +103,13 @@ import org.json.JSONObject;
 import java.io.File;
 import java.net.URLEncoder;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -828,6 +832,26 @@ public class PlayFragment extends BaseLazyFragment {
                 });
     }
 
+    /** 记录"播放过的剧集":key=sourceKey|vodId,value=已播放集索引集合(后台线程写 SP,避免主线程 IO) */
+    private static final ExecutorService PLAYED_RECORD_EXECUTOR = Executors.newSingleThreadExecutor();
+
+    private void recordPlayedEpisode() {
+        if (mVodInfo == null || mVodInfo.id == null) return;
+        final String videoId = (sourceKey == null ? "" : sourceKey) + "|" + mVodInfo.id;
+        final int index = mVodInfo.playIndex;
+        PLAYED_RECORD_EXECUTOR.execute(() -> {
+            try {
+                SPUtils sp = SPUtils.getInstance(CacheConst.VIDEO_PLAYED_SP);
+                Set<String> set = sp.getStringSet(videoId, null);
+                if (set == null) set = new HashSet<>();
+                if (set.add(String.valueOf(index))) {
+                    sp.put(videoId, set);
+                }
+            } catch (Throwable ignored) {
+            }
+        });
+    }
+
     void startPlayUrl(String url, HashMap<String, String> headers) {
         LOG.i("playUrl:" + url);
         com.github.tvbox.osc.log.LogStore.log(com.github.tvbox.osc.log.Category.PLAYER,
@@ -848,6 +872,7 @@ public class PlayFragment extends BaseLazyFragment {
                 mVideoView.release();
 
                 if (finalUrl != null) {
+                    recordPlayedEpisode();
                     try {
                         int playerType = mVodPlayerCfg.getInt("pl");
                         if (playerType >= 10) {

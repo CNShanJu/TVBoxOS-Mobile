@@ -83,6 +83,7 @@ public class DownloadManager {
     public static final String MSG_VERIFYING = "文件校验中";
     public static final String MSG_MERGING = "文件合并中";
     public static final String MSG_REMUX = "文件封装中";
+    public static final String MSG_REPAIRING = "补片中";
 
     /** 变更事件去抖:进度高频刷新合并为至多每 500ms 广播一次 */
     private final Handler notifyHandler = new Handler(Looper.getMainLooper());
@@ -126,6 +127,22 @@ public class DownloadManager {
         FileCleaner.setAppContext(appContext);
         DownloadStore.setAppContext(appContext);
         com.github.tvbox.osc.download.DownloadNotifier.init(context);
+    }
+
+    // ------------------------------------------------------------------
+    // 下载地址嗅探器（方案 A：无头 WebView 串行复用，:app 模块实现并注册）
+    // ------------------------------------------------------------------
+
+    private static volatile com.github.tvbox.osc.download.DownloadUrlSniffer urlSniffer;
+
+    /** App 启动时注册：嗅探型源（type 0）任务启动前用它嗅探剧集页拿真实播放地址 */
+    public static void setUrlSniffer(com.github.tvbox.osc.download.DownloadUrlSniffer sniffer) {
+        urlSniffer = sniffer;
+    }
+
+    /** 当前注册的嗅探器；未注册（非嗅探型源场景）返回 null */
+    public static com.github.tvbox.osc.download.DownloadUrlSniffer getUrlSniffer() {
+        return urlSniffer;
     }
 
     // ------------------------------------------------------------------

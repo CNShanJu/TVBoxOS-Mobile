@@ -20,6 +20,46 @@ public class VideoInfo {
     private String bookmark = null;
     /** 统一剧集标识(sourceKey|vodId|playFlag|playIndex):下载完成的本地视频项写入,用于回跳详情页/本地播放联动 */
     private String episodeId = null;
+    /** 集数名(如 第1集_720P),下载完成项写入;本地视频列表为空 */
+    private String episodeName = null;
+    /** 剧名(下载完成项写入,主标题用) */
+    private String vodName = null;
+    /** 来源名称(下载完成项写入) */
+    private String sourceName = null;
+    /** 是否播放过(下载完成列表据此置灰标题) */
+    private boolean played = false;
+
+    public String getVodName() {
+        return vodName;
+    }
+
+    public void setVodName(String vodName) {
+        this.vodName = vodName;
+    }
+
+    public String getEpisodeName() {
+        return episodeName;
+    }
+
+    public void setEpisodeName(String episodeName) {
+        this.episodeName = episodeName;
+    }
+
+    public String getSourceName() {
+        return sourceName;
+    }
+
+    public void setSourceName(String sourceName) {
+        this.sourceName = sourceName;
+    }
+
+    public boolean isPlayed() {
+        return played;
+    }
+
+    public void setPlayed(boolean played) {
+        this.played = played;
+    }
 
     public String getEpisodeId() {
         return episodeId;
