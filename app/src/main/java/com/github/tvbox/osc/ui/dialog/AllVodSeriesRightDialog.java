@@ -2,6 +2,7 @@ package com.github.tvbox.osc.ui.dialog;
 
 import android.content.Context;
 import android.view.View;
+import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.GridLayoutManager;
@@ -72,8 +73,24 @@ public class AllVodSeriesRightDialog extends AppDrawerPopupView {
             }
         }
 
-        findViewById(R.id.tvSort).setOnClickListener(view -> mDetailActivity.sortSeries());
+        // 倒序按钮:文字随状态切换(未倒序=倒序, 已倒序=正序);与下载/详情弹窗共用 sortSeries 状态
+        updateSortButton();
+        findViewById(R.id.tvSort).setOnClickListener(view -> {
+            mDetailActivity.sortSeries();
+            updateSortButton();
+        });
    }
+
+    /** 倒序按钮文字跟随共用状态:已倒序显示"正序",否则"倒序" */
+    private void updateSortButton() {
+        try {
+            TextView tv = findViewById(R.id.tvSort);
+            if (tv != null) {
+                tv.setText(mDetailActivity.isSeriesReversed() ? "正序" : "倒序");
+            }
+        } catch (Throwable ignored) {
+        }
+    }
 
     @Override
     protected void onDismiss() {

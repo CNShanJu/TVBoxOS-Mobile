@@ -18,11 +18,40 @@
         app:hl_cornerRadius="@dimen/radius_card"
         app:hl_layoutBackground="@color/gray_darker" />
 
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingHorizontal="20dp">
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="全部剧集"
+            android:textColor="@color/text_foreground"
+            android:textSize="16sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/tv_sort"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:drawablePadding="4dp"
+            android:drawableRight="@drawable/ic_sort_18"
+            android:paddingVertical="6dp"
+            android:text="倒序"
+            android:textColor="@color/text_foreground"
+            android:textSize="13sp" />
+    </LinearLayout>
+
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/rv"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="20dp"
+        android:layout_marginTop="8dp"
         android:clipToPadding="false"
         android:paddingHorizontal="16dp"
         android:paddingVertical="4dp"

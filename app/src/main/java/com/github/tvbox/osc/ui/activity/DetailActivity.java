@@ -340,6 +340,7 @@ public class DetailActivity extends BaseVbActivity<ActivityDetailBinding> {
             @Override
             public void onClick(View v) {
                 sortSeries();
+                updateSortButtonText();
             }
         });
         mBinding.tvCast.setOnClickListener(v -> {
@@ -462,17 +463,31 @@ public class DetailActivity extends BaseVbActivity<ActivityDetailBinding> {
     }
 
     /**
-     * 排序(倒序)
+     * 排序(倒序/正序切换):反转全集列表(与弹窗/详情页共用同一状态 vodInfo.reverseSort)。
+     *
+     * @return 反转后的状态:true=已倒序(按钮应显示"正序");false=正序(按钮显示"倒序")
      */
-    public void sortSeries() {
+    public boolean sortSeries() {
         if (vodInfo != null && vodInfo.seriesMap.size() > 0) {
             vodInfo.reverseSort = !vodInfo.reverseSort;
             isReverse = !isReverse;
             vodInfo.reverse();
             vodInfo.playIndex = (vodInfo.seriesMap.get(vodInfo.playFlag).size() - 1) - vodInfo.playIndex;
-//                    insertVod(sourceKey, vodInfo);
-
             seriesAdapter.notifyDataSetChanged();
+        }
+        return vodInfo != null && vodInfo.reverseSort;
+    }
+
+    /** 当前是否已倒序(供各弹窗倒序按钮文字同步;与 sortSeries 共用同一状态) */
+    public boolean isSeriesReversed() {
+        return vodInfo != null && vodInfo.reverseSort;
+    }
+
+    /** 详情页选集区倒序按钮文字跟随共用状态:已倒序显示"正序",否则"倒序" */
+    private void updateSortButtonText() {
+        try {
+            mBinding.tvSort.setText(isSeriesReversed() ? "正序" : "倒序");
+        } catch (Throwable ignored) {
         }
     }
 
@@ -504,7 +519,7 @@ public class DetailActivity extends BaseVbActivity<ActivityDetailBinding> {
                     .maxHeight(ScreenUtils.getScreenHeight() - (ScreenUtils.getScreenHeight() / 4))
                     .asCustom(new AllVodSeriesBottomDialog(this, seriesAdapter.getData(), (position, text) -> {
                         chooseSeries(position, false);
-                    }));
+                    }, this::sortSeries, this::isSeriesReversed));
             mAllSeriesBottomDialog.show();
         }
     }
@@ -671,6 +686,7 @@ public class DetailActivity extends BaseVbActivity<ActivityDetailBinding> {
                         if (vodInfo.reverseSort) {
                             vodInfo.reverse();
                         }
+                        updateSortButtonText(); // 历史恢复的倒序状态同步到详情页按钮文字
 
                         if (vodInfo.playFlag == null || !vodInfo.seriesMap.containsKey(vodInfo.playFlag))
                             vodInfo.playFlag = (String) vodInfo.seriesMap.keySet().toArray()[0];
@@ -1063,7 +1079,7 @@ public class DetailActivity extends BaseVbActivity<ActivityDetailBinding> {
                         sortSeries(); // 与选集抽屉一致:反转全集列表(副本随正表重建)
                         refreshDownloadDialogStates();
                     }
-                }));
+                }, this::isSeriesReversed));
         mDownloadDialog.show();
         // 后台准备数据(选集副本 + 下载状态批量查询),完成后主线程填充抽屉
         final String sourceName = getDownloadSourceName();
@@ -1184,7 +1200,7 @@ public class DetailActivity extends BaseVbActivity<ActivityDetailBinding> {
                         sortSeries(); // 与选集抽屉一致:反转全集列表(副本随正表重建)
                         refreshDownloadDialogStates();
                     }
-                }));
+                }, this::isSeriesReversed));
         mDownloadDialog.show();
         // 实时刷新: 订阅下载状态变化(下载中进度/完成/失败 → 弹窗实时更新勾选态)
         com.github.tvbox.osc.download.DownloadFacade.get().register(downloadStatusListener);

@@ -1,6 +1,7 @@
 package com.github.tvbox.osc.ui.dialog;
 
 import android.content.Context;
+import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.GridLayoutManager;
@@ -13,7 +14,6 @@ import com.github.tvbox.osc.bean.VodInfo;
 import com.github.tvbox.osc.ui.widget.GridSpacingItemDecoration;
 import com.github.tvbox.osc.ui.widget.RoundChip;
 import com.github.tvbox.osc.util.Utils;
-import com.lxj.xpopup.core.BottomPopupView;
 import com.lxj.xpopup.interfaces.OnSelectListener;
 
 import org.jetbrains.annotations.NotNull;
@@ -28,11 +28,20 @@ public class AllVodSeriesBottomDialog extends AppBottomPopupView {
 
     List<VodInfo.VodSeries> mList;
     private final OnSelectListener mSelectListener;
+    /** 倒序回调:执行详情页 sortSeries(共用状态);由 DetailActivity 传入 */
+    private final Runnable mSortAction;
+    /** 当前是否已倒序(供按钮文字切换);由 DetailActivity 注入 isSeriesReversed */
+    private final java.util.function.BooleanSupplier mIsReversed;
+    private TextView mTvSort;
 
-    public AllVodSeriesBottomDialog(@NonNull @NotNull Context context, List<VodInfo.VodSeries> list, OnSelectListener selectListener) {
+    public AllVodSeriesBottomDialog(@NonNull @NotNull Context context, List<VodInfo.VodSeries> list,
+                                    OnSelectListener selectListener, Runnable sortAction,
+                                    java.util.function.BooleanSupplier isReversed) {
         super(context);
         mList = list;
         mSelectListener = selectListener;
+        mSortAction = sortAction;
+        mIsReversed = isReversed;
     }
 
     @Override
@@ -44,6 +53,16 @@ public class AllVodSeriesBottomDialog extends AppBottomPopupView {
     protected void onCreate() {
         super.onCreate();
         RecyclerView rv = findViewById(R.id.rv);
+
+        // 倒序按钮:文字随共用状态切换(未倒序=倒序, 已倒序=正序);与下载/全屏弹窗共用 sortSeries
+        mTvSort = findViewById(R.id.tv_sort);
+        updateSortButton();
+        findViewById(R.id.tv_sort).setOnClickListener(v -> {
+            if (mSortAction != null) mSortAction.run();
+            updateSortButton();
+            // 倒序后同一列表引用内容已反转,刷新显示(选中态随 item 保持)
+            if (rv.getAdapter() != null) rv.getAdapter().notifyDataSetChanged();
+        });
 
         // 集数网格:最多3列,基于文字长度自适应(1列/2列/3列),RoundChip 文字条目(与全屏抽屉同款,无边框)
         int span = Utils.getSeriesSpanCount(mList);
@@ -79,5 +98,15 @@ public class AllVodSeriesBottomDialog extends AppBottomPopupView {
             mSelectListener.onSelect(position,"");
         });
 
+    }
+
+    /** 倒序按钮文字跟随共用状态:已倒序显示"正序",否则"倒序" */
+    public void updateSortButton() {
+        try {
+            if (mTvSort != null && mIsReversed != null) {
+                mTvSort.setText(mIsReversed.getAsBoolean() ? "正序" : "倒序");
+            }
+        } catch (Throwable ignored) {
+        }
     }
 }

@@ -47,9 +47,12 @@ public class DownloadSeriesRightDialog extends AppDrawerPopupView {
     }
 
     private final OnDownloadActionListener mListener;
+    /** 当前是否已倒序(倒序按钮文字切换;由 DetailActivity 注入 isSeriesReversed) */
+    private final java.util.function.BooleanSupplier mIsReversed;
     private List<VodInfo.VodSeries> mList = new ArrayList<>();
     private int[] mStates = new int[0];
     private TextView mTvSelected;
+    private TextView mTvSort;
     private RecyclerView mRv;
     private View mFlLoading;
     private ItemAdapter mAdapter;
@@ -57,9 +60,11 @@ public class DownloadSeriesRightDialog extends AppDrawerPopupView {
     private GridSpacingItemDecoration mGridDecoration;
 
     public DownloadSeriesRightDialog(@NonNull @NotNull Context context,
-                                     OnDownloadActionListener listener) {
+                                     OnDownloadActionListener listener,
+                                     java.util.function.BooleanSupplier isReversed) {
         super(context);
         mListener = listener;
+        mIsReversed = isReversed;
     }
 
     @Override
@@ -110,8 +115,12 @@ public class DownloadSeriesRightDialog extends AppDrawerPopupView {
         }
 
         updateCount();
+        // 倒序按钮:文字随共用状态切换(未倒序=倒序, 已倒序=正序)
+        mTvSort = findViewById(R.id.tv_sort);
+        updateSortButton();
         findViewById(R.id.tv_sort).setOnClickListener(v -> {
             if (mListener != null) mListener.onSortSeries();
+            updateSortButton();
         });
         findViewById(R.id.btn_start).setOnClickListener(v -> {
             List<VodInfo.VodSeries> selected = new ArrayList<>();
@@ -166,6 +175,16 @@ public class DownloadSeriesRightDialog extends AppDrawerPopupView {
             }
         }
         mTvSelected.setText("(已选 " + count + ")");
+    }
+
+    /** 倒序按钮文字跟随共用状态:已倒序显示"正序",否则"倒序" */
+    private void updateSortButton() {
+        try {
+            if (mTvSort != null && mIsReversed != null) {
+                mTvSort.setText(mIsReversed.getAsBoolean() ? "正序" : "倒序");
+            }
+        } catch (Throwable ignored) {
+        }
     }
 
     /** 集数条目:RoundChip 文字样式(全屏抽屉专用,文字调大)+ 状态图标(已下载绿✓ / 下载中蓝↓) */
