@@ -13,20 +13,30 @@
         android:layout_height="0dp"
         android:layout_weight="1"/>
 
-    <com.google.android.material.bottomnavigation.BottomNavigationView
-            android:id="@+id/bottom_nav"
-            android:layout_width="match_parent"
-            android:layout_height="58dp"
-            android:background="@color/bg_body"
-            android:elevation="10dp"
-            app:itemActiveIndicatorStyle="@style/EmptyActiveIndicator"
-            app:itemIconSize="22dp"
-            app:itemIconTint="@drawable/bottom_navigation_item_selector"
-            app:itemPaddingTop="10dp"
-            app:itemPaddingBottom="11dp"
-            app:itemTextAppearanceActive="@style/NavItemTextAppearance"
-            app:itemTextAppearanceInactive="@style/NavItemTextAppearance"
-            app:itemTextColor="@drawable/bottom_navigation_item_selector"
-            app:labelVisibilityMode="labeled"
-            app:menu="@menu/main_bottom_navigation"/>
+    <!-- 悬浮阴影由外层普通 FrameLayout 提供:普通 View 无 Material elevation overlay,
+         不会把 bg_body(==colorSurface)变暗; BottomNavigationView 自身 elevation=0 + 关 compat shadow -->
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="58dp"
+        android:background="@color/bg_body"
+        android:elevation="10dp">
+
+        <com.google.android.material.bottomnavigation.BottomNavigationView
+                android:id="@+id/bottom_nav"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:background="@color/bg_body"
+                android:elevation="0dp"
+                app:compatShadowEnabled="false"
+                app:itemActiveIndicatorStyle="@style/EmptyActiveIndicator"
+                app:itemIconSize="22dp"
+                app:itemIconTint="@drawable/bottom_navigation_item_selector"
+                app:itemPaddingTop="10dp"
+                app:itemPaddingBottom="11dp"
+                app:itemTextAppearanceActive="@style/NavItemTextAppearance"
+                app:itemTextAppearanceInactive="@style/NavItemTextAppearance"
+                app:itemTextColor="@drawable/bottom_navigation_item_selector"
+                app:labelVisibilityMode="labeled"
+                app:menu="@menu/main_bottom_navigation"/>
+    </FrameLayout>
 </LinearLayout>
