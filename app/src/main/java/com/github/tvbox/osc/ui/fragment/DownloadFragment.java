@@ -961,12 +961,17 @@ public class DownloadFragment extends BaseVbFragment<FragmentDownloadBinding> {
         return src.equals(t.sourceName == null ? "" : t.sourceName);
     }
 
-    /** 该剧的封面 URL(取该剧任一任务携带的 pic) */
+    /** 该剧的封面 URL(取该剧任一任务携带的 pic; 任务已清理/全部完成时从档案表补找) */
     private String picOf(String name, String source) {
         for (DownloadTask t : DownloadManager.get().getTasks()) {
             if (inGroup(t, name, source) && t.pic != null && !t.pic.isEmpty()) {
                 return t.pic;
             }
+        }
+        // 聚合组可能只剩档案(任务已清理/全部完成后): 从档案表补找 pic, 避免封面一直占位
+        for (com.github.tvbox.osc.download.ArchiveItem it :
+                com.github.tvbox.osc.download.DownloadArchive.get().queryByVod(name, source)) {
+            if (it.pic != null && !it.pic.isEmpty()) return it.pic;
         }
         return null;
     }
