@@ -107,12 +107,78 @@ public class PlayUrlResolver {
                     ? new ResolveResult(direct, headers) : null;
         }
         // 需要解析
-        if (jx) return null; // 自定义解析列表，批量不支持
+        if (jx) {
+            // 自定义解析(jx=1):与播放端 initParse/doParse 同款(默认解析器),
+            // 批量支持 json 接口/jsonExt/jsonExtMix, WebView 嗅探型不支持返回 null
+            return resolveJx(playFlag, realUrl);
+        }
         ResolveResult rr = parseJson(playUrl, realUrl);
         if (rr == null) return null;
         // json 解析结果未给 header 时，继承爬虫结果自带的 header
         if (rr.headers == null) rr.headers = headers;
         return rr;
+    }
+
+    /** 自定义解析(jx=1):复用播放端 doParse 的解析路径(默认解析器), 批量下载可用 */
+    private static ResolveResult resolveJx(String flag, String input) {
+        try {
+            com.github.tvbox.osc.bean.ParseBean pb = ApiConfig.get().getDefaultParse();
+            if (pb == null) return null;
+            int type = pb.getType();
+            if (type == 0) return null; // WebView 嗅探, 批量不支持
+            if (type == 1) {
+                // json 解析接口(带解析器 ext 的 header)
+                Map<String, String> reqHeaders = new HashMap<>();
+                try {
+                    JSONObject ext = new JSONObject(pb.getExt());
+                    if (ext.has("header")) {
+                        JSONObject hd = ext.getJSONObject("header");
+                        Iterator<String> keys = hd.keys();
+                        while (keys.hasNext()) {
+                            String k = keys.next();
+                            reqHeaders.put(k, hd.optString(k, ""));
+                        }
+                    }
+                } catch (Throwable ignored) {
+                }
+                String json = HttpClient.getSync(pb.getUrl() + encode(input), reqHeaders);
+                JSONObject rs = parseJsonResult(input, json);
+                String real = rs == null ? null : rs.optString("url", "");
+                if (TextUtils.isEmpty(real)) return null;
+                return new ResolveResult(real, extractHeaders(rs));
+            }
+            if (type == 2) {
+                // json 扩展(同播放端 type2: 收集 type1 解析器)
+                java.util.LinkedHashMap<String, String> jxs = new java.util.LinkedHashMap<>();
+                for (com.github.tvbox.osc.bean.ParseBean p : ApiConfig.get().getParseBeanList()) {
+                    if (p.getType() == 1) jxs.put(p.getName(), p.mixUrl());
+                }
+                JSONObject rs = ApiConfig.get().jsonExt(pb.getUrl(), jxs, input);
+                if (rs == null || !rs.has("url") || TextUtils.isEmpty(rs.optString("url"))) return null;
+                if (rs.optInt("parse", 0) == 1) return null; // 需二次嗅探, 不支持
+                return new ResolveResult(rs.optString("url"), extractHeaders(rs));
+            }
+            if (type == 3) {
+                // json 聚合(同播放端 type3)
+                java.util.LinkedHashMap<String, HashMap<String, String>> jxs = new java.util.LinkedHashMap<>();
+                String extendName = "";
+                for (com.github.tvbox.osc.bean.ParseBean p : ApiConfig.get().getParseBeanList()) {
+                    HashMap<String, String> data = new HashMap<>();
+                    data.put("url", p.getUrl());
+                    if (p.getUrl().equals(pb.getUrl())) extendName = p.getName();
+                    data.put("type", p.getType() + "");
+                    data.put("ext", p.getExt());
+                    jxs.put(p.getName(), data);
+                }
+                JSONObject rs = ApiConfig.get().jsonExtMix(flag + "111", pb.getUrl(), extendName, jxs, input);
+                if (rs == null || !rs.has("url") || TextUtils.isEmpty(rs.optString("url"))) return null;
+                if (rs.has("parse") && rs.optInt("parse", 0) == 1) return null; // 需二次嗅探, 不支持
+                return new ResolveResult(rs.optString("url"), extractHeaders(rs));
+            }
+        } catch (Throwable th) {
+            Log.i(TAG, "jx解析失败: " + input + " -> " + th.getMessage());
+        }
+        return null;
     }
 
     /** json 解析（json:/parse: 接口），失败返回 null */
