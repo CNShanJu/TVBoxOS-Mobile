@@ -1,12 +1,10 @@
-package com.github.tvbox.osc.bean;
+package com.github.tvbox.osc.util;
 
 import androidx.annotation.NonNull;
 import androidx.exifinterface.media.ExifInterface;
 
 import com.github.tvbox.osc.api.ApiConfig;
 import com.github.tvbox.osc.player.api.PlayConfig;
-import com.github.tvbox.osc.util.HawkConfig;
-import com.github.tvbox.osc.util.PlayerHelper;
 import com.orhanobut.hawk.Hawk;
 
 import org.json.JSONException;
