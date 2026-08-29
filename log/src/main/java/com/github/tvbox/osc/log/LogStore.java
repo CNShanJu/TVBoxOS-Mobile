@@ -127,6 +127,45 @@ public final class LogStore {
     // 注册
     // ------------------------------------------------------------------
 
+    /** 通用小类型（便捷方法用）：code=generic, label=通用 */
+    private enum GenericSubType implements SubType {
+        GENERIC("generic", "通用");
+
+        private final String code;
+        private final String label;
+
+        GenericSubType(String code, String label) {
+            this.code = code;
+            this.label = label;
+        }
+
+        @Override
+        public String code() {
+            return code;
+        }
+
+        @Override
+        public String label() {
+            return label;
+        }
+    }
+
+    private static final CategoryLogger<GenericSubType> genericLogger = new LoggerImpl<>(Category.SYSTEM.name());
+
+    /**
+     * 通用业务日志便捷方法（INFO 级别）：任意业务点直接记录，无需自建小类型枚举。
+     * 大类型=系统(SYSTEM)，小类型=通用；适合 设置/搜索/播放/收藏/删除/清空 等零散业务操作。
+     */
+    public static void log(Category category, String detail) {
+        try {
+            CategoryLogger<GenericSubType> l = category == Category.OTHER ? otherLogger : genericLogger;
+            l.info(GenericSubType.GENERIC, detail, null);
+        } catch (Throwable ignored) {
+        }
+    }
+
+    private static final CategoryLogger<GenericSubType> otherLogger = new LoggerImpl<>(Category.OTHER.name());
+
     /**
      * 注册大类型，返回绑定该大类型的限定对象（幂等：同大类型返回同一实例）。
      * 模块 init 时调用一次并持有返回值；之后所有日志调用自动带大类型。

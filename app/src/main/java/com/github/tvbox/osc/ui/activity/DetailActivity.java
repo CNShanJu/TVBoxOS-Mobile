@@ -352,10 +352,14 @@ public class DetailActivity extends BaseVbActivity<ActivityDetailBinding> {
                 String text = mBinding.tvCollect.getText().toString();
                 if ("加入收藏".equals(text)) {
                     RoomDataManger.insertVodCollect(sourceKey, vodInfo);
+                    com.github.tvbox.osc.log.LogStore.log(com.github.tvbox.osc.log.Category.SYSTEM,
+                            "收藏: " + (vodInfo.name == null ? "?" : vodInfo.name));
                     AppBubble.toast("已加入收藏夹");
                     mBinding.tvCollect.setText("取消收藏");
                 } else {
                     RoomDataManger.deleteVodCollect(sourceKey, vodInfo);
+                    com.github.tvbox.osc.log.LogStore.log(com.github.tvbox.osc.log.Category.SYSTEM,
+                            "取消收藏: " + (vodInfo.name == null ? "?" : vodInfo.name));
                     AppBubble.toast("已移除收藏夹");
                     mBinding.tvCollect.setText("加入收藏");
                 }

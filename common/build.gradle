@@ -34,4 +34,5 @@ dependencies {
     implementation 'com.orhanobut:hawk:2.0.1'
     implementation 'com.google.code.gson:gson:2.8.7'
     implementation 'org.greenrobot:eventbus:3.2.0' // LOG 等事件工具
+    implementation project(':log') // 系统配置变更业务日志(LogStore 便捷方法)
 }

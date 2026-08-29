@@ -10,6 +10,8 @@ import com.github.tvbox.osc.base.BaseVbActivity
 import com.github.tvbox.osc.bean.VodInfo
 import com.github.tvbox.osc.cache.RoomDataManger
 import com.github.tvbox.osc.databinding.ActivityHistoryBinding
+import com.github.tvbox.osc.log.Category
+import com.github.tvbox.osc.log.LogStore
 import com.github.tvbox.osc.ui.adapter.HistoryAdapter
 import com.github.tvbox.osc.util.FastClickCheckUtil
 import com.github.tvbox.osc.util.Utils
@@ -40,6 +42,7 @@ class HistoryActivity : BaseVbActivity<ActivityHistoryBinding>() {
                 val vodInfo = historyAdapter!!.data[position]
                 historyAdapter!!.remove(position)
                 RoomDataManger.deleteVodRecord(vodInfo.sourceKey, vodInfo)
+                LogStore.log(Category.SYSTEM, "删除历史: " + (vodInfo.name ?: "?"))
                 updateEmptyState()
                 true
             }
@@ -57,6 +60,7 @@ class HistoryActivity : BaseVbActivity<ActivityHistoryBinding>() {
                             dismissLoadingDialog()
                             historyAdapter!!.setNewData(ArrayList())
                             mBinding.topTip.visibility = View.GONE
+                            LogStore.log(Category.SYSTEM, "清空全部观看历史")
                             updateEmptyState()
                         }
                     }

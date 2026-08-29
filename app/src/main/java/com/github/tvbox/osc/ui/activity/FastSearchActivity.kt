@@ -29,6 +29,8 @@ import com.github.tvbox.osc.bean.SourceBean
 import com.github.tvbox.osc.databinding.ActivityFastSearchBinding
 import com.github.tvbox.osc.event.RefreshEvent
 import com.github.tvbox.osc.event.ServerEvent
+import com.github.tvbox.osc.log.Category
+import com.github.tvbox.osc.log.LogStore
 import com.github.tvbox.osc.ui.adapter.FastSearchAdapter
 import com.github.tvbox.osc.ui.dialog.DoubanSuggestDialog
 import com.github.tvbox.osc.ui.dialog.SearchCheckboxDialog
@@ -431,6 +433,7 @@ class FastSearchActivity : BaseVbActivity<ActivityFastSearchBinding>(), TextWatc
         cancel()
         showLoading()
         searchTitle = title
+        LogStore.log(Category.OTHER, "搜索: " + title)
         //fenci();
         mBinding.mGridView.visibility = View.INVISIBLE
         mBinding.mGridViewFilter.visibility = View.GONE

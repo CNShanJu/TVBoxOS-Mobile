@@ -644,6 +644,7 @@ public class PlayFragment extends BaseLazyFragment {
     }
 
     void errorWithRetry(String err, boolean finish) {
+        com.github.tvbox.osc.log.LogStore.log(com.github.tvbox.osc.log.Category.PLAYER, "播放失败: " + err);
         if (!autoRetry() && isAdded()) {
             requireActivity().runOnUiThread(new Runnable() {
                 @Override
@@ -829,6 +830,13 @@ public class PlayFragment extends BaseLazyFragment {
 
     void startPlayUrl(String url, HashMap<String, String> headers) {
         LOG.i("playUrl:" + url);
+        com.github.tvbox.osc.log.LogStore.log(com.github.tvbox.osc.log.Category.PLAYER,
+                "播放: " + (mVodInfo == null || mVodInfo.name == null ? "?" : mVodInfo.name)
+                        + (mVodInfo != null && mVodInfo.playIndex >= 0
+                        && mVodInfo.seriesMap != null && mVodInfo.seriesMap.get(mVodInfo.playFlag) != null
+                        && mVodInfo.playIndex < mVodInfo.seriesMap.get(mVodInfo.playFlag).size()
+                        ? " " + mVodInfo.seriesMap.get(mVodInfo.playFlag).get(mVodInfo.playIndex).name : "")
+                        + (url != null && url.length() > 80 ? " url=" + url.substring(0, 80) + "..." : " url=" + url));
         if (autoRetryCount > 0 && url.contains(".m3u8")) {
             url = "http://home.jundie.top:666/unBom.php?m3u8=" + url;//尝试去bom头再次播放
         }

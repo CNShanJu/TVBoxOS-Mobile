@@ -89,6 +89,7 @@ public final class SystemConfig {
         int v = Math.max(0, pos);
         if (getDohUrl() == v) return;
         Hawk.put(KEY_DOH_URL, v);
+        com.github.tvbox.osc.log.LogStore.log(com.github.tvbox.osc.log.Category.SYSTEM, "系统设置: 安全DNS=" + v);
         fireChanged();
     }
 
@@ -96,6 +97,7 @@ public final class SystemConfig {
         int v = Math.max(0, Math.min(2, tag));
         if (getTheme() == v) return;
         Hawk.put(KEY_THEME, v);
+        com.github.tvbox.osc.log.LogStore.log(com.github.tvbox.osc.log.Category.SYSTEM, "系统设置: 主题=" + v);
         fireChanged();
     }
 
@@ -103,6 +105,7 @@ public final class SystemConfig {
         String v = name == null ? "" : name;
         if (v.equals(getLoadingAnim())) return;
         Hawk.put(KEY_LOADING_ANIM, v);
+        com.github.tvbox.osc.log.LogStore.log(com.github.tvbox.osc.log.Category.SYSTEM, "系统设置: 加载动画=" + v);
         fireChanged();
     }
 
@@ -110,6 +113,7 @@ public final class SystemConfig {
         int v = Math.max(0, Math.min(2, type));
         if (getHomeRec() == v) return;
         Hawk.put(KEY_HOME_REC, v);
+        com.github.tvbox.osc.log.LogStore.log(com.github.tvbox.osc.log.Category.SYSTEM, "系统设置: 首页内容=" + v);
         fireChanged();
     }
 
@@ -117,6 +121,7 @@ public final class SystemConfig {
         int v = Math.max(0, num);
         if (getHistoryNum() == v) return;
         Hawk.put(KEY_HISTORY_NUM, v);
+        com.github.tvbox.osc.log.LogStore.log(com.github.tvbox.osc.log.Category.SYSTEM, "系统设置: 历史记录数=" + v);
         fireChanged();
     }
 
@@ -124,12 +129,14 @@ public final class SystemConfig {
         String v = url == null ? "" : url;
         if (v.equals(getLiveUrl())) return;
         Hawk.put(KEY_LIVE_URL, v);
+        com.github.tvbox.osc.log.LogStore.log(com.github.tvbox.osc.log.Category.SYSTEM, "系统设置: 直播源=" + v);
         fireChanged();
     }
 
     public static void setPrivateBrowsing(boolean on) {
         if (isPrivateBrowsing() == on) return;
         Hawk.put(KEY_PRIVATE_BROWSING, on);
+        com.github.tvbox.osc.log.LogStore.log(com.github.tvbox.osc.log.Category.SYSTEM, "系统设置: 无痕浏览=" + on);
         fireChanged();
     }
 

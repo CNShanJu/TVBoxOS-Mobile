@@ -275,11 +275,16 @@ public class DownloadManager {
     /** 删除任务(默认只删记录保留碎片——Bug2: 重入队同 episodeId 复用碎片续传,不白下) */
     public void remove(DownloadTask t) {
         scheduler.remove(t, false);
+        com.github.tvbox.osc.log.LogStore.log(com.github.tvbox.osc.log.Category.DOWNLOAD,
+                "删除下载记录: " + (t == null || t.fileName == null ? "?" : t.fileName));
     }
 
     /** 删除任务(deleteFiles=true 连本地文件一起删;false 只删记录保留文件) */
     public void remove(DownloadTask t, boolean deleteFiles) {
         scheduler.remove(t, deleteFiles);
+        com.github.tvbox.osc.log.LogStore.log(com.github.tvbox.osc.log.Category.DOWNLOAD,
+                (deleteFiles ? "删除任务及文件: " : "删除下载记录: ")
+                        + (t == null || t.fileName == null ? "?" : t.fileName));
     }
 
     /** 查询某集下载状态(0=无记录,1=已下载且文件存在,2=已有任务) */
@@ -303,6 +308,7 @@ public class DownloadManager {
     /** 设置最大并发数(1-5),触发重新调度 */
     public void setMaxConcurrent(int n) {
         policy.setMaxConcurrent(n);
+        com.github.tvbox.osc.log.LogStore.log(com.github.tvbox.osc.log.Category.DOWNLOAD, "下载设置: 并发数=" + n);
     }
 
     /** 每任务限速(字节/秒;0=不限速)。5.4 增强,仅内存生效(重启需重新设置) */
@@ -319,6 +325,7 @@ public class DownloadManager {
 
     public void setWifiOnly(boolean wifiOnly) {
         policy.setWifiOnly(wifiOnly);
+        com.github.tvbox.osc.log.LogStore.log(com.github.tvbox.osc.log.Category.DOWNLOAD, "下载设置: 仅WiFi=" + wifiOnly);
     }
 
     /** 当前网络是否为移动网络(蜂窝) */
