@@ -215,6 +215,8 @@ dependencies {
     implementation 'com.airbnb.android:lottie:6.7.1'
     //流式布局
     implementation 'com.hyman:flowlayout-lib:1.1.2'
+    //毛玻璃底栏(BlurView: API31+ RenderEffect 硬件模糊 / 低版本 RenderScript 回退)
+    implementation 'com.eightbitlab:blurview:1.6.3'
     //崩溃
     implementation project(":crash")
     //dlna投屏(已移除:com.github.devin1014.DLNA-Cast:dlna-dmc:V1.0.0 已从 JitPack 消失,功能暂用桩实现,见 _backup_dlna/)

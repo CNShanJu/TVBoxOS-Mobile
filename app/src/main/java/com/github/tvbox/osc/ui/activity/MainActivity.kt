@@ -1,12 +1,15 @@
 package com.github.tvbox.osc.ui.activity
 
+import android.os.Build
 import android.os.Process
 import android.view.MenuItem
+import android.view.ViewGroup
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.FragmentPagerAdapter
 import androidx.viewpager.widget.ViewPager.SimpleOnPageChangeListener
 import com.blankj.utilcode.util.ActivityUtils
 import com.github.tvbox.osc.util.AppBubble
+import com.github.tvbox.osc.util.StackBlurBlur
 import com.github.tvbox.osc.base.BaseVbActivity
 import com.github.tvbox.osc.constant.IntentKey
 import com.github.tvbox.osc.databinding.ActivityMainBinding
@@ -44,6 +47,22 @@ class MainActivity : BaseVbActivity<ActivityMainBinding>() {
                 mBinding.bottomNav.menu.getItem(position).setChecked(true)
             }
         })
+        setupBottomBlur()
+    }
+
+    /** 底部导航栏毛玻璃:实时模糊其下方(ViewPager 列表)内容(纯 Java StackBlur, 全版本可用) */
+    private fun setupBottomBlur() {
+        try {
+            val root = window.decorView.findViewById<ViewGroup>(android.R.id.content)
+            mBinding.blurView.setupWith(root)
+                .setFrameClearDrawable(window.decorView.background)
+                .setBlurAlgorithm(StackBlurBlur())
+                .setBlurRadius(18f)
+                .setBlurAutoUpdate(true)
+        } catch (th: Throwable) {
+            // 模糊失败静默降级:仅半透明遮罩,不影响功能
+            mBinding.blurView.visibility = android.view.View.GONE
+        }
     }
 
     override fun onBackPressed() {
