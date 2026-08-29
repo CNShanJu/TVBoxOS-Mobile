@@ -1100,15 +1100,30 @@ public class DetailActivity extends BaseVbActivity<ActivityDetailBinding> {
         });
     }
 
-    /** 构建下载选择弹窗的选集副本(带统一剧集标识),供底部弹窗与全屏右侧抽屉复用 */
+    /** 构建下载选择弹窗的选集副本(带统一剧集标识),供底部弹窗与全屏右侧抽屉复用;
+        保留弹窗当前已勾选的集(按集名匹配, 排序/刷新均不丢选中) */
     private List<VodInfo.VodSeries> buildDownloadSeriesCopy() {
+        java.util.Set<String> selectedNames = new java.util.HashSet<>();
+        if (mDownloadDialog != null) {
+            List<VodInfo.VodSeries> shown = null;
+            if (mDownloadDialog instanceof DownloadSeriesDialog) {
+                shown = ((DownloadSeriesDialog) mDownloadDialog).getCurrentList();
+            } else if (mDownloadDialog instanceof DownloadSeriesRightDialog) {
+                shown = ((DownloadSeriesRightDialog) mDownloadDialog).getCurrentList();
+            }
+            if (shown != null) {
+                for (VodInfo.VodSeries s : shown) {
+                    if (s.selected && s.name != null) selectedNames.add(s.name);
+                }
+            }
+        }
         List<VodInfo.VodSeries> copy = new ArrayList<>();
         int copyIdx = 0;
         for (VodInfo.VodSeries s : vodInfo.seriesMap.get(vodInfo.playFlag)) {
             VodInfo.VodSeries c = new VodInfo.VodSeries();
             c.name = s.name;
             c.url = s.url;
-            c.selected = false;
+            c.selected = s.name != null && selectedNames.contains(s.name);
             c.episodeId = DownloadCore.buildEpisodeId(vodInfo.sourceKey, vodInfo.id, vodInfo.playFlag, copyIdx);
             copyIdx++;
             copy.add(c);

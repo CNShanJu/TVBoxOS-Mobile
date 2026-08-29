@@ -142,9 +142,13 @@ public class DownloadSeriesDialog extends AppBottomPopupView {
         });
     }
 
+    /** 当前展示的选集列表(供外部刷新副本时保留勾选, 避免下载状态刷新导致选中自动取消) */
+    public List<VodInfo.VodSeries> getCurrentList() {
+        return mList;
+    }
+
     /** 数据准备完成后填充(主线程调用):显示选集网格,隐藏 loading */
-    public void setData(List<VodInfo.VodSeries> list, int[] states) {
-        mList = list != null ? list : new ArrayList<>();
+    public void setData(List<VodInfo.VodSeries> list, int[] states) {        mList = list != null ? list : new ArrayList<>();
         mStates = states != null ? states : new int[0];
         if (mFlLoading != null) {
             mFlLoading.setVisibility(View.GONE);
