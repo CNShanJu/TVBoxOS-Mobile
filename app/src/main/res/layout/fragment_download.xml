@@ -33,27 +33,12 @@
                 android:paddingBottom="6dp" />
 
             <!-- 聚合级空态:无任何下载任务/档案时展示 -->
-            <LinearLayout
+            <include
                 android:id="@+id/ll_aggregate_empty"
+                layout="@layout/view_empty"
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
-                android:gravity="center"
-                android:orientation="vertical"
-                android:visibility="gone">
-
-                <ImageView
-                    android:layout_width="100dp"
-                    android:layout_height="100dp"
-                    android:src="@drawable/ic_empty" />
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
-                    android:text="暂无下载任务"
-                    android:textColor="@color/text_sub_foreground"
-                    android:textSize="14sp" />
-            </LinearLayout>
+                android:visibility="gone" />
 
             <!-- 详情组件:剧集详情状态页(导航路径 + 正在下载/下载完成 两个 tab) -->
             <LinearLayout
@@ -140,28 +125,13 @@
                     android:layout_weight="1" />
 
                 <!-- 下载中空态:该剧无下载中/排队任务 -->
-                <LinearLayout
+                <include
                     android:id="@+id/ll_downloading_empty"
+                    layout="@layout/view_empty"
                     android:layout_width="match_parent"
                     android:layout_height="0dp"
                     android:layout_weight="1"
-                    android:gravity="center"
-                    android:orientation="vertical"
-                    android:visibility="gone">
-
-                    <ImageView
-                        android:layout_width="80dp"
-                        android:layout_height="80dp"
-                        android:src="@drawable/ic_empty" />
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="8dp"
-                        android:text="暂无下载中任务"
-                        android:textColor="@color/text_sub_foreground"
-                        android:textSize="14sp" />
-                </LinearLayout>
+                    android:visibility="gone" />
 
                 <!-- 下载完成:该剧文件列表 -->
                 <androidx.recyclerview.widget.RecyclerView
@@ -172,28 +142,13 @@
                     android:visibility="gone" />
 
                 <!-- 下载完成空态:该剧无已完成文件 -->
-                <LinearLayout
+                <include
                     android:id="@+id/ll_done_empty"
+                    layout="@layout/view_empty"
                     android:layout_width="match_parent"
                     android:layout_height="0dp"
                     android:layout_weight="1"
-                    android:gravity="center"
-                    android:orientation="vertical"
-                    android:visibility="gone">
-
-                    <ImageView
-                        android:layout_width="80dp"
-                        android:layout_height="80dp"
-                        android:src="@drawable/ic_empty" />
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="8dp"
-                        android:text="暂无下载完成"
-                        android:textColor="@color/text_sub_foreground"
-                        android:textSize="14sp" />
-                </LinearLayout>
+                    android:visibility="gone" />
             </LinearLayout>
         </FrameLayout>
 

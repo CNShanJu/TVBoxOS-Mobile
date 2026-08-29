@@ -36,26 +36,11 @@
             android:paddingTop="10dp"/>
 
         <!-- 空态:无历史记录时展示 -->
-        <LinearLayout
+        <include
             android:id="@+id/ll_empty"
+            layout="@layout/view_empty"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
-            android:gravity="center"
-            android:orientation="vertical"
-            android:visibility="gone">
-
-            <ImageView
-                android:layout_width="100dp"
-                android:layout_height="100dp"
-                android:src="@drawable/ic_empty" />
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                android:text="暂无观看历史"
-                android:textColor="@color/text_sub_foreground"
-                android:textSize="14sp" />
-        </LinearLayout>
+            android:visibility="gone" />
     </FrameLayout>
 </LinearLayout>

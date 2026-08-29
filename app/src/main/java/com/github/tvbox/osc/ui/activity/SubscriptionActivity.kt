@@ -185,7 +185,7 @@ class SubscriptionActivity : BaseVbActivity<ActivitySubscriptionBinding>() {
     private fun updateEmptyState() {
         val empty = mSubscriptions.isEmpty()
         mBinding.rv.visibility = if (empty) View.GONE else View.VISIBLE
-        mBinding.llEmpty.visibility = if (empty) View.VISIBLE else View.GONE
+        mBinding.llEmpty.root.visibility = if (empty) View.VISIBLE else View.GONE
     }
 
     private fun showPermissionTipPopup(checked: Boolean) {

@@ -461,7 +461,7 @@ public class DownloadFragment extends BaseVbFragment<FragmentDownloadBinding> {
         aggregateAdapter.setNewData(groups);
         boolean empty = groups == null || groups.isEmpty();
         mBinding.rvAggregate.setVisibility(empty ? View.GONE : View.VISIBLE);
-        mBinding.llAggregateEmpty.setVisibility(empty ? View.VISIBLE : View.GONE);
+        mBinding.llAggregateEmpty.getRoot().setVisibility(empty ? View.VISIBLE : View.GONE);
     }
 
     /** 当前剧集下载完成列表的数据指纹(路径+大小),内容未变时跳过重建,避免下载进度刷新打断长按多选 */
@@ -512,7 +512,7 @@ public class DownloadFragment extends BaseVbFragment<FragmentDownloadBinding> {
         // 聚合组件显隐:非详情时由 refreshAggregate 按数据是否为空设置列表/空态,此处仅处理详情态
         if (inDetail) {
             mBinding.rvAggregate.setVisibility(View.GONE);
-            mBinding.llAggregateEmpty.setVisibility(View.GONE);
+            mBinding.llAggregateEmpty.getRoot().setVisibility(View.GONE);
         }
         mBinding.llDetail.setVisibility(inDetail ? View.VISIBLE : View.GONE);
         if (inDetail) {
@@ -529,9 +529,9 @@ public class DownloadFragment extends BaseVbFragment<FragmentDownloadBinding> {
             boolean dlEmpty = downloadingAdapter.getData() == null || downloadingAdapter.getData().isEmpty();
             boolean doneEmpty = localVideoAdapter.getData() == null || localVideoAdapter.getData().isEmpty();
             mBinding.rvDownloading.setVisibility(inDetail && currentTab == TAB_DOWNLOADING && !dlEmpty ? View.VISIBLE : View.GONE);
-            mBinding.llDownloadingEmpty.setVisibility(inDetail && currentTab == TAB_DOWNLOADING && dlEmpty ? View.VISIBLE : View.GONE);
+            mBinding.llDownloadingEmpty.getRoot().setVisibility(inDetail && currentTab == TAB_DOWNLOADING && dlEmpty ? View.VISIBLE : View.GONE);
             mBinding.rvDone.setVisibility(inDetail && currentTab == TAB_DONE && !doneEmpty ? View.VISIBLE : View.GONE);
-            mBinding.llDoneEmpty.setVisibility(inDetail && currentTab == TAB_DONE && doneEmpty ? View.VISIBLE : View.GONE);
+            mBinding.llDoneEmpty.getRoot().setVisibility(inDetail && currentTab == TAB_DONE && doneEmpty ? View.VISIBLE : View.GONE);
         }
         updateToolbar();
         updateStorageText();

@@ -103,8 +103,7 @@ class HistoryActivity : BaseVbActivity<ActivityHistoryBinding>() {
     private fun updateEmptyState() {
         val empty = historyAdapter!!.data.isEmpty()
         mBinding.mGridView.visibility = if (empty) View.GONE else View.VISIBLE
-        mBinding.llEmpty.visibility = if (empty) View.VISIBLE else View.GONE
-    }
+        mBinding.llEmpty.root.visibility = if (empty) View.VISIBLE else View.GONE    }
 
     /**
      * 屏幕旋转 / 窗口尺寸变化(大屏横竖屏切换)时,按新宽度重算列数并刷新
