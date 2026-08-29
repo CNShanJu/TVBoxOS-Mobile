@@ -94,6 +94,29 @@ public class PlayUrlResolver {
         return null;
     }
 
+    /**
+     * 当前播放集下载解析（防盗链代理特例）:
+     * 1. 解析成功但结果无请求头 → 补播放器请求头(UA/Referer)——部分代理(如 jx.91by.top)
+     *    对无头下载请求返回 ASCII art 提示页而非 m3u8(播放带同一头正常);
+     * 2. 解析失败 → 回退播放器已嗅探到的地址 + 播放器请求头(WebView 嗅探类源无法批量解析)。
+     * <p>仅"当前播放集"可用(播放器才知道 header); 其他 m3u8 走 {@link #resolveWithHeader} 不受影响。</p>
+     *
+     * @param playbackHeaders 播放器当前请求头(可为 null)
+     * @param fallbackUrl     播放器最终播放地址(解析失败时回退, 可为 null)
+     */
+    public static ResolveResult resolveCurrentWithPlaybackHeaders(String sourceKey, String playFlag, String url,
+                                                                  Map<String, String> playbackHeaders, String fallbackUrl) {
+        ResolveResult rr = resolveWithHeader(sourceKey, playFlag, url);
+        if (rr == null || TextUtils.isEmpty(rr.url)) {
+            return new ResolveResult(fallbackUrl, playbackHeaders);
+        }
+        if ((rr.headers == null || rr.headers.isEmpty())
+                && playbackHeaders != null && !playbackHeaders.isEmpty()) {
+            return new ResolveResult(rr.url, playbackHeaders);
+        }
+        return rr;
+    }
+
     /** 处理播放信息结果：parse=0 直链；parse=1 尝试 json 解析 */
     private static ResolveResult handleResult(JSONObject result, String playFlag, String url) throws JSONException {
         boolean parse = result.optString("parse", "1").equals("1");

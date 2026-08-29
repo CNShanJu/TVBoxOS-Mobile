@@ -1304,16 +1304,10 @@ public class DetailActivity extends BaseVbActivity<ActivityDetailBinding> {
                 if (s.name != null && s.name.equals(currentName) && playFragment != null) {
                     String finalUrl = playFragment.getFinalUrl();
                     if (!TextUtils.isEmpty(finalUrl)) {
-                        // 当前集:优先解析头,失败则回退播放地址(WebView 嗅探类源无法批量解析);
-                        // 回退必须带上播放器当前请求头(UA/Referer), 否则防盗链源"能播不能下"
-                        rr = PlayUrlResolver.resolveWithHeader(sourceKey, playFlag, s.url);
-                        if (rr == null || TextUtils.isEmpty(rr.url)) {
-                            rr = new PlayUrlResolver.ResolveResult(finalUrl, playFragment.getPlayHeaders());
-                        } else if (rr.headers == null || rr.headers.isEmpty()) {
-                            // 解析成功但没带请求头: 防盗链代理(如 jx.91by.top)对无 UA/Referer 的
-                            // 下载请求返回 ASCII art 提示页而非 m3u8, 补播放器请求头再下
-                            rr = new PlayUrlResolver.ResolveResult(rr.url, playFragment.getPlayHeaders());
-                        }
+                        // 当前集: 独立方法处理——解析失败回退播放地址, 解析结果无头时补播放器
+                        // UA/Referer(防盗链代理 m3u8 特例, 见 PlayUrlResolver.resolveCurrentWithPlaybackHeaders)
+                        rr = PlayUrlResolver.resolveCurrentWithPlaybackHeaders(
+                                sourceKey, playFlag, s.url, playFragment.getPlayHeaders(), finalUrl);
                     }
                 }
                 if (rr == null) {
