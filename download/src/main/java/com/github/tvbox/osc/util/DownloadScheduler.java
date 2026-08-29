@@ -120,18 +120,30 @@ public class DownloadScheduler {
     private boolean schedule() {
         synchronized (dm.tasks) {
             List<DownloadTask> sorted = new ArrayList<>(dm.tasks);
-            sorted.sort(Comparator.comparingLong(t -> t.createTime));
+            // 调度顺序(4.4): ① 优先级高先(HIGH>NORMAL>LOW) ② 同优先级内被抢占者(SYSTEM_PAUSED)先
+            // ③ 多个被抢占者:后抢占先恢复(preemptTime 降序) ④ 普通等待:queueOrder FIFO
+            sorted.sort((a, b) -> {
+                int pa = a.priority, pb = b.priority;
+                if (pa != pb) return pb - pa;
+                boolean sa = a.state == DownloadTask.STATE_SYSTEM_PAUSED;
+                boolean sb = b.state == DownloadTask.STATE_SYSTEM_PAUSED;
+                if (sa != sb) return sa ? -1 : 1;
+                if (sa) return Long.compare(b.preemptTime, a.preemptTime);
+                return Long.compare(a.queueOrder, b.queueOrder);
+            });
             int running = 0;
             for (DownloadTask t : sorted) {
                 if (t.state == DownloadTask.STATE_DOWNLOADING) running++;
             }
             if (running > dm.policy.getMaxConcurrent()) {
-                // 并发调低:最晚加入的转为"调度暂停"(与用户手动暂停区分)
+                // 并发调低:从队尾(最低优先级且最后加入)转为"调度暂停",并记录被抢占时间
                 int toPause = running - dm.policy.getMaxConcurrent();
+                long now = System.currentTimeMillis();
                 for (int i = sorted.size() - 1; i >= 0 && toPause > 0; i--) {
                     DownloadTask t = sorted.get(i);
                     if (t.state == DownloadTask.STATE_DOWNLOADING) {
                         t.state = DownloadTask.STATE_SYSTEM_PAUSED;
+                        t.preemptTime = now;
                         Response r = dm.activeResponses.remove(t.id);
                         if (r != null) {
                             try {
@@ -147,7 +159,7 @@ public class DownloadScheduler {
                 return true;
             }
             if (running < dm.policy.getMaxConcurrent()) {
-                // 并发调高:按加入顺序补足(等待中优先,其次自动恢复调度暂停的)
+                // 并发调高:按调度顺序补足(队首=高优先级/被抢占者先恢复)
                 int toStart = dm.policy.getMaxConcurrent() - running;
                 for (DownloadTask t : sorted) {
                     if (toStart <= 0) break;
@@ -435,6 +447,7 @@ public class DownloadScheduler {
         t.createTime = System.currentTimeMillis();
         t.id = Integer.toHexString((int) (t.createTime & 0xFFFFFFFFL))
                 + Integer.toHexString(fileName.hashCode());
+        t.queueOrder = t.createTime; // 同优先级 FIFO 队列序
         t.url = url;
         t.sourceKey = sourceKey;
         t.playFlag = playFlag;
@@ -514,23 +527,92 @@ public class DownloadScheduler {
         t.message = "";
         synchronized (dm.tasks) {
             int running = 0;
-            DownloadTask oldestRunning = null;
+            DownloadTask victim = null;
             for (DownloadTask tt : dm.tasks) {
                 if (tt.state == DownloadTask.STATE_DOWNLOADING) {
                     running++;
-                    if (oldestRunning == null || tt.createTime < oldestRunning.createTime) {
-                        oldestRunning = tt;
+                    // 4.4: 让位选"运行中优先级最低, 同级最后加入"的(避免挤掉高优先级)
+                    if (victim == null
+                            || tt.priority < victim.priority
+                            || (tt.priority == victim.priority && tt.queueOrder > victim.queueOrder)) {
+                        victim = tt;
                     }
                 }
             }
-            if (running >= dm.policy.getMaxConcurrent() && oldestRunning != null) {
-                // 让位:最早开始下载的任务转为"调度暂停"(有空位自动恢复,关闭连接线程即退出)
-                oldestRunning.state = DownloadTask.STATE_SYSTEM_PAUSED;
-                Response r = dm.activeResponses.remove(oldestRunning.id);
+            if (running >= dm.policy.getMaxConcurrent() && victim != null) {
+                // 让位:被让位任务置"调度暂停"(被抢占者排同优先级最前, 有空位立即恢复)
+                victim.state = DownloadTask.STATE_SYSTEM_PAUSED;
+                victim.preemptTime = System.currentTimeMillis();
+                Response r = dm.activeResponses.remove(victim.id);
                 if (r != null) {
                     try {
                         r.close();
                     } catch (Throwable ignored) {
+                    }
+                }
+            }
+        }
+        dm.persist();
+        dm.notifyChanged();
+        wakeWorker();
+    }
+
+    // ------------------------------------------------------------------
+    // 排队 / 插队(4.4)
+    // ------------------------------------------------------------------
+
+    /**
+     * 排队插队(温和): 提到队首(该优先级最前, 不打断运行中任务)。
+     * 实现: 置 HIGH 优先级 + 队列序提到最前。
+     */
+    void moveToFront(DownloadTask t) {
+        if (t == null) return;
+        synchronized (dm.tasks) {
+            t.priority = DownloadTask.PRIORITY_HIGH;
+            long min = Long.MAX_VALUE;
+            for (DownloadTask tt : dm.tasks) {
+                if (tt != t && tt.queueOrder < min) min = tt.queueOrder;
+            }
+            t.queueOrder = (min == Long.MAX_VALUE) ? 0 : Math.max(0, min - 1);
+        }
+        dm.persist();
+        dm.notifyChanged();
+        wakeWorker();
+    }
+
+    /**
+     * 设置优先级(4.4):
+     * - 置 HIGH 且并发已满 → 抢占让位(让"运行中最低优先级且最后加入"的任务腾出槽位, 被抢占者排最前)
+     * - 其他级别仅改变排队顺序
+     */
+    void setPriority(DownloadTask t, int level) {
+        if (t == null) return;
+        level = Math.max(DownloadTask.PRIORITY_LOW, Math.min(DownloadTask.PRIORITY_HIGH, level));
+        synchronized (dm.tasks) {
+            t.priority = level;
+            if (level == DownloadTask.PRIORITY_HIGH) {
+                int running = 0;
+                DownloadTask victim = null;
+                for (DownloadTask tt : dm.tasks) {
+                    if (tt.state == DownloadTask.STATE_DOWNLOADING) {
+                        running++;
+                        if (victim == null
+                                || tt.priority < victim.priority
+                                || (tt.priority == victim.priority && tt.queueOrder > victim.queueOrder)) {
+                            victim = tt;
+                        }
+                    }
+                }
+                if (running >= dm.policy.getMaxConcurrent() && victim != null && victim != t) {
+                    // 抢占: 被抢占者置 SYSTEM_PAUSED 并排最前(preemptTime 最新 -> 同级最先恢复)
+                    victim.state = DownloadTask.STATE_SYSTEM_PAUSED;
+                    victim.preemptTime = System.currentTimeMillis();
+                    Response r = dm.activeResponses.remove(victim.id);
+                    if (r != null) {
+                        try {
+                            r.close();
+                        } catch (Throwable ignored) {
+                        }
                     }
                 }
             }

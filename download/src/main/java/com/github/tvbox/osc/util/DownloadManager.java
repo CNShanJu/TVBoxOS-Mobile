@@ -236,6 +236,16 @@ public class DownloadManager {
         scheduler.resume(t);
     }
 
+    /** 排队插队(温和): 提到队首(该优先级最前), 不打断运行中任务 */
+    public void moveToFront(DownloadTask t) {
+        scheduler.moveToFront(t);
+    }
+
+    /** 设置优先级(HIGH/NORMAL/LOW); 置 HIGH 且并发满时抢占让位(被抢占者排最前) */
+    public void setPriority(DownloadTask t, int level) {
+        scheduler.setPriority(t, level);
+    }
+
     /** 全部暂停 */
     public void pauseAll() {
         scheduler.pauseAll();

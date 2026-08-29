@@ -77,6 +77,23 @@ public class DownloadTask {
     /** 是否因网络错误失败(网络恢复后自动续传,transient) */
     public transient boolean networkFailed = false;
 
+    // ------------------------------------------------------------------
+    // 排队/插队(4.4)
+    // ------------------------------------------------------------------
+
+    public static final int PRIORITY_LOW = 0;
+    public static final int PRIORITY_NORMAL = 1;
+    public static final int PRIORITY_HIGH = 2;
+
+    /** 优先级(随任务持久化): HIGH=2 / NORMAL=1 / LOW=0, 调度按此降序 */
+    public int priority = PRIORITY_NORMAL;
+
+    /** 队列序(随任务持久化): 同优先级内 FIFO; moveToFront 时置最前 */
+    public long queueOrder = 0;
+
+    /** 被抢占时间(transient): 置 SYSTEM_PAUSED 时记录, 同级内"后抢占先恢复" */
+    public transient long preemptTime = 0;
+
     public boolean isHls() {
         return totalSegments > 0;
     }

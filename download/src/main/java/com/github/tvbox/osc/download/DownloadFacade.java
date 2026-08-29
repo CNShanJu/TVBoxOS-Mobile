@@ -116,6 +116,22 @@ public final class DownloadFacade {
     }
 
     // ------------------------------------------------------------------
+    // 排队 / 插队（4.4，按 episodeId 操作）
+    // ------------------------------------------------------------------
+
+    /** 排队插队(温和): 提到队首, 不打断运行中任务 */
+    public void moveToFront(String episodeId) {
+        DownloadTask t = getTask(episodeId);
+        if (t != null) DownloadManager.get().moveToFront(t);
+    }
+
+    /** 设置优先级(HIGH/NORMAL/LOW); 置 HIGH 且并发满时抢占让位(被抢占者排最前) */
+    public void setPriority(String episodeId, int level) {
+        DownloadTask t = getTask(episodeId);
+        if (t != null) DownloadManager.get().setPriority(t, level);
+    }
+
+    // ------------------------------------------------------------------
     // 任务日志（委托 LogStore，7 天）
     // ------------------------------------------------------------------
 
