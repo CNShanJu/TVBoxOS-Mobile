@@ -32,8 +32,10 @@ import com.github.tvbox.osc.ui.dialog.GridFilterDialog;
 import com.github.tvbox.osc.ui.tv.widget.LoadMoreView;
 import com.github.tvbox.osc.util.FastClickCheckUtil;
 import com.github.tvbox.osc.util.HawkConfig;
+import com.github.tvbox.osc.util.StackBlurBlur;
 import com.github.tvbox.osc.util.Utils;
 import com.github.tvbox.osc.viewmodel.SourceViewModel;
+import eightbitlab.com.blurview.BlurView;
 import com.orhanobut.hawk.Hawk;
 import com.owen.tvrecyclerview.widget.TvRecyclerView;
 import com.owen.tvrecyclerview.widget.V7GridLayoutManager;
@@ -58,6 +60,8 @@ public class GridFragment extends BaseLazyFragment {
     private int page = 1;
     private int maxPage = 1;
     private boolean isLoad = false;
+    /** 筛选按钮毛玻璃是否已 setup(initView 会被多次调用, 只装一次) */
+    private boolean filterBlurSetup = false;
     private boolean isTop = true;
     private View focusedView = null;
     private class GridInfo{
@@ -240,7 +244,30 @@ public class GridFragment extends BaseLazyFragment {
         gridAdapter.setLoadMoreView(new LoadMoreView());
 
         findViewById(R.id.btn_filter).setOnClickListener(view -> showFilter());
+        setupFilterBlur();
         setLoadSir2(mGridView);
+    }
+
+    /**
+     * 筛选悬浮按钮毛玻璃:模糊其后方(列表)内容, 与底栏同一套 StackBlur 算法; 只初始化一次
+     */
+    private void setupFilterBlur() {
+        if (filterBlurSetup) return;
+        filterBlurSetup = true;
+        try {
+            BlurView blur = findViewById(R.id.blur_filter);
+            ViewGroup root = mActivity.getWindow().getDecorView()
+                    .findViewById(android.R.id.content);
+            blur.setupWith(root)
+                    .setFrameClearDrawable(mActivity.getWindow().getDecorView().getBackground())
+                    .setBlurAlgorithm(new StackBlurBlur())
+                    .setBlurRadius(14f)
+                    .setBlurAutoUpdate(true);
+        } catch (Throwable th) {
+            // 模糊失败降级:按钮保留纯色遮罩,不影响功能
+            View blur = findViewById(R.id.blur_filter);
+            if (blur != null) blur.setVisibility(View.GONE);
+        }
     }
 
     private void initViewModel() {

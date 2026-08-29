@@ -6,6 +6,7 @@ import android.os.Bundle;
 import android.text.TextUtils;
 import android.view.Gravity;
 import android.view.View;
+import android.view.ViewGroup;
 import android.view.animation.BounceInterpolator;
 import android.widget.LinearLayout;
 import android.widget.TextView;
@@ -16,6 +17,7 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.blankj.utilcode.util.ConvertUtils;
 import com.github.tvbox.osc.util.AppBubble;
+import com.github.tvbox.osc.util.StackBlurBlur;
 import com.chad.library.adapter.base.BaseQuickAdapter;
 import com.github.tvbox.osc.R;
 import com.github.tvbox.osc.api.ApiConfig;
@@ -47,6 +49,7 @@ import com.orhanobut.hawk.Hawk;
 import com.owen.tvrecyclerview.widget.TvRecyclerView;
 import com.owen.tvrecyclerview.widget.V7GridLayoutManager;
 import com.owen.tvrecyclerview.widget.V7LinearLayoutManager;
+import eightbitlab.com.blurview.BlurView;
 
 import org.greenrobot.eventbus.EventBus;
 import org.greenrobot.eventbus.Subscribe;
@@ -119,6 +122,7 @@ public class UserFragment extends BaseLazyFragment {
         tvHotList1 = findViewById(R.id.tvHotList1);
         // 主页右下角直播悬浮按钮
         findViewById(R.id.btn_live).setOnClickListener(view -> jumpActivity(LiveActivity.class));
+        setupLiveBlur();
         homeHotVodAdapter = new GridAdapter();
         homeHotVodAdapter.setOnItemClickListener(new BaseQuickAdapter.OnItemClickListener() {
             @Override
@@ -175,6 +179,26 @@ public class UserFragment extends BaseLazyFragment {
         int pad = ConvertUtils.dp2px(4f);
         footer.setPadding(pad, pad, pad, pad);
         homeHotVodAdapter.addFooterView(footer);
+    }
+
+    /**
+     * 直播悬浮按钮毛玻璃:模糊其后方(列表)内容, 与底栏同一套 StackBlur 算法
+     */
+    private void setupLiveBlur() {
+        try {
+            BlurView blur = findViewById(R.id.blur_live);
+            ViewGroup root = mActivity.getWindow().getDecorView()
+                    .findViewById(android.R.id.content);
+            blur.setupWith(root)
+                    .setFrameClearDrawable(mActivity.getWindow().getDecorView().getBackground())
+                    .setBlurAlgorithm(new StackBlurBlur())
+                    .setBlurRadius(14f)
+                    .setBlurAutoUpdate(true);
+        } catch (Throwable th) {
+            // 模糊失败降级:按钮保留纯色遮罩,不影响功能
+            View blur = findViewById(R.id.blur_live);
+            if (blur != null) blur.setVisibility(View.GONE);
+        }
     }
 
     private void initHomeHotVod(GridAdapter adapter) {

@@ -18,17 +18,30 @@
         android:paddingBottom="70dp"
         android:clipToPadding="false"/>
 
-    <!-- 筛选悬浮按钮: 54dp 圆 + 28dp 图标(与首页直播按钮统一尺寸) -->
+    <!-- 筛选悬浮按钮(毛玻璃): 54dp 圆, 圆形裁剪, 模糊层+磨砂遮罩+清晰图标;
+         marginBottom=78dp(58 悬浮底栏 + 20 间距), 不被底栏覆盖 -->
     <FrameLayout
         android:id="@+id/btn_filter"
         android:layout_width="54dp"
         android:layout_height="54dp"
         android:layout_alignParentEnd="true"
         android:layout_alignParentBottom="true"
-        android:layout_margin="20dp"
+        android:layout_marginEnd="20dp"
+        android:layout_marginBottom="78dp"
         android:background="@drawable/bg_fab_oval"
+        android:clipToOutline="true"
         android:foreground="?android:selectableItemBackground"
         android:elevation="4dp">
+
+        <eightbitlab.com.blurview.BlurView
+            android:id="@+id/blur_filter"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent" />
+
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="@color/bg_float" />
 
         <ImageView
             android:layout_width="20dp"
