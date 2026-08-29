@@ -80,6 +80,18 @@ public final class LogStore {
     private volatile int minLevel = LEVEL_INFO;
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
 
+    /** 应用版本号（App 启动 init 时注入, 日志行首/导出头展示, 排查问题定位版本） */
+    private static volatile String appVersion = "";
+
+    /** 由 App 启动时注入版本号（"2.3.1" 或 "2.3.1(44)"）；未注入则空 */
+    public static void setAppVersion(String version) {
+        appVersion = version == null ? "" : version;
+    }
+
+    public static String getAppVersion() {
+        return appVersion;
+    }
+
     private LogStore(Context context) {
         this(context, false);
     }
@@ -391,9 +403,12 @@ public final class LogStore {
     // 展示
     // ------------------------------------------------------------------
 
-    /** 日志页一行展示：[时间] [大类型] [小类型] 干了啥 ✓/✗ */
+    /** 日志页一行展示：[版本] [时间] [大类型] [小类型] 干了啥 ✓/✗ */
     public String formatEntry(LogEntry e) {
         StringBuilder sb = new StringBuilder(96);
+        if (appVersion != null && !appVersion.isEmpty()) {
+            sb.append('[').append(appVersion).append("] ");
+        }
         sb.append('[').append(new SimpleDateFormat("MM-dd HH:mm:ss.SSS", Locale.getDefault()).format(new Date(e.timestamp))).append("] ");
         sb.append('[').append(categoryLabel(e.category)).append("] ");
         String sub = e.subTypeLabel != null && !e.subTypeLabel.isEmpty() ? e.subTypeLabel : e.subTypeCode;

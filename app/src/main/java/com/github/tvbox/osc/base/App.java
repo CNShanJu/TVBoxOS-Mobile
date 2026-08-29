@@ -125,6 +125,13 @@ public class App extends MultiDexApplication {
         putDefault(HawkConfig.LIVE_URL, "https://gh-proxy.com/raw.githubusercontent.com/vbskycn/iptv/refs/heads/master/tv/iptv4.txt"); //直播源:默认地址
         putDefaultApi();
         // 日志模块初始化:按 LogConfig 同步开关(默认关),开启时自动启动 logcat 捕获(package:mine)
+        // 注入版本号:日志行首展示(定位问题时确认是哪个版本产生)
+        try {
+            String v = getPackageManager().getPackageInfo(getPackageName(), 0).versionName;
+            int c = getPackageManager().getPackageInfo(getPackageName(), 0).versionCode;
+            LogStore.setAppVersion(v + "(" + c + ")");
+        } catch (Throwable ignored) {
+        }
         LogStore.init(this);
     }
 
