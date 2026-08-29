@@ -26,11 +26,11 @@
             android:layout_width="match_parent"
             android:layout_height="match_parent" />
 
-        <!-- 2. 磨砂遮罩:半透明页面背景色 + 顶部 1dp 细线(亮色淡/暗色白) -->
+        <!-- 2. 磨砂遮罩:半透明页面背景色 -->
         <View
             android:layout_width="match_parent"
             android:layout_height="match_parent"
-            android:background="@drawable/bg_bottom_nav" />
+            android:background="@color/bg_float" />
 
         <!-- 3. 图标层:透明背景, 内容清晰绘制在模糊之上 -->
         <com.google.android.material.bottomnavigation.BottomNavigationView
