@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- 开屏图:黑猫(与 App 图标同素材; 黑猫占画布较多, 布局内 scale=1.0 不再放大裁切) -->
+<!-- App 图标:黑猫(用户素材, 960 viewport; circle/ellipse 已转 path 弧线) -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
-    android:width="360dp"
-    android:height="360dp"
+    android:width="108dp"
+    android:height="108dp"
     android:viewportWidth="960"
     android:viewportHeight="960">
 
