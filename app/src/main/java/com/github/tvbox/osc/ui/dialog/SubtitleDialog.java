@@ -53,6 +53,12 @@ public class SubtitleDialog extends BaseDialog {
     }
 
     @Override
+    protected int getDialogBackgroundRes() {
+        // 居中弹窗:全圆角(不是底部弹窗的顶圆角)
+        return R.drawable.bg_dialog;
+    }
+
+    @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         WindowManager.LayoutParams lp = new WindowManager.LayoutParams();

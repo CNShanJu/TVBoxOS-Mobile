@@ -17,6 +17,13 @@ import xyz.doikki.videoplayer.util.CutoutUtil;
 
 public class BaseDialog extends Dialog {
 
+    /**
+     * 弹窗背景资源(可覆写):
+     * 默认底部弹窗=bg_bottom_dialog(顶部圆角, 贴底); 居中弹窗(如 SelectDialog)覆写为全圆角。
+     */
+    protected int getDialogBackgroundRes() {
+        return R.drawable.bg_bottom_dialog;
+    }
 
     public BaseDialog(@NonNull Context context) {
         super(context, R.style.CustomDialogStyle);
@@ -33,14 +40,13 @@ public class BaseDialog extends Dialog {
         CutoutUtil.adaptCutoutAboveAndroidP(this, true);//设置刘海
         super.onCreate(savedInstanceState);
 
-        // 统一底部弹窗背景(顶部圆角 + bg_popup 主题色):与 AppBottomPopupView 一致,
-        // 子类布局里的 background 被此处覆盖,调主题只改基类/公共 drawable
+        // 统一弹窗背景(默认底部弹窗=顶部圆角;居中子类如 SelectDialog 覆写 getDialogBackgroundRes 用全圆角)
         try {
             View decor = getWindow() != null ? getWindow().getDecorView() : null;
             if (decor != null) {
                 View content = ((ViewGroup) decor).getChildAt(0);
                 if (content != null) {
-                    content.setBackgroundResource(R.drawable.bg_bottom_dialog);
+                    content.setBackgroundResource(getDialogBackgroundRes());
                 }
             }
         } catch (Throwable ignored) {

@@ -33,6 +33,12 @@ public class SelectDialog<T> extends BaseDialog {
     }
 
     @Override
+    protected int getDialogBackgroundRes() {
+        // 居中弹窗:全圆角(不是底部弹窗的顶圆角), 与其它居中卡片一致
+        return R.drawable.bg_dialog;
+    }
+
+    @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
