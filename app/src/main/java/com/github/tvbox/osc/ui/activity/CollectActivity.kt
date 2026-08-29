@@ -7,6 +7,7 @@ import android.view.View
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.GridLayoutManager
 import com.chad.library.adapter.base.BaseQuickAdapter
+import com.github.tvbox.osc.R
 import com.github.tvbox.osc.api.ApiConfig
 import com.github.tvbox.osc.base.BaseVbActivity
 import com.github.tvbox.osc.bean.VodInfo
@@ -36,6 +37,7 @@ class CollectActivity : BaseVbActivity<ActivityCollectBinding>() {
         // 列数自适应:单卡宽度不超过 GRID_CARD_MAX_WIDTH_DP,屏幕越宽列数越多
         mBinding.mGridView.setLayoutManager(GridLayoutManager(this, Utils.getAdaptiveGridSpan(Utils.GRID_CARD_MAX_WIDTH_DP)))
         mBinding.mGridView.setAdapter(collectAdapter)
+        mBinding.titleBar.setRightIconCustom(R.drawable.ic_clear, 22f, 22f, 12f)
         mBinding.titleBar.rightView.setOnClickListener {
             // 统一主题化确认弹窗(替代 XPopup 默认 asConfirm 库样式)
             com.github.tvbox.osc.ui.dialog.ConfirmDialog.show(this, "提示", "确定清空全部收藏?", "清空", {

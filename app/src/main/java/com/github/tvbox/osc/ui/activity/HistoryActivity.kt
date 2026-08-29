@@ -6,6 +6,7 @@ import android.view.View
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.GridLayoutManager
 import com.chad.library.adapter.base.BaseQuickAdapter
+import com.github.tvbox.osc.R
 import com.github.tvbox.osc.base.BaseVbActivity
 import com.github.tvbox.osc.bean.VodInfo
 import com.github.tvbox.osc.cache.RoomDataManger
@@ -47,6 +48,7 @@ class HistoryActivity : BaseVbActivity<ActivityHistoryBinding>() {
                 true
             }
 
+        mBinding.titleBar.setRightIconCustom(R.drawable.ic_clear, 22f, 22f, 12f)
         mBinding.titleBar.rightView.setOnClickListener { view: View? ->
             // 统一主题化确认弹窗(替代 XPopup 默认 asConfirm 库样式)
             com.github.tvbox.osc.ui.dialog.ConfirmDialog.show(this, "提示", "确定清空全部观看历史?", "清空", {

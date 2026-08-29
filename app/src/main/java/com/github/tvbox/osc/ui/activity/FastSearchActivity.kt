@@ -12,6 +12,7 @@ import android.view.inputmethod.EditorInfo
 import android.widget.TextView
 import androidx.lifecycle.ViewModelProvider
 import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
 import com.angcyo.tablayout.DslTabLayout
 import com.blankj.utilcode.util.GsonUtils
 import com.blankj.utilcode.util.KeyboardUtils
@@ -129,6 +130,7 @@ class FastSearchActivity : BaseVbActivity<ActivityFastSearchBinding>(), TextWatc
         mBinding.mGridView.setHasFixedSize(true)
         mBinding.mGridView.setLayoutManager(LinearLayoutManager(this))
         mBinding.mGridView.adapter = searchAdapter
+        addEndFooter(searchAdapter)
         searchAdapter.setOnItemClickListener { _, view, position ->
             FastClickCheckUtil.check(view)
             val video = searchAdapter.data[position]
@@ -150,6 +152,7 @@ class FastSearchActivity : BaseVbActivity<ActivityFastSearchBinding>(), TextWatc
         mBinding.mGridViewFilter.setLayoutManager(LinearLayoutManager(this))
 
         mBinding.mGridViewFilter.adapter = searchAdapterFilter
+        addEndFooter(searchAdapterFilter)
         searchAdapterFilter.setOnItemClickListener { _, view, position ->
             FastClickCheckUtil.check(view)
             val video = searchAdapterFilter.data[position]
@@ -183,6 +186,22 @@ class FastSearchActivity : BaseVbActivity<ActivityFastSearchBinding>(), TextWatc
         }
 
         setLoadSir(mBinding.llLayout)
+    }
+
+    /** 搜索结果列表末尾"到底了"提示:占满整行居中,贴近底部 */
+    private fun addEndFooter(adapter: FastSearchAdapter) {
+        val footer = TextView(this)
+        footer.text = "—— 到底了 ——"
+        footer.setTextColor(getColor(R.color.text_sub_foreground))
+        footer.textSize = 12f
+        footer.gravity = Gravity.CENTER
+        footer.layoutParams = RecyclerView.LayoutParams(
+            RecyclerView.LayoutParams.MATCH_PARENT,
+            RecyclerView.LayoutParams.WRAP_CONTENT
+        )
+        val pad = (8 * resources.displayMetrics.density).toInt()
+        footer.setPadding(pad, pad, pad, pad)
+        adapter.addFooterView(footer)
     }
 
     /**

@@ -27,6 +27,7 @@
         android:layout_margin="20dp"
         android:backgroundTint="@color/bg_component"
         app:borderWidth="0dp"
+        app:fabSize="mini"
         android:src="@drawable/ic_filter_list"
         app:tint="@color/text_highlight"
         />
