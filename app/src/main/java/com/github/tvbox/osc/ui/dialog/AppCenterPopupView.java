@@ -31,14 +31,19 @@ public abstract class AppCenterPopupView extends CenterPopupView {
 
     @Override
     protected int getMaxWidth() {
-        return Math.round(DialogStyle.CENTER_MAX_WIDTH_DP
-                * getContext().getResources().getDisplayMetrics().density);
+        int dp = DialogStyle.CENTER_MAX_WIDTH_DP;
+        // 横屏时屏幕宽大,适当放宽(≤360dp),内容更舒展;竖屏保持 320dp
+        if (ScreenUtils.isLandscape()) {
+            dp = Math.min(360, Math.round(ScreenUtils.getScreenWidth() / getContext().getResources().getDisplayMetrics().density * 0.5f));
+        }
+        return Math.round(dp * getContext().getResources().getDisplayMetrics().density);
     }
 
-    /** 统一最大高度:屏幕 70%(内容多时内部滚动,不撑满全屏) */
+    /** 统一最大高度:短边 70%(横竖屏一致——横屏时短边=竖屏高,防横屏挤压;内容多时内部滚动) */
     @Override
     protected int getMaxHeight() {
-        return Math.round(ScreenUtils.getScreenHeight() * 0.7f);
+        int shortSide = Math.min(ScreenUtils.getScreenWidth(), ScreenUtils.getScreenHeight());
+        return Math.round(shortSide * 0.7f);
     }
 
     @Override
