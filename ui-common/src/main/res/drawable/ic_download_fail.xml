@@ -4,11 +4,11 @@
     android:height="24dp"
     android:viewportWidth="1170"
     android:viewportHeight="1024">
-    <!-- 视频下载失败:云 + 红色叉(颜色由调用处 setStateIcon tint 控制, 与其他状态图标一致;
-         viewport 1170x1024 比方形图标宽, group 缩放 0.78 使图形视觉大小与其他状态图标相当) -->
+    <!-- 视频下载失败:云 + 红色叉(颜色由调用处 setStateIcon tint 控制; 宽比0.7, 高比0.63=0.7×0.9 微压扁,
+         视觉与其他状态图标一致且略小) -->
     <group
-        android:scaleX="0.78"
-        android:scaleY="0.78"
+        android:scaleX="0.7"
+        android:scaleY="0.63"
         android:pivotX="585"
         android:pivotY="512">
         <path

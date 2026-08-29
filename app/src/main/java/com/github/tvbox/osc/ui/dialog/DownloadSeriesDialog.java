@@ -215,11 +215,12 @@ public class DownloadSeriesDialog extends AppBottomPopupView {
                 chip.setSelected(false);
                 chip.setStateIcon(R.drawable.ic_download_active, R.color.download_active);
             } else if (st == 3) {
-                // 下载失败:红字 + 红色✗图标 + 可重新勾选下载
+                // 下载失败:未选中红字红✗, 选中蓝字蓝✗(可区分, 与可下载项选中一致)
                 chip.setFailed(true);
                 chip.setDisabled(false);
                 chip.setSelected(item.selected);
-                chip.setStateIcon(R.drawable.ic_download_fail, R.color.red);
+                chip.setStateIcon(R.drawable.ic_download_fail,
+                        item.selected ? R.color.color_highlight : R.color.red);
             } else {
                 // 可下载:选中蓝字,未选中主色(无边框无图标)
                 chip.setFailed(false);

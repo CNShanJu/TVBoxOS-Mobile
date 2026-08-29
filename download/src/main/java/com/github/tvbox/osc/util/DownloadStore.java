@@ -136,6 +136,9 @@ public class DownloadStore {
                     if (new File(t.savePath).exists()) return 1;
                     continue;
                 }
+                if (t.state == DownloadTask.STATE_FAILED) {
+                    return 3; // 失败: 单独一档(抽屉显示失败,可重新勾选下载), 与 getEpisodeStates 一致
+                }
                 return 2;
             }
         }
