@@ -33,7 +33,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-public class LiveSettingDialog extends BottomPopupView {
+public class LiveSettingDialog extends AppBottomPopupView {
 
 
     @NonNull

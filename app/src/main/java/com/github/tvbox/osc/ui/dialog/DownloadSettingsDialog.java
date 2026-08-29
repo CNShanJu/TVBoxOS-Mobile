@@ -22,7 +22,7 @@ import java.util.ArrayList;
  * - 下载并发:点击弹 SelectDialog(1-5)
  * 与下载页标题栏齿轮、全局设置页共用 DownloadConfig,单一事实源。
  */
-public class DownloadSettingsDialog extends CenterPopupView {
+public class DownloadSettingsDialog extends AppCenterPopupView {
 
     private TextView mTvConcurrent;
     private com.github.tvbox.osc.ui.widget.AppSwitch mSwitchWifi;

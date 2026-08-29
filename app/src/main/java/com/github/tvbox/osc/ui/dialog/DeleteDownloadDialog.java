@@ -21,7 +21,7 @@ import org.jetbrains.annotations.NotNull;
  * (后者只跟随系统深色模式,与 app 内主题设置可能不同步);勾选行无背景无涟漪,
  * 复选框用默认样式(与下载完成长按多选一致)。
  */
-public class DeleteDownloadDialog extends CenterPopupView {
+public class DeleteDownloadDialog extends AppCenterPopupView {
 
     public interface OnDeleteListener {
         void onDelete(boolean deleteFiles);

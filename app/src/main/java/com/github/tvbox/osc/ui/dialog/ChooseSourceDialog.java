@@ -24,7 +24,7 @@ import java.util.List;
  * @Date : on 2023/9/7 16:33.
  * @Description :
  */
-public class ChooseSourceDialog extends BottomPopupView {
+public class ChooseSourceDialog extends AppBottomPopupView {
     List<Source> mSources;
     private final OnSelectListener mListener;
 

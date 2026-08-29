@@ -21,7 +21,7 @@ import org.jetbrains.annotations.NotNull;
 import java.util.ArrayList;
 import java.util.Arrays;
 
-public class PlayingControlDialog extends BottomPopupView {
+public class PlayingControlDialog extends AppBottomPopupView {
 
     @NonNull
     private final DetailActivity mDetailActivity;

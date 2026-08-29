@@ -26,7 +26,7 @@ import java.util.ArrayList;
  * @Date : on 2023/10/26 10:52.
  * @Description :
  */
-public class ApiHistoryDialog extends BottomPopupView {
+public class ApiHistoryDialog extends AppBottomPopupView {
     private final String mPreApi;
     private final OnInputConfirmListener mOnInputConfirmListener;
     private ArrayList<String> mLiveHistory;

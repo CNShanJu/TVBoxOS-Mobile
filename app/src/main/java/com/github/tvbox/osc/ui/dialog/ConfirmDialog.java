@@ -17,7 +17,7 @@ import org.jetbrains.annotations.NotNull;
  * 弹窗背景按 app 主题取色(浅色白 / 深色深),圆角统一走主题圆角档 radius_dialog,
  * 与 DeleteDownloadDialog 等下载相关弹窗视觉一致(替代 XPopup 默认 asConfirm 的库内固定圆角)。
  */
-public class ConfirmDialog extends CenterPopupView {
+public class ConfirmDialog extends AppCenterPopupView {
 
     private final String mTitle;
     private final String mMessage;

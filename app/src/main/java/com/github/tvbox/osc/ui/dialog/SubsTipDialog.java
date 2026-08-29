@@ -18,7 +18,7 @@ import com.lxj.xpopup.core.BottomPopupView;
  * @Date : on 2023/9/5 14:11.
  * @Description :
  */
-public class SubsTipDialog extends BottomPopupView {
+public class SubsTipDialog extends AppBottomPopupView {
 
     public SubsTipDialog(@NonNull Context context) {
         super(context);

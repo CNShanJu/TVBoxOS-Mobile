@@ -24,7 +24,7 @@ import java.util.List;
  * 全集弹窗(详情页"全部"):RoundChip 文字样式(与全屏选集/下载抽屉统一,无边框无背景),固定3列,单选。
  * 不像全屏右侧弹窗一样共用activity的adapter,adapter横向和网格布局逻辑不同,同屏显示切换会有视觉差
  */
-public class AllVodSeriesBottomDialog extends BottomPopupView {
+public class AllVodSeriesBottomDialog extends AppBottomPopupView {
 
     List<VodInfo.VodSeries> mList;
     private final OnSelectListener mSelectListener;

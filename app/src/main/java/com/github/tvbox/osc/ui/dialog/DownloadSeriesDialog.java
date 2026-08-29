@@ -31,7 +31,7 @@ import java.util.List;
  * 点击"下载"立即弹出,内容先 loading;数据异步准备完成后通过 {@link #setData(List, int[])} 填充。
  * states:0=可下载;1=已下载(置灰);2=下载中/排队(置灰)。
  */
-public class DownloadSeriesDialog extends BottomPopupView {
+public class DownloadSeriesDialog extends AppBottomPopupView {
 
     public interface OnDownloadActionListener {
         /** 开始下载所选剧集(selected 为已勾选的列表) */

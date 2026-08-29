@@ -19,7 +19,7 @@ import org.jetbrains.annotations.NotNull;
  * 已从 JitPack 消失,原始实现备份于项目根目录 _backup_dlna/ 下。
  * 待找到可替代的 DLNA 库后,可恢复 _backup_dlna/ 中的原始实现并适配新库 API。
  */
-public class CastListDialog extends CenterPopupView {
+public class CastListDialog extends AppCenterPopupView {
 
     public CastListDialog(@NonNull @NotNull Context context, CastVideo castVideo) {
         super(context);

@@ -15,7 +15,7 @@ import com.lxj.xpopup.core.CenterPopupView;
  * @Date : on 2023/8/17 09:28.
  * @Description :
  */
-public class SubsciptionDialog extends CenterPopupView {
+public class SubsciptionDialog extends AppCenterPopupView {
 
     public interface OnSubsciptionListener {
         void onConfirm(String name,String url,boolean check);

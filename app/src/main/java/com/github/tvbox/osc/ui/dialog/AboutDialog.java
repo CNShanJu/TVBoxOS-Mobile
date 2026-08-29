@@ -10,7 +10,7 @@ import com.lxj.xpopup.core.BottomPopupView;
 
 import org.jetbrains.annotations.NotNull;
 
-public class AboutDialog extends BottomPopupView {
+public class AboutDialog extends AppBottomPopupView {
 
     public AboutDialog(@NonNull @NotNull Context context) {
         super(context);

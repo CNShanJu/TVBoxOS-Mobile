@@ -18,7 +18,7 @@ import com.orhanobut.hawk.Hawk;
 
 import java.util.ArrayList;
 
-public class LiveApiDialog extends CenterPopupView {
+public class LiveApiDialog extends AppCenterPopupView {
 
     private com.github.tvbox.osc.databinding.DialogLiveApiBinding mBinding;
 
