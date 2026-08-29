@@ -41,6 +41,7 @@
                 android:elevation="0dp"
                 app:compatShadowEnabled="false"
                 app:itemRippleColor="@android:color/transparent"
+                app:itemBackground="@android:color/transparent"
                 app:itemActiveIndicatorStyle="@style/EmptyActiveIndicator"
                 app:itemIconSize="22dp"
                 app:itemIconTint="@drawable/bottom_navigation_item_selector"

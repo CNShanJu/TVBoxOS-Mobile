@@ -226,6 +226,8 @@ public class DownloadExecutor {
         if (segments.isEmpty()) {
             throw new IOException("m3u8 无有效分片");
         }
+        Log.i("TVBox-Download", "播放列表 " + segments.size() + " 片, 播放列表url=" + t.url
+                + " 首片=" + segments.get(0));
         t.totalSegments = segments.size();
         // 续传起点以磁盘实况为准(不信任 TXT/内存计数):用户可能删过部分分片文件,
         // 若仍用 t.doneSegments 会跳过缺失分片直接合并导致失败。
@@ -587,6 +589,7 @@ public class DownloadExecutor {
                 segDone = 0;
                 FileCleaner.deleteQuietly(segFile);
             } else if (code != 200 && code != 206) {
+                Log.i("TVBox-Download", "分片 HTTP " + code + " url=" + segUrl);
                 throw new IOException("segment HTTP " + code);
             }
             File parent = segFile.getParentFile();
