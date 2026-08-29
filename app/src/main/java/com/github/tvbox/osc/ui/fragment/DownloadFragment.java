@@ -455,9 +455,13 @@ public class DownloadFragment extends BaseVbFragment<FragmentDownloadBinding> {
         updateToolbar();
     }
 
-    /** 刷新聚合网格(按 剧名+来源 分组,含下载中与已完成) */
+    /** 刷新聚合网格(按 剧名+来源 分组,含下载中与已完成);无数据时展示空态 */
     private void refreshAggregate() {
-        aggregateAdapter.setNewData(buildAggregateGroups());
+        List<DownloadGroup> groups = buildAggregateGroups();
+        aggregateAdapter.setNewData(groups);
+        boolean empty = groups == null || groups.isEmpty();
+        mBinding.rvAggregate.setVisibility(empty ? View.GONE : View.VISIBLE);
+        mBinding.llAggregateEmpty.setVisibility(empty ? View.VISIBLE : View.GONE);
     }
 
     /** 当前剧集下载完成列表的数据指纹(路径+大小),内容未变时跳过重建,避免下载进度刷新打断长按多选 */
@@ -475,8 +479,7 @@ public class DownloadFragment extends BaseVbFragment<FragmentDownloadBinding> {
         String sig = currentVodGroup + "\u0001" + (currentSourceName == null ? "" : currentSourceName)
                 + "\u0001" + doneSignature(files);
         if (sig.equals(doneListSignature)) return; // 内容未变:跳过重建(保持多选与滚动状态)
-        doneListSignature = sig;
-        // 重建时保留多选勾选(按路径恢复),且不重置多选模式,避免刷新打断"下载完成"长按多选
+        doneListSignature = sig;        // 重建时保留多选勾选(按路径恢复),且不重置多选模式,避免刷新打断"下载完成"长按多选
         Set<String> checked = new LinkedHashSet<>();
         if (localVideoAdapter.isSelectMode()) {
             for (VideoInfo v : localVideoAdapter.getData()) {
@@ -506,7 +509,11 @@ public class DownloadFragment extends BaseVbFragment<FragmentDownloadBinding> {
         boolean inDetail = currentVodGroup != null;
         // 中间 box 背景:聚合根级透明,详情页恢复卡片背景
         mBinding.llDownloadBox.setBackgroundResource(inDetail ? R.drawable.bg_large_round_gray : 0);
-        mBinding.rvAggregate.setVisibility(inDetail ? View.GONE : View.VISIBLE);
+        // 聚合组件显隐:非详情时由 refreshAggregate 按数据是否为空设置列表/空态,此处仅处理详情态
+        if (inDetail) {
+            mBinding.rvAggregate.setVisibility(View.GONE);
+            mBinding.llAggregateEmpty.setVisibility(View.GONE);
+        }
         mBinding.llDetail.setVisibility(inDetail ? View.VISIBLE : View.GONE);
         if (inDetail) {
             String src = currentSourceName == null || currentSourceName.isEmpty() ? "未知" : currentSourceName;
@@ -518,9 +525,14 @@ public class DownloadFragment extends BaseVbFragment<FragmentDownloadBinding> {
                 currentTab = TAB_DONE;
                 applyTabStyle();
             }
+            // 列表与空态联动:当前 tab 对应列表为空时展示空态(空态视图与列表二选一)
+            boolean dlEmpty = downloadingAdapter.getData() == null || downloadingAdapter.getData().isEmpty();
+            boolean doneEmpty = localVideoAdapter.getData() == null || localVideoAdapter.getData().isEmpty();
+            mBinding.rvDownloading.setVisibility(inDetail && currentTab == TAB_DOWNLOADING && !dlEmpty ? View.VISIBLE : View.GONE);
+            mBinding.llDownloadingEmpty.setVisibility(inDetail && currentTab == TAB_DOWNLOADING && dlEmpty ? View.VISIBLE : View.GONE);
+            mBinding.rvDone.setVisibility(inDetail && currentTab == TAB_DONE && !doneEmpty ? View.VISIBLE : View.GONE);
+            mBinding.llDoneEmpty.setVisibility(inDetail && currentTab == TAB_DONE && doneEmpty ? View.VISIBLE : View.GONE);
         }
-        mBinding.rvDownloading.setVisibility(inDetail && currentTab == TAB_DOWNLOADING ? View.VISIBLE : View.GONE);
-        mBinding.rvDone.setVisibility(inDetail && currentTab == TAB_DONE ? View.VISIBLE : View.GONE);
         updateToolbar();
         updateStorageText();
     }
