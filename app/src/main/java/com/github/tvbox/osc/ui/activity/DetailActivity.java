@@ -1309,6 +1309,10 @@ public class DetailActivity extends BaseVbActivity<ActivityDetailBinding> {
                         rr = PlayUrlResolver.resolveWithHeader(sourceKey, playFlag, s.url);
                         if (rr == null || TextUtils.isEmpty(rr.url)) {
                             rr = new PlayUrlResolver.ResolveResult(finalUrl, playFragment.getPlayHeaders());
+                        } else if (rr.headers == null || rr.headers.isEmpty()) {
+                            // 解析成功但没带请求头: 防盗链代理(如 jx.91by.top)对无 UA/Referer 的
+                            // 下载请求返回 ASCII art 提示页而非 m3u8, 补播放器请求头再下
+                            rr = new PlayUrlResolver.ResolveResult(rr.url, playFragment.getPlayHeaders());
                         }
                     }
                 }
