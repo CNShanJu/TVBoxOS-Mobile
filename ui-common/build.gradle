@@ -1,0 +1,151 @@
+plugins {
+    id 'com.android.library'
+}
+
+android {
+    namespace 'com.github.tvbox.osc.uicommon'
+    compileSdk 34
+
+    defaultConfig {
+        minSdk 24
+        targetSdk 34
+        versionCode 1
+        versionName "1.0"
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+}
+
+// ------------------------------------------------------------------
+// 主题颜色生成(3.7② ui-common 自持主题):读取 assets/theme/theme_colors.json(浅色)与
+// theme_colors_night.json(暗色),分别生成 res/values 与 res/values-night 的颜色文件;
+// 文件不存在时用内置默认值。app 及业务模块依赖本模块后自动获得主题资源。
+// ------------------------------------------------------------------
+def themeColorsFile = file('src/main/assets/theme/theme_colors.json')
+def themeColorsNightFile = file('src/main/assets/theme/theme_colors_night.json')
+def themeRadiiFile = file('src/main/assets/theme/theme_radii.json')
+def themeColorsDir = file("${buildDir}/generated/theme_colors")
+
+def defaultRadii = [
+        radius_background: '25dp',
+        radius_dialog    : '18dp',
+        radius_card      : '12dp'
+]
+
+def defaultColors = [
+        bg_body        : '#FFFFFF',
+        bg_component   : '#F9FAFB',
+        text_main      : '#050505',
+        text_highlight : '#1F2937',
+        nav_text_normal: '#CCCCCC',
+        download_active: '#037AFF',
+        download_done  : '#08CA2C',
+        bubble_bg      : '#F2F3F7',
+        bubble_text    : '#1F2937',
+        select_fill    : '#1F2937',
+        select_bg      : '#1F2937',
+        swipe_red      : '#E5484D'
+]
+def defaultNightColors = [
+        bg_body        : '#141218',
+        bg_component   : '#212121',
+        text_main      : '#FFFFFF',
+        text_highlight : '#E5E7EB',
+        nav_text_normal: '#7A7A7A',
+        download_active: '#037AFF',
+        download_done  : '#08CA2C',
+        bubble_bg      : '#2E2C36',
+        bubble_text    : '#FFFFFF',
+        select_fill    : '#E5E7EB',
+        select_bg      : '#374151',
+        swipe_red      : '#E5484D'
+]
+
+static def readColors(def file, def defaults) {
+    def colors = new LinkedHashMap<>(defaults)
+    if (file.exists()) {
+        try {
+            def json = new groovy.json.JsonSlurper().parse(file)
+            colors.each { k, v ->
+                def uv = json[k]
+                if (uv instanceof String && uv.startsWith('#')) colors[k] = uv
+            }
+        } catch (Throwable th) {
+            println "WARN: ${file.name} 解析失败,使用默认颜色: ${th.message}"
+        }
+    }
+    return colors
+}
+
+static def readRadii(def file, def defaults) {
+    def radii = new LinkedHashMap<>(defaults)
+    if (file.exists()) {
+        try {
+            def json = new groovy.json.JsonSlurper().parse(file)
+            radii.each { k, v ->
+                def uv = json[k]
+                if (uv instanceof String && (uv.endsWith('dp') || uv.endsWith('dip') || uv.endsWith('px'))) {
+                    radii[k] = uv
+                }
+            }
+        } catch (Throwable th) {
+            println "WARN: ${file.name} 解析失败,使用默认圆角: ${th.message}"
+        }
+    }
+    return radii
+}
+
+static def writeColorsXml(def dir, def name, def colors) {
+    def valuesDir = new File(dir, name)
+    valuesDir.mkdirs()
+    def f = new File(valuesDir, 'theme_colors.xml')
+    def sb = new StringBuilder('<?xml version="1.0" encoding="utf-8"?>\n<resources>\n')
+    colors.each { k, v -> sb.append("    <color name=\"${k}\">${v}</color>\n") }
+    sb.append('</resources>\n')
+    f.text = sb.toString()
+}
+
+static def writeRadiiXml(def dir, def name, def radii) {
+    def valuesDir = new File(dir, name)
+    valuesDir.mkdirs()
+    def f = new File(valuesDir, 'theme_radii.xml')
+    def sb = new StringBuilder('<?xml version="1.0" encoding="utf-8"?>\n<resources>\n')
+    radii.each { k, v -> sb.append("    <dimen name=\"${k}\">${v}</dimen>\n") }
+    sb.append('</resources>\n')
+    f.text = sb.toString()
+}
+
+task generateThemeColors {
+    inputs.file(themeColorsFile).optional()
+    inputs.file(themeColorsNightFile).optional()
+    inputs.file(themeRadiiFile).optional()
+    outputs.dir(themeColorsDir)
+    doLast {
+        writeColorsXml(themeColorsDir, 'values', readColors(themeColorsFile, defaultColors))
+        writeColorsXml(themeColorsDir, 'values-night', readColors(themeColorsNightFile, defaultNightColors))
+        writeRadiiXml(themeColorsDir, 'values', readRadii(themeRadiiFile, defaultRadii))
+    }
+}
+preBuild.dependsOn generateThemeColors
+android.sourceSets.main.res.srcDirs += themeColorsDir
+
+dependencies {
+    // 公共主题依赖最小化:仅 AndroidX AppCompat + Material(主题 parent 需要)
+    implementation 'androidx.appcompat:appcompat:1.3.0'
+    implementation 'com.google.android.material:material:1.9.0'
+    // material 传递依赖 kotlinx-coroutines / constraintlayout / recyclerview 旧版,
+    // 显式固定到与 app 一致的缓存版本(offline 可解析)
+    implementation 'org.jetbrains.kotlin:kotlin-stdlib:1.9.22'
+    implementation 'org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.9.22'
+    implementation 'androidx.constraintlayout:constraintlayout:2.0.4'
+    implementation 'androidx.recyclerview:recyclerview:1.2.1'
+}

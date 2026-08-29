@@ -26,129 +26,10 @@ def cfgAppIcon = appConfig.getProperty('appIcon', '@drawable/app_icon') ?: '@dra
 
 
 // ------------------------------------------------------------------
-// 主题颜色生成:读取 assets/theme/theme_colors.json(浅色)与 theme_colors_night.json(暗色),
-// 分别生成 res/values 与 res/values-night 的颜色文件;文件不存在时用内置默认值。
-// 两个文件字段一致:bg_body / bg_component / text_main / text_highlight / nav_text_normal
+// 主题颜色生成已迁移至 :ui-common 模块(3.7②):app 依赖 :ui-common 后自动获得
+// 主题资源(theme_colors/theme_radii/样式/公共 drawable),app 只保留页面级资源。
+// 主题 JSON 统一维护于 ui-common/src/main/assets/theme/。
 // ------------------------------------------------------------------
-def themeColorsFile = file('src/main/assets/theme/theme_colors.json')
-def themeColorsNightFile = file('src/main/assets/theme/theme_colors_night.json')
-def themeRadiiFile = file('src/main/assets/theme/theme_radii.json')
-def themeColorsDir = file("${buildDir}/generated/theme_colors")
-
-// 圆角三档(受主题文件 theme/theme_radii.json 统一管控):背景档 / 抽屉弹窗档 / 卡片档
-def defaultRadii = [
-        radius_background: '25dp',
-        radius_dialog    : '18dp',
-        radius_card      : '12dp'
-]
-
-def defaultColors = [
-        bg_body        : '#FFFFFF',
-        bg_component   : '#F9FAFB',
-        text_main      : '#050505',
-        text_highlight : '#1F2937',
-        nav_text_normal: '#CCCCCC',
-        // 下载状态色:进行中(蓝) / 完成(绿)
-        download_active: '#037AFF',
-        download_done  : '#08CA2C',
-        // 消息提示气泡:背景(浅色柔和灰白,避免纯白刺眼) / 文字
-        bubble_bg      : '#F2F3F7',
-        bubble_text    : '#1F2937',
-        // 聚合页多选圆圈颜色(外环与选中内部填充圆同色,受主题文件管控)
-        select_fill    : '#1F2937',
-        // 直播页选中 tab 填充背景(浅色深蓝灰 / 暗色深灰,配白字)
-        select_bg      : '#1F2937',
-        // 下载条目左滑操作区背景(舒适红)
-        swipe_red      : '#E5484D'
-]
-def defaultNightColors = [
-        bg_body        : '#141218',
-        bg_component   : '#212121',
-        text_main      : '#FFFFFF',
-        text_highlight : '#E5E7EB',
-        nav_text_normal: '#7A7A7A',
-        download_active: '#037AFF',
-        download_done  : '#08CA2C',
-        // 消息提示气泡:背景(深色) / 文字
-        bubble_bg      : '#2E2C36',
-        bubble_text    : '#FFFFFF',
-        // 聚合页多选圆圈颜色(外环与选中内部填充圆同色,受主题文件管控)
-        select_fill    : '#E5E7EB',
-        // 直播页选中 tab 填充背景(浅色深蓝灰 / 暗色深灰,配白字)
-        select_bg      : '#374151',
-        // 下载条目左滑操作区背景(舒适红)
-        swipe_red      : '#E5484D'
-]
-
-static def readColors(def file, def defaults) {
-    def colors = new LinkedHashMap<>(defaults)
-    if (file.exists()) {
-        try {
-            def json = new groovy.json.JsonSlurper().parse(file)
-            colors.each { k, v ->
-                def uv = json[k]
-                if (uv instanceof String && uv.startsWith('#')) colors[k] = uv
-            }
-        } catch (Throwable th) {
-            println "WARN: ${file.name} 解析失败,使用默认颜色: ${th.message}"
-        }
-    }
-    return colors
-}
-
-static def readRadii(def file, def defaults) {
-    def radii = new LinkedHashMap<>(defaults)
-    if (file.exists()) {
-        try {
-            def json = new groovy.json.JsonSlurper().parse(file)
-            radii.each { k, v ->
-                def uv = json[k]
-                if (uv instanceof String && (uv.endsWith('dp') || uv.endsWith('dip') || uv.endsWith('px'))) {
-                    radii[k] = uv
-                }
-            }
-        } catch (Throwable th) {
-            println "WARN: ${file.name} 解析失败,使用默认圆角: ${th.message}"
-        }
-    }
-    return radii
-}
-
-static def writeColorsXml(def dir, def name, def colors) {
-    def valuesDir = new File(dir, name)
-    valuesDir.mkdirs()
-    def f = new File(valuesDir, 'theme_colors.xml')
-    def sb = new StringBuilder('<?xml version="1.0" encoding="utf-8"?>\n<resources>\n')
-    colors.each { k, v -> sb.append("    <color name=\"${k}\">${v}</color>\n") }
-    sb.append('</resources>\n')
-    f.text = sb.toString()
-}
-
-static def writeRadiiXml(def dir, def name, def radii) {
-    def valuesDir = new File(dir, name)
-    valuesDir.mkdirs()
-    def f = new File(valuesDir, 'theme_radii.xml')
-    def sb = new StringBuilder('<?xml version="1.0" encoding="utf-8"?>\n<resources>\n')
-    radii.each { k, v -> sb.append("    <dimen name=\"${k}\">${v}</dimen>\n") }
-    sb.append('</resources>\n')
-    f.text = sb.toString()
-}
-
-task generateThemeColors {
-    inputs.file(themeColorsFile).optional()
-    inputs.file(themeColorsNightFile).optional()
-    inputs.file(themeRadiiFile).optional()
-    outputs.dir(themeColorsDir)
-    doLast {
-        writeColorsXml(themeColorsDir, 'values', readColors(themeColorsFile, defaultColors))
-        writeColorsXml(themeColorsDir, 'values-night', readColors(themeColorsNightFile, defaultNightColors))
-        // 圆角档位不分明暗主题,写入 values 即可
-        writeRadiiXml(themeColorsDir, 'values', readRadii(themeRadiiFile, defaultRadii))
-    }
-}
-preBuild.dependsOn generateThemeColors
-android.sourceSets.main.res.srcDirs += themeColorsDir
-
 android {
     namespace 'com.github.tvbox.osc'
     compileSdk 34
@@ -293,6 +174,7 @@ dependencies {
     implementation project(":state")
     implementation project(":player-api")
     implementation project(":common")
+    implementation project(":ui-common")
     implementation project(":spider")
     implementation project(":download")
     implementation 'net.sourceforge.streamsupport:android-retrofuture:1.7.4'
