@@ -168,11 +168,11 @@ public class UserFragment extends BaseLazyFragment {
         footer.setTextColor(getResources().getColor(R.color.text_sub_foreground));
         footer.setTextSize(12);
         footer.setGravity(Gravity.CENTER);
-        // 占满整行使文字水平居中;上下留 8dp,贴近底部(列表 paddingBottom=24dp)
+        // 占满整行使文字水平居中;上下留 4dp,贴近底部(列表 paddingBottom=12dp)
         footer.setLayoutParams(new RecyclerView.LayoutParams(
                 RecyclerView.LayoutParams.MATCH_PARENT,
                 RecyclerView.LayoutParams.WRAP_CONTENT));
-        int pad = ConvertUtils.dp2px(8f);
+        int pad = ConvertUtils.dp2px(4f);
         footer.setPadding(pad, pad, pad, pad);
         homeHotVodAdapter.addFooterView(footer);
     }
