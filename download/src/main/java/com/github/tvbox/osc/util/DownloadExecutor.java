@@ -259,35 +259,49 @@ public class DownloadExecutor {
         t.message = DownloadManager.MSG_VERIFYING;
         dm.persist();
         dm.notifyChanged();
-        DownloadLog.LOG.info(DownloadSubType.VERIFY, "校验开始: 分片 " + segments.size() + " 片",
-                DownloadLog.extras(t.episodeId));
         // 首次全盘比对, 生成缺失清单(仅此一次 O(total))
         List<Integer> missing = new ArrayList<>();
         for (int i = 0; i < segments.size(); i++) {
             File segFile = new File(tmpDir, String.format("%05d.ts", i));
             if (!segFile.exists() || segFile.length() <= 0) missing.add(i);
         }
+        // 校验/开始 日志: 清单N片, 缺失M项:[序号](缺失清单全量落日志, 事后可核对)
+        DownloadLog.LOG.info(DownloadSubType.VERIFY, "校验开始: 清单 " + segments.size() + " 片, 缺失 " + missing.size()
+                + " 项" + missingList(missing), DownloadLog.extras(t.episodeId));
         int repair = 0;
         while (!missing.isEmpty()) {
             if (repair >= DownloadManager.MAX_SEGMENT_REPAIR) {
+                // 补片 FAILED: 完整缺失清单落日志(不截断), 供事后核对; 保留碎片现场
+                DownloadLog.LOG.fail(DownloadSubType.REPAIR, "补片 FAILED: 第 " + DownloadManager.MAX_SEGMENT_REPAIR
+                        + " 轮仍缺失 " + missing.size() + " 片:" + missingList(missing), DownloadLog.extras(t.episodeId));
                 throw new IOException("碎片校验不一致,自动补下" + DownloadManager.MAX_SEGMENT_REPAIR + "轮后仍缺失(缺 " + missing.size() + " 片,如第"
                         + missing.get(0) + "片)");
             }
             repair++;
             Log.i("TVBox-Download", "碎片校验缺失 " + missing.size() + " 片,第" + repair + "/" + DownloadManager.MAX_SEGMENT_REPAIR
                     + "轮补下: " + t.fileName + " 缺失首片=" + missing.get(0));
-            DownloadLog.LOG.info(DownloadSubType.REPAIR,
-                    "补片第 " + repair + "/" + DownloadManager.MAX_SEGMENT_REPAIR + " 轮: 缺失 " + missing.size() + " 片",
-                    DownloadLog.extras(t.episodeId));
+            // 每轮补片开始: 目标[序号], 轮次 k/3
+            DownloadLog.LOG.info(DownloadSubType.REPAIR, "补片第 " + repair + "/" + DownloadManager.MAX_SEGMENT_REPAIR
+                    + " 轮开始: 目标 " + missing.size() + " 片" + missingList(missing), DownloadLog.extras(t.episodeId));
             // 只补缺失清单项; 单片失败不整体抛(留待下一轮, 3 轮内仍缺才失败)
             List<Integer> stillMissing = new ArrayList<>();
+            int attempt = 0, okCount = 0, failCount = 0;
             for (int idx : missing) {
                 File segFile = new File(tmpDir, String.format("%05d.ts", idx));
                 if (!segFile.exists() || segFile.length() <= 0) {
+                    attempt++;
                     try {
                         downloadSegment(segments.get(idx), segFile, 0, t);
+                        // 单项补下成功: 片i 成功 bytes
+                        DownloadLog.LOG.success(DownloadSubType.REPAIR, "补片/片 " + idx + " 成功 " + segFile.length() + "B",
+                                DownloadLog.extras(t.episodeId));
+                        okCount++;
                     } catch (IOException e) {
+                        // 单项补下失败: 原因+HTTP码(留待下轮)
+                        failCount++;
                         Log.i("TVBox-Download", "补片失败(留待下轮): 片" + idx + " " + e.getMessage());
+                        DownloadLog.LOG.fail(DownloadSubType.REPAIR, "补片/片 " + idx + " 失败 " + e.getMessage(),
+                                DownloadLog.extras(t.episodeId));
                     }
                 }
                 // 只复检缺失清单项(不扫全目录)
@@ -299,6 +313,10 @@ public class DownloadExecutor {
             }
             missing = stillMissing;
             writeSegmentsInfo(t, tmpDir, segments, t.doneSegments); // 每轮结束写一次 TXT(非每片)
+            // 每轮补片结束: 补K, 成功K1, 失败K2, 剩余J:[序号]
+            DownloadLog.LOG.info(DownloadSubType.REPAIR, "补片第 " + repair + "/" + DownloadManager.MAX_SEGMENT_REPAIR
+                    + " 轮结束: 补" + attempt + " 成功" + okCount + " 失败" + failCount + " 剩余" + missing.size()
+                    + " 片" + missingList(missing), DownloadLog.extras(t.episodeId));
         }
         t.doneSegments = segments.size(); // 全部就绪,进度=已下载分片数
         t.segmentBytes = 0;
@@ -308,17 +326,30 @@ public class DownloadExecutor {
         t.message = DownloadManager.MSG_MERGING;
         dm.persist();
         dm.notifyChanged();
-        DownloadLog.LOG.info(DownloadSubType.MERGE, "合并开始: " + segments.size() + " 片, 目标 " + t.savePath,
-                DownloadLog.extras(t.episodeId));
-
-        // 合并前空间检查:合并需额外写入约一个最终文件大小的 merged.tmp(分片已占空间),
-        // 不足则失败并提示,避免合并中空间耗尽损坏
-        long mergeSize = 0;
-        for (int i = 0; i < segments.size(); i++) {
-            mergeSize += new File(tmpDir, String.format("%05d.ts", i)).length();
+        // 合并尝试计数(第几次): >1 即重试,先记"合并/重试"(含上次失败原因还原上下文)
+        t.mergeCount++;
+        if (t.mergeCount > 1) {
+            DownloadLog.LOG.warn(DownloadSubType.MERGE, "合并/重试 第 " + t.mergeCount + " 次开始, 上次失败原因: "
+                    + (t.mergeFailReason == null || t.mergeFailReason.isEmpty() ? "未知" : t.mergeFailReason),
+                    DownloadLog.extras(t.episodeId));
         }
-        if (mergeSize > 0) {
-            try {
+        long mergeStart = System.currentTimeMillis();
+        // 合并分片 -> mp4(双阶段原子合并):
+        // 1) 先合并到分段目录内的 merged.tmp(过程文件,与成果隔离,崩溃最多损坏它)
+        // 2) 完整后 rename 到最终文件(rename 为原子操作,要么成功要么未发生,杜绝半成品最终文件)
+        File finalFile = new File(t.savePath);
+        if (finalFile.getParentFile() != null && !finalFile.getParentFile().exists()) {
+            finalFile.getParentFile().mkdirs();
+        }
+        File mergeTmp = new File(tmpDir, "merged.tmp");
+        try {
+            // 合并前空间检查:合并需额外写入约一个最终文件大小的 merged.tmp(分片已占空间),
+            // 不足则失败并提示,避免合并中空间耗尽损坏
+            long mergeSize = 0;
+            for (int i = 0; i < segments.size(); i++) {
+                mergeSize += new File(tmpDir, String.format("%05d.ts", i)).length();
+            }
+            if (mergeSize > 0) {
                 File dir = new File(t.savePath).getParentFile();
                 if (dir != null && dir.exists()) {
                     android.os.StatFs stat = new android.os.StatFs(dir.getAbsolutePath());
@@ -329,41 +360,44 @@ public class DownloadExecutor {
                                 + ((DownloadPolicy.MIN_FREE_SPACE - (free - mergeSize) + 1024 * 1024 - 1) / (1024 * 1024)) + "MB)");
                     }
                 }
-            } catch (IOException e) {
-                throw e; // 空间不足直接失败,保留分片现场待清理后重试
-            } catch (Throwable ignored) {
             }
-        }
+            // 合并/开始 日志: 分片N, 缺失清单状态(此时补片循环已退出=已清空), 分片总size, 目标路径
+            DownloadLog.LOG.info(DownloadSubType.MERGE, "合并开始 第 " + t.mergeCount + " 次: 分片 " + segments.size()
+                            + ", 缺失清单=已清空, 分片总size=" + formatSize(mergeSize) + ", 目标 " + t.savePath,
+                    DownloadLog.extras(t.episodeId));
 
-        // 合并分片 -> mp4(双阶段原子合并):
-        // 1) 先合并到分段目录内的 merged.tmp(过程文件,与成果隔离,崩溃最多损坏它)
-        // 2) 完整后 rename 到最终文件(rename 为原子操作,要么成功要么未发生,杜绝半成品最终文件)
-        File finalFile = new File(t.savePath);
-        if (finalFile.getParentFile() != null && !finalFile.getParentFile().exists()) {
-            finalFile.getParentFile().mkdirs();
-        }
-        File mergeTmp = new File(tmpDir, "merged.tmp");
-        OutputStream out = new FileOutputStream(mergeTmp);
-        try {
-            for (int i = 0; i < segments.size(); i++) {
-                if (t.state == DownloadTask.STATE_CANCELLED) {
-                    throw new IOException("cancelled"); // Bug2: 删除记录后合并立即中止,不落最终文件
-                }
-                File segFile = new File(tmpDir, String.format("%05d.ts", i));
-                FileCleaner.copyFile(segFile, out);
-            }
-            out.flush();
-        } finally {
+            OutputStream out = new FileOutputStream(mergeTmp);
             try {
-                out.close();
-            } catch (Throwable ignored) {
+                for (int i = 0; i < segments.size(); i++) {
+                    if (t.state == DownloadTask.STATE_CANCELLED) {
+                        throw new IOException("cancelled"); // Bug2: 删除记录后合并立即中止,不落最终文件
+                    }
+                    File segFile = new File(tmpDir, String.format("%05d.ts", i));
+                    FileCleaner.copyFile(segFile, out);
+                }
+                out.flush();
+            } finally {
+                try {
+                    out.close();
+                } catch (Throwable ignored) {
+                }
             }
-        }
-        // 原子替换:先删旧最终文件(若有),再 rename;rename 失败则复制兜底
-        if (finalFile.exists()) finalFile.delete();
-        if (!mergeTmp.renameTo(finalFile)) {
-            FileCleaner.copyFile(mergeTmp, finalFile);
-            FileCleaner.deleteQuietly(mergeTmp);
+            // 原子替换:先删旧最终文件(若有),再 rename;rename 失败则复制兜底
+            if (finalFile.exists()) finalFile.delete();
+            if (!mergeTmp.renameTo(finalFile)) {
+                FileCleaner.copyFile(mergeTmp, finalFile);
+                FileCleaner.deleteQuietly(mergeTmp);
+            }
+            // 合并/完成 日志: 最终size, 耗时ms
+            DownloadLog.LOG.success(DownloadSubType.MERGE, "合并完成: 最终 " + formatSize(finalFile.length()) + ", 耗时 "
+                    + (System.currentTimeMillis() - mergeStart) + "ms", DownloadLog.extras(t.episodeId));
+            t.mergeFailReason = ""; // 合并成功,清空失败原因
+        } catch (IOException e) {
+            // 合并/失败 日志: 第k次, 原因(IO/缺片/校验不符), 碎片保留(不删 .ts, 供重试)
+            t.mergeFailReason = e.getMessage() == null ? e.toString() : e.getMessage();
+            DownloadLog.LOG.fail(DownloadSubType.MERGE, "合并失败 第 " + t.mergeCount + " 次, 原因: " + t.mergeFailReason
+                    + ", 碎片保留", DownloadLog.extras(t.episodeId));
+            throw e;
         }
         // Bug3: 合并产物是 TS 字节流(rename 成 .mp4 只是换后缀,时间戳不连续 -> 相册显示 1 秒)。
         // 重封装为标准 MP4(MediaExtractor demux + MediaMuxer mux,时长/缩略图正确);
@@ -900,5 +934,16 @@ public class DownloadExecutor {
         if (bytes < 1024 * 1024) return String.format("%.0fKB", bytes / 1024.0);
         if (bytes < 1024L * 1024 * 1024) return String.format("%.1fMB", bytes / 1024.0 / 1024.0);
         return String.format("%.2fGB", bytes / 1024.0 / 1024.0 / 1024.0);
+    }
+
+    /** 缺失清单转可读串 "[1,3,7]"; 空清单返回 "[]" (日志全量落清单, 不截断) */
+    private static String missingList(List<Integer> missing) {
+        if (missing == null || missing.isEmpty()) return "[]";
+        StringBuilder sb = new StringBuilder("[");
+        for (int i = 0; i < missing.size(); i++) {
+            if (i > 0) sb.append(',');
+            sb.append(missing.get(i));
+        }
+        return sb.append(']').toString();
     }
 }

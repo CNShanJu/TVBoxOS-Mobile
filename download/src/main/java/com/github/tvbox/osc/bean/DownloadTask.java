@@ -94,6 +94,12 @@ public class DownloadTask {
     /** 被抢占时间(transient): 置 SYSTEM_PAUSED 时记录, 同级内"后抢占先恢复" */
     public transient long preemptTime = 0;
 
+    /** 合并尝试次数(transient): 合并失败重试计数, 日志"合并/第k次" */
+    public transient int mergeCount = 0;
+
+    /** 上次合并失败原因(transient): 供"合并/重试"日志还原上下文 */
+    public transient String mergeFailReason = "";
+
     public boolean isHls() {
         return totalSegments > 0;
     }
