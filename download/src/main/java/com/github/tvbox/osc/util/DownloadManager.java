@@ -287,6 +287,29 @@ public class DownloadManager {
                         + (t == null || t.fileName == null ? "?" : t.fileName));
     }
 
+    /**
+     * 按文件路径删除下载任务(本地视频页删除文件时联动):
+     * 文件已删, 只删任务记录——否则任务残留会在网络恢复时自动续传, 把已删文件又下回来。
+     * 先收集快照再逐个 remove(remove 内部会同步 tasks), 避免遍历中修改集合。
+     */
+    public int removeTasksByPath(String savePath) {
+        if (savePath == null) return 0;
+        java.util.List<DownloadTask> matched = new java.util.ArrayList<>();
+        synchronized (tasks) {
+            for (DownloadTask t : tasks) {
+                if (savePath.equals(t.savePath)) matched.add(t);
+            }
+        }
+        for (DownloadTask t : matched) {
+            scheduler.remove(t, false);
+        }
+        if (!matched.isEmpty()) {
+            com.github.tvbox.osc.log.LogStore.log(com.github.tvbox.osc.log.Category.DOWNLOAD,
+                    "删除本地文件联动移除下载任务: " + new java.io.File(savePath).getName());
+        }
+        return matched.size();
+    }
+
     /** 查询某集下载状态(0=无记录,1=已下载且文件存在,2=已有任务) */
     public int getEpisodeDownloadState(String sourceName, String vodName, String episodeName) {
         return store.getEpisodeDownloadState(sourceName, vodName, episodeName);
