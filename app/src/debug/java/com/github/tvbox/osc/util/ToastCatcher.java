@@ -28,27 +28,44 @@ public final class ToastCatcher {
     public static void install() {
         try {
             Field field = Toast_sService();
-            if (field == null) return;
+            if (field == null) {
+                Log.d(TAG, "全局 Toast 捕获安装失败: 找不到 Toast.sService 字段");
+                return;
+            }
             field.setAccessible(true);
-            final Object original = field.get(null); // INotificationManager
-            if (original == null) return;
-
-            Class<?> iface = original.getClass();
+            final Object original = field.get(null); // INotificationManager(实际类型是 Stub$Proxy)
+            if (original == null) {
+                Log.d(TAG, "全局 Toast 捕获安装失败: sService 为 null");
+                return;
+            }
+            // 注意: original.getClass() 是 INotificationManager$Stub$Proxy(具体类,非接口),
+            // Proxy.newProxyInstance 需要接口数组——必须用隐藏接口 android.app.INotificationManager
+            Class<?> iface = Class.forName("android.app.INotificationManager");
             Object proxy = Proxy.newProxyInstance(
-                    iface.getClassLoader(),
+                    ToastCatcher.class.getClassLoader(),
                     new Class<?>[]{iface},
                     (Object p, Method method, Object[] args) -> {
                         String name = method.getName();
                         if ("enqueueToast".equals(name) || "enqueueTextToast".equals(name)) {
-                            logToast(args);
+                            try {
+                                logToast(args);
+                            } catch (Throwable ignored) {
+                            }
                         }
-                        return method.invoke(original, args);
+                        // 透传原调用;反射调用隐藏接口方法可能受 hidden API 限制,
+                        // 失败时降级为不拦截(直接放行),保证 toast 正常显示
+                        try {
+                            return method.invoke(original, args);
+                        } catch (Throwable th) {
+                            Log.d(TAG, "Toast 透传失败: " + th.getMessage());
+                            return null;
+                        }
                     });
             field.set(null, proxy);
             Log.d(TAG, "全局 Toast 捕获已安装(debug)");
         } catch (Throwable th) {
             // hook 失败不阻塞业务:toast 正常显示,仅丢失溯源
-            Log.d(TAG, "全局 Toast 捕获安装失败: " + th.getMessage());
+            Log.d(TAG, "全局 Toast 捕获安装失败: " + th);
         }
     }
 
