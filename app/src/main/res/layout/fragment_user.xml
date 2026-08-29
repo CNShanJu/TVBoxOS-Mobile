@@ -18,21 +18,21 @@
         android:clipToPadding="false"
         />
 
-    <!-- 直播悬浮按钮: 84dp(原56dp×1.5)圆 + 36dp(原24dp×1.5)图标 -->
+    <!-- 直播悬浮按钮: 54dp 圆 + 28dp 图标(与分类页筛选按钮统一尺寸) -->
     <FrameLayout
         android:id="@+id/btn_live"
-        android:layout_width="84dp"
-        android:layout_height="84dp"
+        android:layout_width="54dp"
+        android:layout_height="54dp"
         android:layout_alignParentEnd="true"
         android:layout_alignParentBottom="true"
         android:layout_margin="20dp"
         android:background="@drawable/bg_fab_oval"
         android:foreground="?android:selectableItemBackground"
-        android:elevation="6dp">
+        android:elevation="8dp">
 
         <ImageView
-            android:layout_width="36dp"
-            android:layout_height="36dp"
+            android:layout_width="28dp"
+            android:layout_height="28dp"
             android:layout_gravity="center"
             android:src="@drawable/ic_live_tv_48"
             app:tint="@color/text_highlight" />
