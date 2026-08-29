@@ -296,6 +296,11 @@ public class DownloadScheduler {
                             long delay = netErr ? (3000L + retries * 3000L) : 3000L;
                             Log.i("TVBox-Download", "任务重试 " + retries + "/" + maxRetry + (netErr ? "(网络)" : "")
                                     + ": " + t.fileName + " " + t.message);
+                            DownloadLog.LOG.warn(DownloadSubType.FAIL,
+                                    "下载失败,重试 " + retries + "/" + maxRetry + (netErr ? "(网络)" : "") + ": "
+                                            + t.fileName + " | "
+                                            + (th.getMessage() == null ? th.toString() : th.getMessage()),
+                                    DownloadLog.extras(t.episodeId));
                             t.message = "重试中(" + retries + "/" + maxRetry + ")";
                             dm.persist();
                             dm.notifyChanged();
@@ -382,10 +387,15 @@ public class DownloadScheduler {
                 boolean newHls = rr.url.toLowerCase().contains(".m3u8");
                 if (urlChanged && oldHls != newHls) {
                     Log.i("TVBox-Download", "重新解析地址类型变化(m3u8↔直链),保留原地址: " + t.fileName);
+                    DownloadLog.LOG.info(DownloadSubType.RESOLVE,
+                            "重新解析地址类型变化(m3u8↔直链),保留原地址: " + t.fileName,
+                            DownloadLog.extras(t.episodeId));
                     urlChanged = false;
                 }
                 if (urlChanged) {
                     Log.i("TVBox-Download", "重新解析地址成功: " + t.fileName);
+                    DownloadLog.LOG.info(DownloadSubType.RESOLVE, "重新解析地址成功: " + t.fileName,
+                            DownloadLog.extras(t.episodeId));
                     t.url = rr.url;
                     // 地址已更新:直链进度作废(URL变了,原Range续传可能无效),分片/已下字节保留由下载逻辑按需处理
                     if (t.downloadedBytes > 0 && !t.isHls()) {
@@ -393,10 +403,14 @@ public class DownloadScheduler {
                     }
                 } else {
                     Log.i("TVBox-Download", "重新解析地址无变化,已同步请求头: " + t.fileName);
+                    DownloadLog.LOG.info(DownloadSubType.RESOLVE, "重新解析地址无变化,已同步请求头: " + t.fileName,
+                            DownloadLog.extras(t.episodeId));
                 }
                 return true;
             }
             Log.i("TVBox-Download", "重新解析地址无变化/失败,用原地址: " + t.fileName);
+            DownloadLog.LOG.warn(DownloadSubType.RESOLVE, "重新解析地址失败/无有效地址,用原地址: " + t.fileName,
+                    DownloadLog.extras(t.episodeId));
         } catch (Throwable th4) {
             Log.i("TVBox-Download", "重新解析地址异常,用原地址: " + t.fileName);
         }
@@ -501,6 +515,9 @@ public class DownloadScheduler {
         t.fileName = fileName;
         t.savePath = finalFile.getAbsolutePath();
         t.partPath = t.savePath + ".part";
+        // 业务日志: 入队(完整链路起点)
+        DownloadLog.LOG.info(DownloadSubType.ENQUEUE,
+                "加入任务: " + fileName + " url=" + url, DownloadLog.extras(episodeId));
         // 复用残留的 .part(上次任务丢失/进程被杀后遗留):直链按已有大小断点续传,避免从头下载
         if (!lower.contains(".m3u8")) {
             File partFile = new File(t.partPath);

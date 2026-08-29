@@ -59,14 +59,24 @@ public final class DownloadTaskRegistry {
     public static BaseDownloadTask create(DownloadTask t, TaskListener listener, DownloadExecutor executor) {
         for (Entry e : ENTRIES) {
             if (e.feature.matches(t)) {
+                String typeName = e.factory.getClass().getSimpleName();
                 android.util.Log.i("TVBox-Download", "任务分发: " + (t == null || t.fileName == null ? "?" : t.fileName)
-                        + " -> " + e.factory.getClass().getSimpleName()
-                        + " url=" + (t == null ? "null" : t.url));
+                        + " -> " + typeName + " url=" + (t == null ? "null" : t.url));
+                com.github.tvbox.osc.download.DownloadLog.LOG.info(
+                        com.github.tvbox.osc.download.DownloadSubType.RESOLVE,
+                        "任务分发: " + (t == null || t.fileName == null ? "?" : t.fileName) + " -> " + typeName
+                                + " url=" + (t == null ? "null" : t.url),
+                        com.github.tvbox.osc.download.DownloadLog.extras(t == null ? null : t.episodeId));
                 return e.factory.create(t, listener, executor);
             }
         }
         android.util.Log.i("TVBox-Download", "任务分发(兜底直链): " + (t == null || t.fileName == null ? "?" : t.fileName)
                 + " url=" + (t == null ? "null" : t.url));
+        com.github.tvbox.osc.download.DownloadLog.LOG.info(
+                com.github.tvbox.osc.download.DownloadSubType.RESOLVE,
+                "任务分发(兜底直链): " + (t == null || t.fileName == null ? "?" : t.fileName)
+                        + " url=" + (t == null ? "null" : t.url),
+                com.github.tvbox.osc.download.DownloadLog.extras(t == null ? null : t.episodeId));
         return new NormalFileDownloadTask(t, listener, executor);
     }
 }
