@@ -706,12 +706,13 @@ public class DownloadExecutor {
     // 工具
     // ------------------------------------------------------------------
 
-    /** 请求头:默认浏览器 UA(防盗链代理对 okhttp UA 返回提示页, 放行浏览器/播放器 UA) + 任务携带的解析请求头 */
+    /** 请求头:默认系统 UA(播放器/ExoPlayer 同款, 防盗链代理按 UA 放行——浏览器 UA 与 okhttp UA 都被拒,
+        返回 ASCII art 提示页) + 任务携带的解析请求头 */
     Map<String, String> baseHeaders(DownloadTask t) {
         Map<String, String> headers = new HashMap<>();
-        // 常见 Android Chrome UA: 与 WebView 嗅探/播放器一致, 防盗链代理(如 jx.91by.top)放行
-        headers.put("User-Agent", "Mozilla/5.0 (Linux; Android 10; Mobile) AppleWebKit/537.36 "
-                + "(KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36");
+        // 系统 Dalvik UA(System.getProperty("http.agent")): 与播放器默认请求一致
+        String sysUa = System.getProperty("http.agent");
+        headers.put("User-Agent", sysUa != null && !sysUa.isEmpty() ? sysUa : "okhttp/3.12.11");
         if (t != null && t.headers != null && !t.headers.isEmpty()) {
             for (Map.Entry<String, String> e : t.headers.entrySet()) {
                 if (e.getKey() != null && e.getValue() != null) {
