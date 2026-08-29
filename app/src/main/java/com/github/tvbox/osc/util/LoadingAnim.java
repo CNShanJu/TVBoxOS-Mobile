@@ -62,7 +62,7 @@ public class LoadingAnim {
      */
     public static String getAnimName() {
         try {
-            Object sel = Hawk.get(HawkConfig.LOADING_ANIM, null);
+            Object sel = SystemConfig.getLoadingAnimRaw();
             if (sel instanceof String) {
                 String name = (String) sel;
                 if (name != null && !name.isEmpty()) {

@@ -76,6 +76,7 @@ import com.github.catvod.crawler.PlayUrlResolver;
 import com.github.tvbox.osc.util.ScreenShotListenManager;
 import com.github.tvbox.osc.util.SearchHelper;
 import com.github.tvbox.osc.util.SubtitleHelper;
+import com.github.tvbox.osc.util.SystemConfig;
 import com.github.tvbox.osc.util.Utils;
 import com.github.tvbox.osc.viewmodel.SourceViewModel;
 import com.google.gson.Gson;
@@ -300,7 +301,7 @@ public class DetailActivity extends BaseVbActivity<ActivityDetailBinding> {
     }
 
     private void initView() {
-        mBinding.ivPrivateBrowsing.setVisibility(Hawk.get(HawkConfig.PRIVATE_BROWSING, false) ? View.VISIBLE : View.GONE);
+        mBinding.ivPrivateBrowsing.setVisibility(SystemConfig.isPrivateBrowsing() ? View.VISIBLE : View.GONE);
         mBinding.ivPrivateBrowsing.setOnClickListener(view -> AppBubble.toast("当前为无痕浏览"));
         mBinding.previewPlayerPlace.setVisibility(showPreview ? View.VISIBLE : View.GONE);
 
@@ -878,7 +879,7 @@ public class DetailActivity extends BaseVbActivity<ActivityDetailBinding> {
     }
 
     private void insertVod(String sourceKey, VodInfo vodInfo) {
-        if (Hawk.get(HawkConfig.PRIVATE_BROWSING, false)) {//无痕浏览
+        if (SystemConfig.isPrivateBrowsing()) {//无痕浏览
             return;
         }
         try {

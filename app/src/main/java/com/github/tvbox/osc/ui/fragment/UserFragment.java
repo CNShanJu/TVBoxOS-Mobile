@@ -32,6 +32,7 @@ import com.github.tvbox.osc.util.FastClickCheckUtil;
 import com.github.tvbox.osc.util.HCallBack;
 import com.github.tvbox.osc.util.HawkConfig;
 import com.github.tvbox.osc.util.HttpClient;
+import com.github.tvbox.osc.util.SystemConfig;
 import com.github.tvbox.osc.util.UA;
 import com.github.tvbox.osc.util.Utils;
 import com.google.gson.Gson;
@@ -141,7 +142,7 @@ public class UserFragment extends BaseLazyFragment {
     }
 
     private void initHomeHotVod(GridAdapter adapter) {
-        if (Hawk.get(HawkConfig.HOME_REC, 0) == 1) {
+        if (SystemConfig.getHomeRec() == 1) {
             if (homeSourceRec != null && homeSourceRec.size() > 0) {
                 showSuccess();
                 adapter.setNewData(homeSourceRec);

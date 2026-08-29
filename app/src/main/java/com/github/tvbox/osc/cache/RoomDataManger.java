@@ -9,6 +9,7 @@ import com.github.tvbox.osc.data.AppDataManager;
 import com.google.gson.ExclusionStrategy;
 import com.github.tvbox.osc.util.HawkConfig;
 import com.github.tvbox.osc.util.HistoryHelper;
+import com.github.tvbox.osc.util.SystemConfig;
 import com.google.gson.FieldAttributes;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
@@ -83,7 +84,7 @@ public class RoomDataManger {
 
     public static List<VodInfo> getAllVodRecord(int limit) {
         int count = AppDataManager.get().getVodRecordDao().getCount();
-        Integer index = Hawk.get(HawkConfig.HISTORY_NUM, 0);
+        Integer index = SystemConfig.getHistoryNum();
         Integer hisNum = HistoryHelper.getHisNum(index);
         if ( count > hisNum ) {
             AppDataManager.get().getVodRecordDao().reserver(hisNum);

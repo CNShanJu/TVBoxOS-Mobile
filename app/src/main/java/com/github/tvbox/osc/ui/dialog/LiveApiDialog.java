@@ -10,6 +10,7 @@ import com.github.tvbox.osc.R;
 import com.github.tvbox.osc.databinding.DialogInputSubsriptionBinding;
 import com.github.tvbox.osc.databinding.DialogLiveApiBinding;
 import com.github.tvbox.osc.util.HawkConfig;
+import com.github.tvbox.osc.util.SystemConfig;
 import com.lxj.xpopup.XPopup;
 import com.lxj.xpopup.core.CenterPopupView;
 import com.lxj.xpopup.interfaces.OnInputConfirmListener;
@@ -34,7 +35,7 @@ public class LiveApiDialog extends CenterPopupView {
     protected void onCreate() {
         super.onCreate();
         mBinding = DialogLiveApiBinding.bind(getPopupImplView());
-        String liveApi = Hawk.get(HawkConfig.LIVE_URL, "");
+        String liveApi = SystemConfig.getLiveUrl();
         updateEt(liveApi);
 
         mBinding.ivHistory.setOnClickListener(view -> {
@@ -52,7 +53,7 @@ public class LiveApiDialog extends CenterPopupView {
         mBinding.btnConfirm.setOnClickListener(view -> {
             String newLive = mBinding.etUrl.getText().toString().trim();
             // Capture Live input into Settings & Live History (max 20)
-            Hawk.put(HawkConfig.LIVE_URL, newLive);
+            SystemConfig.setLiveUrl(newLive);
             if (!newLive.isEmpty()) {
                 ArrayList<String> liveHistory = Hawk.get(HawkConfig.LIVE_HISTORY, new ArrayList<String>());
                 if (!liveHistory.contains(newLive))

@@ -38,6 +38,7 @@ import com.github.tvbox.osc.util.HCallBack
 import com.github.tvbox.osc.util.HawkConfig
 import com.github.tvbox.osc.util.HttpClient
 import com.github.tvbox.osc.util.SearchHelper
+import com.github.tvbox.osc.util.SystemConfig
 import com.github.tvbox.osc.viewmodel.SourceViewModel
 import com.google.gson.JsonElement
 import com.google.gson.JsonObject
@@ -422,7 +423,7 @@ class FastSearchActivity : BaseVbActivity<ActivityFastSearchBinding>(), TextWatc
         if (mSearchSuggestionsDialog != null && mSearchSuggestionsDialog!!.isShow) {
             mSearchSuggestionsDialog!!.dismiss()
         }
-        if (!Hawk.get(HawkConfig.PRIVATE_BROWSING, false)) { //无痕浏览不存搜索历史
+        if (!SystemConfig.isPrivateBrowsing()) { //无痕浏览不存搜索历史
             saveSearchHistory(title)
         }
         hideHotAndHistorySearch(true)

@@ -88,7 +88,7 @@ public class OkGoHelper {
             builder.cache(new Cache(new File(appContext.getCacheDir().getAbsolutePath(), "dohcache"), 10 * 1024 * 1024));
         }
         OkHttpClient dohClient = builder.build();
-        String dohUrl = getDohUrl(Hawk.get(HawkConfig.DOH_URL, 0));
+        String dohUrl = getDohUrl(SystemConfig.getDohUrl());
         if (dohUrl.isEmpty()) {
             dnsOverHttps = null;
         } else {

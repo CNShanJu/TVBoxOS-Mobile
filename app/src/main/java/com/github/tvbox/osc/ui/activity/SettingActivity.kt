@@ -28,6 +28,7 @@ import com.github.tvbox.osc.util.HistoryHelper
 import com.github.tvbox.osc.util.LoadingAnim
 import com.github.tvbox.osc.util.OkGoHelper
 import com.github.tvbox.osc.util.PlayerHelper
+import com.github.tvbox.osc.util.SystemConfig
 import com.github.tvbox.osc.util.Utils
 import com.hjq.permissions.OnPermissionCallback
 import com.hjq.permissions.Permission
@@ -45,9 +46,9 @@ import java.io.File
  */
 class SettingActivity : BaseVbActivity<ActivitySettingBinding>() {
 
-    private var homeRec = Hawk.get(HawkConfig.HOME_REC, 0)
-    private var dnsOpt = Hawk.get(HawkConfig.DOH_URL, 0)
-    private var currentLiveApi = Hawk.get(HawkConfig.LIVE_URL, "")
+    private var homeRec = SystemConfig.getHomeRec()
+    private var dnsOpt = SystemConfig.getDohUrl()
+    private var currentLiveApi = SystemConfig.getLiveUrl()
     override fun init() {
 
         mBinding.titleBar.leftView.setOnClickListener { onBackPressed() }
@@ -58,20 +59,20 @@ class SettingActivity : BaseVbActivity<ActivitySettingBinding>() {
         // 加载动画:默认 / Glowing Fish(全局 LoadSir 加载动画,播放器与下载不受影响)
         initLoadingAnimSetting()
 
-        mBinding.tvDns.text = OkGoHelper.dnsHttpsList[Hawk.get(HawkConfig.DOH_URL, 0)]
-        mBinding.tvHomeRec.text = getHomeRecName(Hawk.get(HawkConfig.HOME_REC, 0))
+        mBinding.tvDns.text = OkGoHelper.dnsHttpsList[SystemConfig.getDohUrl()]
+        mBinding.tvHomeRec.text = getHomeRecName(SystemConfig.getHomeRec())
         mBinding.tvHistoryNum.text =
-            HistoryHelper.getHistoryNumName(Hawk.get(HawkConfig.HISTORY_NUM, 0))
+            HistoryHelper.getHistoryNumName(SystemConfig.getHistoryNum())
         mBinding.tvScaleType.text = PlayerHelper.getScaleName(PlayConfig.getScaleType())
         mBinding.tvPlay.text = PlayerHelper.getPlayerName(PlayConfig.getPlayType())
         mBinding.tvRenderType.text =
             PlayerHelper.getRenderName(PlayConfig.getRenderType())
 
-        mBinding.switchPrivateBrowsing.setChecked(Hawk.get(HawkConfig.PRIVATE_BROWSING, false))
+        mBinding.switchPrivateBrowsing.setChecked(SystemConfig.isPrivateBrowsing())
         mBinding.llPrivateBrowsing.setOnClickListener { view: View? ->
-            val newConfig = !Hawk.get(HawkConfig.PRIVATE_BROWSING, false)
+            val newConfig = !SystemConfig.isPrivateBrowsing()
             mBinding.switchPrivateBrowsing.setChecked(newConfig)
-            Hawk.put(HawkConfig.PRIVATE_BROWSING, newConfig)
+            SystemConfig.setPrivateBrowsing(newConfig)
         }
 
         mBinding.llLiveApi.setOnClickListener {
@@ -179,13 +180,13 @@ class SettingActivity : BaseVbActivity<ActivitySettingBinding>() {
 
         mBinding.llDns.setOnClickListener { v: View? ->
             FastClickCheckUtil.check(v)
-            val dohUrl = Hawk.get(HawkConfig.DOH_URL, 0)
+            val dohUrl = SystemConfig.getDohUrl()
             val dialog = SelectDialog<String>(this@SettingActivity)
             dialog.setTip("请选择安全DNS")
             dialog.setAdapter(object : SelectDialogInterface<String?> {
                 override fun click(value: String?, pos: Int) {
                     mBinding.tvDns.text = OkGoHelper.dnsHttpsList[pos]
-                    Hawk.put(HawkConfig.DOH_URL, pos)
+                    SystemConfig.setDohUrl(pos)
                     OkGoHelper.refreshDnsOverHttps()
                     IjkMediaPlayer.toggleDotPort(pos > 0)
                 }
@@ -333,7 +334,7 @@ class SettingActivity : BaseVbActivity<ActivitySettingBinding>() {
         }
         mBinding.llHomeRec.setOnClickListener { v: View? ->
             FastClickCheckUtil.check(v)
-            val defaultPos = Hawk.get(HawkConfig.HOME_REC, 0)
+            val defaultPos = SystemConfig.getHomeRec()
             val types = ArrayList<Int>()
             types.add(0)
             types.add(1)
@@ -342,7 +343,7 @@ class SettingActivity : BaseVbActivity<ActivitySettingBinding>() {
             dialog.setTip("主页内容显示")
             dialog.setAdapter(object : SelectDialogInterface<Int?> {
                 override fun click(value: Int?, pos: Int) {
-                    Hawk.put(HawkConfig.HOME_REC, value)
+                    SystemConfig.setHomeRec(value ?: 0)
                     mBinding.tvHomeRec.text = getHomeRecName(value?:0)
                 }
 
@@ -363,7 +364,7 @@ class SettingActivity : BaseVbActivity<ActivitySettingBinding>() {
         
         mBinding.llHistoryNum.setOnClickListener { v: View? ->
             FastClickCheckUtil.check(v)
-            val defaultPos = Hawk.get(HawkConfig.HISTORY_NUM, 0)
+            val defaultPos = SystemConfig.getHistoryNum()
             val types = ArrayList<Int>()
             types.add(0)
             types.add(1)
@@ -372,7 +373,7 @@ class SettingActivity : BaseVbActivity<ActivitySettingBinding>() {
             dialog.setTip("保留历史记录数量")
             dialog.setAdapter(object : SelectDialogInterface<Int?> {
                 override fun click(value: Int?, pos: Int) {
-                    Hawk.put(HawkConfig.HISTORY_NUM, value)
+                    SystemConfig.setHistoryNum(value ?: 0)
                     mBinding.tvHistoryNum.text = HistoryHelper.getHistoryNumName(value?:0)
                 }
 
@@ -398,7 +399,7 @@ class SettingActivity : BaseVbActivity<ActivitySettingBinding>() {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
             mBinding.llTheme.visibility = View.GONE
         }
-        val oldTheme = Hawk.get(HawkConfig.THEME_TAG, 0)
+        val oldTheme = SystemConfig.getTheme()
         val themes = arrayOf("跟随系统", "浅色", "深色")
         mBinding.tvTheme.text = themes[oldTheme]
         mBinding.llTheme.setOnClickListener(View.OnClickListener { view: View? ->
@@ -412,7 +413,7 @@ class SettingActivity : BaseVbActivity<ActivitySettingBinding>() {
             dialog.setAdapter(object : SelectDialogInterface<Int?> {
                 override fun click(value: Int?, pos: Int) {
                     mBinding.tvTheme.text = themes[value?:0]
-                    Hawk.put(HawkConfig.THEME_TAG, value)
+                    SystemConfig.setTheme(value ?: 0)
                 }
 
                 override fun getDisplay(value: Int?): String {
@@ -428,7 +429,7 @@ class SettingActivity : BaseVbActivity<ActivitySettingBinding>() {
                 }
             }, types, oldTheme)
             dialog.setOnDismissListener { dialog1: DialogInterface? ->
-                if (oldTheme != Hawk.get(HawkConfig.THEME_TAG, 0)) {
+                if (oldTheme != SystemConfig.getTheme()) {
                     Utils.initTheme()
                     val bundle = Bundle()
                     bundle.putBoolean(IntentKey.CACHE_CONFIG_CHANGED, true)
@@ -535,7 +536,7 @@ class SettingActivity : BaseVbActivity<ActivitySettingBinding>() {
                 override fun click(value: String?, pos: Int) {
                     // 存动画文件夹名:默认存空串(回退默认),其余存文件夹名
                     val selected = files[pos]
-                    Hawk.put(HawkConfig.LOADING_ANIM, if (selected == LoadingAnim.DEFAULT_NAME) "" else selected)
+                    SystemConfig.setLoadingAnim(if (selected == LoadingAnim.DEFAULT_NAME) "" else selected)
                     refresh()
                 }
 
@@ -556,13 +557,11 @@ class SettingActivity : BaseVbActivity<ActivitySettingBinding>() {
     }
 
     override fun onBackPressed() {
-        if (homeRec != Hawk.get(HawkConfig.HOME_REC, 0) || dnsOpt != Hawk.get(
-                HawkConfig.DOH_URL,
-                0
-            ) || currentLiveApi != Hawk.get(HawkConfig.LIVE_URL, "")
+        if (homeRec != SystemConfig.getHomeRec() || dnsOpt != SystemConfig.getDohUrl()
+            || currentLiveApi != SystemConfig.getLiveUrl()
         ) { // 首页类型/dns/doh/直播源有更改,需重载页面
             //AppManager.getInstance().finishAllActivity()
-            if (currentLiveApi == Hawk.get(HawkConfig.LIVE_URL, "")) { //未更改直播源,不需重载api等
+            if (currentLiveApi == SystemConfig.getLiveUrl()) { //未更改直播源,不需重载api等
                 val bundle = Bundle()
                 bundle.putBoolean(IntentKey.CACHE_CONFIG_CHANGED, true)
                 jumpActivity(MainActivity::class.java, bundle)

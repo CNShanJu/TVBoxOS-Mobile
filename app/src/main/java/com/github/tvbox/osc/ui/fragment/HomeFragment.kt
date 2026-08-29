@@ -40,6 +40,7 @@ import com.github.tvbox.osc.ui.dialog.SelectDialog
 import com.github.tvbox.osc.ui.dialog.TipDialog
 import com.github.tvbox.osc.util.DefaultConfig
 import com.github.tvbox.osc.util.HawkConfig
+import com.github.tvbox.osc.util.SystemConfig
 import com.github.tvbox.osc.viewmodel.SourceViewModel
 import com.lxj.xpopup.XPopup
 import com.orhanobut.hawk.Hawk
@@ -327,7 +328,7 @@ class HomeFragment : BaseVbFragment<FragmentHomeBinding>() {
                     fragments.add(GridFragment.newInstance(data))
                 }
             }
-            if (Hawk.get(HawkConfig.HOME_REC, 0) == 2) { //关闭主页
+            if (SystemConfig.getHomeRec() == 2) { //关闭主页
                 mBinding.tabLayout.removeViewAt(0)
                 fragments.removeAt(0)
             }

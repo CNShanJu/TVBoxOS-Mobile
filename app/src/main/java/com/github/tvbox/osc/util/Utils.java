@@ -153,7 +153,7 @@ public class Utils {
      */
     public static boolean isAppDarkTheme(){
         try {
-            int tag = Hawk.get(HawkConfig.THEME_TAG, 0);
+            int tag = SystemConfig.getTheme();
             if (tag == 2) return true;
             if (tag == 1) return false;
             // 跟随系统
@@ -165,7 +165,7 @@ public class Utils {
     }
 
     public static void initTheme(){
-        switch (Hawk.get(HawkConfig.THEME_TAG,0)) {
+        switch (SystemConfig.getTheme()) {
             case 0:
                 AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM);
                 break;
