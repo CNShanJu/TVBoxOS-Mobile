@@ -65,9 +65,9 @@ public class LocalVideoAdapter extends BaseQuickAdapter<VideoInfo, BaseViewHolde
         if (TextUtils.isEmpty(name)) name = item.getDisplayName();
         TextView tvName = helper.getView(R.id.tv_name);
         tvName.setText(name);
-        // 播放过的剧集标题置灰(主题灰,符合主题色)
+        // 主文字色与主题一致(text_foreground=text_main);播放过的剧集标题置灰(主题二级色)
         tvName.setTextColor(ContextCompat.getColor(mContext,
-                item.isPlayed() ? R.color.text_sub_foreground : R.color.white));
+                item.isPlayed() ? R.color.text_sub_foreground : R.color.text_foreground));
 
         // 集数行:第N集 -> "集数：N";其它集名 -> "集数：<名>";无集数(单文件电影等)隐藏
         TextView tvEpisode = helper.getView(R.id.tv_episode);

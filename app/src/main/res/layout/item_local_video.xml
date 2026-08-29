@@ -64,7 +64,7 @@
         </RelativeLayout>
     </com.lihang.ShadowLayout>
 
-    <!-- 剧名(主标题,播放过的置灰,由适配器设置颜色) -->
+    <!-- 剧名(主标题,颜色由适配器设置:主题主文字色,播放过置灰) -->
     <TextView
         android:id="@+id/tv_name"
         android:layout_width="0dp"
@@ -74,7 +74,7 @@
         android:ellipsize="end"
         android:gravity="start"
         android:maxLines="1"
-        android:textColor="@color/white"
+        android:textColor="@color/text_foreground"
         android:textSize="16sp"
         android:textStyle="bold"
         app:layout_constrainedWidth="true"
