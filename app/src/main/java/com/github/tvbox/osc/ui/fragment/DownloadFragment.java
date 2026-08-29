@@ -219,11 +219,17 @@ public class DownloadFragment extends BaseVbFragment<FragmentDownloadBinding> {
                 } else if (task.state == DownloadTask.STATE_PAUSED) {
                     status = "已暂停";
                     statusColor = ContextCompat.getColor(mContext, R.color.text_sub_foreground);
+                } else if (task.state == DownloadTask.STATE_NETWORK_PAUSED) {
+                    status = "网络中断";
+                    statusColor = ContextCompat.getColor(mContext, R.color.text_sub_foreground);
                 } else if (task.state == DownloadTask.STATE_SYSTEM_PAUSED) {
                     status = "排队中";
                     statusColor = ContextCompat.getColor(mContext, R.color.text_sub_foreground);
                 } else if (task.state == DownloadTask.STATE_WAITING) {
                     status = "等待中";
+                    statusColor = ContextCompat.getColor(mContext, R.color.text_sub_foreground);
+                } else if (task.state == DownloadTask.STATE_CANCELLED) {
+                    status = "已取消";
                     statusColor = ContextCompat.getColor(mContext, R.color.text_sub_foreground);
                 } else {
                     if (DownloadManager.MSG_VERIFYING.equals(task.message)) {
