@@ -101,7 +101,7 @@ public class DownloadSeriesDialog extends AppBottomPopupView {
                 AppBubble.toast("该集下载中或已在任务中");
                 return;
             }
-            item.selected = !item.selected; // 多选:点一下选中,再点取消
+            item.selected = !item.selected; // 多选:点一下选中,再点取消(失败集也可重新勾选下载)
             a.notifyItemChanged(position);
             updateCount();
         });
@@ -204,16 +204,25 @@ public class DownloadSeriesDialog extends AppBottomPopupView {
             chip.setTitle(item.name);
             if (st == 1) {
                 // 已下载/本地:绿勾图标 + 置灰不可选
+                chip.setFailed(false);
                 chip.setDisabled(true);
                 chip.setSelected(false);
                 chip.setStateIcon(R.drawable.ic_download_done, R.color.download_done);
             } else if (st == 2) {
                 // 下载中/排队:蓝下箭头图标 + 置灰不可选
+                chip.setFailed(false);
                 chip.setDisabled(true);
                 chip.setSelected(false);
                 chip.setStateIcon(R.drawable.ic_download_active, R.color.download_active);
+            } else if (st == 3) {
+                // 下载失败:红字 + 可重新勾选下载
+                chip.setFailed(true);
+                chip.setDisabled(false);
+                chip.setSelected(item.selected);
+                chip.setStateIcon(0, 0);
             } else {
                 // 可下载:选中蓝字,未选中主色(无边框无图标)
+                chip.setFailed(false);
                 chip.setDisabled(false);
                 chip.setSelected(item.selected);
                 chip.setStateIcon(0, 0);

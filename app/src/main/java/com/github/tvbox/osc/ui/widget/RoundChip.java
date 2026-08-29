@@ -23,6 +23,8 @@ public class RoundChip extends FrameLayout {
     private final TextView mTextView;
     /** 禁用态(已下载/下载中不可选),文字置灰 */
     private boolean mDisabled = false;
+    /** 失败态(下载失败可重下),文字红色 */
+    private boolean mFailed = false;
 
     public RoundChip(Context context) {
         this(context, null);
@@ -82,6 +84,12 @@ public class RoundChip extends FrameLayout {
         updateColor(isSelected());
     }
 
+    /** 失败态:文字红色(下载失败,可重新勾选下载) */
+    public void setFailed(boolean failed) {
+        mFailed = failed;
+        updateColor(isSelected());
+    }
+
     @Override
     public void setSelected(boolean selected) {
         super.setSelected(selected);
@@ -89,7 +97,9 @@ public class RoundChip extends FrameLayout {
     }
 
     private void updateColor(boolean selected) {
-        if (mDisabled) {
+        if (mFailed) {
+            mTextView.setTextColor(ContextCompat.getColor(getContext(), R.color.red));
+        } else if (mDisabled) {
             mTextView.setTextColor(ContextCompat.getColor(getContext(), R.color.text_sub_foreground));
         } else {
             mTextView.setTextColor(ContextCompat.getColor(getContext(),

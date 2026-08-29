@@ -83,8 +83,13 @@ public class DownloadCore {
                 }
                 DownloadTask t = byEpisode.get(eid);
                 if (t != null) {
-                    states[i] = t.state == DownloadTask.STATE_COMPLETED
-                            ? (t.savePath != null && new File(t.savePath).exists() ? 1 : 0) : 2;
+                    if (t.state == DownloadTask.STATE_COMPLETED) {
+                        states[i] = t.savePath != null && new File(t.savePath).exists() ? 1 : 0;
+                    } else if (t.state == DownloadTask.STATE_FAILED) {
+                        states[i] = 3; // 失败: 单独一档(抽屉显示失败,可重新下载)
+                    } else {
+                        states[i] = 2; // 下载中/排队/暂停等
+                    }
                     continue;
                 }
             }
@@ -115,6 +120,9 @@ public class DownloadCore {
             if (t != null) {
                 if (t.state == DownloadTask.STATE_COMPLETED) {
                     return t.savePath != null && new File(t.savePath).exists() ? 1 : 0;
+                }
+                if (t.state == DownloadTask.STATE_FAILED) {
+                    return 3; // 失败: 可重新下载
                 }
                 return 2;
             }

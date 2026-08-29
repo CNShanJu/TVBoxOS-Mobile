@@ -207,11 +207,19 @@ public class DownloadSeriesRightDialog extends AppDrawerPopupView {
             chip.setChipTextSize(16f); // 全屏抽屉文字调大
             if (st == 1 || st == 2) {
                 // 已下载 / 下载中:置灰不可选 + 状态图标
+                chip.setFailed(false);
                 chip.setDisabled(true);
                 chip.setSelected(false);
                 chip.setStateIcon(st == 1 ? R.drawable.ic_download_done : R.drawable.ic_download_active,
                         st == 1 ? R.color.download_done : R.color.download_active);
+            } else if (st == 3) {
+                // 下载失败:红字 + 可重新勾选下载
+                chip.setFailed(true);
+                chip.setDisabled(false);
+                chip.setSelected(item.selected);
+                chip.setStateIcon(0, 0);
             } else {
+                chip.setFailed(false);
                 chip.setDisabled(false);
                 chip.setSelected(item.selected);
                 chip.setStateIcon(0, 0); // 可下载无图标

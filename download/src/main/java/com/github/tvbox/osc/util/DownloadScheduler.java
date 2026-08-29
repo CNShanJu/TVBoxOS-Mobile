@@ -485,10 +485,21 @@ public class DownloadScheduler {
         synchronized (dm.tasks) {
             for (DownloadTask t : dm.tasks) {
                 if (episodeId != null && !episodeId.isEmpty() && episodeId.equals(t.episodeId)) {
+                    if (t.state == DownloadTask.STATE_FAILED) {
+                        // 失败任务允许覆盖: 移除旧任务(保留碎片/文件)重新入队——下载抽屉失败集可重新勾选下载
+                        Log.i("TVBox-Download", "enqueue 覆盖失败任务: " + finalFile.getAbsolutePath());
+                        dm.tasks.remove(t);
+                        break;
+                    }
                     Log.i("TVBox-Download", "enqueue 拒绝:任务已存在(episodeId) " + finalFile.getAbsolutePath());
                     return false; // 任务已存在(任意状态),按统一剧集标识精确去重
                 }
                 if (t.savePath != null && t.savePath.equals(finalFile.getAbsolutePath())) {
+                    if (t.state == DownloadTask.STATE_FAILED) {
+                        Log.i("TVBox-Download", "enqueue 覆盖失败任务(路径): " + finalFile.getAbsolutePath());
+                        dm.tasks.remove(t);
+                        break;
+                    }
                     Log.i("TVBox-Download", "enqueue 拒绝:任务已存在 " + finalFile.getAbsolutePath());
                     return false; // 任务已存在(任意状态)
                 }
