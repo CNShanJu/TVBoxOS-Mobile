@@ -101,7 +101,9 @@ android {
             }
             // 调试包使用独立包名,可与设备上已安装的同包名应用共存(避免签名不一致需卸载旧应用)
             applicationIdSuffix ".debug"
-            // 调试包应用名见 app/src/debug/res/values/strings.xml,便于在桌面区分正式版与调试版
+            // 调试包应用名带 " debug" 后缀:桌面图标与首页/我的页标题一眼可辨
+            // (resValue 优先级高于 res 文件,此处覆盖 defaultConfig 的 app_name)
+            resValue "string", "app_name", cfgAppName + " debug"
         }
 
         release {
