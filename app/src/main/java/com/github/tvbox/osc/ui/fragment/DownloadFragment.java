@@ -1046,14 +1046,9 @@ public class DownloadFragment extends BaseVbFragment<FragmentDownloadBinding> {
                     startTx[0] = v.getTranslationX();
                     dragging[0] = false;
                     longPressed[0] = false;
-                    // 已展开:点按收拢并消费,避免触发条目点击
-                    if (v.getTranslationX() < 0) {
-                        swipeHandler.removeCallbacks(longPressRunnable);
-                        swipedTaskIds.remove(task.id);
-                        v.animate().translationX(0).setDuration(150).start();
-                        return true;
-                    }
-                    // 必须消费 DOWN 才能成为触摸目标收到 MOVE/UP;定时触发长按
+                    // 必须消费 DOWN 才能成为触摸目标收到 MOVE/UP;定时触发长按。
+                    // 注意: 已展开时不在 DOWN 立即收拢——否则手指按住时的微动 MOVE 会
+                    // 从收起位置拖回, 造成"收回去又弹出来"的抖动; 收拢判定移到 UP
                     swipeHandler.removeCallbacks(longPressRunnable);
                     swipeHandler.postDelayed(longPressRunnable, longPressTimeout);
                     return true;
@@ -1075,7 +1070,6 @@ public class DownloadFragment extends BaseVbFragment<FragmentDownloadBinding> {
                     return true;
                 }
                 case MotionEvent.ACTION_UP:
-                case MotionEvent.ACTION_CANCEL:
                     swipeHandler.removeCallbacks(longPressRunnable);
                     if (longPressed[0]) {
                         longPressed[0] = false;
@@ -1092,8 +1086,22 @@ public class DownloadFragment extends BaseVbFragment<FragmentDownloadBinding> {
                         dragging[0] = false;
                         return true;
                     }
-                    // 快速点击:切换 暂停/开始下载(与宽屏条目点击一致)
-                    toggleTaskPlay(task);
+                    // 未拖动:已展开点按 → 收拢;未展开快速点击 → 切换 暂停/开始
+                    if (v.getTranslationX() < 0) {
+                        swipedTaskIds.remove(task.id);
+                        v.animate().translationX(0).setDuration(150).start();
+                    } else {
+                        toggleTaskPlay(task);
+                    }
+                    return true;
+                case MotionEvent.ACTION_CANCEL:
+                    swipeHandler.removeCallbacks(longPressRunnable);
+                    if (longPressed[0]) longPressed[0] = false;
+                    if (dragging[0]) {
+                        // 系统中断(滚动拦截等):恢复到按下前位置(展开保持展开), 不触发点击
+                        v.animate().translationX(startTx[0]).setDuration(150).start();
+                        dragging[0] = false;
+                    }
                     return true;
                 default:
                     return true;
