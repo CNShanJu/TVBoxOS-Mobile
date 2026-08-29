@@ -162,6 +162,12 @@ public class DownloadExecutor {
                 dm.notifyChanged();
                 return;
             }
+            // 完整性校验:服务器声明了 Content-Length 但实际字节不足 → 提前断开,
+            // 判失败(保留 .part 可重试),绝不产出 3KB 之类的残缺"完成"文件
+            if (t.totalBytes > 0 && t.downloadedBytes < t.totalBytes) {
+                throw new IOException("下载不完整: 期望 " + t.totalBytes + " B,实际 " + t.downloadedBytes
+                        + " B,服务器提前断开");
+            }
             finishDirect(t);
         } finally {
             dm.activeResponses.remove(t.id);
@@ -706,7 +712,8 @@ public class DownloadExecutor {
         }
     }
 
-    /** 判断响应是否为 m3u8 播放列表(按 Content-Type 或内容开头),不消费响应体 */
+    /** 判断响应是否为 m3u8 播放列表(按 Content-Type 或内容开头),不消费响应体;
+        前 64 字节 trim 后匹配,防 BOM/空白/变体列表(EXT-X-)漏判导致 3KB 播放列表被当视频存盘 */
     private boolean isM3u8Response(Response resp) {
         try {
             String ct = resp.header("Content-Type");
@@ -714,10 +721,10 @@ public class DownloadExecutor {
                 return true;
             }
             okio.BufferedSource source = resp.body().source();
-            source.request(10);
+            source.request(64);
             okio.Buffer buf = source.getBuffer().clone();
-            String head = buf.readUtf8(Math.min(10, buf.size()));
-            return head.startsWith("#EXTM3U");
+            String head = buf.readUtf8(Math.min(64, buf.size())).trim();
+            return head.startsWith("#EXTM3U") || head.contains("EXT-X-");
         } catch (Throwable th) {
             return false;
         }
