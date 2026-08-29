@@ -1,23 +1,23 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:orientation="vertical"
     tools:context=".ui.activity.MainActivity">
 
+    <!-- 内容全高延伸到屏幕底部(毛玻璃底栏覆盖其上, 模糊区域才有内容) -->
     <androidx.viewpager.widget.ViewPager
         android:id="@+id/vp"
         android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="1"/>
+        android:layout_height="match_parent"/>
 
-    <!-- 毛玻璃底栏:三层结构(自下而上:模糊层 → 磨砂半透明遮罩+顶部线 → 清晰图标层)。
+    <!-- 毛玻璃底栏:悬浮覆盖在内容之上(三层: 模糊层 → 磨砂遮罩+顶部线 → 清晰图标)。
          阴影由容器 elevation 提供; 内层 BottomNavigationView 透明, 绕开 MaterialShapeDrawable 变暗 -->
     <FrameLayout
         android:layout_width="match_parent"
         android:layout_height="58dp"
+        android:layout_gravity="bottom"
         android:elevation="10dp">
 
         <!-- 1. 模糊层:实时模糊其下方(ViewPager 列表)内容 -->
@@ -51,4 +51,4 @@
                 app:labelVisibilityMode="labeled"
                 app:menu="@menu/main_bottom_navigation"/>
     </FrameLayout>
-</LinearLayout>
+</FrameLayout>

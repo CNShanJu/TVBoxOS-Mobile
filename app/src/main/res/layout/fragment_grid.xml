@@ -15,7 +15,7 @@
         tools:layoutManager="androidx.recyclerview.widget.GridLayoutManager"
         tools:spanCount="3"
         android:paddingHorizontal="10dp"
-        android:paddingBottom="64dp"
+        android:paddingBottom="70dp"
         android:clipToPadding="false"/>
 
     <!-- 筛选悬浮按钮: 54dp 圆 + 28dp 图标(与首页直播按钮统一尺寸) -->

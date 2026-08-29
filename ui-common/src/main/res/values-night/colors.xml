@@ -40,8 +40,8 @@
     <!-- 开关轨道-关闭态(浅色主题浅灰;深色主题深灰,避免深色主题下白底白点) -->
     <color name="switch_track_off">#3C3C46</color>
 
-    <!-- 底部导航栏半透明背景:暗色 88% 页面背景色(透感) -->
-    <color name="bg_float">#E0141218</color>
+    <!-- 底部导航栏磨砂遮罩(毛玻璃):暗色 75% 页面背景色, 透出下层模糊 -->
+    <color name="bg_float">#BF141218</color>
     <!-- 底栏顶部细线:暗色 20% 白(阴影不可见,用高光线标出悬浮边界) -->
     <color name="nav_top_line">#33FFFFFF</color>
 

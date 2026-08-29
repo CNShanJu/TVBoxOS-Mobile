@@ -61,6 +61,7 @@ class MainActivity : BaseVbActivity<ActivityMainBinding>() {
                 .setBlurAutoUpdate(true)
         } catch (th: Throwable) {
             // 模糊失败静默降级:仅半透明遮罩,不影响功能
+            android.util.Log.e("BottomBlur", "毛玻璃初始化失败,降级为半透明遮罩", th)
             mBinding.blurView.visibility = android.view.View.GONE
         }
     }

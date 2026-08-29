@@ -14,7 +14,7 @@
         tools:layoutManager="androidx.recyclerview.widget.GridLayoutManager"
         tools:spanCount="3"
         android:paddingHorizontal="10dp"
-        android:paddingBottom="12dp"
+        android:paddingBottom="70dp"
         android:clipToPadding="false"
         />
 
