@@ -443,13 +443,15 @@
 
             <TextView
                 android:id="@+id/tv_version"
-                android:textSize="11sp"
-                tools:text="v0.01"
-                android:paddingVertical="8dp"
+                android:textSize="13sp"
+                tools:text="v3.0.0"
+                android:paddingVertical="14dp"
+                android:layout_marginTop="8dp"
+                android:layout_marginBottom="8dp"
                 android:layout_gravity="center_horizontal"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:textColor="@color/gray_darker"
+                android:textColor="@color/text_sub_foreground"
                 />
         </LinearLayout>
     </ScrollView>
