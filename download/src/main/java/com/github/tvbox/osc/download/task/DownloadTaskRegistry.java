@@ -42,9 +42,11 @@ public final class DownloadTaskRegistry {
     private static final List<Entry> ENTRIES = new CopyOnWriteArrayList<>();
 
     static {
-        // 内置两类: HLS(m3u8) / 直链(兜底)
-        register(t -> t.url != null && t.url.toLowerCase().contains(".m3u8"), M3u8DownloadTask::new);
+        // ⚠ register 是 add(0,...) 后注册先匹配: 必须先注册"兜底直链", 再注册"HLS"——
+        // 若顺序颠倒, t->true 兜底会永远排在最前, 所有任务(含 m3u8)都被分发成直链,
+        // 导致 m3u8 被当直链下载(下出播放列表/几KB假文件/魔数校验失败)。这是历史根因。
         register(t -> true, NormalFileDownloadTask::new);
+        register(t -> t.url != null && t.url.toLowerCase().contains(".m3u8"), M3u8DownloadTask::new);
     }
 
     private DownloadTaskRegistry() {
@@ -59,7 +61,8 @@ public final class DownloadTaskRegistry {
     public static BaseDownloadTask create(DownloadTask t, TaskListener listener, DownloadExecutor executor) {
         for (Entry e : ENTRIES) {
             if (e.feature.matches(t)) {
-                String typeName = e.factory.getClass().getSimpleName();
+                BaseDownloadTask obj = e.factory.create(t, listener, executor);
+                String typeName = obj.getClass().getSimpleName();
                 android.util.Log.i("TVBox-Download", "任务分发: " + (t == null || t.fileName == null ? "?" : t.fileName)
                         + " -> " + typeName + " url=" + (t == null ? "null" : t.url));
                 com.github.tvbox.osc.download.DownloadLog.LOG.info(
@@ -67,7 +70,7 @@ public final class DownloadTaskRegistry {
                         "任务分发: " + (t == null || t.fileName == null ? "?" : t.fileName) + " -> " + typeName
                                 + " url=" + (t == null ? "null" : t.url),
                         com.github.tvbox.osc.download.DownloadLog.extras(t == null ? null : t.episodeId));
-                return e.factory.create(t, listener, executor);
+                return obj;
             }
         }
         android.util.Log.i("TVBox-Download", "任务分发(兜底直链): " + (t == null || t.fileName == null ? "?" : t.fileName)
