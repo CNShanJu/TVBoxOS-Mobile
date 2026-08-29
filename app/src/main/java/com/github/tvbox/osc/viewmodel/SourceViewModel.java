@@ -85,6 +85,9 @@ public class SourceViewModel extends ViewModel {
         SourceBean sourceBean = ApiConfig.get().getSource(sourceKey);
         int type = sourceBean.getType();
         if (type == 3) {
+            // 调试辅助:jar 源首页加载 trace(定位 jar 内 toast 触发源;tag=SpiderTrace)
+            android.util.Log.i("SpiderTrace", "[首页] " + sourceBean.getName() + " type=3 homeContent 开始");
+            long traceStart = System.currentTimeMillis();
             Runnable waitResponse = new Runnable() {
                 @Override
                 public void run() {
@@ -105,6 +108,9 @@ public class SourceViewModel extends ViewModel {
                     } catch (InterruptedException | ExecutionException e) {
                         e.printStackTrace();
                     } finally {
+                        android.util.Log.i("SpiderTrace", "[首页] " + sourceBean.getName()
+                                + " homeContent 结束 耗时=" + (System.currentTimeMillis() - traceStart)
+                                + "ms result=" + (sortJson == null ? "null" : sortJson.length() + "字符"));
                         if (sortJson != null) {
                             AbsSortXml sortXml = sortJson(sortResult, sortJson);
                             if (sortXml != null && SystemConfig.getHomeRec() == 1) {
