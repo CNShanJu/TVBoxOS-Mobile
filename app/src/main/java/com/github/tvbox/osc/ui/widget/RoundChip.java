@@ -97,13 +97,15 @@ public class RoundChip extends FrameLayout {
     }
 
     private void updateColor(boolean selected) {
-        if (mFailed) {
+        if (selected) {
+            // 选中优先蓝字(失败项选中也变蓝, 与可下载项一致, 可区分是否选中)
+            mTextView.setTextColor(ContextCompat.getColor(getContext(), R.color.color_highlight));
+        } else if (mFailed) {
             mTextView.setTextColor(ContextCompat.getColor(getContext(), R.color.red));
         } else if (mDisabled) {
             mTextView.setTextColor(ContextCompat.getColor(getContext(), R.color.text_sub_foreground));
         } else {
-            mTextView.setTextColor(ContextCompat.getColor(getContext(),
-                    selected ? R.color.color_highlight : R.color.colorPrimary));
+            mTextView.setTextColor(ContextCompat.getColor(getContext(), R.color.colorPrimary));
         }
     }
 }

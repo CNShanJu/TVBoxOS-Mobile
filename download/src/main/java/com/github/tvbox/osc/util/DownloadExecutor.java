@@ -683,6 +683,8 @@ public class DownloadExecutor {
         for (String line : playlist.split("\n")) {
             String l = line.trim();
             if (l.isEmpty() || l.startsWith("#")) continue;
+            // 代理返回的 m3u8 可能被 HTML 包裹(如 <pre>...</pre>): 含标签的行不是分片, 跳过
+            if (l.contains("<") || l.contains(">")) continue;
             segs.add(resolveUrl(playlistUrl, base, l));
         }
         return segs;
