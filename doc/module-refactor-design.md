@@ -224,7 +224,7 @@ void setLevel(Level min);            // 全局最低级别（默认 INFO+）
 void setCategoryEnabled(Category c, boolean);  // 按大类型动态开关
 File export(LogFilter f);            // 按当前筛选导出（FileProvider 分享）
 void clear(int retentionDays);       // 清理（默认 7 天）
-void installCrashHandler();          // 崩溃捕获 → 落库 + 启动提示
+void installCrashHandler();          // 崩溃捕获 → 落库 + 启动提示；魅族系统内部无害异常(com.meizu.internal./com.meizu.picker./ContentCapture 线程)跳过——与 App 崩溃页过滤器一致，不污染业务日志
 ```
 
 **两级类型（大类型 + 小类型）**：

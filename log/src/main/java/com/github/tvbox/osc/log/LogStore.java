@@ -383,6 +383,11 @@ public final class LogStore {
         Thread.UncaughtExceptionHandler prev = Thread.getDefaultUncaughtExceptionHandler();
         Thread.setDefaultUncaughtExceptionHandler((t, e) -> {
             try {
+                // 魅族系统内部无害异常(com.meizu.internal.picker 等)不记入业务日志——系统 bug 非 App 问题,
+                // 与 App 崩溃页过滤器(吞掉不弹页)保持一致; 其余异常记日志
+                if (isBenignSystemThrowable(t, e)) {
+                    return;
+                }
                 StringBuilder sb = new StringBuilder("未捕获异常: " + e);
                 for (StackTraceElement el : e.getStackTrace()) {
                     sb.append('\n').append("    at ").append(el);
@@ -397,6 +402,27 @@ public final class LogStore {
                 prev.uncaughtException(t, e);
             }
         });
+    }
+
+    /** 魅族系统内部无害异常(系统线程/内部 picker NPE 等),不应记日志也不应触发崩溃处理 */
+    private static boolean isBenignSystemThrowable(Thread thread, Throwable throwable) {
+        try {
+            if (thread != null && "ContentCapture".equals(thread.getName())) {
+                return true;
+            }
+            Throwable t = throwable;
+            while (t != null) {
+                for (StackTraceElement e : t.getStackTrace()) {
+                    String cls = e.getClassName();
+                    if (cls.startsWith("com.meizu.internal.") || cls.startsWith("com.meizu.picker.")) {
+                        return true;
+                    }
+                }
+                t = t.getCause();
+            }
+        } catch (Throwable ignored) {
+        }
+        return false;
     }
 
     // ------------------------------------------------------------------
