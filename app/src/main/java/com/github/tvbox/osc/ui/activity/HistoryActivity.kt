@@ -48,24 +48,21 @@ class HistoryActivity : BaseVbActivity<ActivityHistoryBinding>() {
             }
 
         mBinding.titleBar.rightView.setOnClickListener { view: View? ->
-            XPopup.Builder(this)
-                .isDarkTheme(Utils.isDarkTheme())
-                .asConfirm("提示", "确定清空?") {
-
-                    showLoadingDialog()
-                    lifecycleScope.launch(Dispatchers.IO) {
-                        RoomDataManger.deleteVodRecordAll()
-                        // 在主线程更新数据
-                        withContext(Dispatchers.Main) {
-                            dismissLoadingDialog()
-                            historyAdapter!!.setNewData(ArrayList())
-                            mBinding.topTip.visibility = View.GONE
-                            LogStore.log(Category.SYSTEM, "清空全部观看历史")
-                            updateEmptyState()
-                        }
+            // 统一主题化确认弹窗(替代 XPopup 默认 asConfirm 库样式)
+            com.github.tvbox.osc.ui.dialog.ConfirmDialog(this, "提示", "确定清空全部观看历史?", "清空", {
+                showLoadingDialog()
+                lifecycleScope.launch(Dispatchers.IO) {
+                    RoomDataManger.deleteVodRecordAll()
+                    // 在主线程更新数据
+                    withContext(Dispatchers.Main) {
+                        dismissLoadingDialog()
+                        historyAdapter!!.setNewData(ArrayList())
+                        mBinding.topTip.visibility = View.GONE
+                        LogStore.log(Category.SYSTEM, "清空全部观看历史")
+                        updateEmptyState()
                     }
-
-                }.show()
+                }
+            }).show()
         }
 
         historyAdapter!!.onItemClickListener =

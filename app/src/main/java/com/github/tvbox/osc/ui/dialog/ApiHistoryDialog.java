@@ -49,9 +49,8 @@ public class ApiHistoryDialog extends AppBottomPopupView {
         binding.title.setText("历史直播源");
 
         binding.ivUseTip.setOnClickListener(view -> {
-            new XPopup.Builder(getContext())
-                    .asConfirm("使用帮助","订阅的内置直播源会被解析并存到历史记录,即使未使用,最多20条,按需选择!","","知道了",null,null,true)
-                    .show();
+            new ConfirmDialog(getContext(), "使用帮助",
+                    "订阅的内置直播源会被解析并存到历史记录,即使未使用,最多20条,按需选择!", "知道了", null).show();
         });
 
         binding.rv.setLayoutManager(new LinearLayoutManager(getContext()));

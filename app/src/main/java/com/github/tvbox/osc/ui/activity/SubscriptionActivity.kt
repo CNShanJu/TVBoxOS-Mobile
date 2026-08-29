@@ -101,15 +101,14 @@ class SubscriptionActivity : BaseVbActivity<ActivitySubscriptionBinding>() {
                     AppBubble.toast("不能删除当前使用的订阅")
                     return@setOnItemChildClickListener
                 }
-                XPopup.Builder(this@SubscriptionActivity)
-                    .asConfirm("删除订阅", "确定删除订阅吗？") {
-                        val deleted = mSubscriptions.get(position)
-                        AppLog.log("订阅管理", "删除订阅: " + deleted.name + "  " + deleted.url)
-                        mSubscriptions.removeAt(position)
-                        //删除/选择只刷新,不触发重新排序
-                        mSubscriptionAdapter.notifyDataSetChanged()
-                        updateEmptyState()
-                    }.show()
+                com.github.tvbox.osc.ui.dialog.ConfirmDialog(this@SubscriptionActivity, "删除订阅", "确定删除订阅吗？", "删除", {
+                    val deleted = mSubscriptions.get(position)
+                    AppLog.log("订阅管理", "删除订阅: " + deleted.name + "  " + deleted.url)
+                    mSubscriptions.removeAt(position)
+                    //删除/选择只刷新,不触发重新排序
+                    mSubscriptionAdapter.notifyDataSetChanged()
+                    updateEmptyState()
+                }).show()
             }
         }
 
@@ -189,35 +188,33 @@ class SubscriptionActivity : BaseVbActivity<ActivitySubscriptionBinding>() {
     }
 
     private fun showPermissionTipPopup(checked: Boolean) {
-        XPopup.Builder(this@SubscriptionActivity)
-            .isDarkTheme(Utils.isDarkTheme())
-            .asConfirm("提示", "这将访问您设备文件的读取权限") {
-                XXPermissions.with(this)
-                    .permission(Permission.MANAGE_EXTERNAL_STORAGE)
-                    .request(object : OnPermissionCallback {
-                        override fun onGranted(permissions: List<String>, all: Boolean) {
-                            if (all) {
-                                pickFile(checked)
-                            } else {
-                                AppBubble.toastLong("部分权限未正常授予,请授权")
-                            }
+        com.github.tvbox.osc.ui.dialog.ConfirmDialog(this@SubscriptionActivity, "提示", "这将访问您设备文件的读取权限", "去授权", {
+            XXPermissions.with(this@SubscriptionActivity)
+                .permission(Permission.MANAGE_EXTERNAL_STORAGE)
+                .request(object : OnPermissionCallback {
+                    override fun onGranted(permissions: List<String>, all: Boolean) {
+                        if (all) {
+                            pickFile(checked)
+                        } else {
+                            AppBubble.toastLong("部分权限未正常授予,请授权")
                         }
+                    }
 
-                        override fun onDenied(permissions: List<String>, never: Boolean) {
-                            if (never) {
-                                AppBubble.toastLong("读写文件权限被永久拒绝，请手动授权")
-                                // 如果是被永久拒绝就跳转到应用权限系统设置页面
-                                XXPermissions.startPermissionActivity(
-                                    this@SubscriptionActivity,
-                                    permissions
-                                )
-                            } else {
-                                AppBubble.toast("获取权限失败")
-                                showPermissionTipPopup(checked)
-                            }
+                    override fun onDenied(permissions: List<String>, never: Boolean) {
+                        if (never) {
+                            AppBubble.toastLong("读写文件权限被永久拒绝，请手动授权")
+                            // 如果是被永久拒绝就跳转到应用权限系统设置页面
+                            XXPermissions.startPermissionActivity(
+                                this@SubscriptionActivity,
+                                permissions
+                            )
+                        } else {
+                            AppBubble.toast("获取权限失败")
+                            showPermissionTipPopup(checked)
                         }
-                    })
-            }.show()
+                    }
+                })
+        }).show()
     }
 
     /**

@@ -31,37 +31,41 @@ class CollectActivity : BaseVbActivity<ActivityCollectBinding>() {
     }
 
     private fun initView() {
-        setLoadSir(mBinding.mGridView)
-
+        // 空态使用显式视图(与历史/订阅/下载页统一),不再依赖 LoadSir
         mBinding.mGridView.setHasFixedSize(true)
         // 列数自适应:单卡宽度不超过 GRID_CARD_MAX_WIDTH_DP,屏幕越宽列数越多
         mBinding.mGridView.setLayoutManager(GridLayoutManager(this, Utils.getAdaptiveGridSpan(Utils.GRID_CARD_MAX_WIDTH_DP)))
         mBinding.mGridView.setAdapter(collectAdapter)
         mBinding.titleBar.rightView.setOnClickListener {
-            XPopup.Builder(this)
-                .isDarkTheme(Utils.isDarkTheme())
-                .asConfirm("提示", "确定清空?") {
-                    showLoadingDialog()
-                    lifecycleScope.launch(Dispatchers.IO){
-                        RoomDataManger.deleteVodCollectAll()
-                        withContext(Dispatchers.Main){
-                            dismissLoadingDialog()
-                            collectAdapter.setNewData(ArrayList())
-                            mBinding.topTip.visibility = View.GONE
-                            showEmpty()
-                        }
+            // 统一主题化确认弹窗(替代 XPopup 默认 asConfirm 库样式)
+            com.github.tvbox.osc.ui.dialog.ConfirmDialog(this, "提示", "确定清空全部收藏?", "清空", {
+                showLoadingDialog()
+                lifecycleScope.launch(Dispatchers.IO) {
+                    RoomDataManger.deleteVodCollectAll()
+                    withContext(Dispatchers.Main) {
+                        dismissLoadingDialog()
+                        collectAdapter.setNewData(ArrayList())
+                        mBinding.topTip.visibility = View.GONE
+                        com.github.tvbox.osc.log.LogStore.log(com.github.tvbox.osc.log.Category.SYSTEM, "清空全部收藏")
+                        updateEmptyState()
                     }
-                }.show()
+                }
+            }).show()
         }
         collectAdapter.onItemLongClickListener =
             BaseQuickAdapter.OnItemLongClickListener { adapter: BaseQuickAdapter<*, *>?, view: View?, position: Int ->
                 val vodInfo = collectAdapter.data[position]
                 if (vodInfo != null) {
-                    collectAdapter.remove(position)
-                    RoomDataManger.deleteVodCollect(vodInfo.id)
-                }
-                if (collectAdapter.data.isEmpty()) {
-                    mBinding.topTip.visibility = View.GONE
+                    val name = vodInfo.name
+                    com.github.tvbox.osc.ui.dialog.ConfirmDialog(this, "提示", "取消收藏《" + name + "》?", "取消收藏", {
+                        collectAdapter.remove(position)
+                        RoomDataManger.deleteVodCollect(vodInfo.id)
+                        com.github.tvbox.osc.log.LogStore.log(com.github.tvbox.osc.log.Category.SYSTEM, "取消收藏: " + name)
+                        if (collectAdapter.data.isEmpty()) {
+                            mBinding.topTip.visibility = View.GONE
+                        }
+                        updateEmptyState()
+                    }).show()
                 }
                 true
             }
@@ -97,13 +101,20 @@ class CollectActivity : BaseVbActivity<ActivityCollectBinding>() {
             withContext(Dispatchers.Main) {
                 collectAdapter.setNewData(vodInfoList)
                 if (vodInfoList.isNotEmpty()) {
-                    showSuccess()
                     mBinding.topTip.visibility = View.VISIBLE
-                }else{
-                    showEmpty()
+                } else {
+                    mBinding.topTip.visibility = View.GONE
                 }
+                updateEmptyState()
             }
         }
+    }
+
+    /** 收藏列表空态:无收藏时展示空态占位,否则展示列表 */
+    private fun updateEmptyState() {
+        val empty = collectAdapter.data.isEmpty()
+        mBinding.mGridView.visibility = if (empty) View.GONE else View.VISIBLE
+        mBinding.llEmpty.root.visibility = if (empty) View.VISIBLE else View.GONE
     }
 
     /**

@@ -56,6 +56,7 @@ import com.github.tvbox.osc.ui.adapter.SeriesFlagAdapter;
 import com.github.tvbox.osc.ui.dialog.AllVodSeriesBottomDialog;
 import com.github.tvbox.osc.ui.dialog.AllVodSeriesRightDialog;
 import com.github.tvbox.osc.ui.dialog.CastListDialog;
+import com.github.tvbox.osc.ui.dialog.ConfirmDialog;
 import com.github.tvbox.osc.ui.dialog.DownloadSeriesDialog;
 import com.github.tvbox.osc.ui.dialog.DownloadSeriesRightDialog;
 import com.github.tvbox.osc.ui.dialog.QuickSearchDialog;
@@ -1246,11 +1247,9 @@ public class DetailActivity extends BaseVbActivity<ActivityDetailBinding> {
         }
         // 网络控制:默认仅 WiFi 下载;移动网络下强提醒流量风险,确认后才继续(统一走 DownloadConfig)
         if (DownloadConfig.isWifiOnly() && DownloadConfig.isMobileNetwork()) {
-            new XPopup.Builder(this)
-                    .isDarkTheme(Utils.isDarkTheme())
-                    .asConfirm("流量提醒", "当前为移动网络,继续下载将消耗手机流量,是否继续?",
-                            "继续下载", "取消", () -> doStartDownloads(selected), null, false)
-                    .show();
+            // 统一主题化确认弹窗(替代 XPopup 默认 asConfirm)
+            new ConfirmDialog(this, "流量提醒", "当前为移动网络,继续下载将消耗手机流量,是否继续?",
+                    "继续下载", () -> doStartDownloads(selected)).show();
             return;
         }
         doStartDownloads(selected);

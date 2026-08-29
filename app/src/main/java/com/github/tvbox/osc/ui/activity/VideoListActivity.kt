@@ -83,35 +83,34 @@ class VideoListActivity : BaseVbActivity<ActivityMovieFoldersBinding>() {
 
         mBinding.tvDelete.setOnClickListener { view: View? ->
             FastClickCheckUtil.check(view)
-            XPopup.Builder(this)
-                .isDarkTheme(Utils.isDarkTheme())
-                .asConfirm("提示", "确定删除所选视频吗？") {
-                    showLoadingDialog()
-                    lifecycleScope.launch(Dispatchers.IO) {
-                        val data = mLocalVideoAdapter.data
-                        val deleteList: MutableList<VideoInfo> = ArrayList()
-                        for (item in data) {
-                            if (item.isChecked) {
-                                deleteList.add(item)
-                                if (FileUtils.delete(item.path)) {
-                                    // 删除缓存的影片时长、进度
-                                    SPUtils.getInstance(CacheConst.VIDEO_DURATION_SP).remove(item.path)
-                                    SPUtils.getInstance(CacheConst.VIDEO_PROGRESS_SP).remove(item.path)
-                                    // 文件增删需要通知系统扫描,否则删除文件后还能查出来
-                                    // 这个工具类直接传文件路径不知道为啥通知失败,手动获取一下
-                                    FileUtils.notifySystemToScan(FileUtils.getDirName(item.path))
-                                }
+            // 统一主题化确认弹窗(替代 XPopup 默认 asConfirm)
+            com.github.tvbox.osc.ui.dialog.ConfirmDialog(this, "提示", "确定删除所选视频吗？", "删除", {
+                showLoadingDialog()
+                lifecycleScope.launch(Dispatchers.IO) {
+                    val data = mLocalVideoAdapter.data
+                    val deleteList: MutableList<VideoInfo> = ArrayList()
+                    for (item in data) {
+                        if (item.isChecked) {
+                            deleteList.add(item)
+                            if (FileUtils.delete(item.path)) {
+                                // 删除缓存的影片时长、进度
+                                SPUtils.getInstance(CacheConst.VIDEO_DURATION_SP).remove(item.path)
+                                SPUtils.getInstance(CacheConst.VIDEO_PROGRESS_SP).remove(item.path)
+                                // 文件增删需要通知系统扫描,否则删除文件后还能查出来
+                                // 这个工具类直接传文件路径不知道为啥通知失败,手动获取一下
+                                FileUtils.notifySystemToScan(FileUtils.getDirName(item.path))
                             }
                         }
-                        data.removeAll(deleteList)
-
-                        withContext(Dispatchers.Main){
-                            dismissLoadingDialog()
-                            mLocalVideoAdapter.notifyDataSetChanged()
-                            toggleListSelectMode(false)
-                        }
                     }
-                }.show()
+                    data.removeAll(deleteList)
+
+                    withContext(Dispatchers.Main) {
+                        dismissLoadingDialog()
+                        mLocalVideoAdapter.notifyDataSetChanged()
+                        toggleListSelectMode(false)
+                    }
+                }
+            }).show()
         }
     }
 
