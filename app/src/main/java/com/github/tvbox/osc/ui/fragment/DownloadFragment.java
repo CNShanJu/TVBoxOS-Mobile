@@ -767,7 +767,10 @@ public class DownloadFragment extends BaseVbFragment<FragmentDownloadBinding> {
                 .asCustom(new DeleteDownloadDialog(mContext, deleteFiles -> {
                     for (DownloadGroup g : sel) {
                         if (deleteFiles) {
-                            // 勾选:全部删除,记录 + 整个文件夹(该来源下该剧名目录)
+                            // 勾选:全部删除,记录 + 整个文件夹(该来源下该剧名目录)。
+                            // 注意: 聚合组的 g.tasks 只含运行态任务(COMPLETED 被分组逻辑跳过,已完成集在
+                            // g.doneItems)——目录必须从两边收集,否则"全剧已下载完"的组 g.tasks 为空,
+                            // 文件夹永远删不掉, 只清档案记录而本地文件残留。
                             Set<File> dirs = new LinkedHashSet<>();
                             for (DownloadTask t : g.tasks) {
                                 if (t.savePath != null) {
@@ -776,13 +779,20 @@ public class DownloadFragment extends BaseVbFragment<FragmentDownloadBinding> {
                                 }
                                 DownloadCore.remove(t, false);
                             }
+                            for (com.github.tvbox.osc.download.ArchiveItem it : g.doneItems) {
+                                if (it.savePath != null) {
+                                    File p = new File(it.savePath).getParentFile();
+                                    if (p != null) dirs.add(p);
+                                }
+                            }
                             for (File d : dirs) {
                                 deleteRecursive(d);
                             }
-                            // 已完成集(档案表): 文件已随文件夹删除, 同步删档案记录
+                            // 已完成集(档案表): 文件已随文件夹删除, 同步删档案记录;
+                            // deleteFile=true 兜底: 文件夹删除失败(权限/占用)时再尝试删单个文件
                             for (com.github.tvbox.osc.download.ArchiveItem it : g.doneItems) {
                                 if (it.episodeId != null) {
-                                    com.github.tvbox.osc.download.DownloadArchive.get().remove(it.episodeId, false);
+                                    com.github.tvbox.osc.download.DownloadArchive.get().remove(it.episodeId, true);
                                 }
                             }
                         } else {
