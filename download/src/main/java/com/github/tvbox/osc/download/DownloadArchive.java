@@ -169,10 +169,17 @@ public final class DownloadArchive {
         return true;
     }
 
-    /** 某集是否已下载（档案 + 文件存在） */
+    /** 某集是否已下载（档案 + 文件存在; 文件已不存在的孤儿档案惰性清理——本地/管理页删文件后, 查询即自动移除脏记录） */
     public synchronized boolean isDownloaded(String episodeId) {
         ArchiveItem it = get(episodeId);
-        return it != null && it.savePath != null && new File(it.savePath).exists();
+        if (it == null) return false;
+        if (it.savePath == null || !new File(it.savePath).exists()) {
+            // 文件已不存在: 移除孤儿档案并持久化, 详情页/下载抽屉下次查询即恢复正常"未下载"
+            items.remove(it);
+            persist();
+            return false;
+        }
+        return true;
     }
 
     private static String videoIdOf(DownloadTask t) {
