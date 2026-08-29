@@ -185,6 +185,7 @@ public class DownloadScheduler {
             if (running < dm.policy.getMaxConcurrent()) {
                 // 并发调高:按调度顺序补足(队首=高优先级/被抢占者先恢复)
                 int toStart = dm.policy.getMaxConcurrent() - running;
+                boolean startedAny = false;
                 for (DownloadTask t : sorted) {
                     if (toStart <= 0) break;
                     if (t.state == DownloadTask.STATE_WAITING || t.state == DownloadTask.STATE_SYSTEM_PAUSED) {
@@ -195,9 +196,13 @@ public class DownloadScheduler {
                         }
                         startTask(t);
                         toStart--;
+                        startedAny = true;
                     }
                 }
-                return true;
+                // 关键:只有确实启动了任务才返回 true(让 worker 立即再调度);
+                // 若所有等待任务都因同目标被跳过(无动作),返回 false 让 worker 休眠,
+                // 等待任务结束 wakeWorker 再唤醒——否则这里会 100% CPU 忙等死循环(ANR 根因)
+                return startedAny;
             }
             return false;
         }
