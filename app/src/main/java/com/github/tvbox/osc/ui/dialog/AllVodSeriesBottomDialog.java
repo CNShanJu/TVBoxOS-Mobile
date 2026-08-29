@@ -1,10 +1,8 @@
 package com.github.tvbox.osc.ui.dialog;
 
 import android.content.Context;
-import android.widget.TextView;
 
 import androidx.annotation.NonNull;
-import androidx.core.content.ContextCompat;
 import androidx.recyclerview.widget.GridLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
@@ -13,6 +11,7 @@ import com.chad.library.adapter.base.BaseViewHolder;
 import com.github.tvbox.osc.R;
 import com.github.tvbox.osc.bean.VodInfo;
 import com.github.tvbox.osc.ui.widget.GridSpacingItemDecoration;
+import com.github.tvbox.osc.ui.widget.RoundChip;
 import com.github.tvbox.osc.util.Utils;
 import com.lxj.xpopup.core.BottomPopupView;
 import com.lxj.xpopup.interfaces.OnSelectListener;
@@ -22,7 +21,7 @@ import org.jetbrains.annotations.NotNull;
 import java.util.List;
 
 /**
- * 全集弹窗(详情页"全部"):圆角框样式(与下载选择一致),固定3列,单选。
+ * 全集弹窗(详情页"全部"):RoundChip 文字样式(与全屏选集/下载抽屉统一,无边框无背景),固定3列,单选。
  * 不像全屏右侧弹窗一样共用activity的adapter,adapter横向和网格布局逻辑不同,同屏显示切换会有视觉差
  */
 public class AllVodSeriesBottomDialog extends BottomPopupView {
@@ -46,24 +45,18 @@ public class AllVodSeriesBottomDialog extends BottomPopupView {
         super.onCreate();
         RecyclerView rv = findViewById(R.id.rv);
 
-        // 集数网格:最多3列,基于文字长度自适应(1列/2列/3列),圆角框条目(与下载选择弹窗同款)
+        // 集数网格:最多3列,基于文字长度自适应(1列/2列/3列),RoundChip 文字条目(与全屏抽屉同款,无边框)
         int span = Utils.getSeriesSpanCount(mList);
         rv.setLayoutManager(new GridLayoutManager(getContext(), span));
         rv.addItemDecoration(new GridSpacingItemDecoration(span, 20, true));
 
         BaseQuickAdapter<VodInfo.VodSeries, BaseViewHolder> seriesAdapter =
-                new BaseQuickAdapter<VodInfo.VodSeries, BaseViewHolder>(R.layout.item_download_select, mList) {
+                new BaseQuickAdapter<VodInfo.VodSeries, BaseViewHolder>(R.layout.item_series, mList) {
                     @Override
                     protected void convert(BaseViewHolder helper, VodInfo.VodSeries item) {
-                        TextView tv = helper.getView(R.id.tv_name);
-                        tv.setText(item.name);
-                        if (item.selected) {
-                            tv.setTextColor(ContextCompat.getColor(getContext(), R.color.download_active));
-                            helper.getView(R.id.item_root).setBackgroundResource(R.drawable.bg_episode_chip_selected);
-                        } else {
-                            tv.setTextColor(ContextCompat.getColor(getContext(), R.color.text_foreground));
-                            helper.getView(R.id.item_root).setBackgroundResource(R.drawable.bg_episode_chip);
-                        }
+                        RoundChip chip = helper.getView(R.id.sl);
+                        chip.setTitle(item.name);
+                        chip.setSelected(item.selected);
                     }
                 };
         rv.setAdapter(seriesAdapter);

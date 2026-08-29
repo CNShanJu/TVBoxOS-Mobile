@@ -40,8 +40,20 @@
             android:id="@+id/tv_selected"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:layout_marginRight="12dp"
             android:text="(已选 0)"
             android:textColor="@color/text_highlight"
+            android:textSize="13sp" />
+
+        <TextView
+            android:id="@+id/tv_sort"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:drawablePadding="4dp"
+            android:drawableRight="@drawable/ic_sort_18"
+            android:paddingVertical="6dp"
+            android:text="倒序"
+            android:textColor="@color/text_foreground"
             android:textSize="13sp" />
     </LinearLayout>
 

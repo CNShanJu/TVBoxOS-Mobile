@@ -13,7 +13,6 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.chad.library.adapter.base.BaseQuickAdapter;
 import com.chad.library.adapter.base.BaseViewHolder;
 import com.airbnb.lottie.LottieAnimationView;
-import com.airbnb.lottie.LottieDrawable;
 import com.github.tvbox.osc.R;
 import com.github.tvbox.osc.bean.VodInfo;
 import com.github.tvbox.osc.ui.widget.GridSpacingItemDecoration;
@@ -42,6 +41,9 @@ public class DownloadSeriesRightDialog extends AppDrawerPopupView {
 
         /** 打开下载管理页 */
         void onOpenDownloadManager();
+
+        /** 倒序排列剧集(与选集抽屉一致) */
+        void onSortSeries();
     }
 
     private final OnDownloadActionListener mListener;
@@ -72,13 +74,9 @@ public class DownloadSeriesRightDialog extends AppDrawerPopupView {
         mRv = findViewById(R.id.rv);
         mFlLoading = findViewById(R.id.fl_loading);
 
-        // 加载动画用轻量默认动画(仅占位几百毫秒,避免渲染高帧率大动画导致卡顿/ANR)
+        // 加载动画跟随设置页"加载动画"配置(默认/Glowing Fish 等),与播放器/其他页一致
         LottieAnimationView lav = findViewById(R.id.lottie_loading);
-        lav.setAnimation(LoadingAnim.getDefaultFileName());
-        lav.setRepeatMode(LottieDrawable.RESTART);
-        lav.setRepeatCount(LottieDrawable.INFINITE);
-        lav.setSpeed(1f);
-        lav.playAnimation();
+        LoadingAnim.apply(lav);
 
         // 集数网格:最多3列,基于文字长度自适应(1列/2列/3列);数据未就绪前先用默认3列,setData 时按实际文字重算
         mGridManager = new GridLayoutManager(getContext(), 3);
@@ -112,6 +110,9 @@ public class DownloadSeriesRightDialog extends AppDrawerPopupView {
         }
 
         updateCount();
+        findViewById(R.id.tv_sort).setOnClickListener(v -> {
+            if (mListener != null) mListener.onSortSeries();
+        });
         findViewById(R.id.btn_start).setOnClickListener(v -> {
             List<VodInfo.VodSeries> selected = new ArrayList<>();
             if (mList != null) {

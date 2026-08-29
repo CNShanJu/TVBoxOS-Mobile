@@ -491,6 +491,7 @@ public class DetailActivity extends BaseVbActivity<ActivityDetailBinding> {
             mAllSeriesRightDialog = new XPopup.Builder(this)
                     .isViewMode(true)//隐藏导航栏(手势条)在dialog模式下会闪一下,改为view模式,但需处理onBackPress的隐藏,下方同理
                     .hasNavigationBar(false)
+                    .popupWidth(ConvertUtils.dp2px(360)) // 固定抽屉宽度(与下载右侧抽屉一致),避免线路列表把弹窗撑开
                     .popupHeight(ScreenUtils.getScreenHeight())
                     .popupPosition(PopupPosition.Right)
                     .enableDrag(false)//禁用拖拽,内部有横向rv
@@ -1056,6 +1057,12 @@ public class DetailActivity extends BaseVbActivity<ActivityDetailBinding> {
                         navigatingAway = true;
                         jumpActivity(DownloadActivity.class);
                     }
+
+                    @Override
+                    public void onSortSeries() {
+                        sortSeries(); // 与选集抽屉一致:反转全集列表(副本随正表重建)
+                        refreshDownloadDialogStates();
+                    }
                 }));
         mDownloadDialog.show();
         // 后台准备数据(选集副本 + 下载状态批量查询),完成后主线程填充抽屉
@@ -1170,6 +1177,12 @@ public class DetailActivity extends BaseVbActivity<ActivityDetailBinding> {
                         // 应用内跳转:标记避免 onUserLeaveHint 误判为"切后台"触发小窗/后台播放(修复:返回时全屏播放)
                         navigatingAway = true;
                         jumpActivity(DownloadActivity.class);
+                    }
+
+                    @Override
+                    public void onSortSeries() {
+                        sortSeries(); // 与选集抽屉一致:反转全集列表(副本随正表重建)
+                        refreshDownloadDialogStates();
                     }
                 }));
         mDownloadDialog.show();
