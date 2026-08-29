@@ -121,6 +121,24 @@ public class DownloadExecutor {
             File part = new File(t.partPath);
             File parent = part.getParentFile();
             if (parent != null && !parent.exists()) parent.mkdirs();
+            // 内容魔数校验(防盗链占位/错误页拦截): peek 响应体前 16 字节不消费流,
+            // 扩展名视频但文件头完全不符 → 判失败, 杜绝 3KB 之类的假"完成"文件
+            if (t.downloadedBytes <= 0) {
+                try {
+                    okio.BufferedSource src = resp.body().source();
+                    src.request(16);
+                    okio.Buffer pb = src.getBuffer().clone();
+                    int hn = (int) Math.min(16, pb.size());
+                    byte[] head = new byte[hn];
+                    if (hn > 0) pb.readFully(head);
+                    if (!isPlausibleVideo(head, t.fileName)) {
+                        throw new IOException("响应内容与视频格式不符(可能为防盗链占位页或错误响应)");
+                    }
+                } catch (IOException e) {
+                    throw e;
+                } catch (Throwable ignored) {
+                }
+            }
             OutputStream os = new FileOutputStream(part, t.downloadedBytes > 0);
             InputStream is = resp.body().byteStream();
             byte[] buf = new byte[DownloadManager.BUFFER];
@@ -748,10 +766,8 @@ public class DownloadExecutor {
         }
     }
 
-    /**
-     * 从响应头识别真实文件扩展名:Content-Disposition 的 filename 最可靠,其次按 Content-Type 映射。
-     * 识别不出或为音频/未知类型返回 null(保持 URL 判定的扩展名)。
-     */
+    /** 响应头识别真实文件扩展名:Content-Disposition 的 filename 最可靠,其次按 Content-Type 映射。
+        识别不出或为音频/未知类型返回 null(保持 URL 判定的扩展名)。 */
     private String detectExtensionFromResponse(Response resp) {
         try {
             String cd = resp.header("Content-Disposition");
@@ -784,6 +800,50 @@ public class DownloadExecutor {
         } catch (Throwable th) {
         }
         return null;
+    }
+
+    /**
+     * 直链内容魔数校验:按扩展名检查响应体文件头, 防盗链占位页/错误响应(几KB文本或随机字节)
+     * 与视频格式完全不符 → 返回 false 判失败; 非视频扩展名/无法判断一律放行(不误伤)。
+     */
+    private boolean isPlausibleVideo(byte[] head, String fileName) {
+        if (head == null || head.length < 4 || fileName == null) return true;
+        String fn = fileName.toLowerCase(Locale.ROOT);
+        if (fn.endsWith(".mp4") || fn.endsWith(".m4v") || fn.endsWith(".3gp") || fn.endsWith(".mov")) {
+            return containsAscii(head, "ftyp") || containsAscii(head, "moov") || containsAscii(head, "mdat")
+                    || containsAscii(head, "free");
+        }
+        if (fn.endsWith(".mkv") || fn.endsWith(".webm")) {
+            return (head[0] & 0xFF) == 0x1A && (head[1] & 0xFF) == 0x45
+                    && (head[2] & 0xFF) == 0xDF && (head[3] & 0xFF) == 0xA3;
+        }
+        if (fn.endsWith(".flv")) {
+            return containsAscii(head, "FLV");
+        }
+        if (fn.endsWith(".ts") || fn.endsWith(".m2ts")) {
+            // MPEG-TS 同步字节 0x47(可能在 0/188/376 偏移)
+            return containsByte(head, (byte) 0x47);
+        }
+        return true;
+    }
+
+    private static boolean containsAscii(byte[] head, String s) {
+        byte[] needle = s.getBytes(java.nio.charset.StandardCharsets.US_ASCII);
+        outer:
+        for (int i = 0; i + needle.length <= head.length; i++) {
+            for (int j = 0; j < needle.length; j++) {
+                if (head[i + j] != needle[j]) continue outer;
+            }
+            return true;
+        }
+        return false;
+    }
+
+    private static boolean containsByte(byte[] head, byte b) {
+        for (byte v : head) {
+            if (v == b) return true;
+        }
+        return false;
     }
 
     /**
