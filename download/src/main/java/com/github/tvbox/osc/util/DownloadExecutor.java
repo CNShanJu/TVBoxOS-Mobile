@@ -221,6 +221,9 @@ public class DownloadExecutor {
     public void downloadHls(DownloadTask t) throws IOException {
         String playlistUrl = t.url;
         String playlist = fetchPlaylist(playlistUrl, t);
+        // 诊断: 完整播放列表内容(判断分片是否为加密HLS/占位/异常格式)
+        Log.i("TVBox-Download", "播放列表内容(" + playlist.length() + "B): "
+                + playlist.substring(0, Math.min(600, playlist.length())).replace("\n", "\\n"));
         // fetchPlaylist 遇到主播放列表时会切换到具体变体(t.url 已更新),分片需按实际播放列表解析
         List<String> segments = parseSegments(t.url, playlist);
         if (segments.isEmpty()) {
