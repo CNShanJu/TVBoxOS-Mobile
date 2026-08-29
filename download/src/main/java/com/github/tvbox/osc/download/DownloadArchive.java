@@ -77,6 +77,7 @@ public final class DownloadArchive {
 
     /** 某视频的已下载列表（新→旧） */
     public synchronized List<ArchiveItem> queryByVideo(String videoId) {
+        purgeOrphans();
         List<ArchiveItem> out = new ArrayList<>();
         if (videoId == null) return out;
         for (ArchiveItem it : items) {
@@ -87,11 +88,31 @@ public final class DownloadArchive {
 
     /** 全部档案（新→旧；下载管理页聚合根级用） */
     public synchronized List<ArchiveItem> getAll() {
+        purgeOrphans();
         return new ArrayList<>(items);
+    }
+
+    /**
+     * 实况校验(自愈): 对照文件实况移除孤儿档案(记录在但文件已不存在)。
+     * <p>死循环防护: 单次遍历一次清完所有孤儿——孤儿只减不增, 收敛操作,
+     * 查询前执行一次即得到与实况一致的数据, 不存在"清一条查一次"的循环。</p>
+     */
+    public synchronized int purgeOrphans() {
+        int removed = 0;
+        for (int i = items.size() - 1; i >= 0; i--) {
+            ArchiveItem it = items.get(i);
+            if (it.savePath == null || !new File(it.savePath).exists()) {
+                items.remove(i);
+                removed++;
+            }
+        }
+        if (removed > 0) persist();
+        return removed;
     }
 
     /** 按 剧名(+来源) 查询已下载列表（下载管理页"下载完成"tab 数据源；旧档案无 sourceName 时放行） */
     public synchronized List<ArchiveItem> queryByVod(String vodName, String sourceName) {
+        purgeOrphans();
         List<ArchiveItem> out = new ArrayList<>();
         if (vodName == null) return out;
         for (ArchiveItem it : items) {
