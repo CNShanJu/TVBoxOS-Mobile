@@ -18,17 +18,23 @@
         android:paddingBottom="64dp"
         android:clipToPadding="false"/>
 
-    <com.google.android.material.floatingactionbutton.FloatingActionButton
+    <!-- 筛选悬浮按钮: 27dp(原40dp÷1.5)圆 + 16dp(原24dp÷1.5)图标 -->
+    <FrameLayout
         android:id="@+id/btn_filter"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
+        android:layout_width="27dp"
+        android:layout_height="27dp"
         android:layout_alignParentEnd="true"
         android:layout_alignParentBottom="true"
         android:layout_margin="20dp"
-        android:backgroundTint="@color/bg_component"
-        app:borderWidth="0dp"
-        app:fabSize="mini"
-        android:src="@drawable/ic_filter_list"
-        app:tint="@color/text_highlight"
-        />
+        android:background="@drawable/bg_fab_oval"
+        android:foreground="?android:selectableItemBackground"
+        android:elevation="4dp">
+
+        <ImageView
+            android:layout_width="16dp"
+            android:layout_height="16dp"
+            android:layout_gravity="center"
+            android:src="@drawable/ic_filter_list"
+            app:tint="@color/text_highlight" />
+    </FrameLayout>
 </RelativeLayout>
