@@ -84,7 +84,18 @@ public class UserFragment extends BaseLazyFragment {
 
         tvHotList1.setHasFixedSize(true);
         // 列数自适应:单卡宽度不超过 GRID_CARD_MAX_WIDTH_DP,屏幕越宽列数越多
-        tvHotList1.setLayoutManager(new GridLayoutManager(this.mContext, Utils.getAdaptiveGridSpan(Utils.GRID_CARD_MAX_WIDTH_DP)));
+        final int span = Utils.getAdaptiveGridSpan(Utils.GRID_CARD_MAX_WIDTH_DP);
+        GridLayoutManager glm = new GridLayoutManager(this.mContext, span);
+        // 末尾 footer("到底了")占满整行,文字才真正屏幕居中:
+        // init() 里 setAdapter/addFooterView 时 layoutManager 尚未设置,
+        // BRVAH 的 spanSizeLookup 未挂上,footer 默认只占 1 列 → 这里手动补
+        glm.setSpanSizeLookup(new GridLayoutManager.SpanSizeLookup() {
+            @Override
+            public int getSpanSize(int position) {
+                return position == homeHotVodAdapter.getItemCount() - 1 ? span : 1;
+            }
+        });
+        tvHotList1.setLayoutManager(glm);
     }
 
     /**
