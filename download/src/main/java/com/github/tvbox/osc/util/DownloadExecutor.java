@@ -591,6 +591,24 @@ public class DownloadExecutor {
             }
             File parent = segFile.getParentFile();
             if (parent != null && !parent.exists()) parent.mkdirs();
+            // 分片内容魔数校验(整段重下场景): .ts 分片含 0x47 同步字节或 fMP4 以 ftyp 开头,
+            // 防盗链错误响应(几KB 文本)不符 → 判失败(走补片/重试), 不产出假分片
+            if (segDone <= 0) {
+                try {
+                    okio.BufferedSource src = resp.body().source();
+                    src.request(8);
+                    okio.Buffer pb = src.getBuffer().clone();
+                    int hn = (int) Math.min(8, pb.size());
+                    byte[] head = new byte[hn];
+                    if (hn > 0) pb.readFully(head);
+                    if (!containsByte(head, (byte) 0x47) && !containsAscii(head, "ftyp")) {
+                        throw new IOException("分片内容非 TS/fMP4(可能防盗链错误响应)");
+                    }
+                } catch (IOException e) {
+                    throw e;
+                } catch (Throwable ignored) {
+                }
+            }
             // Bug2: 分片先写 .part 再 rename 原子落盘——进程被杀不产生"残缺但非空"的 .ts,
             // 续传/校验只信任 rename 后的完整分片
             File partFile = new File(segFile.getAbsolutePath() + ".part");

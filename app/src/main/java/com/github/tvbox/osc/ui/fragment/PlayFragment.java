@@ -1569,6 +1569,12 @@ public class PlayFragment extends BaseLazyFragment {
         return TextUtils.isEmpty(mCurrentUrl) || !RegexUtils.isURL(mCurrentUrl) ?"":mCurrentUrl;
     }
 
+    /** 当前播放所用请求头(WebView 嗅探/解析时收集的 UA/Referer 等);
+        下载回退播放地址时必须携带, 否则防盗链源"能播不能下" */
+    public Map<String, String> getPlayHeaders() {
+        return webHeaderMap;
+    }
+
     boolean checkVideoFormat(String url) {
         try {
             if (url.contains("url=http") || url.contains(".html")) {

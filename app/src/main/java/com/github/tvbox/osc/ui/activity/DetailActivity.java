@@ -1302,10 +1302,11 @@ public class DetailActivity extends BaseVbActivity<ActivityDetailBinding> {
                 if (s.name != null && s.name.equals(currentName) && playFragment != null) {
                     String finalUrl = playFragment.getFinalUrl();
                     if (!TextUtils.isEmpty(finalUrl)) {
-                        // 当前集:优先解析头,失败则回退播放地址(WebView 嗅探类源无法批量解析)
+                        // 当前集:优先解析头,失败则回退播放地址(WebView 嗅探类源无法批量解析);
+                        // 回退必须带上播放器当前请求头(UA/Referer), 否则防盗链源"能播不能下"
                         rr = PlayUrlResolver.resolveWithHeader(sourceKey, playFlag, s.url);
                         if (rr == null || TextUtils.isEmpty(rr.url)) {
-                            rr = new PlayUrlResolver.ResolveResult(finalUrl, null);
+                            rr = new PlayUrlResolver.ResolveResult(finalUrl, playFragment.getPlayHeaders());
                         }
                     }
                 }
