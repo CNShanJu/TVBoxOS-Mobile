@@ -104,4 +104,7 @@
     <!-- 开关轨道-关闭态(浅色主题浅灰;深色主题深灰,避免深色主题下白底白点) -->
     <color name="switch_track_off">#B0B0B0</color>
 
+    <!-- 底部导航栏/悬浮按钮背景:亮色纯白(悬浮感),暗色贴主题页面背景 -->
+    <color name="bg_float">#FFFFFF</color>
+
 </resources>
