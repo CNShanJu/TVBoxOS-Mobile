@@ -114,6 +114,15 @@ public final class DownloadArchive {
         return null;
     }
 
+    /** 按文件路径查档案（下载管理页删除完成项用；完成项可能只剩档案无任务记录） */
+    public synchronized ArchiveItem findByPath(String savePath) {
+        if (savePath == null) return null;
+        for (ArchiveItem it : items) {
+            if (savePath.equals(it.savePath)) return it;
+        }
+        return null;
+    }
+
     /** 删除档案（deleteFile=true 连文件一起删） */
     public synchronized boolean remove(String episodeId, boolean deleteFile) {
         for (int i = items.size() - 1; i >= 0; i--) {

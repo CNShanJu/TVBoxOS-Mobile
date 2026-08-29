@@ -743,6 +743,12 @@ public class DownloadFragment extends BaseVbFragment<FragmentDownloadBinding> {
                             for (File d : dirs) {
                                 deleteRecursive(d);
                             }
+                            // 已完成集(档案表): 文件已随文件夹删除, 同步删档案记录
+                            for (com.github.tvbox.osc.download.ArchiveItem it : g.doneItems) {
+                                if (it.episodeId != null) {
+                                    com.github.tvbox.osc.download.DownloadArchive.get().remove(it.episodeId, false);
+                                }
+                            }
                         } else {
                             // 不勾选:只删下载中的任务(记录 + 过程文件),已完成记录与文件保留
                             for (DownloadTask t : g.tasks) {
@@ -816,6 +822,13 @@ public class DownloadFragment extends BaseVbFragment<FragmentDownloadBinding> {
                 DownloadCore.remove(t, deleteFiles);
                 return;
             }
+        }
+        // 完成项可能只在档案表(任务记录已清理): 同步删档案(deleteFiles=true 连文件一起删)
+        com.github.tvbox.osc.download.ArchiveItem it =
+                com.github.tvbox.osc.download.DownloadArchive.get().findByPath(path);
+        if (it != null) {
+            com.github.tvbox.osc.download.DownloadArchive.get().remove(it.episodeId, deleteFiles);
+            return;
         }
         if (deleteFiles) {
             File f = new File(path);
