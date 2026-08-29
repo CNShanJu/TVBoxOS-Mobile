@@ -33,30 +33,23 @@
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btn_reset"
+                style="@style/mbOutline"
                 android:layout_width="0dp"
                 android:layout_weight="1"
                 android:layout_height="36dp"
-                android:insetTop="0dp"
-                android:insetBottom="0dp"
                 app:cornerRadius="@dimen/radius_dialog"
-                android:textColor="@color/text_foreground"
-                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
                 android:layout_marginRight="20dp"
                 android:text="重置"
                 android:layout_marginBottom="14dp"/>
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btn_confirm"
-                style="@style/Widget.MaterialComponents.Button"
+                style="@style/mbSolid"
                 android:layout_width="0dp"
                 android:layout_weight="1"
                 android:layout_height="36dp"
-                android:insetTop="0dp"
-                android:insetBottom="0dp"
                 app:cornerRadius="@dimen/radius_dialog"
-                android:textColor="@color/white"
                 android:text="筛选"
-                android:stateListAnimator="@null"
                 android:layout_marginBottom="14dp"/>
         </LinearLayout>
     </LinearLayout>
