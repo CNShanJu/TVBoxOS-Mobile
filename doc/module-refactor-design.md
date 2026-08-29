@@ -891,6 +891,8 @@ File getSaveDir();  boolean hasStoragePermission();  void requestStoragePermissi
 | ① 5.2 修 5 Bug | ✅ 已落地 | Bug5 .nomedia+孤儿回收 / Bug1 网络暂停恢复 / Bug2 CANCELLED+碎片复用+原子写 / Bug4 权限硬门槛+撤销暂停 / 启动对账 |
 | ① 5.3 门面+日志中心 | ✅ 已落地 | DownloadFacade（5 态快照/聚合/订阅/日志/档案管理）、DownloadArchive、任务日志接 LogStore；详情页/下载页 UI 迁移 ⏳ 待真机 |
 | ① 5.4 重封装 | ✅ 已落地 | TS→MP4 MediaMuxer 重封装（失败回退 .ts）+ MSG_REMUX |
+| ① 4.6 任务对象化 | ✅ 已落地 | BaseDownloadTask 契约 + TaskListener 上报协议 + DownloadTaskRegistry（Feature→Factory）+ NormalFileDownloadTask/M3u8DownloadTask 子类；startTask 经注册表创建对象执行（行为零变化） |
+| ① 4.7 日志粒度收尾 | ✅ 已落地 | 校验/开始（含完整缺失清单）、补片轮次（开始目标/单项成功失败/轮末 补K成功K1失败K2剩余J）、补片 FAILED 全量清单、合并（开始含 size/重试含上次原因/完成含耗时/失败含第k次+碎片保留） |
 | P1 资源命名规范 | ✅ 脚本 + 两批治理 | check-res-naming.ps1 校验；icon_*→ic_*、layout 归位；剩余第三方库风格改名 ⏳ 收益递减 |
 | P2 :ui-common | ⏳ 待排期 | 公共资源迁移（依赖 P1 完成度） |
 | 可选增强 | ⏳ 未做 | 限速 setSpeedLimit / DownloadNotifier / 前台服务（依赖任务对象抽象层） |
