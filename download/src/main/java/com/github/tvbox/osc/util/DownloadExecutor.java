@@ -706,13 +706,13 @@ public class DownloadExecutor {
     // 工具
     // ------------------------------------------------------------------
 
-    /** 请求头:默认系统 UA(播放器/ExoPlayer 同款, 防盗链代理按 UA 放行——浏览器 UA 与 okhttp UA 都被拒,
-        返回 ASCII art 提示页) + 任务携带的解析请求头 */
+    /** 请求头:默认 ExoPlayer 同款 UA(播放器未自定义 UA 时用 ExoPlayerLib 默认, 防盗链代理
+        放行它——okhttp/浏览器/系统 Dalvik UA 都返回 ASCII art 提示页) + 任务携带的解析请求头 */
     Map<String, String> baseHeaders(DownloadTask t) {
         Map<String, String> headers = new HashMap<>();
-        // 系统 Dalvik UA(System.getProperty("http.agent")): 与播放器默认请求一致
-        String sysUa = System.getProperty("http.agent");
-        headers.put("User-Agent", sysUa != null && !sysUa.isEmpty() ? sysUa : "okhttp/3.12.11");
+        // 与播放器(ExoPlayer 2.18.7 默认 UA)一致: ExoPlayerLib/版本 (Linux;Android 版本)
+        headers.put("User-Agent", "ExoPlayerLib/2.18.7 (Linux;Android "
+                + android.os.Build.VERSION.RELEASE + ")");
         if (t != null && t.headers != null && !t.headers.isEmpty()) {
             for (Map.Entry<String, String> e : t.headers.entrySet()) {
                 if (e.getKey() != null && e.getValue() != null) {
