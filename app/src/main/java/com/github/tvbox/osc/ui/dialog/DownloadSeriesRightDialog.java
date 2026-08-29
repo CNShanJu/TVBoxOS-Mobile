@@ -213,11 +213,11 @@ public class DownloadSeriesRightDialog extends AppDrawerPopupView {
                 chip.setStateIcon(st == 1 ? R.drawable.ic_download_done : R.drawable.ic_download_active,
                         st == 1 ? R.color.download_done : R.color.download_active);
             } else if (st == 3) {
-                // 下载失败:红字 + 可重新勾选下载
+                // 下载失败:红字 + 红色✗图标 + 可重新勾选下载
                 chip.setFailed(true);
                 chip.setDisabled(false);
                 chip.setSelected(item.selected);
-                chip.setStateIcon(0, 0);
+                chip.setStateIcon(R.drawable.ic_download_fail, R.color.red);
             } else {
                 chip.setFailed(false);
                 chip.setDisabled(false);
