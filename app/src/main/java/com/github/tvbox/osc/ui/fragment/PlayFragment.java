@@ -1570,9 +1570,16 @@ public class PlayFragment extends BaseLazyFragment {
     }
 
     /** 当前播放所用请求头(WebView 嗅探/解析时收集的 UA/Referer 等);
-        下载回退播放地址时必须携带, 否则防盗链源"能播不能下" */
+        下载回退播放地址时必须携带, 否则防盗链源"能播不能下"。
+        优先完整 header, 缺失时用爬虫返回的 webUserAgent(代理可能按此 UA 放行) */
     public Map<String, String> getPlayHeaders() {
-        return webHeaderMap;
+        if (webHeaderMap != null && !webHeaderMap.isEmpty()) return webHeaderMap;
+        if (webUserAgent != null && !webUserAgent.isEmpty()) {
+            java.util.HashMap<String, String> h = new java.util.HashMap<>();
+            h.put("User-Agent", webUserAgent);
+            return h;
+        }
+        return null;
     }
 
     boolean checkVideoFormat(String url) {
