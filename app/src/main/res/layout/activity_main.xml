@@ -18,7 +18,7 @@
     <FrameLayout
         android:layout_width="match_parent"
         android:layout_height="58dp"
-        android:background="@color/bg_body"
+        android:background="@drawable/bg_bottom_nav"
         android:elevation="10dp">
 
         <com.google.android.material.bottomnavigation.BottomNavigationView

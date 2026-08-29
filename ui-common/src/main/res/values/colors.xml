@@ -104,4 +104,9 @@
     <!-- 开关轨道-关闭态(浅色主题浅灰;深色主题深灰,避免深色主题下白底白点) -->
     <color name="switch_track_off">#B0B0B0</color>
 
+    <!-- 底部导航栏半透明背景(毛玻璃透感,滚动时列表内容透出):亮色 95% 页面背景色 -->
+    <color name="bg_float">#F2FAF8FF</color>
+    <!-- 底栏顶部细线:亮色 8% 黑(与 elevation 阴影互补,几乎不可见) -->
+    <color name="nav_top_line">#14000000</color>
+
 </resources>
