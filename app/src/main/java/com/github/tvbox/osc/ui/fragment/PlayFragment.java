@@ -55,8 +55,6 @@ import com.github.tvbox.osc.bean.Subtitle;
 import com.github.tvbox.osc.bean.VodInfo;
 import com.github.tvbox.osc.cache.CacheManager;
 import com.github.tvbox.osc.event.RefreshEvent;
-import com.github.tvbox.osc.player.EXOmPlayer;
-import com.github.tvbox.osc.player.IjkMediaPlayer;
 import com.github.tvbox.osc.player.MyVideoView;
 import com.github.tvbox.osc.player.TrackInfo;
 import com.github.tvbox.osc.player.TrackInfoBean;
@@ -84,8 +82,6 @@ import com.github.tvbox.osc.util.VideoParseRuler;
 import com.github.tvbox.osc.util.thunder.Jianpian;
 import com.github.tvbox.osc.util.thunder.Thunder;
 import com.github.tvbox.osc.viewmodel.SourceViewModel;
-import com.google.android.exoplayer2.Player;
-import com.google.android.exoplayer2.text.Cue;
 import com.gyf.immersionbar.BarHide;
 import com.gyf.immersionbar.ImmersionBar;
 import com.lxj.xpopup.XPopup;
@@ -115,8 +111,6 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import me.jessyan.autosize.AutoSize;
-import tv.danmaku.ijk.media.player.IMediaPlayer;
-import tv.danmaku.ijk.media.player.IjkTimedText;
 import xyz.doikki.videoplayer.player.AbstractPlayer;
 import xyz.doikki.videoplayer.player.ProgressManager;
 
@@ -581,27 +575,18 @@ public class PlayFragment extends BaseLazyFragment {
                     mController.mSubtitleView.clearSubtitleCache();
                     mController.mSubtitleView.isInternal = true;
 
-                    if (mediaPlayer instanceof IjkMediaPlayer) {
-                        com.github.tvbox.osc.player.PlayerTrackHelper.selectTrack(mediaPlayer, value);
-                        new Handler().postDelayed(new Runnable() {
-                            @Override
-                            public void run() {
-                                mediaPlayer.seekTo(progress);
-                                mediaPlayer.start();
-                            }
-                        }, 800);
-                    }
-                    if (mediaPlayer instanceof EXOmPlayer) {
-                        com.github.tvbox.osc.player.PlayerTrackHelper.selectTrack(mediaPlayer, value);
-                        new Handler().postDelayed(new Runnable() {
-                            @Override
-                            public void run() {
-                                mediaPlayer.seekTo(progress);
-                                mediaPlayer.start();
+                    // 轨道切换/进度恢复差异收敛到 PlayerTrackHelper,不感知内核
+                    com.github.tvbox.osc.player.PlayerTrackHelper.selectTrack(mediaPlayer, value);
+                    new Handler().postDelayed(new Runnable() {
+                        @Override
+                        public void run() {
+                            mediaPlayer.seekTo(progress);
+                            mediaPlayer.start();
+                            if (com.github.tvbox.osc.player.PlayerTrackHelper.requiresControllerProgressRestart(mediaPlayer)) {
                                 mController.startProgress();
                             }
-                        }, 800);
-                    }
+                        }
+                    }, 800);
                     dialog.dismiss();
                 } catch (Exception e) {
                     LOG.e("切换内置字幕出错");
@@ -887,44 +872,26 @@ public class PlayFragment extends BaseLazyFragment {
 
     private void initSubtitleView() {
         TrackInfo trackInfo = null;
-        if (mVideoView.getMediaPlayer() instanceof IjkMediaPlayer) {
-            trackInfo = ((IjkMediaPlayer) (mVideoView.getMediaPlayer())).getTrackInfo();
-            if (trackInfo != null && trackInfo.getSubtitle().size() > 0) {//如有则设置内置字幕
-                mController.mSubtitleView.hasInternal = true;
-            }
-            ((IjkMediaPlayer) (mVideoView.getMediaPlayer())).setOnTimedTextListener(new IMediaPlayer.OnTimedTextListener() {
-                @Override
-                public void onTimedText(IMediaPlayer mp, IjkTimedText text) {
-                    if (mController.mSubtitleView.isInternal) {
+        AbstractPlayer mediaPlayer = mVideoView.getMediaPlayer();
+        // 内核差异(getTrackInfo/字幕回调)收敛到 PlayerTrackHelper,不感知内核类型
+        trackInfo = com.github.tvbox.osc.player.PlayerTrackHelper.getTrackInfo(mediaPlayer);
+        if (trackInfo != null && trackInfo.getSubtitle().size() > 0) {//如有则设置内置字幕
+            mController.mSubtitleView.hasInternal = true;
+        }
+        com.github.tvbox.osc.player.PlayerTrackHelper.setOnSubtitleListener(mediaPlayer, new com.github.tvbox.osc.player.PlayerTrackHelper.SubtitleListener() {
+            @Override
+            public void onSubtitle(String text) {
+                if (mController.mSubtitleView.isInternal) {
+                    if (text == null) {
+                        mController.mSubtitleView.onSubtitleChanged(null);
+                    } else {
                         com.github.tvbox.osc.subtitle.model.Subtitle subtitle = new com.github.tvbox.osc.subtitle.model.Subtitle();
-                        subtitle.content = text.getText();
+                        subtitle.content = text;
                         mController.mSubtitleView.onSubtitleChanged(subtitle);
                     }
                 }
-            });
-        }
-
-        if (mVideoView.getMediaPlayer() instanceof EXOmPlayer) {
-            trackInfo = ((EXOmPlayer) (mVideoView.getMediaPlayer())).getTrackInfo();
-            if (trackInfo != null && trackInfo.getSubtitle().size() > 0) {
-                mController.mSubtitleView.hasInternal = true;
             }
-            ((EXOmPlayer) (mVideoView.getMediaPlayer())).setOnTimedTextListener(new Player.Listener() {
-                @Override
-                public void onCues(@NonNull List<Cue> cues) {
-                    if (cues.size() > 0) {
-                        CharSequence ss = cues.get(0).text;
-                        if (ss != null && mController.mSubtitleView.isInternal) {
-                            com.github.tvbox.osc.subtitle.model.Subtitle subtitle = new com.github.tvbox.osc.subtitle.model.Subtitle();
-                            subtitle.content = ss.toString();
-                            mController.mSubtitleView.onSubtitleChanged(subtitle);
-                        }
-                    } else{
-                        mController.mSubtitleView.onSubtitleChanged(null);
-                    }
-                }
-            });
-        }
+        });
 
         mController.mSubtitleView.bindToMediaPlayer(mVideoView.getMediaPlayer());
         mController.mSubtitleView.setPlaySubtitleCacheKey(subtitleCacheKey);
@@ -946,21 +913,13 @@ public class PlayFragment extends BaseLazyFragment {
                             if (lowerLang.contains("zh") || lowerLang.contains("ch")) {
                                 hasCh=true;
                                 if (selectedIndex != subtitleTrackInfoBean.trackId) {
-                                    if (mVideoView.getMediaPlayer() instanceof IjkMediaPlayer){
-                                        ((IjkMediaPlayer)(mVideoView.getMediaPlayer())).setTrack(subtitleTrackInfoBean.trackId);
-                                    }else if (mVideoView.getMediaPlayer() instanceof EXOmPlayer){
-                                        ((EXOmPlayer)(mVideoView.getMediaPlayer())).selectExoTrack(subtitleTrackInfoBean);
-                                    }
+                                    com.github.tvbox.osc.player.PlayerTrackHelper.selectTrack(mVideoView.getMediaPlayer(), subtitleTrackInfoBean);
                                     break;
                                 }
                             }
                         }
                         if(!hasCh){
-                            if (mVideoView.getMediaPlayer() instanceof IjkMediaPlayer){
-                                ((IjkMediaPlayer)(mVideoView.getMediaPlayer())).setTrack(subtitleTrackList.get(0).trackId);
-                            }else if (mVideoView.getMediaPlayer() instanceof EXOmPlayer){
-                                ((EXOmPlayer)(mVideoView.getMediaPlayer())).selectExoTrack(subtitleTrackList.get(0));
-                            }
+                            com.github.tvbox.osc.player.PlayerTrackHelper.selectTrack(mVideoView.getMediaPlayer(), subtitleTrackList.get(0));
                         }
                     }
                 }
