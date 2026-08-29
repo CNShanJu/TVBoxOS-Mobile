@@ -86,8 +86,8 @@ public class MyFragment extends BaseVbFragment<FragmentMyBinding> {
 
     private void showPermissionTipPopup(){
         // 统一主题化确认弹窗(替代 XPopup 默认 asConfirm)
-        new com.github.tvbox.osc.ui.dialog.ConfirmDialog(mActivity, "提示",
-                "为了播放视频、音频等,我们需要访问您设备文件的读写权限", "去授权", this::getPermission).show();
+        com.github.tvbox.osc.ui.dialog.ConfirmDialog.show(mActivity, "提示",
+                "为了播放视频、音频等,我们需要访问您设备文件的读写权限", "去授权", this::getPermission);
     }
 
     private void getPermission(){

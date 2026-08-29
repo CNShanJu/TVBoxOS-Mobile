@@ -8,6 +8,7 @@ import androidx.annotation.NonNull;
 
 import com.github.tvbox.osc.R;
 import com.github.tvbox.osc.util.Utils;
+import com.lxj.xpopup.XPopup;
 import com.lxj.xpopup.core.CenterPopupView;
 
 import org.jetbrains.annotations.NotNull;
@@ -16,8 +17,20 @@ import org.jetbrains.annotations.NotNull;
  * 主题化确认弹窗(标题 + 消息 + 取消/确定):
  * 弹窗背景按 app 主题取色(浅色白 / 深色深),圆角统一走主题圆角档 radius_dialog,
  * 与 DeleteDownloadDialog 等下载相关弹窗视觉一致(替代 XPopup 默认 asConfirm 的库内固定圆角)。
+ *
+ * <p><b>必须通过 {@link #show(Context, String, String, String, Runnable)} 弹出</b>:
+ * XPopup 的 popupInfo 只由 Builder 绑定,直接 {@code new ConfirmDialog(ctx).show()} 会抛
+ * {@code popupInfo is null}(BasePopupView.show 硬校验)——统一工厂内部走 Builder 绑定,避免各调用点漏写。</p>
  */
 public class ConfirmDialog extends AppCenterPopupView {
+
+    /** 统一弹出入口:XPopup.Builder 绑定 popupInfo 后再 show,context 须为 Activity */
+    public static void show(Context context, String title, String message,
+                            String confirmText, Runnable onConfirm) {
+        new XPopup.Builder(context)
+                .asCustom(new ConfirmDialog(context, title, message, confirmText, onConfirm))
+                .show();
+    }
 
     private final String mTitle;
     private final String mMessage;

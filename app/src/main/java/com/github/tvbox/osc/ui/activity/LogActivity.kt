@@ -237,7 +237,7 @@ class LogActivity : BaseVbActivity<ActivityLogBinding>() {
     }
 
     private fun confirmClear() {
-        com.github.tvbox.osc.ui.dialog.ConfirmDialog(this, "清空日志",
+        com.github.tvbox.osc.ui.dialog.ConfirmDialog.show(this, "清空日志",
             "确定清空${if (currentTab == 0) "业务日志" else "全部日志"}吗？", "清空", {
                 if (currentTab == 0) {
                     LogStore.get()?.clearAll()
@@ -248,7 +248,7 @@ class LogActivity : BaseVbActivity<ActivityLogBinding>() {
                     refreshContent()
                 }
                 AppBubble.toast("已清空")
-            }).show()
+            })
     }
 
     private fun export() {

@@ -101,14 +101,14 @@ class SubscriptionActivity : BaseVbActivity<ActivitySubscriptionBinding>() {
                     AppBubble.toast("不能删除当前使用的订阅")
                     return@setOnItemChildClickListener
                 }
-                com.github.tvbox.osc.ui.dialog.ConfirmDialog(this@SubscriptionActivity, "删除订阅", "确定删除订阅吗？", "删除", {
+                com.github.tvbox.osc.ui.dialog.ConfirmDialog.show(this@SubscriptionActivity, "删除订阅", "确定删除订阅吗？", "删除", {
                     val deleted = mSubscriptions.get(position)
                     AppLog.log("订阅管理", "删除订阅: " + deleted.name + "  " + deleted.url)
                     mSubscriptions.removeAt(position)
                     //删除/选择只刷新,不触发重新排序
                     mSubscriptionAdapter.notifyDataSetChanged()
                     updateEmptyState()
-                }).show()
+                })
             }
         }
 
@@ -188,7 +188,7 @@ class SubscriptionActivity : BaseVbActivity<ActivitySubscriptionBinding>() {
     }
 
     private fun showPermissionTipPopup(checked: Boolean) {
-        com.github.tvbox.osc.ui.dialog.ConfirmDialog(this@SubscriptionActivity, "提示", "这将访问您设备文件的读取权限", "去授权", {
+        com.github.tvbox.osc.ui.dialog.ConfirmDialog.show(this@SubscriptionActivity, "提示", "这将访问您设备文件的读取权限", "去授权", {
             XXPermissions.with(this@SubscriptionActivity)
                 .permission(Permission.MANAGE_EXTERNAL_STORAGE)
                 .request(object : OnPermissionCallback {
@@ -214,7 +214,7 @@ class SubscriptionActivity : BaseVbActivity<ActivitySubscriptionBinding>() {
                         }
                     }
                 })
-        }).show()
+        })
     }
 
     /**

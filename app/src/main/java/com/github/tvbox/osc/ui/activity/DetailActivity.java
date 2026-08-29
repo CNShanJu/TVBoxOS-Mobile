@@ -1248,8 +1248,8 @@ public class DetailActivity extends BaseVbActivity<ActivityDetailBinding> {
         // 网络控制:默认仅 WiFi 下载;移动网络下强提醒流量风险,确认后才继续(统一走 DownloadConfig)
         if (DownloadConfig.isWifiOnly() && DownloadConfig.isMobileNetwork()) {
             // 统一主题化确认弹窗(替代 XPopup 默认 asConfirm)
-            new ConfirmDialog(this, "流量提醒", "当前为移动网络,继续下载将消耗手机流量,是否继续?",
-                    "继续下载", () -> doStartDownloads(selected)).show();
+            ConfirmDialog.show(this, "流量提醒", "当前为移动网络,继续下载将消耗手机流量,是否继续?",
+                    "继续下载", () -> doStartDownloads(selected));
             return;
         }
         doStartDownloads(selected);

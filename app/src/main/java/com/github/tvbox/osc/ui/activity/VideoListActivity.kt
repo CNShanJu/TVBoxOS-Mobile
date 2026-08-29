@@ -84,7 +84,7 @@ class VideoListActivity : BaseVbActivity<ActivityMovieFoldersBinding>() {
         mBinding.tvDelete.setOnClickListener { view: View? ->
             FastClickCheckUtil.check(view)
             // 统一主题化确认弹窗(替代 XPopup 默认 asConfirm)
-            com.github.tvbox.osc.ui.dialog.ConfirmDialog(this, "提示", "确定删除所选视频吗？", "删除", {
+            com.github.tvbox.osc.ui.dialog.ConfirmDialog.show(this, "提示", "确定删除所选视频吗？", "删除", {
                 showLoadingDialog()
                 lifecycleScope.launch(Dispatchers.IO) {
                     val data = mLocalVideoAdapter.data
@@ -110,7 +110,7 @@ class VideoListActivity : BaseVbActivity<ActivityMovieFoldersBinding>() {
                         toggleListSelectMode(false)
                     }
                 }
-            }).show()
+            })
         }
     }
 

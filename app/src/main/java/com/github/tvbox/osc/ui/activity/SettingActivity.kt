@@ -392,9 +392,9 @@ class SettingActivity : BaseVbActivity<ActivitySettingBinding>() {
             dialog.show()
         }
         mBinding.llClearCache.setOnClickListener { view: View ->
-            com.github.tvbox.osc.ui.dialog.ConfirmDialog(this, "提示", "确定清空缓存吗？", "清空", {
+            com.github.tvbox.osc.ui.dialog.ConfirmDialog.show(this, "提示", "确定清空缓存吗？", "清空", {
                 onClickClearCache(view)
-            }).show()
+            })
         }
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
             mBinding.llTheme.visibility = View.GONE

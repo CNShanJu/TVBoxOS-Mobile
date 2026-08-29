@@ -38,7 +38,7 @@ class CollectActivity : BaseVbActivity<ActivityCollectBinding>() {
         mBinding.mGridView.setAdapter(collectAdapter)
         mBinding.titleBar.rightView.setOnClickListener {
             // 统一主题化确认弹窗(替代 XPopup 默认 asConfirm 库样式)
-            com.github.tvbox.osc.ui.dialog.ConfirmDialog(this, "提示", "确定清空全部收藏?", "清空", {
+            com.github.tvbox.osc.ui.dialog.ConfirmDialog.show(this, "提示", "确定清空全部收藏?", "清空", {
                 showLoadingDialog()
                 lifecycleScope.launch(Dispatchers.IO) {
                     RoomDataManger.deleteVodCollectAll()
@@ -50,14 +50,14 @@ class CollectActivity : BaseVbActivity<ActivityCollectBinding>() {
                         updateEmptyState()
                     }
                 }
-            }).show()
+            })
         }
         collectAdapter.onItemLongClickListener =
             BaseQuickAdapter.OnItemLongClickListener { adapter: BaseQuickAdapter<*, *>?, view: View?, position: Int ->
                 val vodInfo = collectAdapter.data[position]
                 if (vodInfo != null) {
                     val name = vodInfo.name
-                    com.github.tvbox.osc.ui.dialog.ConfirmDialog(this, "提示", "取消收藏《" + name + "》?", "取消收藏", {
+                    com.github.tvbox.osc.ui.dialog.ConfirmDialog.show(this, "提示", "取消收藏《" + name + "》?", "取消收藏", {
                         collectAdapter.remove(position)
                         RoomDataManger.deleteVodCollect(vodInfo.id)
                         com.github.tvbox.osc.log.LogStore.log(com.github.tvbox.osc.log.Category.SYSTEM, "取消收藏: " + name)
@@ -65,7 +65,7 @@ class CollectActivity : BaseVbActivity<ActivityCollectBinding>() {
                             mBinding.topTip.visibility = View.GONE
                         }
                         updateEmptyState()
-                    }).show()
+                    })
                 }
                 true
             }
