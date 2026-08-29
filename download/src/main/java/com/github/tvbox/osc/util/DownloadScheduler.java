@@ -549,7 +549,8 @@ public class DownloadScheduler {
         synchronized (dm.tasks) {
             dm.tasks.add(t);
         }
-        Log.i("TVBox-Download", "enqueue 加入任务: " + episodeName + " -> " + t.savePath + " url=" + url);
+        Log.i("TVBox-Download", "enqueue 加入任务: " + episodeName + " -> " + t.savePath + " url=" + url
+                + " headers=" + (t.headers == null ? "null" : t.headers.toString()));
         DownloadLog.LOG.info(DownloadSubType.ENQUEUE, "加入任务: " + episodeName + " -> " + t.fileName,
                 DownloadLog.extras(episodeId));
         dm.persist();
