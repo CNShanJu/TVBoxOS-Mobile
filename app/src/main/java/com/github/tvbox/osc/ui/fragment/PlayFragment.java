@@ -60,6 +60,7 @@ import com.github.tvbox.osc.player.IjkMediaPlayer;
 import com.github.tvbox.osc.player.MyVideoView;
 import com.github.tvbox.osc.player.TrackInfo;
 import com.github.tvbox.osc.player.TrackInfoBean;
+import com.github.tvbox.osc.player.api.PlayConfig;
 import com.github.tvbox.osc.player.controller.VodController;
 import com.github.tvbox.osc.server.RemoteServer;
 import com.github.tvbox.osc.ui.activity.DetailActivity;
@@ -409,7 +410,7 @@ public class PlayFragment extends BaseLazyFragment {
         if (path != null && path.length() > 0) {
             // 设置字幕(显隐跟随"字幕"开关,默认关闭)
             mController.mSubtitleView.setSubtitlePath(path);
-            mController.mSubtitleView.setVisibility(Hawk.get(HawkConfig.SUBTITLE_OPEN, false) ? View.VISIBLE : View.GONE);
+            mController.mSubtitleView.setVisibility(PlayConfig.isSubtitleOpen() ? View.VISIBLE : View.GONE);
         }
     }
 
@@ -746,7 +747,7 @@ public class PlayFragment extends BaseLazyFragment {
 
     void playUrl(String url, HashMap<String, String> headers) {
         mCurrentUrl = url;
-        if (!Hawk.get(HawkConfig.VIDEO_PURIFY, true)) {
+        if (!PlayConfig.isVideoPurify()) {
             startPlayUrl(url, headers);
             return;
         }
@@ -966,7 +967,7 @@ public class PlayFragment extends BaseLazyFragment {
             }
         }
         // 字幕默认关闭:显隐跟随设置(用户可在播放器字幕设置里打开/关闭)
-        mController.mSubtitleView.setVisibility(Hawk.get(HawkConfig.SUBTITLE_OPEN, false) ? View.VISIBLE : View.GONE);
+        mController.mSubtitleView.setVisibility(PlayConfig.isSubtitleOpen() ? View.VISIBLE : View.GONE);
     }
 
     private void initViewModel() {
@@ -1052,16 +1053,16 @@ public class PlayFragment extends BaseLazyFragment {
         }
         try {
             if (!mVodPlayerCfg.has("pl")) {
-                mVodPlayerCfg.put("pl", (sourceBean.getPlayerType() == -1) ? (int) Hawk.get(HawkConfig.PLAY_TYPE, 1) : sourceBean.getPlayerType());
+                mVodPlayerCfg.put("pl", (sourceBean.getPlayerType() == -1) ? (int) PlayConfig.getPlayType() : sourceBean.getPlayerType());
             }
             if (!mVodPlayerCfg.has("pr")) {
-                mVodPlayerCfg.put("pr", Hawk.get(HawkConfig.PLAY_RENDER, 0));
+                mVodPlayerCfg.put("pr", PlayConfig.getRenderType());
             }
             if (!mVodPlayerCfg.has("ijk")) {
-                mVodPlayerCfg.put("ijk", Hawk.get(HawkConfig.IJK_CODEC, ""));
+                mVodPlayerCfg.put("ijk", PlayConfig.getIjkCodec());
             }
             if (!mVodPlayerCfg.has("sc")) {
-                mVodPlayerCfg.put("sc", Hawk.get(HawkConfig.PLAY_SCALE, 0));
+                mVodPlayerCfg.put("sc", PlayConfig.getScaleType());
             }
             if (!mVodPlayerCfg.has("sp")) {
                 mVodPlayerCfg.put("sp", 1.0f);

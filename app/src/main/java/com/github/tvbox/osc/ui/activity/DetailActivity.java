@@ -47,6 +47,7 @@ import com.github.tvbox.osc.cache.RoomDataManger;
 import com.github.tvbox.osc.constant.IntentKey;
 import com.github.tvbox.osc.databinding.ActivityDetailBinding;
 import com.github.tvbox.osc.event.RefreshEvent;
+import com.github.tvbox.osc.player.api.PlayConfig;
 import com.github.tvbox.osc.receiver.BatteryReceiver;
 import com.github.tvbox.osc.service.PlayService;
 import com.github.tvbox.osc.ui.adapter.ParseAdapter;
@@ -435,7 +436,7 @@ public class DetailActivity extends BaseVbActivity<ActivityDetailBinding> {
         if (playFragment == null || playFragment.getPlayer() == null || !playFragment.getPlayer().isPlaying()) {
             return;
         }
-        int type = Hawk.get(HawkConfig.BACKGROUND_PLAY_TYPE, 0);
+        int type = PlayConfig.getBackgroundPlayType();
         if (type == 2) {
             pipHelper.enterPip(); // 自动进入小窗
         } else if (type == 1) {
@@ -451,7 +452,7 @@ public class DetailActivity extends BaseVbActivity<ActivityDetailBinding> {
                 public void onReceive(Context context, Intent intent) {
                     String action = intent.getAction();
                     if (action != null && action.equals(Intent.ACTION_CLOSE_SYSTEM_DIALOGS)) {
-                        openBackgroundPlay = Hawk.get(HawkConfig.BACKGROUND_PLAY_TYPE, 0) == 1 && playFragment.getPlayer() != null && playFragment.getPlayer().isPlaying();
+                        openBackgroundPlay = PlayConfig.getBackgroundPlayType() == 1 && playFragment.getPlayer() != null && playFragment.getPlayer().isPlaying();
                     }
                 }
             };

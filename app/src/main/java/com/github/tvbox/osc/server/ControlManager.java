@@ -86,6 +86,11 @@ public class ControlManager {
             try {
                 mServer.start();
                 IjkMediaPlayer.setDotPort(Hawk.get(HawkConfig.DOH_URL, 0) > 0, RemoteServer.serverPort);
+                // server 就绪后注入局域网地址(:spider 模块 ApiConfig 用,替代直接依赖本类)
+                try {
+                    com.github.tvbox.osc.api.ApiConfig.setLanBase(mServer.getLoadAddress());
+                } catch (Throwable ignored) {
+                }
                 break;
             } catch (IOException ex) {
                 RemoteServer.serverPort++;

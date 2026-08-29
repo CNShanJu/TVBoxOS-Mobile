@@ -13,6 +13,7 @@ import com.github.tvbox.osc.player.thirdparty.MXPlayer;
 import com.github.tvbox.osc.player.thirdparty.ReexPlayer;
 import com.github.tvbox.osc.player.thirdparty.RemoteTVBox;
 import com.github.tvbox.osc.player.thirdparty.VlcPlayer;
+import com.github.tvbox.osc.player.api.PlayConfig;
 import com.orhanobut.hawk.Hawk;
 
 import org.json.JSONException;
@@ -33,10 +34,10 @@ import xyz.doikki.videoplayer.render.TextureRenderViewFactory;
 public class PlayerHelper {
     public static void updateCfg(VideoView videoView, JSONObject playerCfg) {
         if (videoView == null) return; // 防御:播放器视图未初始化时跳过
-        int playerType = Hawk.get(HawkConfig.PLAY_TYPE, 0);
-        int renderType = Hawk.get(HawkConfig.PLAY_RENDER, 0);
-        String ijkCode = Hawk.get(HawkConfig.IJK_CODEC, "软解码");
-        int scale = Hawk.get(HawkConfig.PLAY_SCALE, 0);
+        int playerType = PlayConfig.getPlayType();
+        int renderType = PlayConfig.getRenderType();
+        String ijkCode = PlayConfig.getIjkCodec();
+        int scale = PlayConfig.getScaleType();
         try {
             playerType = playerCfg.getInt("pl");
             renderType = playerCfg.getInt("pr");
@@ -95,7 +96,7 @@ public class PlayerHelper {
 
     public static void updateCfg(VideoView videoView) {
         if (videoView == null) return; // 防御:播放器视图未初始化时跳过
-        int playType = Hawk.get(HawkConfig.PLAY_TYPE, 0);
+        int playType = PlayConfig.getPlayType();
         PlayerFactory playerFactory;
         if (playType == 1) {
             playerFactory = new PlayerFactory<IjkMediaPlayer>() {
@@ -128,7 +129,7 @@ public class PlayerHelper {
         } else {
             playerFactory = AndroidMediaPlayerFactory.create();
         }
-        int renderType = Hawk.get(HawkConfig.PLAY_RENDER, 0);
+        int renderType = PlayConfig.getRenderType();
         RenderViewFactory renderViewFactory = null;
         switch (renderType) {
             case 0:

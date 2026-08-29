@@ -73,7 +73,11 @@ public class App extends MultiDexApplication {
         ControlManager.init(this);
         // ApiConfig(:spider 模块) context + 局域网地址注入(替代直接依赖)
         com.github.tvbox.osc.api.ApiConfig.setAppContext(this);
-        com.github.tvbox.osc.api.ApiConfig.setLanBase(ControlManager.get().getAddress(true));
+        try {
+            // server 未启动时 getAddress 会 NPE,此处兜底跳过(lanBase 由 startServer 就绪后注入)
+            com.github.tvbox.osc.api.ApiConfig.setLanBase(ControlManager.get().getAddress(true));
+        } catch (Throwable ignored) {
+        }
         //初始化数据库
         AppDataManager.init();
         LoadSir.beginBuilder()

@@ -29,6 +29,7 @@ import com.github.tvbox.osc.api.ApiConfig;
 import com.github.tvbox.osc.bean.IJKCode;
 import com.github.tvbox.osc.bean.ParseBean;
 import com.github.tvbox.osc.constant.CacheConst;
+import com.github.tvbox.osc.player.api.PlayConfig;
 import com.github.tvbox.osc.subtitle.widget.SimpleSubtitleView;
 import com.github.tvbox.osc.ui.adapter.ParseAdapter;
 import com.github.tvbox.osc.ui.adapter.SelectDialogAdapter;
@@ -883,7 +884,7 @@ public class LocalVideoController extends BaseController implements PlaybackSett
     @Override
     public void increaseTime(String type) {
         try {
-            int step = Hawk.get(HawkConfig.PLAY_TIME_STEP, 1);
+            int step = PlayConfig.getTimeStep();
             int time = mPlayerConfig.getInt(type);
             time += step;
             if (time > 30 * 10) time = 0;
@@ -898,7 +899,7 @@ public class LocalVideoController extends BaseController implements PlaybackSett
     @Override
     public void decreaseTime(String type) {
         try {
-            int step = Hawk.get(HawkConfig.PLAY_TIME_STEP, 1);
+            int step = PlayConfig.getTimeStep();
             int time = mPlayerConfig.getInt(type);
             time -= step;
             if (time < 0) time = (30 * 10);
@@ -1148,7 +1149,7 @@ public class LocalVideoController extends BaseController implements PlaybackSett
     public void onLongPress(MotionEvent e) {
         if (videoPlayState != VideoView.STATE_PAUSED) {
             fromLongPress = true;
-            float speed = Hawk.get(HawkConfig.VIDEO_SPEED, 2.0f);
+            float speed = PlayConfig.getVideoSpeed();
             mControlWrapper.setSpeed(speed);
             mLlSpeed.setVisibility(VISIBLE);
             mTvSpeedTip.setText(speed + "x");

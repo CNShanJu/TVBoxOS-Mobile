@@ -25,6 +25,7 @@ import com.github.tvbox.osc.api.ApiConfig;
 import com.github.tvbox.osc.bean.IJKCode;
 import com.github.tvbox.osc.bean.ParseBean;
 import com.github.tvbox.osc.event.RefreshEvent;
+import com.github.tvbox.osc.player.api.PlayConfig;
 import com.github.tvbox.osc.subtitle.widget.SimpleSubtitleView;
 import com.github.tvbox.osc.ui.adapter.ParseAdapter;
 import com.github.tvbox.osc.ui.adapter.SelectDialogAdapter;
@@ -1124,7 +1125,7 @@ public class VodController extends BaseController implements PlaybackSettingsCon
             fromLongPress = true;
             try {
                 speed_old = (float) mPlayerConfig.getDouble("sp");
-                float speed = Hawk.get(HawkConfig.VIDEO_SPEED, 2.0f);
+                float speed = PlayConfig.getVideoSpeed();
                 mPlayerConfig.put("sp", speed);
                 updatePlayerCfgView();
                 listener.updatePlayerCfg();
@@ -1191,7 +1192,7 @@ public class VodController extends BaseController implements PlaybackSettingsCon
 
     public void openSubtitle(boolean open) {
         // 持久化字幕开关,供字幕设置弹窗显示当前状态
-        Hawk.put(HawkConfig.SUBTITLE_OPEN, open);
+        PlayConfig.setSubtitleOpen(open);
         if (open) {
             mSubtitleView.setVisibility(VISIBLE);
             AppBubble.toast("字幕已开启");
@@ -1204,7 +1205,7 @@ public class VodController extends BaseController implements PlaybackSettingsCon
 
     public void increaseTime(String type) {
         try {
-            int step = Hawk.get(HawkConfig.PLAY_TIME_STEP, 1);
+            int step = PlayConfig.getTimeStep();
             int time = mPlayerConfig.getInt(type);
             time += step;
             if (time > 30 * 10)
@@ -1219,7 +1220,7 @@ public class VodController extends BaseController implements PlaybackSettingsCon
 
     public void decreaseTime(String type) {
         try {
-            int step = Hawk.get(HawkConfig.PLAY_TIME_STEP, 1);
+            int step = PlayConfig.getTimeStep();
             int time = mPlayerConfig.getInt(type);
             time -= step;
             if (time < 0)

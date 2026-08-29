@@ -6,6 +6,7 @@ import android.os.Bundle
 import android.view.View
 import androidx.recyclerview.widget.DiffUtil
 import com.github.tvbox.osc.log.LogConfig
+import com.github.tvbox.osc.player.api.PlayConfig
 import com.github.tvbox.osc.util.AppBubble
 import com.github.tvbox.osc.R
 import com.github.tvbox.osc.api.ApiConfig
@@ -50,7 +51,7 @@ class SettingActivity : BaseVbActivity<ActivitySettingBinding>() {
     override fun init() {
 
         mBinding.titleBar.leftView.setOnClickListener { onBackPressed() }
-        mBinding.tvMediaCodec.text = Hawk.get(HawkConfig.IJK_CODEC, "")
+        mBinding.tvMediaCodec.text = PlayConfig.getIjkCodec()
 
         // 下载设置:仅WiFi / 并发数 / 保存位置(与下载页标题栏齿轮共用 DownloadConfig,单一事实源)
         initDownloadSettings()
@@ -61,10 +62,10 @@ class SettingActivity : BaseVbActivity<ActivitySettingBinding>() {
         mBinding.tvHomeRec.text = getHomeRecName(Hawk.get(HawkConfig.HOME_REC, 0))
         mBinding.tvHistoryNum.text =
             HistoryHelper.getHistoryNumName(Hawk.get(HawkConfig.HISTORY_NUM, 0))
-        mBinding.tvScaleType.text = PlayerHelper.getScaleName(Hawk.get(HawkConfig.PLAY_SCALE, 0))
-        mBinding.tvPlay.text = PlayerHelper.getPlayerName(Hawk.get(HawkConfig.PLAY_TYPE, 0))
+        mBinding.tvScaleType.text = PlayerHelper.getScaleName(PlayConfig.getScaleType())
+        mBinding.tvPlay.text = PlayerHelper.getPlayerName(PlayConfig.getPlayType())
         mBinding.tvRenderType.text =
-            PlayerHelper.getRenderName(Hawk.get(HawkConfig.PLAY_RENDER, 0))
+            PlayerHelper.getRenderName(PlayConfig.getRenderType())
 
         mBinding.switchPrivateBrowsing.setChecked(Hawk.get(HawkConfig.PRIVATE_BROWSING, false))
         mBinding.llPrivateBrowsing.setOnClickListener { view: View? ->
@@ -80,7 +81,7 @@ class SettingActivity : BaseVbActivity<ActivitySettingBinding>() {
                 .show()
         }
 
-        val defaultBgPlayTypePos = Hawk.get(HawkConfig.BACKGROUND_PLAY_TYPE, 0)
+        val defaultBgPlayTypePos = PlayConfig.getBackgroundPlayType()
         val bgPlayTypes = ArrayList<String>()
         bgPlayTypes.add("关闭")
         bgPlayTypes.add("开启")
@@ -93,7 +94,7 @@ class SettingActivity : BaseVbActivity<ActivitySettingBinding>() {
             dialog.setAdapter(object : SelectDialogInterface<String?> {
                 override fun click(value: String?, pos: Int) {
                     mBinding.tvBackgroundPlayType.text = value
-                    Hawk.put(HawkConfig.BACKGROUND_PLAY_TYPE, pos)
+                    PlayConfig.setBackgroundPlayType(pos)
                     // 后台播放=开启:Android 13+ 需通知权限,通知栏才有播放控制/关闭按钮
                     if (pos == 1 && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
                         && !XXPermissions.isGranted(this@SettingActivity, Permission.NOTIFICATION_SERVICE)
@@ -119,7 +120,7 @@ class SettingActivity : BaseVbActivity<ActivitySettingBinding>() {
             dialog.show()
         }
 
-        mBinding.tvSpeed.text = Hawk.get(HawkConfig.VIDEO_SPEED, 2.0f).toString()
+        mBinding.tvSpeed.text = PlayConfig.getVideoSpeed().toString()
         mBinding.llPressSpeed.setOnClickListener {
             val types = ArrayList<String>()
             types.add("2.0")
@@ -129,12 +130,12 @@ class SettingActivity : BaseVbActivity<ActivitySettingBinding>() {
             types.add("6.0")
             types.add("8.0")
             types.add("10.0")
-            val defaultPos = types.indexOf(Hawk.get(HawkConfig.VIDEO_SPEED, 2.0f).toString())
+            val defaultPos = types.indexOf(PlayConfig.getVideoSpeed().toString())
             val dialog = SelectDialog<String>(this@SettingActivity)
             dialog.setTip("请选择")
             dialog.setAdapter(object : SelectDialogInterface<String?> {
                 override fun click(value: String?, pos: Int) {
-                    Hawk.put(HawkConfig.VIDEO_SPEED, value?.toFloat())
+                    PlayConfig.setVideoSpeed(value?.toFloat() ?: 2.0f)
                     mBinding.tvSpeed.text = value
                 }
 
@@ -201,7 +202,7 @@ class SettingActivity : BaseVbActivity<ActivitySettingBinding>() {
             if (ijkCodes == null || ijkCodes.size == 0) return@setOnClickListener
             FastClickCheckUtil.check(v)
             var defaultPos = 0
-            val ijkSel = Hawk.get(HawkConfig.IJK_CODEC, "")
+            val ijkSel = PlayConfig.getIjkCodec()
             for (j in ijkCodes.indices) {
                 if (ijkSel == ijkCodes[j].name) {
                     defaultPos = j
@@ -233,7 +234,7 @@ class SettingActivity : BaseVbActivity<ActivitySettingBinding>() {
 
         mBinding.llScale.setOnClickListener { v: View? ->
             FastClickCheckUtil.check(v)
-            val defaultPos = Hawk.get(HawkConfig.PLAY_SCALE, 0)
+            val defaultPos = PlayConfig.getScaleType()
             val players = ArrayList<Int>()
             players.add(0)
             players.add(1)
@@ -245,7 +246,7 @@ class SettingActivity : BaseVbActivity<ActivitySettingBinding>() {
             dialog.setTip("请选择画面缩放")
             dialog.setAdapter(object : SelectDialogInterface<Int?> {
                 override fun click(value: Int?, pos: Int) {
-                    Hawk.put(HawkConfig.PLAY_SCALE, value)
+                    PlayConfig.setScaleType(value ?: 0)
                     mBinding.tvScaleType.text = value?.let { PlayerHelper.getScaleName(it) }
                 }
 
@@ -266,7 +267,7 @@ class SettingActivity : BaseVbActivity<ActivitySettingBinding>() {
 
         mBinding.llPlay.setOnClickListener { v: View? ->
             FastClickCheckUtil.check(v)
-            val playerType = Hawk.get(HawkConfig.PLAY_TYPE, 0)
+            val playerType = PlayConfig.getPlayType()
             var defaultPos = 0
             val players = PlayerHelper.getExistPlayerTypes()
             val renders = ArrayList<Int>()
@@ -281,7 +282,7 @@ class SettingActivity : BaseVbActivity<ActivitySettingBinding>() {
             dialog.setAdapter(object : SelectDialogInterface<Int?> {
                 override fun click(value: Int?, pos: Int) {
                     val thisPlayerType = players[pos]
-                    Hawk.put(HawkConfig.PLAY_TYPE, thisPlayerType)
+                    PlayConfig.setPlayType(thisPlayerType)
                     mBinding.tvPlay.text = PlayerHelper.getPlayerName(thisPlayerType)
                     PlayerHelper.init()
                 }
@@ -303,7 +304,7 @@ class SettingActivity : BaseVbActivity<ActivitySettingBinding>() {
 
         mBinding.llRender.setOnClickListener { v: View? ->
             FastClickCheckUtil.check(v)
-            val defaultPos = Hawk.get(HawkConfig.PLAY_RENDER, 0)
+            val defaultPos = PlayConfig.getRenderType()
             val renders = ArrayList<Int>()
             renders.add(0)
             renders.add(1)
@@ -311,7 +312,7 @@ class SettingActivity : BaseVbActivity<ActivitySettingBinding>() {
             dialog.setTip("请选择默认渲染方式")
             dialog.setAdapter(object : SelectDialogInterface<Int?> {
                 override fun click(value: Int?, pos: Int) {
-                    Hawk.put(HawkConfig.PLAY_RENDER, value)
+                    PlayConfig.setRenderType(value ?: 0)
                     mBinding.tvRenderType.text = PlayerHelper.getRenderName(value?:0)
                     PlayerHelper.init()
                 }
@@ -437,20 +438,20 @@ class SettingActivity : BaseVbActivity<ActivitySettingBinding>() {
             dialog.show()
         })
 
-        mBinding.switchVideoPurify.setChecked(Hawk.get(HawkConfig.VIDEO_PURIFY, true))
+        mBinding.switchVideoPurify.setChecked(PlayConfig.isVideoPurify())
         // toggle purify video -------------------------------------
         mBinding.llVideoPurify.setOnClickListener { v: View? ->
             FastClickCheckUtil.check(v)
-            val newConfig = !Hawk.get(HawkConfig.VIDEO_PURIFY, true)
+            val newConfig = !PlayConfig.isVideoPurify()
             mBinding.switchVideoPurify.setChecked(newConfig)
-            Hawk.put(HawkConfig.VIDEO_PURIFY, newConfig)
+            PlayConfig.setVideoPurify(newConfig)
         }
-        mBinding.switchIjkCachePlay.setChecked(Hawk.get(HawkConfig.IJK_CACHE_PLAY, false))
+        mBinding.switchIjkCachePlay.setChecked(PlayConfig.isIjkCachePlay())
         mBinding.llIjkCachePlay.setOnClickListener { v: View? ->
             FastClickCheckUtil.check(v)
-            val newConfig = !Hawk.get(HawkConfig.IJK_CACHE_PLAY, false)
+            val newConfig = !PlayConfig.isIjkCachePlay()
             mBinding.switchIjkCachePlay.setChecked(newConfig)
-            Hawk.put(HawkConfig.IJK_CACHE_PLAY, newConfig)
+            PlayConfig.setIjkCachePlay(newConfig)
         }
         // 运行日志开关(默认关闭,排查问题时开启):走 LogConfig 配置门面(查询+发通知+订阅) ----
         mBinding.switchSubscriptionLog.setChecked(LogConfig.isEnabled())

@@ -15,6 +15,7 @@ import androidx.annotation.NonNull;
 
 import com.blankj.utilcode.util.ConvertUtils;
 import com.github.tvbox.osc.R;
+import com.github.tvbox.osc.player.api.PlayConfig;
 import com.github.tvbox.osc.util.FastClickCheckUtil;
 import com.github.tvbox.osc.util.HawkConfig;
 import com.github.tvbox.osc.util.SubtitleHelper;
@@ -214,7 +215,7 @@ public class SubtitleDialog extends BaseDialog {
         });
 
         // 清楚显示当前字幕开/关状态(默认关闭)
-        updateSubtitleState(Hawk.get(HawkConfig.SUBTITLE_OPEN, false));
+        updateSubtitleState(PlayConfig.isSubtitleOpen());
     }
 
     /** 高亮当前字幕状态:开启->"✓ 打开字幕",关闭->"关闭字幕"(无勾);选项区仅开启时展示 */

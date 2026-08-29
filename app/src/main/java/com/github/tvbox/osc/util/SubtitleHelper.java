@@ -2,6 +2,8 @@ package com.github.tvbox.osc.util;
 
 import android.app.Activity;
 
+import com.github.tvbox.osc.player.api.PlayConfig;
+
 import com.orhanobut.hawk.Hawk;
 
 public class SubtitleHelper {
@@ -21,21 +23,21 @@ public class SubtitleHelper {
 
     public static int getTextSize(Activity activity) {
         int autoSize = getSubtitleTextAutoSize(activity);
-        int subtitleConfigSize = Hawk.get(HawkConfig.SUBTITLE_TEXT_SIZE, autoSize);
+        int subtitleConfigSize = PlayConfig.getSubtitleTextSize();
+        if (subtitleConfigSize <= 0) subtitleConfigSize = autoSize; // 未设置(-1)回退自动
         return subtitleConfigSize;
     }
 
     public static void setTextSize(int size) {
-        Hawk.put(HawkConfig.SUBTITLE_TEXT_SIZE, size);
+        PlayConfig.setSubtitleTextSize(size);
     }
 
     public static int getTimeDelay() {
-        int subtitleConfigTimeDelay = Hawk.get(HawkConfig.SUBTITLE_TIME_DELAY, 0);
-        return subtitleConfigTimeDelay;
+        return PlayConfig.getSubtitleTimeDelay();
     }
 
     public static void setTimeDelay(int delay) {
-        Hawk.put(HawkConfig.SUBTITLE_TIME_DELAY, delay);
+        PlayConfig.setSubtitleTimeDelay(delay);
     }
 
 }

@@ -21,6 +21,7 @@ import com.github.tvbox.osc.constant.CacheConst;
 import com.github.tvbox.osc.databinding.ActivityLocalPlayBinding;
 import com.github.tvbox.osc.event.RefreshEvent;
 import com.github.tvbox.osc.player.MyVideoView;
+import com.github.tvbox.osc.player.api.PlayConfig;
 import com.github.tvbox.osc.player.controller.LocalVideoController;
 import com.github.tvbox.osc.receiver.BatteryReceiver;
 import com.github.tvbox.osc.ui.dialog.AllLocalSeriesDialog;
@@ -306,16 +307,16 @@ public class LocalPlayActivity extends BaseVbActivity<ActivityLocalPlayBinding> 
         mVodPlayerCfg = new JSONObject();
         try {
             if (!mVodPlayerCfg.has("pl")) {
-                mVodPlayerCfg.put("pl", Hawk.get(HawkConfig.PLAY_TYPE, 1));
+                mVodPlayerCfg.put("pl", PlayConfig.getPlayType());
             }
             if (!mVodPlayerCfg.has("pr")) {
-                mVodPlayerCfg.put("pr", Hawk.get(HawkConfig.PLAY_RENDER, 0));
+                mVodPlayerCfg.put("pr", PlayConfig.getRenderType());
             }
             if (!mVodPlayerCfg.has("ijk")) {
-                mVodPlayerCfg.put("ijk", Hawk.get(HawkConfig.IJK_CODEC, "硬解码"));
+                mVodPlayerCfg.put("ijk", PlayConfig.getIjkCodec());
             }
             if (!mVodPlayerCfg.has("sc")) {
-                mVodPlayerCfg.put("sc", Hawk.get(HawkConfig.PLAY_SCALE, 0));
+                mVodPlayerCfg.put("sc", PlayConfig.getScaleType());
             }
             if (!mVodPlayerCfg.has("sp")) {
                 mVodPlayerCfg.put("sp", 1.0f);
