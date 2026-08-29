@@ -14,31 +14,41 @@ $errors = 0
 $layoutRe    = '^(activity_|fragment_|item_|dialog_|view_|include_)'
 $drawableRe  = '^(ic_|bg_|shape_|selector_|img_)'
 
-$layoutDir   = Join-Path $root 'app\src\main\res\layout'
-$drawableDir = Join-Path $root 'app\src\main\res\drawable'
+# 校验范围: app(页面级) + ui-common(公共资源, 3.7 P2 后独立成模块)
+$layoutDirs   = @(
+    (Join-Path $root 'app\src\main\res\layout')
+)
+$drawableDirs = @(
+    (Join-Path $root 'app\src\main\res\drawable'),
+    (Join-Path $root 'ui-common\src\main\res\drawable')
+)
 
 Write-Host '== 资源命名规范校验 =='
 
-if (Test-Path $layoutDir) {
-    Get-ChildItem $layoutDir -File -Filter '*.xml' | ForEach-Object {
-        if ($_.Name -notmatch $layoutRe) {
-            Write-Host ("[layout] 违规: " + $_.Name)
-            $errors++
+foreach ($layoutDir in $layoutDirs) {
+    if (Test-Path $layoutDir) {
+        Get-ChildItem $layoutDir -File -Filter '*.xml' | ForEach-Object {
+            if ($_.Name -notmatch $layoutRe) {
+                Write-Host ("[layout] 违规: " + $_.Name)
+                $errors++
+            }
         }
+    } else {
+        Write-Host "[layout] 目录不存在: $layoutDir"
     }
-} else {
-    Write-Host "[layout] 目录不存在: $layoutDir"
 }
 
-if (Test-Path $drawableDir) {
-    Get-ChildItem $drawableDir -File | ForEach-Object {
-        if ($_.Name -notmatch $drawableRe) {
-            Write-Host ("[drawable] 违规: " + $_.Name)
-            $errors++
+foreach ($drawableDir in $drawableDirs) {
+    if (Test-Path $drawableDir) {
+        Get-ChildItem $drawableDir -File | ForEach-Object {
+            if ($_.Name -notmatch $drawableRe) {
+                Write-Host ("[drawable] 违规: " + $_.Name)
+                $errors++
+            }
         }
+    } else {
+        Write-Host "[drawable] 目录不存在: $drawableDir"
     }
-} else {
-    Write-Host "[drawable] 目录不存在: $drawableDir"
 }
 
 if ($errors -eq 0) {
