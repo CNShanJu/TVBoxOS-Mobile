@@ -897,8 +897,9 @@ File getSaveDir();  boolean hasStoragePermission();  void requestStoragePermissi
 | 3.6 配置门面 SystemConfig | ✅ 已落地 | common 内自持 DNS/主题/动画/首页/历史/直播源/无痕 7 项；设置页系统区 + 系统键消费方 9 文件收敛；设置页 44 处 Hawk 直连清零（四门面 下载/日志/播放/系统） |
 | 3.7 P2 :ui-common | ✅ 已落地 | 公共 UI 资源独立成模块：主题生成任务 + styles/colors/attrs/dimens + values-night + 通用 drawable 99 个 + anim 4 个；app 仅留页面级资源；主题 JSON 统一在 ui-common/assets/theme；assembleDebug 通过（行为零变化） |
 | P1 资源命名规范 | ✅ 脚本 + 两批治理 | check-res-naming.ps1 校验（含 :ui-common）；icon_*→ic_*、layout 归位；剩余第三方库风格改名 ⏳ 收益递减 |
-| P2 :ui-common | ⏳ 待排期 | 公共资源迁移（依赖 P1 完成度） |
-| 可选增强 | ⏳ 未做 | 限速 setSpeedLimit / DownloadNotifier / 前台服务（依赖任务对象抽象层） |
+| P2 :ui-common | ✅ 已落地 | 公共 UI 资源独立成模块（主题生成任务/styles/colors/dimens/通用 drawable/anim），app 仅留页面级资源 |
+| 可选增强 | ✅ 已落地 | 限速 setSpeedLimit（5.4）/ DownloadNotifier 完成通知（5.3）/ 前台服务保活（下载中防杀 + 通知栏状态，API 34 dataSync 类型） |
+| 分片级并发下载 | ⏳ 未来扩展 | 8.2 扩展点：分片队列 + 小线程池；依赖 activeResponses 任务级连接表改多连接管理，改动非局部，留待真机验证后再做 |
 
 ---
 
