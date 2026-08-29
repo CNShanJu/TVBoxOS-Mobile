@@ -55,15 +55,7 @@ public class HistoryAdapter extends BaseQuickAdapter<VodInfo, BaseViewHolder> {
         helper.setText(R.id.tvName, item.name);
         // helper.setText(R.id.tvActor, item.actor);
         ImageView ivThumb = helper.getView(R.id.ivThumb);
-        //由于部分电视机使用glide报错
-        if (!TextUtils.isEmpty(item.pic)) {
-            Picasso.get()
-                    .load(DefaultConfig.checkReplaceProxy(item.pic))
-                    .placeholder(R.drawable.iv_load_fail)
-                    .error(R.drawable.iv_load_fail)
-                    .into(ivThumb);
-        } else {
-            ivThumb.setImageResource(R.drawable.iv_load_fail);
-        }
+        // 统一加载入口:占位→实图淡入(消除 3:4 卡片 centerCrop 占位方图的视觉跳变)
+        com.github.tvbox.osc.util.PicassoLoad.into(ivThumb, item.pic);
     }
 }
