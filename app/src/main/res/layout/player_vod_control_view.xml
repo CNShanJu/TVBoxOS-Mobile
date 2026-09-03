@@ -640,15 +640,16 @@
         android:layout_height="wrap_content"
         android:layout_gravity="center|top"
         android:layout_marginTop="50dp"
-        android:gravity="center_vertical"
+        android:orientation="vertical"
+        android:gravity="center_horizontal"
         android:visibility="gone"
         tools:visibility="visible">
 
-        <!-- 长按倍速: 快进动画(明显尺寸) -->
+        <!-- 长按倍速: 快进动画(120x60 再放大1.5倍) -->
         <com.airbnb.lottie.LottieAnimationView
             android:id="@+id/lt_speed"
-            android:layout_width="120dp"
-            android:layout_height="60dp"
+            android:layout_width="180dp"
+            android:layout_height="90dp"
             android:scaleType="centerInside"
             app:lottie_autoPlay="true"
             app:lottie_fileName="anim/forward_speed.json"
@@ -659,7 +660,10 @@
             android:id="@+id/tv_speed"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/dp_4"
+            android:gravity="center"
             android:textColor="@color/white"
+            android:textSize="15sp"
             android:text="2.0"/>
     </LinearLayout>
 </FrameLayout>
