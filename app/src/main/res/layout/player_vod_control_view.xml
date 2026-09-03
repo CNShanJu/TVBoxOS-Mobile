@@ -235,8 +235,11 @@
                 app:tv_verticalSpacingWithMargins="@dimen/dp_5" />
         </LinearLayout>
 
-        <!-- 底部控制栏: 横/竖屏两套变体(横屏原单行样式, 竖屏进度/时间提行为上行) -->
-        <include layout="@layout/player_vod_bottom_bar" />
+        <!-- 底部控制栏容器: 由控制器按当前方向动态注入(横屏同栏 / 竖屏进度提行) -->
+        <FrameLayout
+            android:id="@+id/bottom_bar_host"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content" />
 
             <HorizontalScrollView
                 android:id="@+id/container_playing_setting"
