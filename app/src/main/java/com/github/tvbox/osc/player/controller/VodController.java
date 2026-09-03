@@ -733,10 +733,20 @@ public class VodController extends BaseController implements PlaybackSettingsCon
         mBottomBarLayoutId = layoutId;
     }
 
-    /** 屏幕方向变化(旋转/进出全屏)后调用, 强制按当前方向重建底部控制栏 */
+    /** 屏幕方向变化(旋转/进出全屏)后调用, 强制按当前方向重建底部控制栏并重绑控件 */
     public void refreshBottomBarLayout() {
         mBottomBarLayoutId = -1;
         ensureBottomBar();
+        // 重建后旧引用已失效, 需重新绑定进度条/按钮等(否则上一集/下一集/选集/下载等不可见)
+        mCurrentTime = findViewById(R.id.curr_time);
+        mTotalTime = findViewById(R.id.total_time);
+        mSeekBar = findViewById(R.id.seekBar);
+        mNextBtn = findViewById(R.id.play_next);
+        mPreBtn = findViewById(R.id.play_pre);
+        mIvPlayStatus = findViewById(R.id.play_status);
+        mIvFullscreen = findViewById(R.id.iv_fullscreen);
+        mChooseSeries = findViewById(R.id.choose_series);
+        mChooseDownload = findViewById(R.id.choose_download);
     }
 
     @Override

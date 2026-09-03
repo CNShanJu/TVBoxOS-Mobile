@@ -748,10 +748,17 @@ public class LocalVideoController extends BaseController implements PlaybackSett
         mBottomBarLayoutId = layoutId;
     }
 
-    /** 屏幕方向变化(旋转/进出全屏)后调用, 强制按当前方向重建底部控制栏 */
+    /** 屏幕方向变化后调用, 重建底部控制栏并重绑控件 */
     public void refreshBottomBarLayout() {
         mBottomBarLayoutId = -1;
         ensureBottomBar();
+        // 重建后旧引用已失效, 重新绑定进度/时间/上一集/下一集/播放按钮
+        mCurrentTime = findViewById(R.id.curr_time);
+        mTotalTime = findViewById(R.id.total_time);
+        mSeekBar = findViewById(R.id.seekBar);
+        mNextBtn = findViewById(R.id.play_next);
+        mPreBtn = findViewById(R.id.play_pre);
+        mIvPlayStatus = findViewById(R.id.play_status);
     }
 
     private JSONObject mPlayerConfig = null;
