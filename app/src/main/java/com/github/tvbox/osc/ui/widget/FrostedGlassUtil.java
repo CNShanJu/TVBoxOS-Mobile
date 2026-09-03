@@ -5,61 +5,80 @@ import android.content.Context;
 import android.util.Log;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.FrameLayout;
 
 import com.github.tvbox.osc.util.StackBlurBlur;
 
 import eightbitlab.com.blurview.BlurView;
 
 /**
- * 弹层/抽屉毛玻璃工具：给布局里打了 tag="glass_blur" 的 BlurView 挂到窗口上，
- * 实时模糊其后方（弹层覆盖的区域）内容，上方再由半透明主题色 bg_popup 叠色成毛玻璃质感。
+ * 弹层/抽屉毛玻璃工具(外层方案, 不修改弹层自身布局):
+ * 在弹层(右侧抽屉/底部弹窗等 viewMode 弹层)显示时, 往其所在 Activity 的内容根上、
+ * 弹层容器正下方插一层全屏 BlurView 模糊底层 UI; 弹层自身的半透明主题色 bg_popup
+ * (透明度由主题文件 bg_popup_alpha 控制)叠在模糊之上, 即形成毛玻璃。
  * <p>
- * 用法：在弹层根布局里放
- * {@code <eightbitlab.com.blurview.BlurView ... android:tag="glass_blur"/>}
- * 和一个 {@code <View android:background="@color/bg_popup"/>}（半透明由 bg_popup_alpha 控制），
- * 弹层基类 onCreate 时调用 {@link #attach(View, Context)} 即可，无该 tag 时静默跳过。
+ * 关闭弹层(容器被移除)时自动移除模糊层, 不影响页面其它内容, 也不改变弹层内部布局与内容。
+ * 无 Activity 上下文/非 viewMode 弹层时静默跳过(那些弹层保持纯半透明)。
  */
 public final class FrostedGlassUtil {
 
-    public static final String TAG = "glass_blur";
-    /** 默认模糊半径(px 缩放前, BlurView 内部按 view 尺寸处理) */
-    private static final float BLUR_RADIUS = 24f;
+    private static final String BLUR_TAG = "popup_glass_blur";
+    /** 模糊半径(参考悬浮钮/底栏), 觉得不够明显可加大 */
+    private static final float BLUR_RADIUS = 20f;
 
     private FrostedGlassUtil() {
     }
 
     /**
-     * 为弹层附加毛玻璃(幂等、失败静默)。要求 context 是 Activity(弹层挂在 activity 窗口内)。
+     * 为弹层附加外层毛玻璃(幂等、失败静默)。要求 context 是 Activity。
      */
     public static void attach(View popupRoot, Context context) {
         try {
             if (popupRoot == null || !(context instanceof Activity)) return;
-            View child = findTagged(popupRoot, TAG);
-            if (!(child instanceof BlurView)) return;
-            final BlurView blur = (BlurView) child;
             final Activity activity = (Activity) context;
-            ViewGroup decorContent = activity.getWindow().getDecorView()
-                    .findViewById(android.R.id.content);
-            if (decorContent == null) return;
-            blur.setupWith(decorContent)
-                    .setFrameClearDrawable(activity.getWindow().getDecorView().getBackground())
-                    .setBlurAlgorithm(new StackBlurBlur())
-                    .setBlurRadius(BLUR_RADIUS)
-                    .setBlurAutoUpdate(true);
-            // 部分弹层根布局是 wrap 测量, 子 BlurView 的 match_parent 会塌成 0,
-            // 布局完成后按弹层实际大小补齐, 保证模糊层铺满整个抽屉/弹窗区域
+            final ViewGroup content = activity.findViewById(android.R.id.content);
+            if (content == null) return;
+            // 等弹层挂到窗口并完成布局后再插入模糊层(需要确切层级与尺寸)
             popupRoot.post(() -> {
                 try {
-                    int w = popupRoot.getWidth();
-                    int h = popupRoot.getHeight();
-                    if (w > 0 && h > 0) {
-                        ViewGroup.LayoutParams lp = blur.getLayoutParams();
-                        if (lp.width != w || lp.height != h) {
-                            lp.width = w;
-                            lp.height = h;
-                            blur.setLayoutParams(lp);
-                        }
+                    if (!popupRoot.isAttachedToWindow()) return;
+                    // 找到 content 下直接容纳该弹层的容器
+                    View child = popupRoot;
+                    while (child.getParent() instanceof ViewGroup
+                            && ((ViewGroup) child.getParent()) != content) {
+                        child = (View) child.getParent();
                     }
+                    if (child.getParent() != content) return; // 非 viewMode(独立窗口弹层)不做
+                    removeExistingBlur(content);
+                    final BlurView blur = new BlurView(activity);
+                    blur.setTag(BLUR_TAG);
+                    blur.setupWith(content)
+                            .setFrameClearDrawable(activity.getWindow().getDecorView().getBackground())
+                            .setBlurAlgorithm(new StackBlurBlur())
+                            .setBlurRadius(BLUR_RADIUS)
+                            .setBlurAutoUpdate(true);
+                    int idx = content.indexOfChild(child);
+                    if (idx < 0) idx = 0;
+                    content.addView(blur, idx,
+                            new FrameLayout.LayoutParams(
+                                    ViewGroup.LayoutParams.MATCH_PARENT,
+                                    ViewGroup.LayoutParams.MATCH_PARENT));
+                    // 弹层容器被移除(关闭)时, 顺带移除模糊层
+                    View.OnAttachStateChangeListener cleanup = new View.OnAttachStateChangeListener() {
+                        @Override
+                        public void onViewAttachedToWindow(View v) {
+                        }
+
+                        @Override
+                        public void onViewDetachedFromWindow(View v) {
+                            try {
+                                content.removeView(blur);
+                            } catch (Throwable ignored) {
+                            }
+                        }
+                    };
+                    child.addOnAttachStateChangeListener(cleanup);
+                    popupRoot.addOnAttachStateChangeListener(cleanup);
                 } catch (Throwable ignored) {
                 }
             });
@@ -68,16 +87,12 @@ public final class FrostedGlassUtil {
         }
     }
 
-    private static View findTagged(View root, String tag) {
-        if (root == null) return null;
-        if (tag.equals(root.getTag())) return root;
-        if (root instanceof ViewGroup) {
-            ViewGroup group = (ViewGroup) root;
-            for (int i = 0; i < group.getChildCount(); i++) {
-                View v = findTagged(group.getChildAt(i), tag);
-                if (v != null) return v;
+    private static void removeExistingBlur(ViewGroup content) {
+        for (int i = content.getChildCount() - 1; i >= 0; i--) {
+            View v = content.getChildAt(i);
+            if (BLUR_TAG.equals(v.getTag())) {
+                content.removeViewAt(i);
             }
         }
-        return null;
     }
 }
