@@ -55,6 +55,11 @@ public class ExoMediaPlayer extends AbstractPlayer implements Player.Listener {
     public void initPlayer() {
         if (mRenderersFactory == null) {
             mRenderersFactory = new DefaultRenderersFactory(mAppContext);
+            // 规避部分设备/驱动(如魅族/Android16)异步 MediaCodec 在 surface 切换时的
+            // "releaseOutputBuffer() is valid only at Executing states" 竞态崩溃, 退回同步队列
+            mRenderersFactory.forceDisableMediaCodecAsynchronousQueueing();
+            // 编解码异常时允许回退到其它解码器, 提升健壮性
+            mRenderersFactory.setEnableDecoderFallback(true);
         }
         mRenderersFactory.setExtensionRendererMode(DefaultRenderersFactory.EXTENSION_RENDERER_MODE_PREFER);
         if (mTrackSelector == null) {
