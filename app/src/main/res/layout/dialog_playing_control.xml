@@ -1,28 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
-<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:background="@drawable/bg_playing_control"
-    android:clipToOutline="true">
-
-    <!-- 毛玻璃模糊层: 模糊弹层覆盖区域的后方内容(FrostedGlassUtil 自动挂载并铺满) -->
-    <eightbitlab.com.blurview.BlurView
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:tag="glass_blur" />
-
-    <!-- 半透明主题叠色: 透明度由主题文件 bg_popup_alpha 统一控制 -->
-    <View
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:background="@color/bg_popup" />
-
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="vertical">
+    android:orientation="vertical"
+    android:background="@drawable/bg_playing_control">
 
     <ScrollView
         android:layout_width="match_parent"
@@ -396,5 +379,4 @@
 
         </LinearLayout>
     </ScrollView>
-    </LinearLayout>
-</FrameLayout>
+</LinearLayout>
