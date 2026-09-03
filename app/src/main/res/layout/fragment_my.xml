@@ -437,22 +437,22 @@
 
             </LinearLayout>
 
-            <!-- 选项卡片结束 -->
-            </LinearLayout>
-
-            <!-- 版本号:紧贴选项卡片下方,随内容整体滚动(内容超高时可上滑看到) -->
+            <!-- 版本号:作为选项卡片内的最后一行小字, 不依赖滚动/不被底部栏遮挡, 任何机型都可见 -->
             <TextView
                 android:id="@+id/tv_version"
                 android:textSize="13sp"
                 tools:text="v3.0.0"
-                android:paddingVertical="14dp"
-                android:layout_marginTop="8dp"
-                android:layout_marginBottom="8dp"
-                android:layout_gravity="center_horizontal"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
+                android:layout_gravity="center_horizontal"
+                android:paddingTop="10dp"
+                android:paddingBottom="8dp"
+                android:singleLine="true"
                 android:textColor="@color/text_sub_foreground"
                 />
+
+            <!-- 选项卡片结束 -->
+            </LinearLayout>
         </LinearLayout>
     </ScrollView>
 </LinearLayout>
