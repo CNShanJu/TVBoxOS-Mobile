@@ -18,7 +18,7 @@ concurrency:
   cancel-in-progress: true
 
 permissions:
-  contents: read
+  contents: write
   packages: write
 
 jobs:
@@ -29,6 +29,9 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          # 打 tag 时需用完整历史生成 Release Notes(git log 区间)
+          fetch-depth: 0
 
       # 项目使用 AGP 8.2.2,必须 JDK 17 编译
       - name: Set up JDK 17
@@ -70,3 +73,32 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_ACTOR: ${{ github.actor }}
+
+      # 打 tag(v* 触发)时自动生成 Release Notes 并创建 GitHub Release,
+      # 挂上正式签名 APK。正文由 git 提交历史生成(UTF-8,避免手写乱码)
+      - name: Prepare Release Notes
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          TAG="${GITHUB_REF_NAME}"
+          PREV=$(git tag --list 'v*' --sort=-version:refname | sed -n '2p')
+          {
+            echo "## ${TAG}"
+            echo ""
+            if [ -n "$PREV" ]; then
+              echo "相比 ${PREV} 的更新:"
+              git log --no-merges --pretty=format:'- %s' "${PREV}..HEAD"
+            else
+              git log --no-merges --pretty=format:'- %s' HEAD
+            fi
+            echo ""
+          } > RELEASE_NOTES.md
+          echo "=== release notes (${PREV:-(no previous tag)} -> ${TAG}) ==="
+          cat RELEASE_NOTES.md
+
+      - name: Create GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          name: MBox ${{ github.ref_name }}
+          body_path: RELEASE_NOTES.md
+          files: app/build/outputs/apk/release/*.apk
