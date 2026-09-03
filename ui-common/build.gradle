@@ -44,9 +44,9 @@ def defaultRadii = [
 def defaultColors = [
         bg_body        : '#FFFFFF',
         bg_component   : '#ECECF4',
-        bg_popup       : '#80ECECF4',
-        bg_float       : '#D9ECECF4',
-        bg_float_fab   : '#D9ECECF4',
+        bg_popup       : '#ECECF4',
+        bg_float       : '#ECECF4',
+        bg_float_fab   : '#ECECF4',
         text_main      : '#050505',
         text_highlight : '#1F2937',
         nav_text_normal: '#CCCCCC',
@@ -61,9 +61,9 @@ def defaultColors = [
 def defaultNightColors = [
         bg_body        : '#141218',
         bg_component   : '#211D28',
-        bg_popup       : '#80211D28',
-        bg_float       : '#CC211D28',
-        bg_float_fab   : '#CC211D28',
+        bg_popup       : '#211D28',
+        bg_float       : '#211D28',
+        bg_float_fab   : '#211D28',
         text_main      : '#FFFFFF',
         text_highlight : '#E5E7EB',
         nav_text_normal: '#7A7A7A',
@@ -75,6 +75,41 @@ def defaultNightColors = [
         select_bg      : '#374151',
         swipe_red      : '#E5484D'
 ]
+
+// 半透明色对应的透明度(0-100, 表示百分比): 独立字段, 与颜色值分开, 便于单独调透明度; 键为 <色名>_alpha
+def defaultAlphas = [
+        bg_popup_alpha     : 50,
+        bg_float_alpha     : 85,
+        bg_float_fab_alpha : 85
+]
+def defaultNightAlphas = [
+        bg_popup_alpha     : 50,
+        bg_float_alpha     : 80,
+        bg_float_fab_alpha : 80
+]
+
+/** 读取 `<色名>_alpha` 独立透明度字段(0-100, 百分比), 返回 色名 -> 0-255 透明度 的映射 */
+static def readAlphas(def file, def defaults) {
+    def alphas = new LinkedHashMap<>(defaults)
+    if (file.exists()) {
+        try {
+            def json = new groovy.json.JsonSlurper().parse(file)
+            alphas.each { k, v ->
+                def uv = json[k]
+                if (uv instanceof Number) alphas[k] = ((Number) uv).intValue()
+            }
+        } catch (Throwable th) {
+            println "WARN: ${file.name} 解析透明度失败: ${th.message}"
+        }
+    }
+    def out = new LinkedHashMap()
+    alphas.each { k, v ->
+        int percent = Math.max(0, Math.min(100, ((Number) v).intValue())) // 0-100 百分制
+        int alphaByte = Math.round(percent * 255 / 100f)                  // 换算 0-255
+        out.put(k.replace('_alpha', ''), alphaByte)
+    }
+    return out
+}
 
 static def readColors(def file, def defaults) {
     def colors = new LinkedHashMap<>(defaults)
@@ -110,12 +145,21 @@ static def readRadii(def file, def defaults) {
     return radii
 }
 
-static def writeColorsXml(def dir, def name, def colors) {
+/** 写出颜色; alphas 为 色名 -> 0-255, 命中时把透明度合成到色值前面(#AARRGGBB) */
+static def writeColorsXml(def dir, def name, def colors, def alphas) {
     def valuesDir = new File(dir, name)
     valuesDir.mkdirs()
     def f = new File(valuesDir, 'theme_colors.xml')
     def sb = new StringBuilder('<?xml version="1.0" encoding="utf-8"?>\n<resources>\n')
-    colors.each { k, v -> sb.append("    <color name=\"${k}\">${v}</color>\n") }
+    colors.each { k, v ->
+        def a = alphas ? alphas.get(k) : null
+        if (a != null) {
+            String hex = ((String) v).replace('#', '')
+            sb.append(String.format("    <color name=\"%s\">#%02X%s</color>\n", k, ((Number) a).intValue() & 0xFF, hex))
+        } else {
+            sb.append("    <color name=\"${k}\">${v}</color>\n")
+        }
+    }
     sb.append('</resources>\n')
     f.text = sb.toString()
 }
@@ -136,8 +180,10 @@ task generateThemeColors {
     inputs.file(themeRadiiFile).optional()
     outputs.dir(themeColorsDir)
     doLast {
-        writeColorsXml(themeColorsDir, 'values', readColors(themeColorsFile, defaultColors))
-        writeColorsXml(themeColorsDir, 'values-night', readColors(themeColorsNightFile, defaultNightColors))
+        def lightColors = readColors(themeColorsFile, defaultColors)
+        def nightColors = readColors(themeColorsNightFile, defaultNightColors)
+        writeColorsXml(themeColorsDir, 'values', lightColors, readAlphas(themeColorsFile, defaultAlphas))
+        writeColorsXml(themeColorsDir, 'values-night', nightColors, readAlphas(themeColorsNightFile, defaultNightAlphas))
         writeRadiiXml(themeColorsDir, 'values', readRadii(themeRadiiFile, defaultRadii))
     }
 }
