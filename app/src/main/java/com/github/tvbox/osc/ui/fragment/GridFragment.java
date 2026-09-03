@@ -263,6 +263,9 @@ public class GridFragment extends BaseLazyFragment {
         swipeRefreshBound = true;
         mSwipeRefresh = findViewById(R.id.swipe_refresh);
         if (mSwipeRefresh == null) return;
+        // 刷新指示器跟随主题: 暗色用组件底色+亮色圈, 亮色用白底+深色圈
+        mSwipeRefresh.setProgressBackgroundColorSchemeResource(
+                Utils.isAppDarkTheme() ? R.color.bg_component : R.color.white);
         mSwipeRefresh.setColorSchemeResources(R.color.text_highlight);
         mSwipeRefresh.setOnRefreshListener(() -> onPullRefresh());
     }
@@ -275,6 +278,9 @@ public class GridFragment extends BaseLazyFragment {
         page = 1;
         maxPage = 1;
         isLoad = false;
+        // 复位 footer: 重新开启加载更多并清除旧的"到底了"状态, 下一页请求期间显示"加载中"
+        gridAdapter.loadMoreComplete();
+        gridAdapter.setEnableLoadMore(true);
         sourceViewModel.getList(sortData, page);
     }
 
@@ -319,6 +325,9 @@ public class GridFragment extends BaseLazyFragment {
                         showSuccess();
                         isLoad = true;
                         gridAdapter.setNewData(absXml.movie.videoList);
+                        // 复位 footer 状态, 避免上一次"到底了"残留(下一页请求期间应显示"加载中")
+                        gridAdapter.loadMoreComplete();
+                        gridAdapter.setEnableLoadMore(true);
                     } else {
                         gridAdapter.addData(absXml.movie.videoList);
                     }

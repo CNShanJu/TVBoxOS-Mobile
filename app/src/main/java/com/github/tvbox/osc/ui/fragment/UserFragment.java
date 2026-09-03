@@ -176,6 +176,9 @@ public class UserFragment extends BaseLazyFragment {
         swipeRefreshBound = true;
         mSwipeRefresh = findViewById(R.id.swipe_refresh);
         if (mSwipeRefresh == null) return;
+        // 刷新指示器跟随主题: 暗色用组件底色+亮色圈, 亮色用白底+深色圈
+        mSwipeRefresh.setProgressBackgroundColorSchemeResource(
+                Utils.isAppDarkTheme() ? R.color.bg_component : R.color.white);
         mSwipeRefresh.setColorSchemeResources(R.color.text_highlight);
         mSwipeRefresh.setOnRefreshListener(() -> onPullRefresh());
     }
