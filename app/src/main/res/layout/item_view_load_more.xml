@@ -57,7 +57,8 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_gravity="bottom|center_horizontal"
-            android:paddingBottom="@dimen/dp_12"
+            android:paddingBottom="@dimen/dp_2"
+            android:alpha="0.55"
             android:text="@string/brvah_load_end"
             android:textColor="@color/text_sub_foreground"/>
     </FrameLayout>

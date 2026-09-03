@@ -219,6 +219,7 @@ public class UserFragment extends BaseLazyFragment {
         TextView footer = new TextView(mContext);
         footer.setText("—— 到底了 ——");
         footer.setTextColor(getResources().getColor(R.color.text_sub_foreground));
+        footer.setAlpha(0.55f); // 弱化亮度过高,提升透明感
         footer.setTextSize(12);
         footer.setGravity(Gravity.CENTER);
         // 占满整行使文字水平居中;上下留 4dp,贴近底部(列表 paddingBottom=12dp)
