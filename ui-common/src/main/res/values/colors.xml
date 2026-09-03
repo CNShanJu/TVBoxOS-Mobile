@@ -52,8 +52,8 @@
 
     <color name="disable_text">#b3b3b3</color>
 
-    <!--    带点透明度(e6 90/100不透明)的pop-->
-    <color name="bg_popup">#FFFFFF</color>
+    <!-- 弹层/抽屉背景:与页面卡片(bg_component)、底部导航栏(bg_float)同一色调,亮色为淡紫灰 ECECF4 -->
+    <color name="bg_popup">#ECECF4</color>
 
     <!--    制定颜色-->
     <!--    页面背景色,activity.fragment等-->
