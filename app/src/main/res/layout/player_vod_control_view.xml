@@ -475,11 +475,11 @@
 
             <ImageView
                 android:id="@+id/tv_progress_icon"
-                android:layout_width="30dp"
-                android:layout_height="30dp"
+                android:layout_width="16dp"
+                android:layout_height="16dp"
                 android:focusable="false"
                 android:focusableInTouchMode="false"
-                tools:src="@drawable/ic_back" />
+                tools:src="@drawable/ic_seek_left" />
 
             <TextView
                 android:id="@+id/tv_progress_text"

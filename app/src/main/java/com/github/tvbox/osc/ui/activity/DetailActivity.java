@@ -1058,6 +1058,11 @@ public class DetailActivity extends BaseVbActivity<ActivityDetailBinding> {
             AppBubble.toast("资源异常,请稍后重试");
             return;
         }
+        // 竖屏(含竖屏全窗):与设置/选集一致,改为底部弹窗(限高2/3),仅横屏才用右侧下载抽屉
+        if (!ScreenUtils.isLandscape()) {
+            showDownloadSeriesDialogInner();
+            return;
+        }
         // 立即弹抽屉(空数据 + loading),避免主线程构建选集/状态造成卡顿
         isDownloadDialogShowing = true;
         mDownloadDialog = new XPopup.Builder(this)
