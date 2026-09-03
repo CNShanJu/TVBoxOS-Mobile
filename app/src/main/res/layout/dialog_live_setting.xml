@@ -21,14 +21,13 @@
         android:layout_height="match_parent"
         android:background="@color/bg_popup" />
 
-    <!-- 内容容器用 match_parent 高度: 保证在 FrameLayout 下测量方式与原先一致, 内容不被压缩 -->
+    <!-- 内容容器: 保持与原布局一致的默认横向(两列: 分组 | 选项), 高度撑满避免内容塌缩 -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:orientation="vertical"
         android:paddingTop="20dp"
         android:paddingBottom="10dp"
-        android:gravity="center_horizontal">
+        android:gravity="center_vertical">
 
         <com.owen.tvrecyclerview.widget.TvRecyclerView
             android:id="@+id/mSettingGroupView"
