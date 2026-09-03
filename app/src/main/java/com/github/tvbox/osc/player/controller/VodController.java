@@ -119,7 +119,7 @@ public class VodController extends BaseController implements PlaybackSettingsCon
         };
     }
 
-    private LinearLayout mLlSpeed;
+    private android.widget.FrameLayout mLlSpeed;
     TextView mTvSpeedTip;
     SeekBar mSeekBar;
     TextView mCurrentTime;

@@ -60,7 +60,7 @@ import xyz.doikki.videoplayer.util.PlayerUtils;
 public class LocalVideoController extends BaseController implements PlaybackSettingsController {
 
     private TextView mTvSpeedTip;
-    private LinearLayout mLlSpeed;
+    private android.widget.FrameLayout mLlSpeed;
 
     public LocalVideoController(@NonNull @NotNull Context context) {
         super(context);
