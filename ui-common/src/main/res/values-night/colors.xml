@@ -3,7 +3,7 @@
 
     <!-- 以下核心色由 assets/theme/theme_colors_night.json 生成控制(values-night/theme_colors.xml) -->
     <color name="bg_gray">@color/bg_component</color>
-    <color name="bg_popup">#211D28</color>
+    <!-- bg_popup(弹层/抽屉背景, 现为半透明可调) 已上移到 assets/theme/theme_colors_night.json 统一维护, 此处不再重复定义 -->
 
     <color name="text_foreground">@color/text_main</color>
     <color name="text_sub_foreground">#AFAFAF</color>

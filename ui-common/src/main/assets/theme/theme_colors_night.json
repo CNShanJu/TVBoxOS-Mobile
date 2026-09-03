@@ -1,6 +1,7 @@
 {
   "bg_body": "#141218",
   "bg_component": "#211D28",
+  "bg_popup": "#80211D28",
   "bg_float": "#CC211D28",
   "bg_float_fab": "#CC211D28",
   "text_main": "#FFFFFF",
