@@ -441,19 +441,20 @@
             <!-- 选项卡片结束 -->
             </LinearLayout>
 
-            <TextView
-                android:id="@+id/tv_version"
-                android:textSize="13sp"
-                tools:text="v3.0.0"
-                android:paddingVertical="14dp"
-                android:layout_marginTop="8dp"
-                android:layout_marginBottom="8dp"
-                android:layout_gravity="center_horizontal"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:textColor="@color/text_sub_foreground"
-                />
         </LinearLayout>
     </ScrollView>
+
+    <!-- 版本号:固定在页面底部、悬浮底栏上方,不随内容滚动,任何屏幕尺寸都保证可见 -->
+    <TextView
+        android:id="@+id/tv_version"
+        android:textSize="13sp"
+        tools:text="v3.0.0"
+        android:paddingVertical="10dp"
+        android:layout_marginBottom="66dp"
+        android:layout_gravity="center_horizontal"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textColor="@color/text_sub_foreground"
+        />
 </LinearLayout>
 
