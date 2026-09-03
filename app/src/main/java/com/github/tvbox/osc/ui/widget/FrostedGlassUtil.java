@@ -37,29 +37,36 @@ public final class FrostedGlassUtil {
             if (popupRoot == null || !(context instanceof Activity)) return;
             final Activity activity = (Activity) context;
             final ViewGroup content = activity.findViewById(android.R.id.content);
-            if (content == null) return;
+            final ViewGroup decor = (ViewGroup) activity.getWindow().getDecorView();
+            if (content == null || decor == null) return;
             // 等弹层挂到窗口并完成布局后再插入模糊层(需要确切层级与尺寸)
             popupRoot.post(() -> {
                 try {
                     if (!popupRoot.isAttachedToWindow()) return;
-                    // 找到 content 下直接容纳该弹层的容器
+                    // 找弹层真正的宿主: 沿父链向上, 停在直接挂在 decor 或 content 下的容器
                     View child = popupRoot;
-                    while (child.getParent() instanceof ViewGroup
-                            && ((ViewGroup) child.getParent()) != content) {
-                        child = (View) child.getParent();
+                    ViewGroup host = null;
+                    while (child.getParent() instanceof ViewGroup) {
+                        ViewGroup p = (ViewGroup) child.getParent();
+                        if (p == content || p == decor) {
+                            host = p;
+                            break;
+                        }
+                        child = (View) p;
                     }
-                    if (child.getParent() != content) return; // 非 viewMode(独立窗口弹层)不做
-                    removeExistingBlur(content);
+                    if (host == null) return; // 独立窗口弹层, 不处理
+                    final ViewGroup h = host;
+                    removeExistingBlur(h);
                     final BlurView blur = new BlurView(activity);
                     blur.setTag(BLUR_TAG);
-                    blur.setupWith(content)
+                    blur.setupWith(h)
                             .setFrameClearDrawable(activity.getWindow().getDecorView().getBackground())
                             .setBlurAlgorithm(new StackBlurBlur())
                             .setBlurRadius(BLUR_RADIUS)
                             .setBlurAutoUpdate(true);
-                    int idx = content.indexOfChild(child);
+                    int idx = h.indexOfChild(child);
                     if (idx < 0) idx = 0;
-                    content.addView(blur, idx,
+                    h.addView(blur, idx,
                             new FrameLayout.LayoutParams(
                                     ViewGroup.LayoutParams.MATCH_PARENT,
                                     ViewGroup.LayoutParams.MATCH_PARENT));
@@ -72,7 +79,7 @@ public final class FrostedGlassUtil {
                         @Override
                         public void onViewDetachedFromWindow(View v) {
                             try {
-                                content.removeView(blur);
+                                removeExistingBlur(h);
                             } catch (Throwable ignored) {
                             }
                         }
