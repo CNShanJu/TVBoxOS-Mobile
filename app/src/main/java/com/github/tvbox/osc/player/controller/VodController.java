@@ -63,6 +63,8 @@ public class VodController extends BaseController implements PlaybackSettingsCon
     public volatile boolean hasPlayedOnce = false;
     /** 是否全屏(由 changedLandscape 记录,用于视频加载后校正横竖屏) */
     private boolean mFullWindows = false;
+    /** 用户是否锁定竖屏: 锁定后刷新/重播不得按片源宽高自动转回横屏 */
+    private boolean mPortraitLock = false;
 
     public VodController(@NonNull @NotNull Context context) {
         super(context);
@@ -694,13 +696,19 @@ public class VodController extends BaseController implements PlaybackSettingsCon
     }
 
     /**
-     * 横竖屏切换
+     * 横竖屏切换: 记录是否"用户锁竖屏"(防止刷新/重播按片源宽高自动转回横屏)
      */
     void setLandscapePortrait() {
         if (com.blankj.utilcode.util.ScreenUtils.isPortrait()){
             mActivity.setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE);
+            mPortraitLock = false;
         }else {
             mActivity.setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_SENSOR_PORTRAIT);
+            mPortraitLock = true;
+        }
+        // 同步按钮文案: 竖屏(全窗/预览)下提示可切横屏, 反之显示"竖屏"
+        if (mLandscapePortraitBtn != null) {
+            mLandscapePortraitBtn.setText(mPortraitLock ? "横屏" : "竖屏");
         }
     }
 
@@ -1052,7 +1060,7 @@ public class VodController extends BaseController implements PlaybackSettingsCon
                 // 全屏下视频加载出真实尺寸后校正横竖屏(进全屏时尺寸可能未知,未能切横屏)
                 if (mFullWindows) {
                     int[] size = mControlWrapper.getVideoSize();
-                    if (size != null && size.length >= 2 && size[0] > 0 && size[1] > 0) {
+                    if (size != null && size.length >= 2 && size[0] > 0 && size[1] > 0 && !mPortraitLock) {
                         if (size[0] > size[1]) {
                             mActivity.setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE);
                         } else {

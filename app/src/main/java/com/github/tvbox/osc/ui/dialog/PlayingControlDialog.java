@@ -126,6 +126,8 @@ public class PlayingControlDialog extends AppBottomPopupView {
         mBinding.refresh.setOnClickListener(view -> changeAndUpdateText(null,mController.mPlayRefresh));
         mBinding.subtitle.setOnClickListener(view -> dismissWith(() -> changeAndUpdateText(null,mController.mZimuBtn)));
         mBinding.voice.setOnClickListener(view -> dismissWith(() -> changeAndUpdateText(null,mController.mAudioTrackBtn)));
+        // 横竖屏:点击切换并同步文案(竖屏模式也应有响应)
+        mBinding.landscapePortrait.setOnClickListener(view -> dismissWith(() -> changeAndUpdateText(mBinding.landscapePortrait, mController.mLandscapePortraitBtn)));
     }
 
     private void updateSkipText(boolean start){
