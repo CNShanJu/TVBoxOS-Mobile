@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/bg"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
@@ -7,25 +7,9 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_gravity="center"
     android:background="@color/bg_popup"
-    android:clipToOutline="true">
-
-    <!-- 毛玻璃: 模糊层 + 半透明叠色(透明度=主题 bg_popup_alpha), 只作用于弹层自身区域 -->
-    <eightbitlab.com.blurview.BlurView
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:tag="glass_blur" />
-    <View
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:background="@color/bg_popup" />
-
-    <!-- 与原布局一致: 默认横向(左右两列: 分组 | 频道) -->
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:paddingTop="20dp"
-        android:paddingBottom="10dp"
-        android:gravity="center_horizontal">
+    android:paddingTop="20dp"
+    android:paddingBottom="10dp"
+    android:gravity="center_horizontal">
 
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/mGroupGridView"
@@ -52,5 +36,4 @@
         android:layout_marginLeft="30dp"
         android:layout_marginRight="40dp"
         tools:listitem="@layout/item_live_channel_new"/>
-    </LinearLayout>
-</FrameLayout>
+</LinearLayout>
