@@ -40,14 +40,30 @@ class MainActivity : BaseVbActivity<ActivityMainBinding>() {
 
         mBinding.bottomNav.setOnNavigationItemSelectedListener { menuItem: MenuItem ->
             mBinding.vp.setCurrentItem(menuItem.order, false)
+            updateNavIcons(menuItem.order)
             true
         }
         mBinding.vp.addOnPageChangeListener(object : SimpleOnPageChangeListener() {
             override fun onPageSelected(position: Int) {
                 mBinding.bottomNav.menu.getItem(position).setChecked(true)
+                updateNavIcons(position)
             }
         })
+        updateNavIcons(0)
         setupBottomBlur()
+    }
+
+    /** 底部导航图标: 选中项换"选中"变体(与未选中图形区分), 颜色仍由 itemIconTint 按状态着色 */
+    private fun updateNavIcons(position: Int) {
+        val menu = mBinding.bottomNav.menu
+        if (menu.size() >= 2) {
+            menu.getItem(0).setIcon(
+                if (position == 0) R.drawable.ic_nav_home_sel else R.drawable.ic_nav_home
+            )
+            menu.getItem(1).setIcon(
+                if (position == 1) R.drawable.ic_nav_my_sel else R.drawable.ic_nav_my
+            )
+        }
     }
 
     /** 底部导航栏毛玻璃:实时模糊其下方(ViewPager 列表)内容(纯 Java StackBlur, 全版本可用) */

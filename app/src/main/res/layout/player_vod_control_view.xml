@@ -662,18 +662,13 @@
         android:visibility="gone"
         tools:visibility="visible">
 
-        <com.airbnb.lottie.LottieAnimationView
+        <androidx.appcompat.widget.AppCompatImageView
             android:id="@+id/lt_speed"
-            android:layout_width="60dp"
-            android:layout_height="30dp"
-            android:scaleX="3"
-            android:scaleY="2"
-            app:lottie_autoPlay="true"
+            android:layout_width="34dp"
+            android:layout_height="34dp"
             android:scaleType="centerCrop"
-            app:lottie_fileName="anim/forward_speed.json"
-            app:lottie_loop="true"
-            app:lottie_colorFilter="@color/white"
-            app:lottie_repeatMode="restart"/>
+            android:src="@drawable/ic_fast_forward"
+            app:tint="@color/white" />
         <TextView
             android:id="@+id/tv_speed"
             android:layout_width="wrap_content"

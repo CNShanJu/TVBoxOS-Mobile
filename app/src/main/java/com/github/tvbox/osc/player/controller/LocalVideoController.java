@@ -1039,9 +1039,9 @@ public class LocalVideoController extends BaseController implements PlaybackSett
         // 叠加白色滤镜保证快退/快进在灰色进度浮层上一律白显
         mProgressIcon.setColorFilter(0xFFFFFFFF);
         if (seekTo > curr) {
-            mProgressIcon.setImageResource(R.drawable.ic_pre);
+            mProgressIcon.setImageResource(R.drawable.ic_seek_right);
         } else {
-            mProgressIcon.setImageResource(R.drawable.ic_back);
+            mProgressIcon.setImageResource(R.drawable.ic_seek_left);
         }
         mProgressText.setText(PlayerUtils.stringForTime(seekTo) + " / " + PlayerUtils.stringForTime(duration));
         mHandler.sendEmptyMessage(1000);
