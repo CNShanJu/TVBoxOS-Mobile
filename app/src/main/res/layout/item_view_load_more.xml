@@ -2,7 +2,7 @@
 <FrameLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
-    android:layout_height="@dimen/dp_64"
+    android:layout_height="@dimen/dp_60"
     android:visibility="invisible">
 
     <!-- 加载中: 只在真正请求下一页时由 BRVAH 显示 -->
@@ -57,7 +57,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_gravity="bottom|center_horizontal"
-            android:paddingBottom="@dimen/dp_16"
+            android:paddingBottom="@dimen/dp_12"
             android:text="@string/brvah_load_end"
             android:textColor="@color/text_sub_foreground"/>
     </FrameLayout>
