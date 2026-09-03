@@ -375,8 +375,6 @@ public class PlayFragment extends BaseLazyFragment {
      */
     public void changedLandscape(boolean fullWindows) {
         mFullWindows = fullWindows;
-        // 方向可能变化: 底部控制栏按横/竖屏重建(横屏同栏/竖屏提行)
-        mController.refreshBottomBarLayout();
         if (fullWindows){
             int[] size = mVideoView.getVideoSize();
             int width = size[0];

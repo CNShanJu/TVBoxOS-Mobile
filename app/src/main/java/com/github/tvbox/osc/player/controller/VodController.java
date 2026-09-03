@@ -166,10 +166,6 @@ public class VodController extends BaseController implements PlaybackSettingsCon
     int dismissTimeOperationBar = 5000;//闲置多少毫秒隐藏操作栏(上中下)  默认6秒
     int dismissTimeLock = 2000;//闲置多少毫秒隐藏已上锁按钮
 
-    /** 底部控制栏容器与当前变体(横屏同栏 / 竖屏进度提行) */
-    private android.widget.FrameLayout mBottomBarHost;
-    private int mBottomBarLayoutId = -1;
-
     int videoPlayState = 0;
     LockRunnable lockRunnable = new LockRunnable();
     private boolean isLock = false;
@@ -206,8 +202,6 @@ public class VodController extends BaseController implements PlaybackSettingsCon
     @Override
     protected void initView() {
         super.initView();
-        // 先注入底部控制栏(横屏原单行 / 竖屏提行), 后续 findViewById 才能找到进度条等
-        ensureBottomBar();
         View pip = findViewById(R.id.pip);
         // 画中画按钮:设备支持小窗就始终显示(手动进入小窗的入口),与"后台播放"设置无关。
         // "后台播放"设置控制的是按Home切后台时的行为:0关闭/1后台续播/2自动进小窗
@@ -715,38 +709,6 @@ public class VodController extends BaseController implements PlaybackSettingsCon
     void initSubtitleInfo() {
         int subtitleTextSize = SubtitleHelper.getTextSize(mActivity);
         mSubtitleView.setTextSize(subtitleTextSize);
-    }
-
-    /** 按当前屏幕方向注入底部控制栏变体: 横屏=原单行(控件+进度同栏), 竖屏=进度/时间提行为上行 */
-    private void ensureBottomBar() {
-        if (mBottomBarHost == null) {
-            mBottomBarHost = findViewById(R.id.bottom_bar_host);
-        }
-        if (mBottomBarHost == null) return;
-        boolean raised = mFullWindows && !com.blankj.utilcode.util.ScreenUtils.isLandscape();
-        int layoutId = raised
-                ? R.layout.player_bottom_control_port
-                : R.layout.player_bottom_control_land;
-        if (layoutId == mBottomBarLayoutId && mBottomBarHost.getChildCount() > 0) return;
-        mBottomBarHost.removeAllViews();
-        android.view.LayoutInflater.from(getContext()).inflate(layoutId, mBottomBarHost, true);
-        mBottomBarLayoutId = layoutId;
-    }
-
-    /** 屏幕方向变化(旋转/进出全屏)后调用, 强制按当前方向重建底部控制栏并重绑控件 */
-    public void refreshBottomBarLayout() {
-        mBottomBarLayoutId = -1;
-        ensureBottomBar();
-        // 重建后旧引用已失效, 需重新绑定进度条/按钮等(否则上一集/下一集/选集/下载等不可见)
-        mCurrentTime = findViewById(R.id.curr_time);
-        mTotalTime = findViewById(R.id.total_time);
-        mSeekBar = findViewById(R.id.seekBar);
-        mNextBtn = findViewById(R.id.play_next);
-        mPreBtn = findViewById(R.id.play_pre);
-        mIvPlayStatus = findViewById(R.id.play_status);
-        mIvFullscreen = findViewById(R.id.iv_fullscreen);
-        mChooseSeries = findViewById(R.id.choose_series);
-        mChooseDownload = findViewById(R.id.choose_download);
     }
 
     @Override

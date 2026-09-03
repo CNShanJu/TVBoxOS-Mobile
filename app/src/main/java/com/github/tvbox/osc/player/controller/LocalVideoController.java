@@ -148,10 +148,6 @@ public class LocalVideoController extends BaseController implements PlaybackSett
     private ImageView mLockView;
     private boolean isLock = false;
     int dismissTimeLock = 2000;//闲置多少毫秒隐藏已上锁按钮
-
-    /** 底部控制栏容器与当前变体(横屏同栏 / 竖屏进度提行) */
-    private android.widget.FrameLayout mBottomBarHost;
-    private int mBottomBarLayoutId = -1;
     private final Runnable lockRunnable = new Runnable() {
         @Override
         public void run() {
@@ -190,8 +186,6 @@ public class LocalVideoController extends BaseController implements PlaybackSett
     @Override
     protected void initView() {
         super.initView();
-        // 先注入底部控制栏(横屏原单行 / 竖屏提行), 后续 findViewById 才能找到进度条等
-        ensureBottomBar();
         View pip = findViewById(R.id.pip);
         // 画中画按钮:设备支持小窗就显示(与在线播放一致)
         pip.setVisibility(Utils.supportsPiPMode() ? VISIBLE : GONE);
@@ -731,34 +725,6 @@ public class LocalVideoController extends BaseController implements PlaybackSett
     @Override
     protected int getLayoutId() {
         return R.layout.player_vod_control_view;
-    }
-
-    /** 按当前屏幕方向注入底部控制栏变体: 横屏=原单行(控件+进度同栏), 竖屏=进度/时间提行为上行 */
-    private void ensureBottomBar() {
-        if (mBottomBarHost == null) {
-            mBottomBarHost = findViewById(R.id.bottom_bar_host);
-        }
-        if (mBottomBarHost == null) return;
-        int layoutId = com.blankj.utilcode.util.ScreenUtils.isLandscape()
-                ? R.layout.player_bottom_control_land
-                : R.layout.player_bottom_control_port;
-        if (layoutId == mBottomBarLayoutId && mBottomBarHost.getChildCount() > 0) return;
-        mBottomBarHost.removeAllViews();
-        android.view.LayoutInflater.from(getContext()).inflate(layoutId, mBottomBarHost, true);
-        mBottomBarLayoutId = layoutId;
-    }
-
-    /** 屏幕方向变化后调用, 重建底部控制栏并重绑控件 */
-    public void refreshBottomBarLayout() {
-        mBottomBarLayoutId = -1;
-        ensureBottomBar();
-        // 重建后旧引用已失效, 重新绑定进度/时间/上一集/下一集/播放按钮
-        mCurrentTime = findViewById(R.id.curr_time);
-        mTotalTime = findViewById(R.id.total_time);
-        mSeekBar = findViewById(R.id.seekBar);
-        mNextBtn = findViewById(R.id.play_next);
-        mPreBtn = findViewById(R.id.play_pre);
-        mIvPlayStatus = findViewById(R.id.play_status);
     }
 
     private JSONObject mPlayerConfig = null;
