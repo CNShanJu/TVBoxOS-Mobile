@@ -68,6 +68,8 @@ public class PlayingControlDialog extends AppBottomPopupView {
         mBinding.playTimeEnd.setText(mController.mPlayerTimeSkipBtn.getText());
         mBinding.player.setText(mController.mPlayerBtn.getText());
         mBinding.decode.setText(mController.mPlayerIJKBtn.getText());
+        // 底部(竖屏)设置抽屉常显"横竖屏",便于切回横屏
+        mBinding.landscapePortrait.setVisibility(View.VISIBLE);
         updateAboutIjkVisible();
         updateSpeedUi();
     }
