@@ -221,6 +221,7 @@ public class LocalPlayActivity extends BaseVbActivity<ActivityLocalPlayBinding> 
                         .isViewMode(true)
                         .hasNavigationBar(false)
                         .popupHeight(com.blankj.utilcode.util.ScreenUtils.getScreenHeight())
+                        .popupWidth(com.blankj.utilcode.util.ConvertUtils.dp2px(320))
                         .popupPosition(PopupPosition.Right)
                         .asCustom(new PlayingControlRightDialog(LocalPlayActivity.this, mController, mVideoView))
                         .show();

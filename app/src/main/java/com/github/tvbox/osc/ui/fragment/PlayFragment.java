@@ -324,6 +324,7 @@ public class PlayFragment extends BaseLazyFragment {
                             .isViewMode(true)//改为view模式无法自动响应返回键操作,onBackPress时手动dismiss
                             .hasNavigationBar(false)
                             .popupHeight(ScreenUtils.getScreenHeight())
+                            .popupWidth(com.blankj.utilcode.util.ConvertUtils.dp2px(320))
                             .popupPosition(PopupPosition.Right)
                             .asCustom(new PlayingControlRightDialog(activity, mController, mVideoView));
                     mPlayingControlRightDialog.show();
