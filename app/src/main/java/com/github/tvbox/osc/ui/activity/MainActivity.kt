@@ -8,6 +8,7 @@ import androidx.fragment.app.Fragment
 import androidx.fragment.app.FragmentPagerAdapter
 import androidx.viewpager.widget.ViewPager.SimpleOnPageChangeListener
 import com.blankj.utilcode.util.ActivityUtils
+import com.github.tvbox.osc.R
 import com.github.tvbox.osc.util.AppBubble
 import com.github.tvbox.osc.util.StackBlurBlur
 import com.github.tvbox.osc.base.BaseVbActivity
