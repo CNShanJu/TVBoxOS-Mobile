@@ -645,11 +645,11 @@
         android:visibility="gone"
         tools:visibility="visible">
 
-        <!-- 长按倍速: 快进动画(比之前略大) -->
+        <!-- 长按倍速: 快进动画 + 同排倍速文字, 整体居中 -->
         <com.airbnb.lottie.LottieAnimationView
             android:id="@+id/lt_speed"
-            android:layout_width="200dp"
-            android:layout_height="100dp"
+            android:layout_width="150dp"
+            android:layout_height="80dp"
             android:scaleType="centerInside"
             app:lottie_autoPlay="true"
             app:lottie_fileName="anim/forward_speed.json"
@@ -660,8 +660,8 @@
             android:id="@+id/tv_speed"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginStart="@dimen/dp_10"
-            android:layout_marginLeft="@dimen/dp_10"
+            android:layout_marginStart="@dimen/dp_6"
+            android:layout_marginLeft="@dimen/dp_6"
             android:gravity="center"
             android:maxLines="1"
             android:textColor="@color/white"
