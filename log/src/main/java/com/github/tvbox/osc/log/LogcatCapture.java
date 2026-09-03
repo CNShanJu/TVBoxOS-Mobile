@@ -15,9 +15,12 @@ import java.util.List;
 import java.util.Locale;
 
 /**
- * logcat 全部日志捕获（package:mine 语义）：`logcat --uid=<本应用uid>` 只抓本应用，
+ * logcat 原始流捕获（只含本应用日志）：`logcat --uid=<本应用uid>`(老系统退回 --pid=<本进程>)
+ * 只抓当前应用，绝不抓其他应用/系统日志；默认只保留 INFO 及以上级别(避免本应用自身的 V/D 刷屏全量落盘)，
+ * 日志级别调为 DEBUG 时才会保留 V/D 全量。
+ * <p>
  * 按天写入 filesDir/app_logs/logcat-yyyy-MM-dd.log（与 AppLog 共用目录，过渡期
- * 现有 LogActivity 仍可展示），自动清理 7 天前文件。
+ * 现有 LogActivity 仍可展示），单文件超 8MB 滚动分段、目录总大小上限 48MB 自动清理、7 天前文件删除。
  * <p>
  * 与业务日志（Room）互补：业务日志结构化可筛选，这里保留原始 logcat 流（"全部日志"）。
  * 开关由 {@link LogStore#setEnabled(boolean)} 联动（默认关）。
@@ -70,38 +73,20 @@ public final class LogcatCapture {
                 if (!dir.exists()) dir.mkdirs();
                 // 启动即先做一次清理:把上次遗留的超限/超期文件收掉,避免一开启就占满存储
                 cleanupFiles();
-                final Process p = Runtime.getRuntime().exec(new String[]{
-                        "logcat", "-v", "time", "--uid=" + android.os.Process.myUid(), "-T", "1"});
+                Process p;
+                try {
+                    // 只抓本应用:优先 logcat --uid=<本应用uid>(Android 8+)
+                    p = Runtime.getRuntime().exec(buildCommand(true));
+                } catch (Throwable th) {
+                    p = null;
+                }
+                if (p == null) {
+                    // uid 参数缺失等极端情况:退回 --pid=<本进程> 仍只含本应用
+                    p = Runtime.getRuntime().exec(buildCommand(false));
+                }
+                final Process first = p;
                 process = p;
-                Thread t = new Thread(() -> {
-                    BufferedReader reader = null;
-                    try {
-                        reader = new BufferedReader(new InputStreamReader(p.getInputStream(), StandardCharsets.UTF_8));
-                        List<String> batch = new ArrayList<>();
-                        long lastFlush = 0;
-                        String line;
-                        while ((line = reader.readLine()) != null) {
-                            if (process != p) break; // 已停止
-                            batch.add(line);
-                            long now = System.currentTimeMillis();
-                            if (batch.size() >= BATCH_LINES || now - lastFlush > FLUSH_MS) {
-                                appendLines(batch);
-                                lastFlush = now;
-                            }
-                        }
-                        appendLines(batch);
-                    } catch (Throwable th) {
-                        // 某些设备无权限读取 logcat：回退为直接忽略（业务日志仍正常）
-                        Log.d("LogcatCapture", "logcat 读取终止: " + th.getMessage());
-                    } finally {
-                        if (reader != null) {
-                            try {
-                                reader.close();
-                            } catch (Throwable ignored) {
-                            }
-                        }
-                    }
-                }, "tvbox-logcat");
+                Thread t = new Thread(() -> readLoop(first), "tvbox-logcat");
                 t.setDaemon(true);
                 thread = t;
                 t.start();
@@ -110,6 +95,98 @@ public final class LogcatCapture {
                 process = null;
                 thread = null;
             }
+        }
+    }
+
+    /**
+     * 组装 logcat 命令:
+     * ① --uid=本应用uid(Android 8+);老系统不支持时退回 --pid=本进程pid——两者都只会拿到本应用日志,
+     *    绝不用无过滤的全量 logcat(那会把整机日志写进应用目录导致存储激增)。
+     * ② 记录级别:默认附加 "*:I"(INFO 及以上)。应用自身的 V/D 刷屏(Exo/okhttp/WebView/JS 等)不再全量落盘;
+     *    只有把日志级别设为 DEBUG(log_level=0)时才全量保留 V/D,便于深挖问题。
+     */
+    private static String[] buildCommand(boolean useUid) {
+        List<String> cmd = new ArrayList<>();
+        cmd.add("logcat");
+        cmd.add("-v");
+        cmd.add("time");
+        if (useUid) {
+            cmd.add("--uid=" + android.os.Process.myUid());
+        } else {
+            cmd.add("--pid=" + android.os.Process.myPid());
+        }
+        cmd.add("-T");
+        cmd.add("1");
+        if (LogConfig.getLevel() > LogStore.LEVEL_DEBUG) {
+            cmd.add("*:I");
+        }
+        return cmd.toArray(new String[0]);
+    }
+
+    /** 读取 logcat 输出循环;--uid 不被支持(老系统)导致进程立即退出时,用 --pid 重启一次继续读 */
+    private static void readLoop(Process firstProc) {
+        Process current = firstProc;
+        boolean canPidFallback = true;
+        try {
+            while (current != null) {
+                if (process != current) break; // 已停止
+                BufferedReader reader = null;
+                boolean eof = false;
+                try {
+                    reader = new BufferedReader(new InputStreamReader(current.getInputStream(), StandardCharsets.UTF_8));
+                    List<String> batch = new ArrayList<>();
+                    long lastFlush = 0;
+                    String line;
+                    while ((line = reader.readLine()) != null) {
+                        if (process != current) break; // 已停止
+                        batch.add(line);
+                        long now = System.currentTimeMillis();
+                        if (batch.size() >= BATCH_LINES || now - lastFlush > FLUSH_MS) {
+                            appendLines(batch);
+                            lastFlush = now;
+                        }
+                    }
+                    appendLines(batch);
+                    eof = true;
+                } catch (Throwable th) {
+                    // 某些设备无权限读取 logcat:回退为直接忽略(业务日志仍正常)
+                    Log.d("LogcatCapture", "logcat 读取终止: " + th.getMessage());
+                    eof = true;
+                } finally {
+                    if (reader != null) {
+                        try {
+                            reader.close();
+                        } catch (Throwable ignored) {
+                        }
+                    }
+                }
+                if (!eof || !canPidFallback || process != current) {
+                    break;
+                }
+                // 流结束且不是我们主动停止:大概率是 --uid 参数不被当前系统支持而立即退出,
+                // 换 --pid 再抓一次(仍是本应用日志);仍未成功则放弃,不做全量抓取
+                canPidFallback = false;
+                boolean badExit = false;
+                try {
+                    if (!current.isAlive()) {
+                        badExit = current.exitValue() != 0;
+                    }
+                } catch (Throwable ignored) {
+                }
+                if (!badExit) break;
+                try {
+                    Process pidProc = Runtime.getRuntime().exec(buildCommand(false));
+                    if (pidProc != null && pidProc.isAlive()) {
+                        process = pidProc;
+                        current = pidProc;
+                        continue;
+                    }
+                } catch (Throwable ignored) {
+                }
+                break;
+            }
+        } catch (Throwable th) {
+            Log.d("LogcatCapture", "logcat 读取循环终止: " + th.getMessage());
         }
     }
 

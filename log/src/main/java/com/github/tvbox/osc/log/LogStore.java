@@ -76,6 +76,9 @@ public final class LogStore {
     private final ConcurrentHashMap<String, CategoryLogger<?>> loggers = new ConcurrentHashMap<>();
     private final Set<String> disabledCategories = ConcurrentHashMap.newKeySet();
 
+    /** 每日定时按保留天数清理业务日志是否已排定(防 Room 只增不减) */
+    private volatile boolean dailyCleanupScheduled = false;
+
     private volatile boolean enabled = false;
     private volatile int minLevel = LEVEL_INFO;
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
@@ -133,6 +136,8 @@ public final class LogStore {
         if (instance.enabled) {
             LogcatCapture.start();
         }
+        // 日志开启期间每天按保留天数清理一次旧业务日志(防止 DB 长期只增不减占用存储)
+        instance.scheduleDailyCleanup();
     }
 
     // ------------------------------------------------------------------
@@ -305,8 +310,30 @@ public final class LogStore {
         enabled = on;
         if (on) {
             LogcatCapture.start();
+            scheduleDailyCleanup();
         } else {
             LogcatCapture.stop();
+        }
+    }
+
+    /**
+     * 排定每日定时清理(只排一次):按 LogConfig 保留天数删除到期业务日志,
+     * 每次开启日志或应用启动(开启状态)时都会确保已排定。
+     */
+    private void scheduleDailyCleanup() {
+        if (dailyCleanupScheduled) return;
+        synchronized (this) {
+            if (dailyCleanupScheduled) return;
+            dailyCleanupScheduled = true;
+        }
+        try {
+            flushScheduler.scheduleAtFixedRate(() -> {
+                try {
+                    clear(LogConfig.getRetentionDays());
+                } catch (Throwable ignored) {
+                }
+            }, 0L, 1L, TimeUnit.DAYS);
+        } catch (Throwable ignored) {
         }
     }
 
