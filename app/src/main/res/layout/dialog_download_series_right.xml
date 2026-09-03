@@ -1,14 +1,29 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/bg"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:orientation="vertical"
     android:background="@color/bg_popup"
-    android:paddingTop="16dp"
-    android:paddingBottom="12dp">
+    android:clipToOutline="true">
+
+    <!-- 毛玻璃: 模糊层 + 半透明叠色(透明度=主题 bg_popup_alpha), 只作用于弹层自身区域 -->
+    <eightbitlab.com.blurview.BlurView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:tag="glass_blur" />
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="@color/bg_popup" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical"
+        android:paddingTop="16dp"
+        android:paddingBottom="12dp">
 
     <!-- box1: 标题 + 已选计数 -->
     <LinearLayout
@@ -111,4 +126,5 @@
             android:text="开始下载" />
     </LinearLayout>
 
-</LinearLayout>
+    </LinearLayout>
+</FrameLayout>
