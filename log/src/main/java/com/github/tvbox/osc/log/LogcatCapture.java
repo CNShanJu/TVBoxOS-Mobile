@@ -102,8 +102,9 @@ public final class LogcatCapture {
      * 组装 logcat 命令:
      * ① --uid=本应用uid(Android 8+);老系统不支持时退回 --pid=本进程pid——两者都只会拿到本应用日志,
      *    绝不用无过滤的全量 logcat(那会把整机日志写进应用目录导致存储激增)。
-     * ② 记录级别:默认附加 "*:I"(INFO 及以上)。应用自身的 V/D 刷屏(Exo/okhttp/WebView/JS 等)不再全量落盘;
-     *    只有把日志级别设为 DEBUG(log_level=0)时才全量保留 V/D,便于深挖问题。
+     * ② 记录级别(默认 INFO → 只落 WARN/ERROR):框架/库的大量 INFO 刷屏(AssetManager/Choreographer/
+     *    MediaCodec/Adreno 等)不再进文件; 只有把日志级别设为 DEBUG(log_level=0)时才全量保留 V/D 便于深挖。
+     *    业务上有意义的事件(搜索/播放/下载等)走 Room 结构化日志, 不依赖这里的原始流。
      */
     private static String[] buildCommand(boolean useUid) {
         List<String> cmd = new ArrayList<>();
@@ -117,8 +118,13 @@ public final class LogcatCapture {
         }
         cmd.add("-T");
         cmd.add("1");
-        if (LogConfig.getLevel() > LogStore.LEVEL_DEBUG) {
-            cmd.add("*:I");
+        int level = LogConfig.getLevel();
+        if (level == LogStore.LEVEL_DEBUG) {
+            // DEBUG: 全量(V/D/I/W/E), 深挖问题用
+        } else if (level >= LogStore.LEVEL_ERROR) {
+            cmd.add("*:E");
+        } else {
+            cmd.add("*:W"); // 默认/INFO: 只记警告与错误, 丢弃无意义的 INFO 刷屏
         }
         return cmd.toArray(new String[0]);
     }

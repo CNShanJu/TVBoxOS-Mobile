@@ -100,8 +100,7 @@
             android:layout_height="wrap_content"
             android:gravity="center_vertical"
             android:layout_marginTop="6dp"
-            android:visibility="invisible"
-            tools:visibility="visible"
+            android:visibility="gone"
             >
             <TextView
                 android:id="@+id/tv_play_load_net_speed_right_top"

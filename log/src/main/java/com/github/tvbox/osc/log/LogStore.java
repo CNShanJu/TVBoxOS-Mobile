@@ -45,11 +45,11 @@ public final class LogStore {
     public static final int LEVEL_ERROR = 3;
 
     private static final String[] LEVEL_NAMES = {"DEBUG", "INFO", "WARN", "ERROR"};
-    private static final int MAX_DETAIL = 4096;
-    private static final int MAX_REASON = 4096;
+    private static final int MAX_DETAIL = 2048;
+    private static final int MAX_REASON = 2048;
     private static final int BATCH_SIZE = 50;
     private static final int FLUSH_DELAY_MS = 1000;
-    private static final int MAX_ROWS = 100_000;
+    private static final int MAX_ROWS = 20_000;
     private static final long DAY_MS = 24L * 3600 * 1000;
 
     private static volatile LogStore instance;

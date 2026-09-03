@@ -863,11 +863,9 @@ public class VodController extends BaseController implements PlaybackSettingsCon
             mNextBtn.setVisibility(VISIBLE);
             mChooseSeries.setVisibility(VISIBLE);
             mChooseDownload.setVisibility(VISIBLE);
-            mTopRightDeviceInfo.setVisibility(VISIBLE);
         } else {
             // 非全屏(播放详情页):放大按钮显示"聚焦"图标
             mIvFullscreen.setImageResource(R.drawable.ic_zoom_in);
-            mTopRightDeviceInfo.setVisibility(INVISIBLE);
             mPreBtn.setVisibility(GONE);
             mNextBtn.setVisibility(GONE);
             mChooseSeries.setVisibility(GONE);
