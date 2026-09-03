@@ -1194,7 +1194,6 @@ public class LiveActivity extends BaseActivity {
             mSettingRightDialog = new XPopup.Builder(this)
                     .isViewMode(true)
                     .hasNavigationBar(false)
-                    .hasShadowBg(false)
                     .popupHeight(ScreenUtils.getScreenHeight())
                     .popupWidth(ConvertUtils.dp2px(300))
                     .popupPosition(PopupPosition.Right)
@@ -1205,7 +1204,6 @@ public class LiveActivity extends BaseActivity {
                     .isViewMode(true)
                     .popupHeight(ScreenUtils.getScreenHeight()/2)
                     .hasNavigationBar(false)
-                    .hasShadowBg(false)
                     .asCustom(new LiveSettingDialog(this));
             mSettingBottomDialog.show();
         }
