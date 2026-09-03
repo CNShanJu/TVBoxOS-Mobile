@@ -70,8 +70,7 @@ public final class FrostedGlassUtil {
                             new FrameLayout.LayoutParams(
                                     ViewGroup.LayoutParams.MATCH_PARENT,
                                     ViewGroup.LayoutParams.MATCH_PARENT));
-                    // 弹层容器被移除(关闭)时, 延后移除模糊层——不能嵌套在 XPopup 正在 removeView 的过程中
-                    // 直接改同一父容器(会破坏其子视图数组导致 NPE), 因此 post 到下一帧再清理
+                    // 弹层容器被移除(关闭)时, 顺带移除模糊层
                     View.OnAttachStateChangeListener cleanup = new View.OnAttachStateChangeListener() {
                         @Override
                         public void onViewAttachedToWindow(View v) {
@@ -79,12 +78,10 @@ public final class FrostedGlassUtil {
 
                         @Override
                         public void onViewDetachedFromWindow(View v) {
-                            v.post(() -> {
-                                try {
-                                    removeExistingBlur(h);
-                                } catch (Throwable ignored) {
-                                }
-                            });
+                            try {
+                                removeExistingBlur(h);
+                            } catch (Throwable ignored) {
+                            }
                         }
                     };
                     child.addOnAttachStateChangeListener(cleanup);
