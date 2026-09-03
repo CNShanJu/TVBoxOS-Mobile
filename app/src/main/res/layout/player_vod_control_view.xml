@@ -86,8 +86,9 @@
     <LinearLayout
         android:id="@+id/tv_top_r_container"
         android:layout_width="wrap_content"
-        android:layout_height="71dp"
-        android:layout_gravity="end"
+        android:layout_height="wrap_content"
+        android:layout_gravity="end|top"
+        android:layout_marginTop="22dp"
         android:layout_marginRight="@dimen/dp_20"
         android:gravity="end"
         android:orientation="vertical"
@@ -532,11 +533,11 @@
         android:visibility="gone"
         tools:visibility="visible">
 
-        <!-- 长按倍速: 保留快进动画, 尺寸调小到与文字相近 -->
+        <!-- 长按倍速: 快进动画, 尺寸与旁边倍速文字相近 -->
         <com.airbnb.lottie.LottieAnimationView
             android:id="@+id/lt_speed"
-            android:layout_width="36dp"
-            android:layout_height="18dp"
+            android:layout_width="48dp"
+            android:layout_height="24dp"
             app:lottie_autoPlay="true"
             app:lottie_fileName="anim/forward_speed.json"
             app:lottie_loop="true"
