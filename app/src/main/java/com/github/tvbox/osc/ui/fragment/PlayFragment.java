@@ -319,7 +319,8 @@ public class PlayFragment extends BaseLazyFragment {
 
             @Override
             public void showSetting() {
-                if (mFullWindows){
+                // 按当前方向决定形态: 横屏右侧抽屉; 竖屏底部弹层(AppBottomPopupView 自带高度上限)
+                if (ScreenUtils.isLandscape()){
                     mPlayingControlRightDialog = new XPopup.Builder(activity)
                             .isViewMode(true)//改为view模式无法自动响应返回键操作,onBackPress时手动dismiss
                             .hasNavigationBar(false)

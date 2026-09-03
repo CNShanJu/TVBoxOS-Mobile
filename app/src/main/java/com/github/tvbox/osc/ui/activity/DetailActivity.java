@@ -507,7 +507,8 @@ public class DetailActivity extends BaseVbActivity<ActivityDetailBinding> {
     }
 
     public void showAllSeriesDialog() {
-        if (fullWindows) {
+        // 按当前方向决定形态: 横屏用右侧抽屉, 竖屏用底部弹层并限制高度(与详情页一致)
+        if (ScreenUtils.isLandscape()) {
             mAllSeriesRightDialog = new XPopup.Builder(this)
                     .isViewMode(true)//隐藏导航栏(手势条)在dialog模式下会闪一下,改为view模式,但需处理onBackPress的隐藏,下方同理
                     .hasNavigationBar(false)
