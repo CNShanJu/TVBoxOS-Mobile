@@ -536,11 +536,12 @@
         android:visibility="gone"
         tools:visibility="visible">
 
-        <!-- 长按倍速: 快进动画, 尺寸与旁边倍速文字相近 -->
+        <!-- 长按倍速: 快进动画(明显尺寸) -->
         <com.airbnb.lottie.LottieAnimationView
             android:id="@+id/lt_speed"
-            android:layout_width="48dp"
-            android:layout_height="24dp"
+            android:layout_width="120dp"
+            android:layout_height="60dp"
+            android:scaleType="centerInside"
             app:lottie_autoPlay="true"
             app:lottie_fileName="anim/forward_speed.json"
             app:lottie_loop="true"
