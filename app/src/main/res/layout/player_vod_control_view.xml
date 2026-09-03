@@ -16,7 +16,7 @@
             tools:visibility="visible"
             android:layout_marginStart="@dimen/dp_20"
             android:layout_marginLeft="@dimen/dp_20"
-            android:layout_marginTop="22dp"
+            android:layout_marginTop="18dp"
             android:orientation="vertical">
 
             <!-- 返回icon与标题分开:仅点返回icon退出,点标题不退出 -->
@@ -88,7 +88,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_gravity="end|top"
-        android:layout_marginTop="22dp"
+        android:layout_marginTop="18dp"
         android:layout_marginRight="@dimen/dp_20"
         android:gravity="end"
         android:orientation="vertical"
