@@ -1,6 +1,8 @@
 {
   "bg_body": "#141218",
   "bg_component": "#211D28",
+  "bg_float": "#CC211D28",
+  "bg_float_fab": "#CC211D28",
   "text_main": "#FFFFFF",
   "text_highlight": "#E5E7EB",
   "nav_text_normal": "#7A7A7A",
