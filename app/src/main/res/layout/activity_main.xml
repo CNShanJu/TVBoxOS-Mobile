@@ -1,26 +1,27 @@
 <?xml version="1.0" encoding="utf-8"?>
-<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:orientation="vertical"
     tools:context=".ui.activity.MainActivity">
 
-    <!-- 内容全高延伸到屏幕底部(毛玻璃底栏覆盖其上, 模糊区域才有内容) -->
+    <!-- 内容区:占上方全部空间, 底部导航栏下方另有布局占位, 内容底部在导航栏上方结束 -->
     <androidx.viewpager.widget.ViewPager
         android:id="@+id/vp"
         android:layout_width="match_parent"
-        android:layout_height="match_parent"/>
+        android:layout_height="0dp"
+        android:layout_weight="1"/>
 
-    <!-- 毛玻璃底栏:悬浮覆盖在内容之上(三层: 模糊层 → 磨砂遮罩+顶部线 → 清晰图标)。
-         阴影由容器 elevation 提供; 内层 BottomNavigationView 透明, 绕开 MaterialShapeDrawable 变暗 -->
+    <!-- 底部导航栏:占真实布局高度(不再悬浮覆盖内容), 上层内容不会被其遮挡,
+         页面滚动区域底部在导航栏上沿结束, 版本号等底部内容可正常显示/滚动 -->
     <FrameLayout
         android:layout_width="match_parent"
         android:layout_height="58dp"
-        android:layout_gravity="bottom"
         android:elevation="10dp">
 
-        <!-- 1. 模糊层:实时模糊其下方(ViewPager 列表)内容 -->
+        <!-- 1. 模糊层:实时模糊其下方(内容区) -->
         <eightbitlab.com.blurview.BlurView
             android:id="@+id/blur_view"
             android:layout_width="match_parent"
@@ -53,4 +54,4 @@
                 app:labelVisibilityMode="labeled"
                 app:menu="@menu/main_bottom_navigation"/>
     </FrameLayout>
-</FrameLayout>
+</LinearLayout>

@@ -32,7 +32,7 @@
             android:layout_alignParentEnd="true"
             android:layout_alignParentBottom="true"
             android:layout_marginEnd="20dp"
-            android:layout_marginBottom="78dp"
+            android:layout_marginBottom="20dp"
             android:background="@drawable/bg_fab_oval"
             android:clipToOutline="true"
             android:foreground="?android:selectableItemBackground"
