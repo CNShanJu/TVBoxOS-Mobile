@@ -634,18 +634,16 @@
         android:textColor="@color/color_FFFFFF"
          />
 
-    <LinearLayout
+    <FrameLayout
         android:id="@+id/ll_speed"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_gravity="top|center_horizontal"
         android:layout_marginTop="4dp"
-        android:orientation="horizontal"
-        android:gravity="center_vertical"
         android:visibility="gone"
         tools:visibility="visible">
 
-        <!-- 长按倍速: 动画画布为方形, 用100x100避免拉伸留白; 文字紧贴右侧 -->
+        <!-- 长按倍速: 方形动画; 文字叠在图标右缘内, 保证与箭头贴紧不出现大空档 -->
         <com.airbnb.lottie.LottieAnimationView
             android:id="@+id/lt_speed"
             android:layout_width="100dp"
@@ -660,13 +658,14 @@
             android:id="@+id/tv_speed"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginStart="6dp"
-            android:layout_marginLeft="6dp"
+            android:layout_gravity="center_vertical|end"
+            android:layout_marginEnd="4dp"
+            android:layout_marginRight="4dp"
             android:gravity="center"
             android:maxLines="1"
             android:textColor="@color/white"
-            android:textSize="16sp"
+            android:textSize="14sp"
             android:textStyle="bold"
             android:text="2.0"/>
-    </LinearLayout>
+    </FrameLayout>
 </FrameLayout>
