@@ -1,9 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- 悬浮按钮圆形背景:底色与页面主背景 bg_body 统一,描边用组件色 bg_component 形成"悬浮框",阴影由控件 elevation 提供 -->
+<!-- 悬浮按钮圆形背景:底色与页面主背景 bg_body 统一,描边用主题感知色 fab_stroke(亮色深灰/暗色亮灰半透明),
+     纯黑无内容页面也能看清圆钮边界,阴影由控件 elevation 提供 -->
 <shape xmlns:android="http://schemas.android.com/apk/res/android"
     android:shape="oval">
     <solid android:color="@color/bg_body" />
     <stroke
         android:width="1dp"
-        android:color="@color/bg_component" />
+        android:color="@color/fab_stroke" />
 </shape>

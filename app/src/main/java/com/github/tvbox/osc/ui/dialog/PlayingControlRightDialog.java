@@ -23,14 +23,13 @@ import java.util.Arrays;
 
 /**
  * 播放设置右侧抽屉:在线全屏播放与本地播放共用(PlaybackSettingsController),
- * 功能保持一致;下载入口仅在线播放显示。
+ * 功能保持一致;不提供下载入口(全屏下载走底部控制栏"下载",设置面板不再重复放置)。
  */
 public class PlayingControlRightDialog extends AppDrawerPopupView {
 
     @NonNull
     private final Activity mActivity;
     private final PlaybackSettingsController mController;
-    private final boolean mShowDownload;
     MyVideoView mPlayer;
     private DialogPlayingControlBinding mBinding;
 
@@ -47,12 +46,11 @@ public class PlayingControlRightDialog extends AppDrawerPopupView {
     };
 
     public PlayingControlRightDialog(@NonNull @NotNull Context context, PlaybackSettingsController controller,
-                                     MyVideoView videoView, boolean showDownload) {
+                                     MyVideoView videoView) {
         super(context);
         mActivity = context instanceof Activity ? (Activity) context : null;
         mController = controller;
         mPlayer = videoView;
-        mShowDownload = showDownload;
     }
 
     @Override
@@ -78,8 +76,6 @@ public class PlayingControlRightDialog extends AppDrawerPopupView {
         mBinding.decode.setText(mController.settingsIjkBtn().getText());
         //全屏的设置弹窗显示
         mBinding.landscapePortrait.setVisibility(View.VISIBLE);
-        //下载入口仅在线播放显示(本地播放无下载弹窗)
-        mBinding.download.setVisibility(mShowDownload ? View.VISIBLE : View.GONE);
         updateAboutIjkVisible();
         updateSpeedUi();
     }
@@ -134,14 +130,6 @@ public class PlayingControlRightDialog extends AppDrawerPopupView {
         mBinding.refresh.setOnClickListener(view -> changeAndUpdateText(null, mController.settingsRefreshBtn()));
         mBinding.subtitle.setOnClickListener(view -> dismissWith(() -> changeAndUpdateText(null, mController.settingsZimuBtn())));
         mBinding.voice.setOnClickListener(view -> dismissWith(() -> changeAndUpdateText(null, mController.settingsAudioBtn())));
-        if (mShowDownload) {
-            mBinding.download.setOnClickListener(view -> {
-                dismiss();
-                if (mActivity instanceof com.github.tvbox.osc.ui.activity.DetailActivity) {
-                    ((com.github.tvbox.osc.ui.activity.DetailActivity) mActivity).showDownloadDialogInFullscreen();
-                }
-            });
-        }
     }
 
     private void updateSkipText(boolean start){

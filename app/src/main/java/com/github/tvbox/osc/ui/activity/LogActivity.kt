@@ -36,6 +36,15 @@ class LogActivity : BaseVbActivity<ActivityLogBinding>() {
     companion object {
         private const val SHOW_MAX_LINES = 1000
         private const val BIZ_MAX_LINES = 300
+
+        /** 日志文件名 → 展示名:app-2026-06-01.log / logcat-2026-06-01.log → 2026-06-01;
+         *  logcat 单日超大时按 8MB 滚动的分段文件 logcat-2026-06-01.2.log → 2026-06-01(分段2) */
+        private fun dayLabel(name: String): String {
+            val m = Regex("""^(?:app|logcat)-(\d{4}-\d{2}-\d{2})(?:\.(\d+))?\.log$""").find(name)
+                ?: return name
+            return if (m.groupValues[2].isEmpty()) m.groupValues[1]
+            else m.groupValues[1] + "(分段" + m.groupValues[2] + ")"
+        }
     }
 
     override fun init() {
@@ -163,8 +172,7 @@ class LogActivity : BaseVbActivity<ActivityLogBinding>() {
         if (selectedFile == null || !dayFiles.contains(selectedFile)) {
             selectedFile = dayFiles[0]
         }
-        mBinding.tvSelectedDay.text = selectedFile?.name
-            ?.replace("app-", "")?.replace("logcat-", "")?.replace(".log", "") ?: "暂无日志"
+        mBinding.tvSelectedDay.text = selectedFile?.name?.let { dayLabel(it) } ?: "暂无日志"
         Thread {
             val lines = selectedFile?.let { AppLog.readTail(it, SHOW_MAX_LINES) } ?: emptyList()
             val sb = StringBuilder(lines.size * 64)
@@ -187,10 +195,7 @@ class LogActivity : BaseVbActivity<ActivityLogBinding>() {
             AppBubble.toast("暂无日志")
             return
         }
-        val display = Array(dayFiles.size) { i ->
-            val f = dayFiles[i]
-            f.name.replace("app-", "").replace("logcat-", "").replace(".log", "")
-        }
+        val display = Array(dayFiles.size) { i -> dayLabel(dayFiles[i].name) }
         XPopup.Builder(this)
             .asBottomList("选择日期", display) { position, _ ->
                 if (position in dayFiles.indices) {

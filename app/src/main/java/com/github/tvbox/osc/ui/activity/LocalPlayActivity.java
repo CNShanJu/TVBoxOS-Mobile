@@ -215,14 +215,14 @@ public class LocalPlayActivity extends BaseVbActivity<ActivityLocalPlayBinding> 
 
             @Override
             public void showSetting() {
-                // 本地播放设置:与在线全屏播放共用播放设置抽屉(功能一致,无下载入口)
+                // 本地播放设置:与在线全屏播放共用播放设置抽屉(功能一致)
                 mController.hideBottom();
                 new XPopup.Builder(LocalPlayActivity.this)
                         .isViewMode(true)
                         .hasNavigationBar(false)
                         .popupHeight(com.blankj.utilcode.util.ScreenUtils.getScreenHeight())
                         .popupPosition(PopupPosition.Right)
-                        .asCustom(new PlayingControlRightDialog(LocalPlayActivity.this, mController, mVideoView, false))
+                        .asCustom(new PlayingControlRightDialog(LocalPlayActivity.this, mController, mVideoView))
                         .show();
             }
 

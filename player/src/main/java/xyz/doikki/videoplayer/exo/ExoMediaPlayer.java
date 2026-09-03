@@ -174,8 +174,9 @@ public class ExoMediaPlayer extends AbstractPlayer implements Player.Listener {
             mMediaPlayer.release();
             mMediaPlayer = null;
         }
-        lastTotalRxBytes = 0;
-        lastTimeStamp = 0;
+        lastRxBytes = -1;
+        lastSampleTime = 0;
+        smoothSpeed = -1;
         mIsPreparing = false;
         mSpeedPlaybackParameters = null;
     }
@@ -249,35 +250,47 @@ public class ExoMediaPlayer extends AbstractPlayer implements Player.Listener {
         return 1f;
     }
 
-    private long lastTotalRxBytes = 0;
-
-    private long lastTimeStamp = 0;
-
-    private boolean unsupported() {
-        if (mAppContext == null) {
-            return true;
-        }
-        return TrafficStats.getUidRxBytes(mAppContext.getApplicationInfo().uid) == TrafficStats.UNSUPPORTED;
-    }
+    private long lastRxBytes = -1;
+    private long lastSampleTime = 0;
+    /** 平滑后的下载速度(bytes/s):流量是突发式的,直接采样会在 0 与大数值间跳动,做一阶平滑 */
+    private long smoothSpeed = -1;
 
     @Override
     public long getTcpSpeed() {
-        if (mAppContext == null || unsupported()) {
+        if (mAppContext == null) {
             return 0;
         }
-        //使用getUidRxBytes方法获取该进程总接收量
-        long total = TrafficStats.getTotalRxBytes();
-        //记录当前的时间
+        // 统计本应用(Uid)接收字节数:避免整个设备的流量(其他应用)掺入导致网速跳动;
+        // 个别 ROM 不支持 uid 统计时回退到设备总流量
+        long total;
+        try {
+            long uidRx = TrafficStats.getUidRxBytes(mAppContext.getApplicationInfo().uid);
+            total = uidRx == TrafficStats.UNSUPPORTED ? TrafficStats.getTotalRxBytes() : uidRx;
+        } catch (Throwable th) {
+            total = TrafficStats.getTotalRxBytes();
+        }
         long time = System.currentTimeMillis();
-        //数据接收量除以数据接收的时间，就计算网速了。
-        long diff = total - lastTotalRxBytes;
-        long speed = diff / Math.max(time - lastTimeStamp, 1);
-        //当前时间存到上次时间这个变量，供下次计算用
-        lastTimeStamp = time;
-        //当前总接收量存到上次接收总量这个变量，供下次计算用
-        lastTotalRxBytes = total;
-
-        return speed * 1024;
+        if (lastRxBytes < 0 || lastSampleTime == 0) {
+            // 首次采样:只记录基线,返回 0,避免把"开机至今的平均流量"当网速闪一下
+            lastRxBytes = total;
+            lastSampleTime = time;
+            return 0;
+        }
+        long dt = time - lastSampleTime;
+        long diff = total - lastRxBytes;
+        if (diff < 0) {
+            diff = 0; // 流量计数被系统重置(重启/飞行模式等)
+        }
+        lastRxBytes = total;
+        lastSampleTime = time;
+        // 与 IJK 的 tcp_speed 语义一致:返回 bytes/s
+        long sample = dt <= 0 ? 0 : diff * 1000 / dt;
+        if (sample < 0) {
+            sample = 0;
+        }
+        // 一阶平滑(约 1s 采样一次):缓冲间歇(如 Exo 边下边播的读空窗)速度不会瞬间掉零,显示更连续
+        smoothSpeed = smoothSpeed < 0 ? sample : (smoothSpeed + sample) / 2;
+        return smoothSpeed;
     }
 
     @Override

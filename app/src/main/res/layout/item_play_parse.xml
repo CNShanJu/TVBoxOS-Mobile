@@ -13,4 +13,5 @@
     android:paddingVertical="6dp"
     android:singleLine="true"
     android:textSize="12sp"
+    android:textColor="@color/md_on_primary"
     tools:text="解析"/>

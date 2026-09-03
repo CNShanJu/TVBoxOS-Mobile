@@ -23,7 +23,8 @@
             android:textSize="22sp" />
     </LinearLayout>
 
-    <!-- 外层整体滚动(与设置页一致):MBox 标题吸顶固定,选项卡片+版本号随内容滚动 -->
+    <!-- 外层整体滚动(与设置页一致):MBox 标题吸顶固定,选项卡片+版本号随内容滚动;
+         子布局必须 wrap_content 才能在内容高于屏幕时可滚动,否则版本号会被顶到屏外且无法上滑 -->
     <ScrollView
         android:layout_width="match_parent"
         android:layout_height="0dp"
@@ -35,15 +36,14 @@
         >
         <LinearLayout
             android:layout_width="match_parent"
-            android:layout_height="match_parent"
+            android:layout_height="wrap_content"
             android:orientation="vertical"
             android:layout_margin="20dp">
 
-            <!-- 选项卡片:内容少时吃满剩余高度;内容多时随外层整体滚动 -->
+            <!-- 选项卡片:随内容自然撑开,超高时整体随外层滚动,保证下方版本号可达 -->
             <LinearLayout
                 android:layout_width="match_parent"
-                android:layout_height="0dp"
-                android:layout_weight="1"
+                android:layout_height="wrap_content"
                 android:orientation="vertical"
                 android:paddingVertical="20dp"
                 android:background="@drawable/bg_large_round_gray">

@@ -34,6 +34,7 @@ import com.github.tvbox.osc.ui.activity.LiveActivity;
 
 import com.github.tvbox.osc.ui.activity.SettingActivity;
 import com.github.tvbox.osc.ui.adapter.GridAdapter;
+import com.github.tvbox.osc.ui.widget.ListSwipeRefreshLayout;
 import com.github.tvbox.osc.util.FastClickCheckUtil;
 import com.github.tvbox.osc.util.HCallBack;
 import com.github.tvbox.osc.util.HawkConfig;
@@ -71,6 +72,9 @@ public class UserFragment extends BaseLazyFragment {
     private GridAdapter homeHotVodAdapter;
     private List<Movie.Video> homeSourceRec;
     RecyclerView tvHotList1;
+    /** 下拉刷新容器(首页列表根布局),绑定一次 */
+    private ListSwipeRefreshLayout mSwipeRefresh = null;
+    private boolean swipeRefreshBound = false;
 
     public static UserFragment newInstance(List<Movie.Video> recVod) {
         return new UserFragment().setArguments(recVod);
@@ -160,7 +164,49 @@ public class UserFragment extends BaseLazyFragment {
         tvHotList1.setAdapter(homeHotVodAdapter);
         addEndFooter();
         setLoadSir2(tvHotList1);
+        setupSwipeRefresh();
         initHomeHotVod(homeHotVodAdapter);
+    }
+
+    /**
+     * 下拉刷新容器绑定:监听只设一次(init 只会调用一次);颜色用主题高亮色
+     */
+    private void setupSwipeRefresh() {
+        if (swipeRefreshBound) return;
+        swipeRefreshBound = true;
+        mSwipeRefresh = findViewById(R.id.swipe_refresh);
+        if (mSwipeRefresh == null) return;
+        mSwipeRefresh.setColorSchemeResources(R.color.text_highlight);
+        mSwipeRefresh.setOnRefreshListener(() -> onPullRefresh());
+    }
+
+    /**
+     * 下拉刷新首页:站点推荐直接重设列表;豆瓣热门清掉当日缓存强制重新拉取(网络请求完成后收起动画)
+     */
+    private void onPullRefresh() {
+        if (SystemConfig.getHomeRec() == 1) {
+            if (homeSourceRec != null && homeSourceRec.size() > 0) {
+                homeHotVodAdapter.setNewData(homeSourceRec);
+                showSuccess();
+            } else {
+                showEmpty();
+            }
+            finishSwipeRefresh();
+            return;
+        }
+        try {
+            Hawk.delete("home_hot_day");
+            Hawk.delete("home_hot");
+        } catch (Throwable ignored) {
+        }
+        initHomeHotVod(homeHotVodAdapter);
+    }
+
+    /** 刷新完成(各加载路径收尾调用;非下拉刷新期间调用为无操作) */
+    private void finishSwipeRefresh() {
+        if (mSwipeRefresh != null && mSwipeRefresh.isRefreshing()) {
+            mSwipeRefresh.setRefreshing(false);
+        }
     }
 
     /**
@@ -209,6 +255,7 @@ public class UserFragment extends BaseLazyFragment {
             }else {
                 showEmpty();
             }
+            finishSwipeRefresh();
             return;
         }
         try {
@@ -225,6 +272,7 @@ public class UserFragment extends BaseLazyFragment {
                     if (hotMovies != null && hotMovies.size() > 0) {
                         showSuccess();
                         adapter.setNewData(hotMovies);
+                        finishSwipeRefresh();
                         return;
                     }
                 }
@@ -247,13 +295,20 @@ public class UserFragment extends BaseLazyFragment {
                             }else {
                                 showEmpty();
                             }
+                            finishSwipeRefresh();
                         }
                     });
                 }
 
                 @Override
                 public void onError(Throwable e) {
-                    // 保持原行为
+                    // 保持原行为(旧列表不变); 下拉刷新要收尾
+                    mActivity.runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            finishSwipeRefresh();
+                        }
+                    });
                 }
             });
         } catch (Throwable th) {
@@ -261,6 +316,7 @@ public class UserFragment extends BaseLazyFragment {
             if (adapter.getData().isEmpty()){
                 showEmpty();
             }
+            finishSwipeRefresh();
         }
     }
 

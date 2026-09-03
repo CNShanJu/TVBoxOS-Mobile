@@ -30,6 +30,7 @@ import com.github.tvbox.osc.ui.activity.FastSearchActivity;
 import com.github.tvbox.osc.ui.adapter.GridAdapter;
 import com.github.tvbox.osc.ui.dialog.GridFilterDialog;
 import com.github.tvbox.osc.ui.tv.widget.LoadMoreView;
+import com.github.tvbox.osc.ui.widget.ListSwipeRefreshLayout;
 import com.github.tvbox.osc.util.FastClickCheckUtil;
 import com.github.tvbox.osc.util.HawkConfig;
 import com.github.tvbox.osc.util.StackBlurBlur;
@@ -64,6 +65,10 @@ public class GridFragment extends BaseLazyFragment {
     private boolean filterBlurSetup = false;
     private boolean isTop = true;
     private View focusedView = null;
+    /** 下拉刷新容器(列表页根布局) */
+    private ListSwipeRefreshLayout mSwipeRefresh = null;
+    /** 下拉刷新监听只绑定一次(initView 会被多次调用) */
+    private boolean swipeRefreshBound = false;
     private class GridInfo{
         public String sortID="";
         public RecyclerView mGridView;
@@ -245,7 +250,39 @@ public class GridFragment extends BaseLazyFragment {
 
         findViewById(R.id.btn_filter).setOnClickListener(view -> showFilter());
         setupFilterBlur();
+        setupSwipeRefresh();
         setLoadSir2(mGridView);
+    }
+
+    /**
+     * 首页下拉刷新:从第 1 页重新拉取当前分类(不清空旧列表,数据到达后整体替换,避免刷新瞬间白屏);
+     * 返回时调用方负责结束刷新动画
+     */
+    private void setupSwipeRefresh() {
+        if (swipeRefreshBound) return;
+        swipeRefreshBound = true;
+        mSwipeRefresh = findViewById(R.id.swipe_refresh);
+        if (mSwipeRefresh == null) return;
+        mSwipeRefresh.setColorSchemeResources(R.color.text_highlight);
+        mSwipeRefresh.setOnRefreshListener(() -> onPullRefresh());
+    }
+
+    private void onPullRefresh() {
+        if (sourceViewModel == null) {
+            finishSwipeRefresh();
+            return;
+        }
+        page = 1;
+        maxPage = 1;
+        isLoad = false;
+        sourceViewModel.getList(sortData, page);
+    }
+
+    /** 刷新完成(数据到达/异常后调用;非下拉刷新期间调用为无操作) */
+    private void finishSwipeRefresh() {
+        if (mSwipeRefresh != null && mSwipeRefresh.isRefreshing()) {
+            mSwipeRefresh.setRefreshing(false);
+        }
     }
 
     /**
@@ -305,6 +342,7 @@ public class GridFragment extends BaseLazyFragment {
                     }
                     gridAdapter.setEnableLoadMore(false);
                 }
+                finishSwipeRefresh();
             }
         });
     }

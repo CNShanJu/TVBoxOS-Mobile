@@ -32,6 +32,14 @@ public final class LogcatCapture {
     private static final int RETENTION_DAYS = 7;
     private static final int BATCH_LINES = 100;
     private static final long FLUSH_MS = 1500;
+    /**
+     * 单个 logcat 文件大小上限(字节)。超过后滚动成 logcat-yyyy-MM-dd.1.log 等分段文件,
+     * 避免某一天日志量爆炸时单个文件无限增长(曾导致应用占用存储激增)。
+     */
+    private static final long MAX_FILE_BYTES = 8L * 1024 * 1024;
+    /** logcat 目录总大小上限(字节):所有分段/日期文件合计超限后删除最旧文件 */
+    private static final long MAX_TOTAL_BYTES = 48L * 1024 * 1024;
+    private static final long DAY_MS = 24L * 3600 * 1000;
 
     private static final Object LOCK = new Object();
     private static volatile Process process;
@@ -60,6 +68,8 @@ public final class LogcatCapture {
             try {
                 File dir = logDir();
                 if (!dir.exists()) dir.mkdirs();
+                // 启动即先做一次清理:把上次遗留的超限/超期文件收掉,避免一开启就占满存储
+                cleanupFiles();
                 final Process p = Runtime.getRuntime().exec(new String[]{
                         "logcat", "-v", "time", "--uid=" + android.os.Process.myUid(), "-T", "1"});
                 process = p;
@@ -138,7 +148,8 @@ public final class LogcatCapture {
                     } catch (Throwable ignored) {
                     }
                 }
-                cleanupOld();
+                rotateIfNeeded(file);
+                cleanupFiles();
             } catch (Throwable th) {
                 Log.e("LogcatCapture", "写 logcat 文件失败", th);
             }
@@ -153,20 +164,58 @@ public final class LogcatCapture {
         return new File(logDir(), PREFIX + new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(new Date()) + SUFFIX);
     }
 
-    /** 删除 7 天前的 logcat 文件 */
-    private static void cleanupOld() {
+    /** 当日文件超过单文件上限时滚动为 logcat-yyyy-MM-dd.N.log(与活跃文件同前缀,便于按天查看) */
+    private static void rotateIfNeeded(File file) {
+        if (file == null || !file.exists() || file.length() <= MAX_FILE_BYTES) return;
+        try {
+            String path = file.getAbsolutePath();
+            String stem = path.substring(0, path.length() - SUFFIX.length());
+            int i = 1;
+            File seg;
+            do {
+                seg = new File(stem + "." + i + SUFFIX);
+                i++;
+            } while (seg.exists());
+            if (!file.renameTo(seg)) {
+                // 重命名失败(极少见)则忽略,下一次追加时再试
+                return;
+            }
+        } catch (Throwable ignored) {
+        }
+    }
+
+    /** 清理策略:① 删除超过保留天数的文件;② 总大小超过上限时删除最旧的滚动文件(不删当前活跃文件) */
+    private static void cleanupFiles() {
         try {
             File dir = logDir();
             File[] files = dir.listFiles();
             if (files == null) return;
-            long cutoff = System.currentTimeMillis() - RETENTION_DAYS * 24L * 3600 * 1000;
+            List<File> keep = new ArrayList<>();
+            long now = System.currentTimeMillis();
             for (File f : files) {
-                if (f.isFile() && f.getName().startsWith(PREFIX) && f.getName().endsWith(SUFFIX)) {
-                    if (f.lastModified() < cutoff) {
-                        //noinspection ResultOfMethodCallIgnored
-                        f.delete();
-                    }
+                if (!f.isFile() || !f.getName().startsWith(PREFIX) || !f.getName().endsWith(SUFFIX)) {
+                    continue;
                 }
+                if (now - f.lastModified() > RETENTION_DAYS * DAY_MS) {
+                    //noinspection ResultOfMethodCallIgnored
+                    f.delete();
+                } else {
+                    keep.add(f);
+                }
+            }
+            if (keep.isEmpty()) return;
+            // 按最后修改时间升序(最旧的在前),总大小仍超限时优先删除旧文件
+            java.util.Collections.sort(keep, (a, b) -> Long.compare(a.lastModified(), b.lastModified()));
+            String activeName = todayFile().getName();
+            long total = 0;
+            for (File f : keep) total += f.length();
+            for (File f : keep) {
+                if (total <= MAX_TOTAL_BYTES) break;
+                if (f.getName().equals(activeName)) continue; // 保留当前正在写的文件
+                long len = f.length();
+                //noinspection ResultOfMethodCallIgnored
+                f.delete();
+                total -= len;
             }
         } catch (Throwable ignored) {
         }

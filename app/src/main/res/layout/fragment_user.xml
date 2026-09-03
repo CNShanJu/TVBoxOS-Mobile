@@ -1,54 +1,60 @@
 <?xml version="1.0" encoding="utf-8"?>
-<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<!-- 下拉刷新容器(后代扫描:列表不在顶部时下拉不触发,在顶部时下拉重载当前页数据) -->
+<com.github.tvbox.osc.ui.widget.ListSwipeRefreshLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/swipe_refresh"
     android:layout_width="match_parent"
-    android:layout_height="match_parent"
-    xmlns:tools="http://schemas.android.com/tools"
-    android:orientation="vertical">
+    android:layout_height="match_parent">
 
-    <androidx.recyclerview.widget.RecyclerView
-        android:id="@+id/tvHotList1"
+    <RelativeLayout xmlns:tools="http://schemas.android.com/tools"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        tools:listitem="@layout/item_grid"
-        tools:layoutManager="androidx.recyclerview.widget.GridLayoutManager"
-        tools:spanCount="3"
-        android:paddingHorizontal="10dp"
-        android:paddingBottom="70dp"
-        android:clipToPadding="false"
-        />
+        android:orientation="vertical">
 
-    <!-- 直播悬浮按钮(毛玻璃): 54dp 圆, 圆形裁剪(clipToOutline), 模糊层+磨砂遮罩+清晰图标;
-         marginBottom=78dp(58 悬浮底栏 + 20 间距), 不被底栏覆盖 -->
-    <FrameLayout
-        android:id="@+id/btn_live"
-        android:layout_width="54dp"
-        android:layout_height="54dp"
-        android:layout_alignParentEnd="true"
-        android:layout_alignParentBottom="true"
-        android:layout_marginEnd="20dp"
-        android:layout_marginBottom="78dp"
-        android:background="@drawable/bg_fab_oval"
-        android:clipToOutline="true"
-        android:foreground="?android:selectableItemBackground"
-        android:elevation="8dp">
-
-        <eightbitlab.com.blurview.BlurView
-            android:id="@+id/blur_live"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent" />
-
-        <View
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/tvHotList1"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
-            android:background="@color/bg_float_fab" />
+            tools:listitem="@layout/item_grid"
+            tools:layoutManager="androidx.recyclerview.widget.GridLayoutManager"
+            tools:spanCount="3"
+            android:paddingHorizontal="10dp"
+            android:paddingBottom="70dp"
+            android:clipToPadding="false"
+            />
 
-        <ImageView
-            android:layout_width="28dp"
-            android:layout_height="28dp"
-            android:layout_gravity="center"
-            android:src="@drawable/ic_live_tv_48"
-            app:tint="@color/text_highlight" />
-    </FrameLayout>
+        <!-- 直播悬浮按钮(毛玻璃): 54dp 圆, 圆形裁剪(clipToOutline), 模糊层+磨砂遮罩+清晰图标;
+             marginBottom=78dp(58 悬浮底栏 + 20 间距), 不被底栏覆盖 -->
+        <FrameLayout
+            android:id="@+id/btn_live"
+            android:layout_width="54dp"
+            android:layout_height="54dp"
+            android:layout_alignParentEnd="true"
+            android:layout_alignParentBottom="true"
+            android:layout_marginEnd="20dp"
+            android:layout_marginBottom="78dp"
+            android:background="@drawable/bg_fab_oval"
+            android:clipToOutline="true"
+            android:foreground="?android:selectableItemBackground"
+            android:elevation="8dp">
 
-</RelativeLayout>
+            <eightbitlab.com.blurview.BlurView
+                android:id="@+id/blur_live"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent" />
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:background="@color/bg_float_fab" />
+
+            <ImageView
+                android:layout_width="28dp"
+                android:layout_height="28dp"
+                android:layout_gravity="center"
+                android:src="@drawable/ic_live_tv_48"
+                app:tint="@color/text_highlight" />
+        </FrameLayout>
+
+    </RelativeLayout>
+</com.github.tvbox.osc.ui.widget.ListSwipeRefreshLayout>

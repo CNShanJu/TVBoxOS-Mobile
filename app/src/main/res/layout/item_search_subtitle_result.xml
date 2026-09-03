@@ -27,7 +27,7 @@
             android:singleLine="true"
             android:maxLines="1"
             android:text="字幕搜索结果"
-            android:textColor="@color/white"/>
+            android:textColor="@color/md_on_primary"/>
         <TextView
             android:id="@+id/subtitleNameInfo"
             android:layout_width="wrap_content"
@@ -35,7 +35,7 @@
             android:singleLine="true"
             android:maxLines="1"
             android:text="压缩包"
-            android:textColor="@color/white"/>
+            android:textColor="@color/md_on_primary"/>
 
     </LinearLayout>
 </FrameLayout>
