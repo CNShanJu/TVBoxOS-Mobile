@@ -9,6 +9,7 @@ import androidx.annotation.NonNull;
 
 import com.blankj.utilcode.util.ScreenUtils;
 import com.github.tvbox.osc.R;
+import com.github.tvbox.osc.ui.widget.FrostedGlassUtil;
 import com.lxj.xpopup.core.BottomPopupView;
 
 /**
@@ -18,6 +19,7 @@ import com.lxj.xpopup.core.BottomPopupView;
  * 调主题背景/尺寸只改基类/常量,一处生效全部底部弹窗。
  * 子类只需实现 {@link #getImplLayoutId()} 与各自 {@link #onCreate()};
  * 标题+内容+按钮结构时,中间内容区用 weight=1 + 内部滚动,避免挤压上下标题/按钮。
+ * 布局含 tag="glass_blur" 的 BlurView 时自动启用毛玻璃。
  */
 public abstract class AppBottomPopupView extends BottomPopupView {
 
@@ -58,5 +60,7 @@ public abstract class AppBottomPopupView extends BottomPopupView {
                 }
             }
         }
+        // 毛玻璃:布局里存在 tag="glass_blur" 的 BlurView 时, 模糊弹层覆盖区域的下方内容
+        FrostedGlassUtil.attach(root, getContext());
     }
 }
