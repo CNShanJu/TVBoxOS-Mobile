@@ -17,6 +17,8 @@ import com.github.tvbox.osc.ui.dialog.ChooseSourceDialog
 import com.github.tvbox.osc.ui.dialog.SubsTipDialog
 import com.github.tvbox.osc.ui.dialog.SubsciptionDialog
 import com.github.tvbox.osc.ui.dialog.SubsciptionDialog.OnSubsciptionListener
+import com.github.tvbox.osc.log.Category
+import com.github.tvbox.osc.log.LogStore
 import com.github.tvbox.osc.util.AppLog
 import com.github.tvbox.osc.util.HCallBack
 import com.github.tvbox.osc.util.HawkConfig
@@ -104,6 +106,7 @@ class SubscriptionActivity : BaseVbActivity<ActivitySubscriptionBinding>() {
                 com.github.tvbox.osc.ui.dialog.ConfirmDialog.show(this@SubscriptionActivity, "删除订阅", "确定删除订阅吗？", "删除", {
                     val deleted = mSubscriptions.get(position)
                     AppLog.log("订阅管理", "删除订阅: " + deleted.name + "  " + deleted.url)
+                    LogStore.log(Category.SUBSCRIPTION, "订阅: 删除 " + deleted.name)
                     mSubscriptions.removeAt(position)
                     //删除/选择只刷新,不触发重新排序
                     mSubscriptionAdapter.notifyDataSetChanged()
@@ -124,6 +127,7 @@ class SubscriptionActivity : BaseVbActivity<ActivitySubscriptionBinding>() {
             }
             val chosen = mSubscriptions[position]
             AppLog.log("订阅管理", "选择订阅: " + chosen.name + "  " + chosen.url)
+            LogStore.log(Category.SUBSCRIPTION, "订阅: 切换到 " + chosen.name)
             //删除/选择只刷新,不触发重新排序
             mSubscriptionAdapter.notifyDataSetChanged()
         }
@@ -247,12 +251,14 @@ class SubscriptionActivity : BaseVbActivity<ActivitySubscriptionBinding>() {
 
     private fun addSubscription(name: String, url: String, checked: Boolean) {
         if (url.startsWith("clan://")) {
+            LogStore.log(Category.SUBSCRIPTION, "订阅: 新增 " + name + "(clan)")
             addSub2List(name, url, checked)
             mSubscriptionAdapter.setNewData(mSubscriptions)
             updateEmptyState()
         } else if (url.startsWith("http")) {
             showLoadingDialog()
             AppLog.log("订阅管理", "新增订阅: " + name + "  " + url)
+            LogStore.log(Category.SUBSCRIPTION, "订阅: 新增 " + name)
             HttpClient.get(url, null, "get_subscription", object : HCallBack {
                     override fun onSuccess(response: String) {
                         dismissLoadingDialog()

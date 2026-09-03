@@ -391,6 +391,10 @@ public class LiveActivity extends BaseActivity {
         showBottomEpg();
 
         AppLog.log("直播", "播放频道[" + currentLiveChannelItem.getChannelName() + "] 源[" + (currentLiveChannelItem.getSourceIndex() + 1) + "/" + currentLiveChannelItem.getSourceNum() + "] " + currentLiveChannelItem.getUrl());
+        com.github.tvbox.osc.log.LogStore.log(com.github.tvbox.osc.log.Category.OTHER,
+                "直播: 播放频道[" + currentLiveChannelItem.getChannelName() + "] 源["
+                        + (currentLiveChannelItem.getSourceIndex() + 1) + "/"
+                        + currentLiveChannelItem.getSourceNum() + "]");
 
         mVideoView.setUrl(currentLiveChannelItem.getUrl());
        // showChannelInfo();
@@ -827,6 +831,9 @@ public class LiveActivity extends BaseActivity {
                     liveChannelGroupList.clear();
                     liveChannelGroupList.addAll(list);
 
+                    com.github.tvbox.osc.log.LogStore.log(com.github.tvbox.osc.log.Category.OTHER,
+                            "直播: 直播源加载成功, 分组 " + list.size() + " 个");
+
                     mHandler.post(new Runnable() {
                         @Override
                         public void run() {
@@ -837,6 +844,8 @@ public class LiveActivity extends BaseActivity {
                 } catch (Throwable th) {
                     th.printStackTrace();
                     AppLog.log("直播", "解析失败: " + th.getMessage());
+                    com.github.tvbox.osc.log.LogStore.log(com.github.tvbox.osc.log.Category.OTHER,
+                            "直播: 直播源解析失败: " + th.getMessage());
                     onLiveLoadFail("直播源解析失败,请检查订阅中的直播源");
                 }
             }
@@ -844,6 +853,8 @@ public class LiveActivity extends BaseActivity {
             @Override
             public void onError(Throwable e) {
                 AppLog.log("直播", "加载失败: " + (e == null ? "null" : e.getMessage()));
+                com.github.tvbox.osc.log.LogStore.log(com.github.tvbox.osc.log.Category.OTHER,
+                        "直播: 直播源加载失败: " + (e == null ? "null" : e.getMessage()));
                 onLiveLoadFail("直播源加载失败,请检查网络或直播源");
             }
         });
