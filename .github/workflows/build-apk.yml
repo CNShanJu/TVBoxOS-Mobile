@@ -44,7 +44,7 @@ jobs:
       - name: Build Release APK
         run: |
           chmod +x gradlew
-          ./gradlew assembleRelease --no-daemon
+          ./gradlew assembleRelease --no-daemon --console=plain --stacktrace
         # 说明:TVBoxOSC.jks 已随仓库提交,CI 使用与本地一致的正式签名,
         # 产物 APK 可覆盖升级本地正式签名安装的旧版本。
         # 安全提醒:签名库与密码(build.gradle 中硬编码)公开在仓库里,
