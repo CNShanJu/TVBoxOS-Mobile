@@ -1,29 +1,28 @@
 package com.github.tvbox.osc.ui.dialog;
-import com.github.tvbox.osc.util.AppBubble;
 
-import android.app.Activity;
 import android.content.Context;
-import android.os.Bundle;
-import android.view.Gravity;
 import android.view.View;
-import android.view.ViewGroup;
-import android.view.WindowManager;
 import android.widget.TextView;
-import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 
-import com.blankj.utilcode.util.ConvertUtils;
+import com.github.tvbox.osc.util.AppBubble;
 import com.github.tvbox.osc.R;
 import com.github.tvbox.osc.player.api.PlayConfig;
 import com.github.tvbox.osc.util.FastClickCheckUtil;
-import com.github.tvbox.osc.util.HawkConfig;
 import com.github.tvbox.osc.util.SubtitleHelper;
-import com.orhanobut.hawk.Hawk;
+import com.github.tvbox.osc.util.Utils;
+import com.lxj.xpopup.XPopup;
+import com.lxj.xpopup.core.BasePopupView;
 
 import org.jetbrains.annotations.NotNull;
 
-public class SubtitleDialog extends BaseDialog {
+/**
+ * 字幕设置弹窗（统一走 XPopup 居中弹窗 AppCenterPopupView;观感与其它 XPopup 弹窗一致）。
+ * <p>外部用法不变:{@code new SubtitleDialog(activity)} + 3 个 setXxxListener + {@code show()};
+ * XPopup 内容视图 onCreate 才可 findViewById,故 setter 存字段、onCreate 内绑定。
+ */
+public class SubtitleDialog extends AppCenterPopupView {
 
     public TextView selectInternal;
     private TextView selectLocal;
@@ -42,35 +41,36 @@ public class SubtitleDialog extends BaseDialog {
     private SearchSubtitleListener mSearchSubtitleListener;
     private LocalFileChooserListener mLocalFileChooserListener;
     private SubtitleViewListener mSubtitleViewListener;
+    private final android.app.Activity ownerActivity;
 
     public SubtitleDialog(@NonNull @NotNull Context context) {
         super(context);
-        if (context instanceof Activity) {
-            setOwnerActivity((Activity) context);
+        ownerActivity = context instanceof android.app.Activity ? (android.app.Activity) context : null;
+    }
+
+    @Override
+    protected int getImplLayoutId() {
+        return R.layout.dialog_subtitle;
+    }
+
+    @Override
+    protected void onCreate() {
+        super.onCreate();
+        initView();
+    }
+
+    /** 兼容旧调用点：popupInfo 未绑定时经 Builder 绑定 */
+    @Override
+    public BasePopupView show() {
+        if (popupInfo == null) {
+            return new XPopup.Builder(getContext())
+                    .isDarkTheme(Utils.isDarkTheme())
+                    .asCustom(this).show();
         }
-        setContentView(R.layout.dialog_subtitle);
-        initView(context);
+        return super.show();
     }
 
-    @Override
-    protected int getDialogBackgroundRes() {
-        // 居中弹窗:全圆角(不是底部弹窗的顶圆角)
-        return R.drawable.bg_dialog;
-    }
-
-    @Override
-    protected void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-        WindowManager.LayoutParams lp = new WindowManager.LayoutParams();
-        lp.copyFrom(getWindow().getAttributes());
-        lp.gravity = Gravity.CENTER;
-        lp.width = ConvertUtils.dp2px(330);
-
-        getWindow().setAttributes(lp);
-        getWindow().setWindowAnimations(R.style.DialogFadeAnimation); // Set the animation style
-    }
-
-    private void initView(Context context) {
+    private void initView() {
         selectInternal = findViewById(R.id.selectInternal);
         selectLocal = findViewById(R.id.selectLocal);
         selectRemote = findViewById(R.id.selectRemote);
@@ -90,7 +90,7 @@ public class SubtitleDialog extends BaseDialog {
             public void onClick(View view) {
                 FastClickCheckUtil.check(view);
                 dismiss();
-                mLocalFileChooserListener.openLocalFileChooserDialog();
+                if (mLocalFileChooserListener != null) mLocalFileChooserListener.openLocalFileChooserDialog();
             }
         });
 
@@ -99,11 +99,11 @@ public class SubtitleDialog extends BaseDialog {
             public void onClick(View view) {
                 FastClickCheckUtil.check(view);
                 dismiss();
-                mSearchSubtitleListener.openSearchSubtitleDialog();
+                if (mSearchSubtitleListener != null) mSearchSubtitleListener.openSearchSubtitleDialog();
             }
         });
 
-        int size = SubtitleHelper.getTextSize(getOwnerActivity());
+        int size = SubtitleHelper.getTextSize(ownerActivity != null ? ownerActivity : (android.app.Activity) getContext());
         subtitleSizeText.setText(Integer.toString(size));
 
         subtitleSizeMinus.setOnClickListener(new View.OnClickListener() {
@@ -117,7 +117,7 @@ public class SubtitleDialog extends BaseDialog {
                 }
                 subtitleSizeText.setText(Integer.toString(curSize));
                 SubtitleHelper.setTextSize(curSize);
-                mSubtitleViewListener.setTextSize(curSize);
+                if (mSubtitleViewListener != null) mSubtitleViewListener.setTextSize(curSize);
             }
         });
         subtitleSizePlus.setOnClickListener(new View.OnClickListener() {
@@ -131,14 +131,14 @@ public class SubtitleDialog extends BaseDialog {
                 }
                 subtitleSizeText.setText(Integer.toString(curSize));
                 SubtitleHelper.setTextSize(curSize);
-                mSubtitleViewListener.setTextSize(curSize);
+                if (mSubtitleViewListener != null) mSubtitleViewListener.setTextSize(curSize);
             }
         });
 
         int timeDelay = SubtitleHelper.getTimeDelay();
         String timeStr = "0";
         if (timeDelay != 0) {
-            double dbTimeDelay = timeDelay/1000;
+            double dbTimeDelay = timeDelay / 1000;
             timeStr = Double.toString(dbTimeDelay);
         }
         subtitleTimeText.setText(timeStr);
@@ -157,9 +157,9 @@ public class SubtitleDialog extends BaseDialog {
                     timeStr = Double.toString(time);
                 }
                 subtitleTimeText.setText(timeStr);
-                int mseconds = (int)(oneceDelay*1000);
-                SubtitleHelper.setTimeDelay((int)(time*1000));
-                mSubtitleViewListener.setSubtitleDelay(mseconds);
+                int mseconds = (int) (oneceDelay * 1000);
+                SubtitleHelper.setTimeDelay((int) (time * 1000));
+                if (mSubtitleViewListener != null) mSubtitleViewListener.setSubtitleDelay(mseconds);
             }
         });
         subtitleTimePlus.setOnClickListener(new View.OnClickListener() {
@@ -176,9 +176,9 @@ public class SubtitleDialog extends BaseDialog {
                     timeStr = Double.toString(time);
                 }
                 subtitleTimeText.setText(timeStr);
-                int mseconds = (int)(oneceDelay*1000);
-                SubtitleHelper.setTimeDelay((int)(time*1000));
-                mSubtitleViewListener.setSubtitleDelay(mseconds);
+                int mseconds = (int) (oneceDelay * 1000);
+                SubtitleHelper.setTimeDelay((int) (time * 1000));
+                if (mSubtitleViewListener != null) mSubtitleViewListener.setSubtitleDelay(mseconds);
             }
         });
         selectInternal.setOnClickListener(new View.OnClickListener() {
@@ -186,7 +186,7 @@ public class SubtitleDialog extends BaseDialog {
             public void onClick(View view) {
                 FastClickCheckUtil.check(view);
                 dismiss();
-                mSubtitleViewListener.selectInternalSubtitle();
+                if (mSubtitleViewListener != null) mSubtitleViewListener.selectInternalSubtitle();
             }
         });
 
@@ -195,7 +195,7 @@ public class SubtitleDialog extends BaseDialog {
             public void onClick(View view) {
                 int style = 0;
                 dismiss();
-                mSubtitleViewListener.setTextStyle(style);
+                if (mSubtitleViewListener != null) mSubtitleViewListener.setTextStyle(style);
                 AppBubble.toast("设置样式成功");
             }
         });
@@ -205,19 +205,19 @@ public class SubtitleDialog extends BaseDialog {
             public void onClick(View view) {
                 int style = 1;
                 dismiss();
-                mSubtitleViewListener.setTextStyle(style);
+                if (mSubtitleViewListener != null) mSubtitleViewListener.setTextStyle(style);
                 AppBubble.toast("设置样式成功");
             }
         });
         findViewById(R.id.subtitleOpen).setOnClickListener(v -> {
             updateSubtitleState(true);
             dismiss();
-            mSubtitleViewListener.subtitleOpen(true);
+            if (mSubtitleViewListener != null) mSubtitleViewListener.subtitleOpen(true);
         });
         findViewById(R.id.subtitleClose).setOnClickListener(v -> {
             updateSubtitleState(false);
             dismiss();
-            mSubtitleViewListener.subtitleOpen(false);
+            if (mSubtitleViewListener != null) mSubtitleViewListener.subtitleOpen(false);
         });
 
         // 清楚显示当前字幕开/关状态(默认关闭)
@@ -265,9 +265,13 @@ public class SubtitleDialog extends BaseDialog {
 
     public interface SubtitleViewListener {
         void setTextSize(int size);
+
         void setSubtitleDelay(int milliseconds);
+
         void selectInternalSubtitle();
+
         void setTextStyle(int style);
+
         void subtitleOpen(boolean b);
     }
 }

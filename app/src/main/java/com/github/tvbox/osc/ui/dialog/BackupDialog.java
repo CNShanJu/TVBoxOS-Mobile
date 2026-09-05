@@ -5,7 +5,6 @@ import android.content.SharedPreferences;
 import android.os.Environment;
 import android.os.Handler;
 import android.view.View;
-import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 
@@ -17,6 +16,7 @@ import com.github.tvbox.osc.base.App;
 import com.github.tvbox.osc.data.AppDataManager;
 import com.github.tvbox.osc.ui.adapter.TitleWithDelAdapter;
 import com.github.tvbox.osc.util.FileUtils;
+import com.lxj.xpopup.core.BasePopupView;
 import com.owen.tvrecyclerview.widget.TvRecyclerView;
 
 import org.jetbrains.annotations.NotNull;
@@ -31,11 +31,25 @@ import java.util.Date;
 import java.util.Iterator;
 import java.util.List;
 
-public class BackupDialog extends BaseDialog {
+/**
+ * 备份/还原弹窗（统一走 XPopup 底部弹窗 AppBottomPopupView；观感与其它 XPopup 弹窗一致）。
+ * <p>外部用法不变：{@code new BackupDialog(ctx).show()}——{@link #show()} 在 popupInfo 未绑定时
+ * 自动经 XPopup.Builder 绑定，兼容旧 Dialog 式调用点。
+ */
+public class BackupDialog extends AppBottomPopupView {
 
     public BackupDialog(@NonNull @NotNull Context context) {
         super(context);
-        setContentView(R.layout.dialog_backup);
+    }
+
+    @Override
+    protected int getImplLayoutId() {
+        return R.layout.dialog_backup;
+    }
+
+    @Override
+    protected void onCreate() {
+        super.onCreate();
         TvRecyclerView tvRecyclerView = ((TvRecyclerView) findViewById(R.id.list));
         TitleWithDelAdapter adapter = new TitleWithDelAdapter();
         tvRecyclerView.setAdapter(adapter);
@@ -45,7 +59,7 @@ public class BackupDialog extends BaseDialog {
             public void onItemChildClick(BaseQuickAdapter adapter, View view, int position) {
                 if (view.getId() == R.id.tvName) {
                     restore((String) adapter.getItem(position));
-                }else if (view.getId() == R.id.tvDel) {
+                } else if (view.getId() == R.id.tvDel) {
                     delete((String) adapter.getItem(position));
                     adapter.setNewData(allBackup());
                 }
@@ -58,6 +72,15 @@ public class BackupDialog extends BaseDialog {
                 adapter.setNewData(allBackup());
             }
         });
+    }
+
+    /** 兼容旧调用点：popupInfo 未绑定（直接 new 未走 Builder）时经 Builder 绑定后展示 */
+    @Override
+    public BasePopupView show() {
+        if (popupInfo == null) {
+            return DialogCoordinator.bottom(getContext(), this, -1).show();
+        }
+        return super.show();
     }
 
     List<String> allBackup() {
@@ -113,7 +136,7 @@ public class BackupDialog extends BaseDialog {
                             }
                         }
                         AppBubble.toast("恢复成功,即将重启应用!");
-                        new Handler().postDelayed(() -> AppUtils.relaunchApp(true),2000);
+                        new Handler().postDelayed(() -> AppUtils.relaunchApp(true), 2000);
                     } else {
                         AppBubble.toast("Hawk恢复失败!");
                     }
