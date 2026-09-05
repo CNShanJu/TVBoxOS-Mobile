@@ -127,6 +127,14 @@ public final class DownloadFacade {
                 episodeId, pic, headers, sourceName, vodName, episodeName);
     }
 
+    /** 入队(DownloadRequest 化入口:UI 只构造请求对象,见改进.txt §六下载) */
+    public boolean enqueue(DownloadRequest request) {
+        if (request == null) return false;
+        return DownloadManager.get().enqueue(request.url, request.sourceKey, request.playFlag,
+                request.episodeRawUrl, request.episodeId, request.pic, request.headers,
+                request.sourceName, request.vodName, request.episodeName);
+    }
+
     /** 按任务对象暂停 */
     public void pause(DownloadTask t) {
         if (t != null) DownloadManager.get().pause(t);

@@ -106,8 +106,9 @@ public final class EpisodeDownloadBatch {
                     }
                     episodeId = DownloadCore.buildEpisodeId(sourceKey, vodId, playFlag, idx);
                 }
-                boolean ok = DownloadFacade.get().enqueue(url, sourceKey, playFlag, s.url, episodeId,
-                        vodInfo.pic, rr.headers, sourceName, vodName, epName);
+                boolean ok = DownloadFacade.get().enqueue(new com.github.tvbox.osc.download.DownloadRequest(
+                        url, sourceKey, playFlag, s.url, episodeId,
+                        vodInfo.pic, rr.headers, sourceName, vodName, epName));
                 Log.i("TVBox-Download", "  - " + s.name + " enqueue=" + ok + " 文件名=" + epName + " url=" + url);
                 if (ok) {
                     out.added++;
