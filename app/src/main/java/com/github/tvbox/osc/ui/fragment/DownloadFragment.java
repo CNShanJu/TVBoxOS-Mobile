@@ -29,6 +29,7 @@ import com.github.tvbox.osc.databinding.FragmentDownloadBinding;
 import com.github.tvbox.osc.constant.CacheConst;
 import com.github.tvbox.osc.download.DownloadFacade;
 import com.github.tvbox.osc.util.DownloadDisplay;
+import com.github.tvbox.osc.util.DownloadGrouping;
 import com.github.tvbox.osc.ui.activity.LocalPlayActivity;
 import com.github.tvbox.osc.ui.adapter.LocalVideoAdapter;
 import com.github.tvbox.osc.ui.dialog.ConfirmDialog;
@@ -69,7 +70,7 @@ public class DownloadFragment extends BaseVbFragment<FragmentDownloadBinding> {
     // ------------------------------------------------------------------
     // 聚合根级:剧集网格(收藏页样式,按 剧名+来源 分组)
     // ------------------------------------------------------------------
-    private BaseQuickAdapter<DownloadGroup, BaseViewHolder> aggregateAdapter;
+    private BaseQuickAdapter<DownloadGrouping.Group, BaseViewHolder> aggregateAdapter;
     private boolean aggSelectMode = false;
     /** 聚合多选选中的分组 key(来源+剧名) */
     private final Set<String> selectedAggKeys = new LinkedHashSet<>();
@@ -94,15 +95,7 @@ public class DownloadFragment extends BaseVbFragment<FragmentDownloadBinding> {
     /** 左滑操作区宽度缓存(px,<0 表示未计算) */
     private float swipeRevealPxCache = -1;
 
-    /** 聚合分组:key = 来源 + 剧名(同剧不同源各自成卡) */
-    private static class DownloadGroup {
-        String key;
-        String name;        // 剧名
-        String sourceName;
-        List<DownloadTask> tasks = new ArrayList<>();
-        /** 已完成集（档案表长期数据源） */
-        List<com.github.tvbox.osc.download.ArchiveItem> doneItems = new ArrayList<>();
-    }
+    // 聚合分组模型 + 分组/归属逻辑已抽到 util/DownloadGrouping(纯数据,可 JVM 测)
 
     @Override
     protected void init() {
@@ -135,9 +128,9 @@ public class DownloadFragment extends BaseVbFragment<FragmentDownloadBinding> {
         // ------------------------------------------------------------------
         // 聚合根级:剧集网格(收藏页样式;海报本地文件,左上角来源徽标/圆形多选框)
         // ------------------------------------------------------------------
-        aggregateAdapter = new BaseQuickAdapter<DownloadGroup, BaseViewHolder>(R.layout.item_download_vod_grid) {
+        aggregateAdapter = new BaseQuickAdapter<DownloadGrouping.Group, BaseViewHolder>(R.layout.item_download_vod_grid) {
             @Override
-            protected void convert(@NonNull BaseViewHolder helper, DownloadGroup group) {
+            protected void convert(@NonNull BaseViewHolder helper, DownloadGrouping.Group group) {
                 bindPoster(helper.getView(R.id.ivThumb), group.name, picOf(group.name, group.sourceName));
                 // 左上角:正常=来源徽标;多选=圆形勾选框(未选中外环,选中外环+内部填充圆,两圆有边距)
                 boolean sel = aggSelectMode;
@@ -169,7 +162,7 @@ public class DownloadFragment extends BaseVbFragment<FragmentDownloadBinding> {
             }
         };
         aggregateAdapter.setOnItemClickListener((adapter, view, position) -> {
-            DownloadGroup g = aggregateAdapter.getItem(position);
+            DownloadGrouping.Group g = aggregateAdapter.getItem(position);
             if (g == null) return;
             if (aggSelectMode) {
                 toggleSet(selectedAggKeys, g.key);
@@ -180,7 +173,7 @@ public class DownloadFragment extends BaseVbFragment<FragmentDownloadBinding> {
             }
         });
         aggregateAdapter.setOnItemLongClickListener((adapter, view, position) -> {
-            DownloadGroup g = aggregateAdapter.getItem(position);
+            DownloadGrouping.Group g = aggregateAdapter.getItem(position);
             if (g == null) return false;
             if (!aggSelectMode) aggSelectMode = true;
             selectedAggKeys.add(g.key);
@@ -197,7 +190,7 @@ public class DownloadFragment extends BaseVbFragment<FragmentDownloadBinding> {
             @Override
             protected void convert(@NonNull BaseViewHolder helper, DownloadTask task) {
                 // 封面图:本地海报文件(缺失显示搜索页同款占位图并懒拉取)
-                bindPoster(helper.getView(R.id.iv_cover), vodNameOf(task), task.pic);
+                bindPoster(helper.getView(R.id.iv_cover), DownloadGrouping.vodNameOf(task), task.pic);
                 // 行1:剧名 · 集名
                 String name = task.vodName == null ? "" : task.vodName;
                 String ep = task.episodeName;
@@ -505,7 +498,7 @@ public class DownloadFragment extends BaseVbFragment<FragmentDownloadBinding> {
 
     /** 刷新聚合网格(按 剧名+来源 分组,含下载中与已完成);无数据时展示空态 */
     private void refreshAggregate() {
-        List<DownloadGroup> groups = buildAggregateGroups();
+        List<DownloadGrouping.Group> groups = buildAggregateGroups();
         aggregateAdapter.setNewData(groups);
         boolean empty = groups == null || groups.isEmpty();
         mBinding.rvAggregate.setVisibility(empty ? View.GONE : View.VISIBLE);
@@ -582,7 +575,7 @@ public class DownloadFragment extends BaseVbFragment<FragmentDownloadBinding> {
     private boolean hasInProgressInGroup() {
         if (currentVodGroup == null) return false;
         for (DownloadTask t : DownloadFacade.get().getTasks()) {
-            if (t.state != DownloadTask.STATE_COMPLETED && inGroup(t, currentVodGroup, currentSourceName)) {
+            if (t.state != DownloadTask.STATE_COMPLETED && DownloadGrouping.inGroup(t, currentVodGroup, currentSourceName)) {
                 return true;
             }
         }
@@ -608,7 +601,7 @@ public class DownloadFragment extends BaseVbFragment<FragmentDownloadBinding> {
         int downloading = 0;
         for (DownloadTask t : DownloadFacade.get().getTasks()) {
             if (t.state == DownloadTask.STATE_COMPLETED) continue;
-            if (inGroup(t, currentVodGroup, currentSourceName)) downloading++;
+            if (DownloadGrouping.inGroup(t, currentVodGroup, currentSourceName)) downloading++;
         }
         int done = 0;
         for (com.github.tvbox.osc.download.ArchiveItem it :
@@ -623,7 +616,7 @@ public class DownloadFragment extends BaseVbFragment<FragmentDownloadBinding> {
     // 聚合根级 与 详情页 切换
     // ------------------------------------------------------------------
 
-    private void enterDetail(DownloadGroup g) {
+    private void enterDetail(DownloadGrouping.Group g) {
         currentVodGroup = g.name;
         currentSourceName = g.sourceName;
         doneListSignature = ""; // 进入新剧集,失效上一剧的列表指纹
@@ -697,7 +690,7 @@ public class DownloadFragment extends BaseVbFragment<FragmentDownloadBinding> {
     /** 全选:聚合=全部剧集,详情下载中=该剧全部任务,详情下载完成=全部文件 */
     private void selectAllChecked() {
         if (currentVodGroup == null) {
-            for (DownloadGroup g : aggregateAdapter.getData()) selectedAggKeys.add(g.key);
+            for (DownloadGrouping.Group g : aggregateAdapter.getData()) selectedAggKeys.add(g.key);
             aggregateAdapter.notifyDataSetChanged();
         } else if (currentTab == TAB_DOWNLOADING) {
             for (DownloadTask t : tasksInGroup(currentVodGroup, currentSourceName)) selectedTaskIds.add(t.id);
@@ -727,7 +720,7 @@ public class DownloadFragment extends BaseVbFragment<FragmentDownloadBinding> {
         List<DownloadTask> scope = new ArrayList<>();
         for (DownloadTask t : DownloadFacade.get().getTasks()) {
             if (t.state == DownloadTask.STATE_COMPLETED) continue;
-            if (inGroup(t, currentVodGroup, currentSourceName) && selectedTaskIds.contains(t.id)) {
+            if (DownloadGrouping.inGroup(t, currentVodGroup, currentSourceName) && selectedTaskIds.contains(t.id)) {
                 scope.add(t);
             }
         }
@@ -768,13 +761,13 @@ public class DownloadFragment extends BaseVbFragment<FragmentDownloadBinding> {
      * 不勾选 = 只删下载中的任务(记录+过程文件),保留已完成记录与文件。
      */
     private void deleteSelectedAggregates() {
-        List<DownloadGroup> sel = new ArrayList<>();
-        for (DownloadGroup g : aggregateAdapter.getData()) {
+        List<DownloadGrouping.Group> sel = new ArrayList<>();
+        for (DownloadGrouping.Group g : aggregateAdapter.getData()) {
             if (selectedAggKeys.contains(g.key)) sel.add(g);
         }
         if (sel.isEmpty()) return;
         DialogCoordinator.centerDark(mContext, new DeleteDownloadDialog(mContext, deleteFiles -> {
-                    for (DownloadGroup g : sel) {
+                    for (DownloadGrouping.Group g : sel) {
                         if (deleteFiles) {
                             // 勾选:全部删除,记录 + 整个文件夹(该来源下该剧名目录)。
                             // 注意: 聚合组的 g.tasks 只含运行态任务(COMPLETED 被分组逻辑跳过,已完成集在
@@ -892,76 +885,19 @@ public class DownloadFragment extends BaseVbFragment<FragmentDownloadBinding> {
     // ------------------------------------------------------------------
 
     /** 聚合分组:所有下载记录(未完成 + 已完成且文件存在),按 剧名+来源 分组,组序按最早加入时间 */
-    private List<DownloadGroup> buildAggregateGroups() {
-        Map<String, DownloadGroup> map = new LinkedHashMap<>();
-        Map<String, Long> firstTime = new LinkedHashMap<>();
-        // 下载中/未完成任务（运行态）
-        for (DownloadTask t : DownloadFacade.get().getTasks()) {
-            if (t.state == DownloadTask.STATE_COMPLETED) continue; // 已完成走档案
-            String src = t.sourceName == null ? "" : t.sourceName;
-            String name = vodNameOf(t);
-            String key = src + "\u0001" + name;
-            DownloadGroup g = map.get(key);
-            if (g == null) {
-                g = new DownloadGroup();
-                g.key = key;
-                g.name = name;
-                g.sourceName = src;
-                map.put(key, g);
-                firstTime.put(key, t.createTime);
-            }
-            g.tasks.add(t);
-        }
-        // 已完成集（档案表长期数据源）
-        for (com.github.tvbox.osc.download.ArchiveItem it :
-                com.github.tvbox.osc.download.DownloadFacade.get().getAllArchive()) {
-            if (it.savePath == null || !new File(it.savePath).exists()) continue;
-            String src = it.sourceName == null ? "" : it.sourceName;
-            String name = it.vodName == null ? "" : it.vodName;
-            String key = src + "\u0001" + name;
-            DownloadGroup g = map.get(key);
-            if (g == null) {
-                g = new DownloadGroup();
-                g.key = key;
-                g.name = name;
-                g.sourceName = src;
-                map.put(key, g);
-                firstTime.put(key, it.downloadTime);
-            }
-            g.doneItems.add(it);
-        }
-        List<DownloadGroup> groups = new ArrayList<>(map.values());
-        groups.sort(Comparator.comparingLong(g -> firstTime.get(g.key)));
-        return groups;
+    private List<DownloadGrouping.Group> buildAggregateGroups() {
+        return DownloadGrouping.group(DownloadFacade.get().getTasks(), DownloadFacade.get().getAllArchive());
     }
 
     /** 该剧(剧名+来源)是否仍存在于聚合(用于详情页自动退回):有下载中任务 或 有已完成档案 */
     private boolean isGroupPresent(String name, String source) {
-        String wantSrc = source == null ? "" : source;
-        for (DownloadTask t : DownloadFacade.get().getTasks()) {
-            if (!name.equals(vodNameOf(t))) continue;
-            if (!wantSrc.equals(t.sourceName == null ? "" : t.sourceName)) continue;
-            if (t.state != DownloadTask.STATE_COMPLETED) return true;
-        }
-        for (com.github.tvbox.osc.download.ArchiveItem it :
-                com.github.tvbox.osc.download.DownloadFacade.get().getAllArchive()) {
-            if (!name.equals(it.vodName)) continue;
-            if (!wantSrc.equals(it.sourceName == null ? "" : it.sourceName)) continue;
-            if (it.savePath != null && new File(it.savePath).exists()) return true;
-        }
-        return false;
+        return DownloadGrouping.isGroupPresent(
+                DownloadFacade.get().getTasks(), DownloadFacade.get().getAllArchive(), name, source);
     }
 
     /** 该剧未完成的任务列表(按加入时间排序) */
     private List<DownloadTask> tasksInGroup(String vodName, String sourceName) {
-        List<DownloadTask> list = new ArrayList<>();
-        for (DownloadTask t : DownloadFacade.get().getTasks()) {
-            if (t.state != DownloadTask.STATE_COMPLETED && inGroup(t, vodName, sourceName)) {
-                list.add(t);
-            }
-        }
-        list.sort(Comparator.comparingLong(t -> t.createTime));
-        return list;
+        return DownloadGrouping.tasksInGroup(DownloadFacade.get().getTasks(), vodName, sourceName);
     }
 
     /** 该剧(剧名+来源)下已完成且文件存在的视频列表(档案表驱动,按文件名排序) */
@@ -1030,22 +966,10 @@ public class DownloadFragment extends BaseVbFragment<FragmentDownloadBinding> {
     // 工具方法
     // ------------------------------------------------------------------
 
-    /** 剧名(兼容旧字段 groupName) */
-    private String vodNameOf(DownloadTask t) {
-        return t.vodName == null ? t.groupName : t.vodName;
-    }
-
-    /** 任务是否属于该剧(剧名+来源)分组 */
-    private boolean inGroup(DownloadTask t, String name, String source) {
-        if (!name.equals(vodNameOf(t))) return false;
-        String src = source == null ? "" : source;
-        return src.equals(t.sourceName == null ? "" : t.sourceName);
-    }
-
     /** 该剧的封面 URL(取该剧任一任务携带的 pic; 任务已清理/全部完成时从档案表补找) */
     private String picOf(String name, String source) {
         for (DownloadTask t : DownloadFacade.get().getTasks()) {
-            if (inGroup(t, name, source) && t.pic != null && !t.pic.isEmpty()) {
+            if (DownloadGrouping.inGroup(t, name, source) && t.pic != null && !t.pic.isEmpty()) {
                 return t.pic;
             }
         }
