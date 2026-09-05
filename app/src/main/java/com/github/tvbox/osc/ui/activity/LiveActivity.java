@@ -57,6 +57,7 @@ import com.github.tvbox.osc.util.HCallBack;
 import com.github.tvbox.osc.util.HawkConfig;
 import com.github.tvbox.osc.util.AppLog;
 import com.github.tvbox.osc.util.HttpClient;
+import com.github.tvbox.osc.util.LiveConfig;
 import com.github.tvbox.osc.util.live.TxtSubscribe;
 import com.google.gson.JsonArray;
 import com.gyf.immersionbar.BarHide;
@@ -254,13 +255,13 @@ public class LiveActivity extends BaseActivity {
             } else if (!isListOrSettingLayoutVisible()) {
                 switch (keyCode) {
                     case KeyEvent.KEYCODE_DPAD_UP:
-                        if (Hawk.get(HawkConfig.LIVE_CHANNEL_REVERSE, false))
+                        if (LiveConfig.channelReverse())
                             playNext();
                         else
                             playPrevious();
                         break;
                     case KeyEvent.KEYCODE_DPAD_DOWN:
-                        if (Hawk.get(HawkConfig.LIVE_CHANNEL_REVERSE, false))
+                        if (LiveConfig.channelReverse())
                             playPrevious();
                         else
                             playNext();
@@ -376,7 +377,7 @@ public class LiveActivity extends BaseActivity {
             currentChannelGroupIndex = channelGroupIndex;
             currentLiveChannelIndex = liveChannelIndex;
             currentLiveChannelItem = getLiveChannels(currentChannelGroupIndex).get(currentLiveChannelIndex);
-            Hawk.put(HawkConfig.LIVE_CHANNEL, currentLiveChannelItem.getChannelName());
+            LiveConfig.setLastChannel(currentLiveChannelItem.getChannelName());
             livePlayerManager.getLiveChannelPlayer(mVideoView, currentLiveChannelItem.getChannelName());
         }
 
@@ -537,7 +538,7 @@ public class LiveActivity extends BaseActivity {
                     case VideoView.STATE_PREPARING:
                     case VideoView.STATE_BUFFERING:
                         mHandler.removeCallbacks(mConnectTimeoutChangeSourceRun);
-                        mHandler.postDelayed(mConnectTimeoutChangeSourceRun, (Hawk.get(HawkConfig.LIVE_CONNECT_TIMEOUT, 1) + 1) * 5000);
+                        mHandler.postDelayed(mConnectTimeoutChangeSourceRun, (LiveConfig.connectTimeout() + 1) * 5000);
                         break;
                 }
             }
@@ -752,26 +753,26 @@ public class LiveActivity extends BaseActivity {
                 mVideoView.start();
                 break;
             case 3://超时换源
-                Hawk.put(HawkConfig.LIVE_CONNECT_TIMEOUT, position);
+                LiveConfig.setConnectTimeout(position);
                 break;
-            case 4://超时换源
+            case 4://偏好设置
                 boolean select = false;
                 switch (position) {
                     case 0:
-                        select = !Hawk.get(HawkConfig.LIVE_SHOW_TIME, false);
-                        Hawk.put(HawkConfig.LIVE_SHOW_TIME, select);
+                        select = !LiveConfig.showTime();
+                        LiveConfig.setShowTime(select);
                         break;
                     case 1:
-                        select = !Hawk.get(HawkConfig.LIVE_SHOW_NET_SPEED, false);
-                        Hawk.put(HawkConfig.LIVE_SHOW_NET_SPEED, select);
+                        select = !LiveConfig.showNetSpeed();
+                        LiveConfig.setShowNetSpeed(select);
                         break;
                     case 2:
-                        select = !Hawk.get(HawkConfig.LIVE_CHANNEL_REVERSE, false);
-                        Hawk.put(HawkConfig.LIVE_CHANNEL_REVERSE, select);
+                        select = !LiveConfig.channelReverse();
+                        LiveConfig.setChannelReverse(select);
                         break;
                     case 3:
-                        select = !Hawk.get(HawkConfig.LIVE_CROSS_GROUP, false);
-                        Hawk.put(HawkConfig.LIVE_CROSS_GROUP, select);
+                        select = !LiveConfig.crossGroup();
+                        LiveConfig.setCrossGroup(select);
                         break;
                 }
                 liveSettingItemAdapter.selectItem(position, select, false);
@@ -872,7 +873,7 @@ public class LiveActivity extends BaseActivity {
     }
 
     private void initLiveState() {
-        String lastChannelName = Hawk.get(HawkConfig.LIVE_CHANNEL, "");
+        String lastChannelName = LiveConfig.lastChannel();
 
         int lastChannelGroupIndex = -1;
         int lastLiveChannelIndex = -1;
@@ -936,11 +937,11 @@ public class LiveActivity extends BaseActivity {
             liveSettingGroup.setLiveSettingItems(liveSettingItemList);
             liveSettingGroupList.add(liveSettingGroup);
         }
-        liveSettingGroupList.get(3).getLiveSettingItems().get(Hawk.get(HawkConfig.LIVE_CONNECT_TIMEOUT, 1)).setItemSelected(true);
-        liveSettingGroupList.get(4).getLiveSettingItems().get(0).setItemSelected(Hawk.get(HawkConfig.LIVE_SHOW_TIME, false));
-        liveSettingGroupList.get(4).getLiveSettingItems().get(1).setItemSelected(Hawk.get(HawkConfig.LIVE_SHOW_NET_SPEED, false));
-        liveSettingGroupList.get(4).getLiveSettingItems().get(2).setItemSelected(Hawk.get(HawkConfig.LIVE_CHANNEL_REVERSE, false));
-        liveSettingGroupList.get(4).getLiveSettingItems().get(3).setItemSelected(Hawk.get(HawkConfig.LIVE_CROSS_GROUP, false));
+        liveSettingGroupList.get(3).getLiveSettingItems().get(LiveConfig.connectTimeout()).setItemSelected(true);
+        liveSettingGroupList.get(4).getLiveSettingItems().get(0).setItemSelected(LiveConfig.showTime());
+        liveSettingGroupList.get(4).getLiveSettingItems().get(1).setItemSelected(LiveConfig.showNetSpeed());
+        liveSettingGroupList.get(4).getLiveSettingItems().get(2).setItemSelected(LiveConfig.channelReverse());
+        liveSettingGroupList.get(4).getLiveSettingItems().get(3).setItemSelected(LiveConfig.crossGroup());
     }
 
     private void loadCurrentSourceList() {
@@ -1035,7 +1036,7 @@ public class LiveActivity extends BaseActivity {
             liveChannelIndex++;
             if (liveChannelIndex >= getLiveChannels(channelGroupIndex).size()) {
                 liveChannelIndex = 0;
-                if (Hawk.get(HawkConfig.LIVE_CROSS_GROUP, false)) {
+                if (LiveConfig.crossGroup()) {
                     do {
                         channelGroupIndex++;
                         if (channelGroupIndex >= liveChannelGroupList.size())
@@ -1046,7 +1047,7 @@ public class LiveActivity extends BaseActivity {
         } else {
             liveChannelIndex--;
             if (liveChannelIndex < 0) {
-                if (Hawk.get(HawkConfig.LIVE_CROSS_GROUP, false)) {
+                if (LiveConfig.crossGroup()) {
                     do {
                         channelGroupIndex--;
                         if (channelGroupIndex < 0)

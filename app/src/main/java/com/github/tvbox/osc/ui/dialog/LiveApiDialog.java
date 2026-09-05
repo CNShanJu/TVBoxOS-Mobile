@@ -9,12 +9,11 @@ import com.github.tvbox.osc.util.AppBubble;
 import com.github.tvbox.osc.R;
 import com.github.tvbox.osc.databinding.DialogInputSubsriptionBinding;
 import com.github.tvbox.osc.databinding.DialogLiveApiBinding;
-import com.github.tvbox.osc.util.HawkConfig;
+import com.github.tvbox.osc.util.LiveConfig;
 import com.github.tvbox.osc.util.SystemConfig;
 import com.lxj.xpopup.XPopup;
 import com.lxj.xpopup.core.CenterPopupView;
 import com.lxj.xpopup.interfaces.OnInputConfirmListener;
-import com.orhanobut.hawk.Hawk;
 
 import java.util.ArrayList;
 
@@ -39,7 +38,7 @@ public class LiveApiDialog extends AppCenterPopupView {
         updateEt(liveApi);
 
         mBinding.ivHistory.setOnClickListener(view -> {
-            ArrayList<String> liveHistory = Hawk.get(HawkConfig.LIVE_HISTORY, new ArrayList<String>());
+            ArrayList<String> liveHistory = LiveConfig.liveHistory();
             if (liveHistory.isEmpty()){
                 AppBubble.toast("暂无历史记录");
                 return;
@@ -55,12 +54,12 @@ public class LiveApiDialog extends AppCenterPopupView {
             // Capture Live input into Settings & Live History (max 20)
             SystemConfig.setLiveUrl(newLive);
             if (!newLive.isEmpty()) {
-                ArrayList<String> liveHistory = Hawk.get(HawkConfig.LIVE_HISTORY, new ArrayList<String>());
+                ArrayList<String> liveHistory = LiveConfig.liveHistory();
                 if (!liveHistory.contains(newLive))
                     liveHistory.add(0, newLive);
                 if (liveHistory.size() > 20)
                     liveHistory.remove(20);
-                Hawk.put(HawkConfig.LIVE_HISTORY, liveHistory);
+                LiveConfig.setLiveHistory(liveHistory);
             }
             AppBubble.toast("设置成功");
             dismiss();

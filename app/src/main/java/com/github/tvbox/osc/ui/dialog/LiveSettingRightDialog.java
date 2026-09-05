@@ -14,9 +14,8 @@ import com.github.tvbox.osc.ui.activity.LiveActivity;
 import com.github.tvbox.osc.ui.adapter.LiveSettingGroupAdapter;
 import com.github.tvbox.osc.ui.adapter.LiveSettingItemAdapter;
 import com.github.tvbox.osc.util.FastClickCheckUtil;
-import com.github.tvbox.osc.util.HawkConfig;
+import com.github.tvbox.osc.util.LiveConfig;
 import com.lxj.xpopup.core.BottomPopupView;
-import com.orhanobut.hawk.Hawk;
 import com.owen.tvrecyclerview.widget.V7LinearLayoutManager;
 
 import org.jetbrains.annotations.NotNull;
@@ -121,11 +120,11 @@ public class LiveSettingRightDialog extends AppDrawerPopupView {
             liveSettingGroup.setLiveSettingItems(liveSettingItemList);
             liveSettingGroupList.add(liveSettingGroup);
         }
-        liveSettingGroupList.get(3).getLiveSettingItems().get(Hawk.get(HawkConfig.LIVE_CONNECT_TIMEOUT, 1)).setItemSelected(true);
-        liveSettingGroupList.get(4).getLiveSettingItems().get(0).setItemSelected(Hawk.get(HawkConfig.LIVE_SHOW_TIME, false));
-        liveSettingGroupList.get(4).getLiveSettingItems().get(1).setItemSelected(Hawk.get(HawkConfig.LIVE_SHOW_NET_SPEED, false));
-        liveSettingGroupList.get(4).getLiveSettingItems().get(2).setItemSelected(Hawk.get(HawkConfig.LIVE_CHANNEL_REVERSE, false));
-        liveSettingGroupList.get(4).getLiveSettingItems().get(3).setItemSelected(Hawk.get(HawkConfig.LIVE_CROSS_GROUP, false));
+        liveSettingGroupList.get(3).getLiveSettingItems().get(LiveConfig.connectTimeout()).setItemSelected(true);
+        liveSettingGroupList.get(4).getLiveSettingItems().get(0).setItemSelected(LiveConfig.showTime());
+        liveSettingGroupList.get(4).getLiveSettingItems().get(1).setItemSelected(LiveConfig.showNetSpeed());
+        liveSettingGroupList.get(4).getLiveSettingItems().get(2).setItemSelected(LiveConfig.channelReverse());
+        liveSettingGroupList.get(4).getLiveSettingItems().get(3).setItemSelected(LiveConfig.crossGroup());
         liveSettingGroupAdapter.setNewData(liveSettingGroupList);
     }
 
@@ -184,26 +183,26 @@ public class LiveSettingRightDialog extends AppDrawerPopupView {
                 mActivity.changePlayer(position);
                 break;
             case 3://超时换源
-                Hawk.put(HawkConfig.LIVE_CONNECT_TIMEOUT, position);
+                LiveConfig.setConnectTimeout(position);
                 break;
-            case 4://超时换源
+            case 4://偏好设置
                 boolean select = false;
                 switch (position) {
                     case 0:
-                        select = !Hawk.get(HawkConfig.LIVE_SHOW_TIME, false);
-                        Hawk.put(HawkConfig.LIVE_SHOW_TIME, select);
+                        select = !LiveConfig.showTime();
+                        LiveConfig.setShowTime(select);
                         break;
                     case 1:
-                        select = !Hawk.get(HawkConfig.LIVE_SHOW_NET_SPEED, false);
-                        Hawk.put(HawkConfig.LIVE_SHOW_NET_SPEED, select);
+                        select = !LiveConfig.showNetSpeed();
+                        LiveConfig.setShowNetSpeed(select);
                         break;
                     case 2:
-                        select = !Hawk.get(HawkConfig.LIVE_CHANNEL_REVERSE, false);
-                        Hawk.put(HawkConfig.LIVE_CHANNEL_REVERSE, select);
+                        select = !LiveConfig.channelReverse();
+                        LiveConfig.setChannelReverse(select);
                         break;
                     case 3:
-                        select = !Hawk.get(HawkConfig.LIVE_CROSS_GROUP, false);
-                        Hawk.put(HawkConfig.LIVE_CROSS_GROUP, select);
+                        select = !LiveConfig.crossGroup();
+                        LiveConfig.setCrossGroup(select);
                         break;
                 }
                 liveSettingItemAdapter.selectItem(position, select, false);

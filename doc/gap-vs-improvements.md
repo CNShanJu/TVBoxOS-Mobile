@@ -36,6 +36,8 @@
 - EventBus 仍广泛(register/post ~37 处)；新事件仍有出现，未真正退为"仅兼容层"。
 - ui-kit:app 内已建 `com.github.tvbox.osc.ui.kit`(§2.7 第一阶段),迁入 6 个纯净组件;
   播放器/业务耦合视图(Player*View/FrostedGlassUtil)仍留 widget 包。
+- 直播偏好已收口:`util.LiveConfig` 门面(connectTimeout/showTime/showNetSpeed/channelReverse/crossGroup/
+  lastChannel/liveHistory),LiveActivity/三个设置弹窗/历史源弹窗不再裸读 Hawk;EPG_URL 仍跨模块(spider 写)。
 
 ## 5. 大文件拆分（§三）— 未完成
 | 文件 | 行数 | 期望 |
@@ -57,7 +59,8 @@ Exo→Media3、EventBus→Flow/接口、Hawk→DataStore、Java→Kotlin 渐进�
 3. ✅ app 内 `RoomDataManger` 直读已清零：UI 改走 `HistoryRepositories.history().get(...)`
    （接口新增 get(sourceKey,vodId)，Fake/单测同步）。
 4. 🔜 `common/util/HawkConfig/SystemConfig/HttpClient` 分模块收口（网络→core-network，配置→core-storage/新 config）。
-5. 🔜 UI 摘 Hawk（先 Live 设置类）/自建线程池（收口到共享执行器）。
+5. ⚠️ UI 摘 Hawk：直播偏好已收口 `LiveConfig`(键沿用 HawkConfig);其余直读点(DetailActivity showPreview/
+   GridFragment fastSearch/PlayFragment debug/UserFragment home_hot 缓存/BackupDialog 等)按需逐步收口。
 6. ⏸ playback shell + PlayFragment/DetailActivity 大拆分（需真机回归）。
 7. ⏸ feature 模块化、Media3/DataStore/Hilt（长期）。
 
