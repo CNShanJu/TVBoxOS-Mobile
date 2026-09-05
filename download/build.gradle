@@ -30,7 +30,7 @@ dependencies {
     implementation project(':core-network')
     implementation project(':log')
     implementation project(':state')
-    implementation project(':spider')
+    implementation project(':spider-api')
     implementation 'androidx.annotation:annotation:1.3.0'
     implementation 'com.squareup.okhttp3:okhttp:4.12.0'
     implementation 'com.orhanobut:hawk:2.0.1'

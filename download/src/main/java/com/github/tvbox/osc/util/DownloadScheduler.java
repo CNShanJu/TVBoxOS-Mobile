@@ -2,9 +2,6 @@ package com.github.tvbox.osc.util;
 
 import android.util.Log;
 
-import com.github.catvod.crawler.PlayUrlResolver;
-import com.github.catvod.crawler.SpiderApi;
-
 import com.github.tvbox.osc.bean.DownloadTask;
 import com.github.tvbox.osc.download.DownloadLog;
 import com.github.tvbox.osc.download.DownloadSubType;
@@ -405,7 +402,8 @@ public class DownloadScheduler {
     private boolean reResolveUrl(DownloadTask t) {
         if (t.sourceKey == null || t.playFlag == null || t.episodeRawUrl == null) return false;
         try {
-            PlayUrlResolver.ResolveResult rr = SpiderApi.resolvePlayUrl(t.sourceKey, t.playFlag, t.episodeRawUrl);
+            com.github.tvbox.osc.spiderapi.ResolveResult rr =
+                    DownloadManager.urlResolverApi.resolvePlayUrl(t.sourceKey, t.playFlag, t.episodeRawUrl);
             if (rr != null && rr.url != null && !rr.url.isEmpty()) {
                 boolean urlChanged = !rr.url.equals(t.url);
                 t.headers = rr.headers; // 无论地址是否变化都同步请求头(防盗链源分片校验)
@@ -454,7 +452,7 @@ public class DownloadScheduler {
         if (u.contains(".m3u8") || u.contains(".mp4") || u.contains(".mkv") || u.contains(".flv")
                 || u.contains(".ts") || u.contains(".webm") || u.contains(".avi")) return true;
         try {
-            return com.github.tvbox.osc.util.DefaultConfig.isVideoFormat(url);
+            return com.github.tvbox.osc.spiderapi.MediaUrlUtil.isVideoFormat(url);
         } catch (Throwable ignored) {
             return false;
         }

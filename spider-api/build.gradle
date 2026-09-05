@@ -1,0 +1,25 @@
+plugins {
+    id 'com.android.library'
+}
+
+// 爬虫契约模块(改进.txt 第二阶段):接口 + 纯 DTO + 少量无状态工具。
+// QuickJS/JarLoader/ApiConfig/具体 Spider 实现全部留在 :spider。
+android {
+    namespace 'com.github.tvbox.osc.spiderapi'
+    compileSdk 34
+
+    defaultConfig {
+        minSdk 24
+        targetSdk 34
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+        }
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+}

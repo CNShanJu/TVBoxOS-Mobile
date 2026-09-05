@@ -25,4 +25,5 @@ include ':core-network'
 project(':core-network').projectDir = file('common')
 include ':ui-common'
 include ':spider'
+include ':spider-api'
 include ':download'

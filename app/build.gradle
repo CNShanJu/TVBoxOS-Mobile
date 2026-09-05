@@ -186,6 +186,7 @@ dependencies {
     implementation project(":core-network")
     implementation project(":ui-common")
     implementation project(":spider")
+    implementation project(":spider-api")
     implementation project(":download")
 
     // implementation 'com.tencent.bugly:crashreport_upgrade:latest.release'

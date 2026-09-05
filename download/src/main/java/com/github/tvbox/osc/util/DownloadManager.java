@@ -42,6 +42,16 @@ public class DownloadManager {
 
     private static DownloadManager instance;
 
+    /** 播放地址解析契约(:spider 实现经 App 组合根注入;download 模块不依赖 :spider 实现) */
+    static volatile com.github.tvbox.osc.spiderapi.PlayUrlResolverApi urlResolverApi =
+            com.github.tvbox.osc.spiderapi.PlayUrlResolverApi.NONE;
+
+    public static void setUrlResolverApi(com.github.tvbox.osc.spiderapi.PlayUrlResolverApi api) {
+        if (api != null) {
+            urlResolverApi = api;
+        }
+    }
+
     /** 注入的 application context（独立模块 :download，App 启动时 init 注入） */
     static volatile android.content.Context appContext;
 
