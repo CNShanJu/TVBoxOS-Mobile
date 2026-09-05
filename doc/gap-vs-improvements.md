@@ -247,6 +247,11 @@ Exo→Media3、EventBus→Flow/接口、Hawk→DataStore、Java→Kotlin 渐进�
   DownloadDisplayTest 累计 12 例。(aef13cfd)
 - ✅ 聚合卡副标题 aggregateNote(任务数+已完成且文件存在集数)下沉 DownloadGrouping;单测 7 例。
   DownloadFragment 1306→1038 行。(1f876086)
+- ✅ 直播分组密码门禁抽离 `util/LiveChannelAuth`:isPasswordConfirmed/needInputPassword/
+  visibleChannels 纯逻辑(组数据+确认集合传参),LiveActivity 三方法改委托;单测 4 例。
+  (9bdcc169)
+- ✅ LiveActivity 死字段清理:hsEpg(Hashtable)/imgLiveIcon 零使用、isSHIYI 恒假开关
+  (if 恒不触发/赋值恒 false)连用法删除,清 Hashtable import。LiveActivity 815→746 行。(ede84aea)
 
 ## 9. 待真机回归后继续(播放器主线尾段,当前挂起)
 - PlayerApi 会话内核**实验选项**:设置页加"播放器内核:PlayerApi 会话(实验)"开关(默认关);
