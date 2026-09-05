@@ -441,6 +441,16 @@ public class SourceViewModel extends ViewModel {
         int type = sourceBean.getType();
         if (type == 3) {
             try {
+                // 强类型试点:解析下沉 :spider;失败回退字符串通道(行为不变)
+                com.github.tvbox.osc.bean.AbsXml typed =
+                        com.github.tvbox.osc.spiderapi.SpiderSearchProviders.get().search(sourceBean.getKey(), wd, false);
+                if (typed != null && typed.movie != null) {
+                    absXml(typed, sourceBean.getKey());
+                    EventBus.getDefault().post(new RefreshEvent(RefreshEvent.TYPE_SEARCH_RESULT, typed));
+                    return;
+                }
+                android.util.Log.i("SpiderBridge", "search(typed) 不可用,回退字符串通道: key=" + sourceBean.getKey()
+                        + " word=" + wd);
                 String search = com.github.tvbox.osc.spiderapi.SpiderContentProviders.get()
                         .searchContent(sourceBean.getKey(), wd, false);
                 if(!TextUtils.isEmpty(search)){
@@ -504,6 +514,16 @@ public class SourceViewModel extends ViewModel {
         int type = sourceBean.getType();
         if (type == 3) {
             try {
+                // 强类型试点:quick 搜索解析下沉 :spider;失败回退字符串通道
+                com.github.tvbox.osc.bean.AbsXml typed =
+                        com.github.tvbox.osc.spiderapi.SpiderSearchProviders.get().search(sourceBean.getKey(), wd, true);
+                if (typed != null && typed.movie != null) {
+                    absXml(typed, sourceBean.getKey());
+                    EventBus.getDefault().post(new RefreshEvent(RefreshEvent.TYPE_QUICK_SEARCH_RESULT, typed));
+                    return;
+                }
+                android.util.Log.i("SpiderBridge", "quickSearch(typed) 不可用,回退字符串通道: key=" + sourceBean.getKey()
+                        + " word=" + wd);
                 json(quickSearchResult, com.github.tvbox.osc.spiderapi.SpiderContentProviders.get()
                         .searchContent(sourceBean.getKey(), wd, true), sourceBean.getKey());
             } catch (Throwable th) {
