@@ -45,7 +45,6 @@ import com.blankj.utilcode.util.ScreenUtils;
 import com.blankj.utilcode.util.SPUtils;
 import com.blankj.utilcode.util.SpanUtils;
 import com.github.tvbox.osc.util.AppBubble;
-import com.github.catvod.crawler.Spider;
 import com.github.tvbox.osc.R;
 import com.github.tvbox.osc.api.ApiConfig;
 import com.github.tvbox.osc.base.App;
@@ -1542,10 +1541,12 @@ public class PlayFragment extends BaseLazyFragment {
             if (url.contains("url=http") || url.contains(".html")) {
                 return false;
             }
-            if (sourceBean.getType() == 3) {
-                Spider sp = ApiConfig.get().getCSP(sourceBean);
-                if (sp != null && sp.manualVideoCheck()) {
-                    return sp.isVideoFormat(url);
+            if (sourceBean != null && sourceBean.getType() == 3) {
+                // 手动视频判定经 spider-api 契约,不直接拿具体 Spider
+                Boolean r = com.github.tvbox.osc.spiderapi.SpiderManualCheckProviders.get()
+                        .manualVideoCheck(sourceBean.getKey(), url);
+                if (r != null) {
+                    return r;
                 }
             }
             return VideoParseRuler.checkIsVideoForParse(webUrl, url);
