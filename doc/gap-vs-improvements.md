@@ -60,7 +60,7 @@
 ## 5. 大文件拆分（§三）— 未完成
 | 文件 | 行数 | 期望 |
 |---|---|---|
-| PlayFragment.java | ~1714 | PlayViewModel/Coordinator/PlayerSession/SubtitleCoordinator/HistoryRepo |
+| PlayFragment.java | ~1616 | PlayViewModel/Coordinator/PlayerSession/HistoryRepo（SubtitleCoordinator 已抽，见 §8） |
 | DetailActivity.java | ~1276 | DetailViewModel/Repository/EpisodeSelectionState（已拆出少量 Helper） |
 | DownloadFragment.java | ~1208 | 已大量走 Facade，可继续薄化 |
 | SourceViewModel.java | ~930 | 依赖 SpiderService、可 Fake 单测 |
@@ -88,8 +88,12 @@ Exo→Media3、EventBus→Flow/接口、Hawk→DataStore、Java→Kotlin 渐进�
   `PlayerTrackHelper` 不再 instanceof 具体内核(app 内 UI 已无内核强转);轨道切换/内置字幕回调/
   进度恢复语义收敛到接口。
   剩余(需真机回归):PlayFragment 由 mVideoView 直控切到 PlayerApi/PlaybackSessions 全驱动、
-  SubtitleCoordinator/PlayViewModel 抽取、app 内 MyVideoView/IKJ/Exo 引用清零、PlayerHelper 工厂
+  PlayViewModel 抽取、app 内 MyVideoView/IKJ/Exo 引用清零、PlayerHelper 工厂
   收口 AppCompositionRoot。
+- ✅ SubtitleCoordinator 抽离(等价搬移,宿主薄委托):`util/player/SubtitleCoordinator.java` 注入
+  (Activity,VodController,MyVideoView),承载字幕装载(缓存/外挂/内置自动选中文)/字幕设置弹窗
+  (在线搜索/本地选择/字号延迟样式/开关)/音轨与内置字幕切换(SelectDialog+轨道切换+进度恢复);
+  PlayFragment 相应方法变薄委托,refresh 字幕字号事件转调 applySubtitleSize。
 - ⚠️ common/event 收口：已删 HistoryStateEvent/TopStateEvent(零引用孤儿)、DownloadEvent/RefreshEvent/ServerEvent
   各自归位业务/app 模块；common 仅剩 LogEvent(common 内 LOG.java 自用,EventBus 空投遗留——无人订阅,待日志页改造后清理)。
 - ⚠️ DownloadFragment 已完成 Facade 订阅去 EventBus;app 其余 EventBus 点(搜索/快速搜索/历史/直播等

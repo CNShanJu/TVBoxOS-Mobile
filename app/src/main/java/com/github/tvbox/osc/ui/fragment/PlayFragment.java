@@ -51,26 +51,19 @@ import com.github.tvbox.osc.base.App;
 import com.github.tvbox.osc.base.BaseLazyFragment;
 import com.github.tvbox.osc.bean.ParseBean;
 import com.github.tvbox.osc.bean.SourceBean;
-import com.github.tvbox.osc.bean.Subtitle;
 import com.github.tvbox.osc.bean.VodInfo;
 import com.github.tvbox.osc.cache.CacheManager;
 import com.github.tvbox.osc.constant.CacheConst;
 import com.github.tvbox.osc.event.RefreshEvent;
 import com.github.tvbox.osc.player.MyVideoView;
-import com.github.tvbox.osc.player.TrackInfo;
-import com.github.tvbox.osc.player.TrackInfoBean;
 import com.github.tvbox.osc.player.api.PlayConfig;
 import com.github.tvbox.osc.player.controller.VodController;
 import com.github.tvbox.osc.server.RemoteServer;
 import com.github.tvbox.osc.ui.activity.DetailActivity;
 import com.github.tvbox.osc.ui.adapter.ParseAdapter;
-import com.github.tvbox.osc.ui.adapter.SelectDialogAdapter;
 import com.github.tvbox.osc.ui.dialog.DialogCoordinator;
 import com.github.tvbox.osc.ui.dialog.PlayingControlDialog;
 import com.github.tvbox.osc.ui.dialog.PlayingControlRightDialog;
-import com.github.tvbox.osc.ui.dialog.SearchSubtitleDialog;
-import com.github.tvbox.osc.ui.dialog.SelectDialog;
-import com.github.tvbox.osc.ui.dialog.SubtitleDialog;
 import com.github.tvbox.osc.util.AdBlocker;
 import com.github.tvbox.osc.util.DefaultConfig;
 import com.github.tvbox.osc.util.HCallBack;
@@ -88,7 +81,6 @@ import com.github.tvbox.osc.viewmodel.SourceViewModel;
 import com.gyf.immersionbar.BarHide;
 import com.gyf.immersionbar.ImmersionBar;
 import com.lxj.xpopup.core.BasePopupView;
-import com.obsez.android.lib.filechooser.ChooserDialog;
 import com.orhanobut.hawk.Hawk;
 
 import org.apache.commons.lang3.StringUtils;
@@ -114,7 +106,6 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import me.jessyan.autosize.AutoSize;
-import xyz.doikki.videoplayer.player.AbstractPlayer;
 import xyz.doikki.videoplayer.player.ProgressManager;
 
 public class PlayFragment extends BaseLazyFragment {
@@ -125,6 +116,8 @@ public class PlayFragment extends BaseLazyFragment {
     private VodController mController;
     private SourceViewModel sourceViewModel;
     private Handler mHandler;
+    /** 字幕协调器(字幕装载/音轨与内置字幕切换/设置弹窗;见 util/player/SubtitleCoordinator) */
+    private com.github.tvbox.osc.util.player.SubtitleCoordinator mSubtitleCoordinator;
     /** playback 会话原型:当前播放对应的会话键(PlaybackSessions 观察/日志用;不驱动内核) */
     private String playbackSessionKey;
 
@@ -154,7 +147,7 @@ public class PlayFragment extends BaseLazyFragment {
     @Subscribe(threadMode = ThreadMode.MAIN)
     public void refresh(RefreshEvent event) {
         if (event.type == RefreshEvent.TYPE_SUBTITLE_SIZE_CHANGE) {
-            mController.mSubtitleView.setTextSize((int) event.obj);
+            mSubtitleCoordinator.applySubtitleSize((int) event.obj);
         } else if (event.type == RefreshEvent.TYPE_BATTERY_CHANGE && mController.mMyBatteryView!=null){
             mController.mMyBatteryView.updateBattery((int) event.obj);
         }
@@ -351,6 +344,7 @@ public class PlayFragment extends BaseLazyFragment {
             }
         });
         mVideoView.setVideoController(mController);
+        mSubtitleCoordinator = new com.github.tvbox.osc.util.player.SubtitleCoordinator(mActivity, mController, mVideoView);
     }
 
     public boolean hideAllDialogSuccess(){
@@ -402,214 +396,26 @@ public class PlayFragment extends BaseLazyFragment {
 
     //设置字幕
     void setSubtitle(String path) {
-        if (path != null && path.length() > 0) {
-            // 设置字幕(显隐跟随"字幕"开关,默认关闭)
-            mController.mSubtitleView.setSubtitlePath(path);
-            mController.mSubtitleView.setVisibility(PlayConfig.isSubtitleOpen() ? View.VISIBLE : View.GONE);
-        }
+        // 委托 SubtitleCoordinator(显隐跟随字幕开关)
+        if (mSubtitleCoordinator != null) mSubtitleCoordinator.setSubtitlePath(path);
     }
 
     void selectMySubtitle() throws Exception {
-        SubtitleDialog subtitleDialog = new SubtitleDialog(getActivity());
-        subtitleDialog.setSubtitleViewListener(new SubtitleDialog.SubtitleViewListener() {
-            @Override
-            public void setTextSize(int size) {
-                mController.mSubtitleView.setTextSize(size);
-            }
-
-            @Override
-            public void setSubtitleDelay(int milliseconds) {
-                mController.mSubtitleView.setSubtitleDelay(milliseconds);
-            }
-
-            @Override
-            public void selectInternalSubtitle() {
-                selectMyInternalSubtitle();
-            }
-
-            @Override
-            public void setTextStyle(int style) {
-                setSubtitleViewTextStyle(style);
-            }
-
-            @Override
-            public void subtitleOpen(boolean b) {
-                mController.openSubtitle(b);
-            }
-        });
-        subtitleDialog.setSearchSubtitleListener(new SubtitleDialog.SearchSubtitleListener() {
-            @Override
-            public void openSearchSubtitleDialog() {
-                SearchSubtitleDialog searchSubtitleDialog = new SearchSubtitleDialog(getActivity());
-                searchSubtitleDialog.setSubtitleLoader(new SearchSubtitleDialog.SubtitleLoader() {
-                    @Override
-                    public void loadSubtitle(Subtitle subtitle) {
-                        if (!isAdded()) return;
-                        requireActivity().runOnUiThread(new Runnable() {
-                            @Override
-                            public void run() {
-                                String zimuUrl = subtitle.getUrl();
-                                LOG.i("Remote Subtitle Url: " + zimuUrl);
-                                setSubtitle(zimuUrl);//设置字幕
-                                searchSubtitleDialog.dismiss();
-                            }
-                        });
-                    }
-                });
-                String searchWord = mVodInfo.name;
-                if (mVodInfo.playFlag != null && (mVodInfo.playFlag.contains("Ali") || mVodInfo.playFlag.contains("parse"))) {
-                    searchWord = mVodInfo.playNote;
-                }
-                searchSubtitleDialog.setSearchWord(TextUtils.isEmpty(searchWord) ? "" : searchWord);
-                searchSubtitleDialog.show();
-            }
-        });
-        subtitleDialog.setLocalFileChooserListener(new SubtitleDialog.LocalFileChooserListener() {
-            @Override
-            public void openLocalFileChooserDialog() {
-                new ChooserDialog(getActivity(),R.style.FileChooser)
-                        .withFilter(false, false, "srt", "ass", "scc", "stl", "ttml")
-                        .withStartFile("/storage/emulated/0/Download")
-                        .withChosenListener(new ChooserDialog.Result() {
-                            @Override
-                            public void onChoosePath(String path, File pathFile) {
-                                LOG.i("Local Subtitle Path: " + path);
-                                setSubtitle(path);//设置字幕
-                            }
-                        })
-                        .build()
-                        .show();
-            }
-        });
-        subtitleDialog.show();
+        if (mSubtitleCoordinator == null || mVodInfo == null) return;
+        mSubtitleCoordinator.openSubtitleDialog(mVodInfo);
     }
 
     @SuppressLint("UseCompatLoadingForColorStateLists")
     void setSubtitleViewTextStyle(int style) {
-        if (style == 0) {
-            mController.mSubtitleView.setTextColor(getContext().getResources().getColorStateList(R.color.color_FFFFFF));
-        } else if (style == 1) {
-            mController.mSubtitleView.setTextColor(getContext().getResources().getColorStateList(R.color.color_FFB6C1));
-        }
+        if (mSubtitleCoordinator != null) mSubtitleCoordinator.setSubtitleTextStyle(style);
     }
 
     void selectMyAudioTrack() {
-        AbstractPlayer mediaPlayer = mVideoView.getMediaPlayer();
-
-        TrackInfo trackInfo = com.github.tvbox.osc.player.PlayerTrackHelper.getTrackInfo(mediaPlayer);
-
-        if (trackInfo == null) {
-            AppBubble.toast("没有音轨");
-            return;
-        }
-        List<TrackInfoBean> bean = trackInfo.getAudio();
-        if (bean.size() < 1) return;
-        SelectDialog<TrackInfoBean> dialog = new SelectDialog<>(getActivity());
-        dialog.setTip("切换音轨");
-        dialog.setAdapter(new SelectDialogAdapter.SelectDialogInterface<TrackInfoBean>() {
-            @Override
-            public void click(TrackInfoBean value, int pos) {
-                try {
-                    for (TrackInfoBean audio : bean) {
-                        audio.selected = audio.trackId == value.trackId;
-                    }
-                    mediaPlayer.pause();
-                    long progress = mediaPlayer.getCurrentPosition();//保存当前进度，ijk 切换轨道 会有快进几秒
-                    com.github.tvbox.osc.player.PlayerTrackHelper.selectTrack(mediaPlayer, value);
-                    new Handler().postDelayed(new Runnable() {
-                        @Override
-                        public void run() {
-                            mediaPlayer.seekTo(progress);
-                            mediaPlayer.start();
-                        }
-                    }, 800);
-                    dialog.dismiss();
-                } catch (Exception e) {
-                    LOG.e("切换音轨出错");
-                }
-            }
-
-            @Override
-            public String getDisplay(TrackInfoBean val) {
-                String name = val.name.replace("AUDIO,", "");
-                name = name.replace("N/A,", "");
-                name = name.replace(" ", "");
-                return name + (TextUtils.isEmpty(val.language) ? "" : " " + val.language);
-            }
-        }, new DiffUtil.ItemCallback<TrackInfoBean>() {
-            @Override
-            public boolean areItemsTheSame(@NonNull @NotNull TrackInfoBean oldItem, @NonNull @NotNull TrackInfoBean newItem) {
-                return oldItem.trackId == newItem.trackId;
-            }
-
-            @Override
-            public boolean areContentsTheSame(@NonNull @NotNull TrackInfoBean oldItem, @NonNull @NotNull TrackInfoBean newItem) {
-                return oldItem.trackId == newItem.trackId;
-            }
-        }, bean, trackInfo.getAudioSelected(false));
-        dialog.show();
+        if (mSubtitleCoordinator != null) mSubtitleCoordinator.openAudioTrackDialog();
     }
 
     void selectMyInternalSubtitle() {
-        AbstractPlayer mediaPlayer = mVideoView.getMediaPlayer();
-        TrackInfo trackInfo = com.github.tvbox.osc.player.PlayerTrackHelper.getTrackInfo(mediaPlayer);
-
-        if (trackInfo == null) {
-            AppBubble.toast("没有内置字幕");
-            return;
-        }
-        List<TrackInfoBean> bean = trackInfo.getSubtitle();
-        if (bean.size() < 1) return;
-        SelectDialog<TrackInfoBean> dialog = new SelectDialog<>(mActivity);
-        dialog.setTip("切换内置字幕");
-        dialog.setAdapter(new SelectDialogAdapter.SelectDialogInterface<TrackInfoBean>() {
-            @Override
-            public void click(TrackInfoBean value, int pos) {
-                mController.mSubtitleView.setVisibility(View.VISIBLE);
-                try {
-                    for (TrackInfoBean subtitle : bean) {
-                        subtitle.selected =subtitle.trackGroupId == value.trackGroupId && subtitle.trackId == value.trackId;
-                    }
-                    mediaPlayer.pause();
-                    long progress = mediaPlayer.getCurrentPosition();//保存当前进度，ijk 切换轨道 会有快进几秒
-                    mController.mSubtitleView.destroy();
-                    mController.mSubtitleView.clearSubtitleCache();
-                    mController.mSubtitleView.isInternal = true;
-
-                    // 轨道切换/进度恢复差异收敛到 PlayerTrackHelper,不感知内核
-                    com.github.tvbox.osc.player.PlayerTrackHelper.selectTrack(mediaPlayer, value);
-                    new Handler().postDelayed(new Runnable() {
-                        @Override
-                        public void run() {
-                            mediaPlayer.seekTo(progress);
-                            mediaPlayer.start();
-                            if (com.github.tvbox.osc.player.PlayerTrackHelper.requiresControllerProgressRestart(mediaPlayer)) {
-                                mController.startProgress();
-                            }
-                        }
-                    }, 800);
-                    dialog.dismiss();
-                } catch (Exception e) {
-                    LOG.e("切换内置字幕出错");
-                }
-            }
-
-            @Override
-            public String getDisplay(TrackInfoBean val) {
-                return val.name + (TextUtils.isEmpty(val.language)? "": " " + val.language);
-            }
-        }, new DiffUtil.ItemCallback<TrackInfoBean>() {
-            @Override
-            public boolean areItemsTheSame(@NonNull @NotNull TrackInfoBean oldItem, @NonNull @NotNull TrackInfoBean newItem) {
-                return oldItem.trackId == newItem.trackId;
-            }
-
-            @Override
-            public boolean areContentsTheSame(@NonNull @NotNull TrackInfoBean oldItem, @NonNull @NotNull TrackInfoBean newItem) {
-                return oldItem.trackId == newItem.trackId;
-            }
-        }, bean, trackInfo.getSubtitleSelected(false));
-        dialog.show();
+        if (mSubtitleCoordinator != null) mSubtitleCoordinator.openInternalSubtitleDialog();
     }
 
     void setTip(String msg, boolean loading, boolean err) {
@@ -899,62 +705,10 @@ public class PlayFragment extends BaseLazyFragment {
     }
 
     private void initSubtitleView() {
-        TrackInfo trackInfo = null;
-        AbstractPlayer mediaPlayer = mVideoView.getMediaPlayer();
-        // 内核差异(getTrackInfo/字幕回调)收敛到 PlayerTrackHelper,不感知内核类型
-        trackInfo = com.github.tvbox.osc.player.PlayerTrackHelper.getTrackInfo(mediaPlayer);
-        if (trackInfo != null && trackInfo.getSubtitle().size() > 0) {//如有则设置内置字幕
-            mController.mSubtitleView.hasInternal = true;
-        }
-        com.github.tvbox.osc.player.PlayerTrackHelper.setOnSubtitleListener(mediaPlayer, new com.github.tvbox.osc.player.PlayerTrackHelper.SubtitleListener() {
-            @Override
-            public void onSubtitle(String text) {
-                if (mController.mSubtitleView.isInternal) {
-                    if (text == null) {
-                        mController.mSubtitleView.onSubtitleChanged(null);
-                    } else {
-                        com.github.tvbox.osc.subtitle.model.Subtitle subtitle = new com.github.tvbox.osc.subtitle.model.Subtitle();
-                        subtitle.content = text;
-                        mController.mSubtitleView.onSubtitleChanged(subtitle);
-                    }
-                }
-            }
-        });
-
-        mController.mSubtitleView.bindToMediaPlayer(mVideoView.getMediaPlayer());
-        mController.mSubtitleView.setPlaySubtitleCacheKey(subtitleCacheKey);
-        String subtitlePathCache = (String) com.github.tvbox.osc.repo.HistoryRepositories.cache().get(MD5.string2MD5(subtitleCacheKey));
-        if (subtitlePathCache != null && !subtitlePathCache.isEmpty()) {
-            mController.mSubtitleView.setSubtitlePath(subtitlePathCache);
-        } else {
-            if (playSubtitle != null && playSubtitle.length() > 0) {
-                mController.mSubtitleView.setSubtitlePath(playSubtitle);
-            } else {
-                if (mController.mSubtitleView.hasInternal) {//有则使用内置字幕
-                    mController.mSubtitleView.isInternal = true;
-                    if (trackInfo != null && !trackInfo.getSubtitle().isEmpty()) {
-                        List<TrackInfoBean> subtitleTrackList = trackInfo.getSubtitle();
-                        int selectedIndex = trackInfo.getSubtitleSelected(true);
-                        boolean hasCh =false;
-                        for(TrackInfoBean subtitleTrackInfoBean : subtitleTrackList) {
-                            String lowerLang = subtitleTrackInfoBean.language.toLowerCase();
-                            if (lowerLang.contains("zh") || lowerLang.contains("ch")) {
-                                hasCh=true;
-                                if (selectedIndex != subtitleTrackInfoBean.trackId) {
-                                    com.github.tvbox.osc.player.PlayerTrackHelper.selectTrack(mVideoView.getMediaPlayer(), subtitleTrackInfoBean);
-                                    break;
-                                }
-                            }
-                        }
-                        if(!hasCh){
-                            com.github.tvbox.osc.player.PlayerTrackHelper.selectTrack(mVideoView.getMediaPlayer(), subtitleTrackList.get(0));
-                        }
-                    }
-                }
-            }
-        }
-        // 字幕默认关闭:显隐跟随设置(用户可在播放器字幕设置里打开/关闭)
-        mController.mSubtitleView.setVisibility(PlayConfig.isSubtitleOpen() ? View.VISIBLE : View.GONE);
+        // 字幕装载/内置字幕自动选中文等已收口 SubtitleCoordinator;同步当前字幕上下文后委托
+        if (mSubtitleCoordinator == null) return;
+        mSubtitleCoordinator.updateSubtitleContext(playSubtitle, subtitleCacheKey);
+        mSubtitleCoordinator.initSubtitleView();
     }
 
     private void initViewModel() {
