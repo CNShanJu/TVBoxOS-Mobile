@@ -1,4 +1,4 @@
-package com.github.tvbox.osc.log;
+package com.github.tvbox.osc.log.db;
 
 import java.util.List;
 
@@ -6,6 +6,8 @@ import androidx.annotation.Nullable;
 import androidx.room.Dao;
 import androidx.room.Insert;
 import androidx.room.Query;
+
+import com.github.tvbox.osc.log.LogEntry;
 
 @Dao
 public interface LogDao {

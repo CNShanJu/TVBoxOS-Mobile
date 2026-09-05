@@ -1,26 +1,35 @@
-package com.github.tvbox.osc.log;
+package com.github.tvbox.osc.log.internal;
 
 import android.content.Context;
 import android.util.Log;
 
+import com.github.tvbox.osc.log.LogConfig;
+import com.github.tvbox.osc.log.LogStore;
+
 import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileOutputStream;
+import java.io.FileWriter;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.Date;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Locale;
 
 /**
- * logcat 原始流捕获（只含本应用日志）：`logcat --uid=<本应用uid>`(老系统退回 --pid=<本进程>)
- * 只抓当前应用，绝不抓其他应用/系统日志；默认只保留 INFO 及以上级别(避免本应用自身的 V/D 刷屏全量落盘)，
+ * logcat 原始流捕获（internal：仅供 log 模块内部使用，勿被外部模块引用，只含本应用日志）：
+ * `logcat --uid=<本应用uid>`(老系统退回 --pid=<本进程>) 只抓当前应用，
+ * 绝不抓其他应用/系统日志；默认只保留 INFO 及以上级别(避免本应用自身的 V/D 刷屏全量落盘)，
  * 日志级别调为 DEBUG 时才会保留 V/D 全量。
  * <p>
- * 按天写入 filesDir/app_logs/logcat-yyyy-MM-dd.log（与 AppLog 共用目录，过渡期
- * 现有 LogActivity 仍可展示），单文件超 8MB 滚动分段、目录总大小上限 48MB 自动清理、7 天前文件删除。
+ * 按天写入 filesDir/app_logs/logcat-yyyy-MM-dd.log（与旧 AppLog 共用目录），
+ * 单文件超 8MB 滚动分段、目录总大小上限 48MB 自动清理、保留天数跟随 {@link LogConfig#getRetentionDays()}。
  * <p>
  * 与业务日志（Room）互补：业务日志结构化可筛选，这里保留原始 logcat 流（"全部日志"）。
  * 开关由 {@link LogStore#setEnabled(boolean)} 联动（默认关）。
@@ -28,11 +37,10 @@ import java.util.Locale;
  */
 public final class LogcatCapture {
 
-    /** 与 AppLog 共用目录（app_logs），前缀 logcat- 区分 */
+    /** 与旧 AppLog 共用目录（app_logs），前缀 logcat- 区分 */
     private static final String DIR = "app_logs";
     private static final String PREFIX = "logcat-";
     private static final String SUFFIX = ".log";
-    private static final int RETENTION_DAYS = 7;
     private static final int BATCH_LINES = 100;
     private static final long FLUSH_MS = 1500;
     /**
@@ -53,11 +61,11 @@ public final class LogcatCapture {
     }
 
     /** 由 LogStore.init 注入 application context（独立模块不依赖 app 类） */
-    static void setAppContext(Context context) {
+    public static void setAppContext(Context context) {
         appContext = context == null ? null : context.getApplicationContext();
     }
 
-    /** 包内可见: LogStore.export 需要 cacheDir */
+    /** 文件目录计算用（internal 包内使用；导出 cacheDir 由 LogStore 自持 appContext） */
     static Context appContext() {
         return appContext;
     }
@@ -210,7 +218,111 @@ public final class LogcatCapture {
     }
 
     // ------------------------------------------------------------------
-    // 按天文件
+    // 读侧（供 LogStore 门面暴露给日志页：全部日志 Tab 的文件级操作）
+    // 过渡期:app_logs 目录里 logcat-*.log 与旧 AppLog 的 app-*.log 并存,
+    // 列目录/清空/导出统一覆盖全部 *.log(与旧 UI 行为一致,避免旧文件只写不清);
+    // 旧 AppLog 写通道退役后收窄为 logcat-* 前缀。
+    // ------------------------------------------------------------------
+
+    /** 列出 app_logs 目录全部日志文件（名称倒序=新的在前）；未注入 context/无文件返回空表 */
+    public static List<File> listLogFiles() {
+        List<File> files = new ArrayList<>();
+        try {
+            if (appContext() == null) return files;
+            File dir = logDir();
+            File[] fs = dir.listFiles();
+            if (fs == null) return files;
+            for (File f : fs) {
+                if (f.isFile() && f.getName().endsWith(SUFFIX)) {
+                    files.add(f);
+                }
+            }
+            Collections.sort(files, new Comparator<File>() {
+                @Override
+                public int compare(File a, File b) {
+                    return b.getName().compareTo(a.getName());
+                }
+            });
+        } catch (Throwable ignored) {
+        }
+        return files;
+    }
+
+    /**
+     * 高效读取文件末尾最近 maxLines 行：顺序读 + 环形缓冲只保留尾部，
+     * 避免一次性加载全文件(大 logcat 也能毫秒级返回)；文件不存在返回空表。
+     */
+    public static List<String> readTail(File file, int maxLines) {
+        List<String> lines = new ArrayList<>();
+        if (file == null || !file.exists()) return lines;
+        BufferedReader reader = null;
+        try {
+            reader = new BufferedReader(new InputStreamReader(new FileInputStream(file), StandardCharsets.UTF_8));
+            LinkedList<String> ring = new LinkedList<>();
+            String line;
+            while ((line = reader.readLine()) != null) {
+                ring.add(line);
+                if (ring.size() > maxLines) ring.removeFirst();
+            }
+            lines.addAll(ring);
+        } catch (Throwable th) {
+            Log.e("LogcatCapture", "读 logcat 文件失败", th);
+        } finally {
+            if (reader != null) {
+                try {
+                    reader.close();
+                } catch (Throwable ignored) {
+                }
+            }
+        }
+        return lines;
+    }
+
+    /** 清空全部 logcat 文件（分段 + 当日） */
+    public static void clearAll() {
+        synchronized (LOCK) {
+            for (File f : listLogFiles()) {
+                try {
+                    //noinspection ResultOfMethodCallIgnored
+                    f.delete();
+                } catch (Throwable ignored) {
+                }
+            }
+        }
+    }
+
+    /**
+     * 导出全部 logcat 文件到一个 txt（放 cacheDir，可 FileProvider 分享）。
+     *
+     * @return 导出文件；无文件/未注入 context 返回 null
+     */
+    public static File exportAll() {
+        try {
+            if (appContext() == null) return null;
+            List<File> files = listLogFiles();
+            if (files.isEmpty()) return null;
+            File out = new File(appContext().getCacheDir(), "logcat_export_" + System.currentTimeMillis() + ".txt");
+            FileWriter fw = new FileWriter(out, false);
+            try {
+                for (File f : files) {
+                    fw.write("===== " + f.getName() + " =====\n");
+                    for (String line : readTail(f, Integer.MAX_VALUE - 8)) {
+                        fw.write(line + "\n");
+                    }
+                    fw.write("\n");
+                }
+            } finally {
+                fw.close();
+            }
+            return out;
+        } catch (Throwable th) {
+            Log.e("LogcatCapture", "导出 logcat 文件失败", th);
+            return null;
+        }
+    }
+
+    // ------------------------------------------------------------------
+    // 按天文件（写侧）
     // ------------------------------------------------------------------
 
     private static void appendLines(List<String> lines) {
@@ -267,7 +379,7 @@ public final class LogcatCapture {
         }
     }
 
-    /** 清理策略:① 删除超过保留天数的文件;② 总大小超过上限时删除最旧的滚动文件(不删当前活跃文件) */
+    /** 清理策略:① 删除超过 LogConfig 保留天数的文件;② 总大小超过上限时删除最旧的滚动文件(不删当前活跃文件) */
     private static void cleanupFiles() {
         try {
             File dir = logDir();
@@ -275,11 +387,12 @@ public final class LogcatCapture {
             if (files == null) return;
             List<File> keep = new ArrayList<>();
             long now = System.currentTimeMillis();
+            long retentionDays = Math.max(1, LogConfig.getRetentionDays());
             for (File f : files) {
                 if (!f.isFile() || !f.getName().startsWith(PREFIX) || !f.getName().endsWith(SUFFIX)) {
                     continue;
                 }
-                if (now - f.lastModified() > RETENTION_DAYS * DAY_MS) {
+                if (now - f.lastModified() > retentionDays * DAY_MS) {
                     //noinspection ResultOfMethodCallIgnored
                     f.delete();
                 } else {

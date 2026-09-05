@@ -1,4 +1,4 @@
-package com.github.tvbox.osc.log;
+package com.github.tvbox.osc.log.db;
 
 import androidx.room.Database;
 import androidx.room.Room;
@@ -7,6 +7,8 @@ import androidx.room.migration.Migration;
 import androidx.sqlite.db.SupportSQLiteDatabase;
 
 import android.content.Context;
+
+import com.github.tvbox.osc.log.LogEntry;
 
 /**
  * 日志独立数据库（log 模块自包含，不并入 AppDataBase，

@@ -4,22 +4,21 @@ import android.content.Intent
 import android.view.View
 import android.widget.TextView
 import com.github.tvbox.osc.log.Category
-import com.github.tvbox.osc.log.LogFilter
 import com.github.tvbox.osc.log.LogStore
 import com.github.tvbox.osc.util.AppBubble
 import com.github.tvbox.osc.R
 import com.github.tvbox.osc.base.BaseVbActivity
 import com.github.tvbox.osc.databinding.ActivityLogBinding
-import com.github.tvbox.osc.util.AppLog
+import com.github.tvbox.osc.util.LogViewAssembler
 import com.lxj.xpopup.XPopup
 import java.io.File
 
 /**
- * 运行日志页（升级：双 Tab）
+ * 运行日志页（双 Tab，数据组装下沉到 [LogViewAssembler]，页面只做交互与展示）
  * <ul>
- *   <li>Tab1 业务日志：LogStore(Room) 结构化日志，模块筛选（全部/下载/播放/订阅/系统/仅错误），
- *       展示格式 [时间] [大类型] [小类型] 干了啥 ✓/✗；</li>
- *   <li>Tab2 全部日志：logcat 原始流（package:mine 按天文件），日期选择、复制、清空、导出。</li>
+ *   <li>Tab1 业务日志：LogStore(Room) 结构化日志，模块筛选（全部/下载/播放/订阅/系统/仅错误）；</li>
+ *   <li>Tab2 全部日志：logcat 原始流（package:mine 按天文件），日期选择、复制、清空、导出——
+ *       文件读取全部走 LogStore 门面，不再直接依赖 common.AppLog。</li>
  * </ul>
  */
 class LogActivity : BaseVbActivity<ActivityLogBinding>() {
@@ -32,20 +31,6 @@ class LogActivity : BaseVbActivity<ActivityLogBinding>() {
     private var filterCategory: String? = null
     /** 业务日志筛选：仅错误 */
     private var filterErrorOnly = false
-
-    companion object {
-        private const val SHOW_MAX_LINES = 1000
-        private const val BIZ_MAX_LINES = 300
-
-        /** 日志文件名 → 展示名:app-2026-06-01.log / logcat-2026-06-01.log → 2026-06-01;
-         *  logcat 单日超大时按 8MB 滚动的分段文件 logcat-2026-06-01.2.log → 2026-06-01(分段2) */
-        private fun dayLabel(name: String): String {
-            val m = Regex("""^(?:app|logcat)-(\d{4}-\d{2}-\d{2})(?:\.(\d+))?\.log$""").find(name)
-                ?: return name
-            return if (m.groupValues[2].isEmpty()) m.groupValues[1]
-            else m.groupValues[1] + "(分段" + m.groupValues[2] + ")"
-        }
-    }
 
     override fun init() {
         mBinding.btnClear.setOnClickListener { confirmClear() }
@@ -121,7 +106,7 @@ class LogActivity : BaseVbActivity<ActivityLogBinding>() {
     private fun colorOf(res: Int): Int = getColor(res)
 
     // ------------------------------------------------------------------
-    // 内容
+    // 内容（组装逻辑在 LogViewAssembler）
     // ------------------------------------------------------------------
 
     private fun refreshContent() {
@@ -134,57 +119,44 @@ class LogActivity : BaseVbActivity<ActivityLogBinding>() {
         val errorOnly = filterErrorOnly
         mBinding.tvContent.text = "加载中..."
         Thread {
-            val entries = try {
-                val filter = LogFilter().apply {
-                    this.category = category
-                    minLevel = if (errorOnly) LogStore.LEVEL_ERROR else LogStore.LEVEL_INFO
-                    limit = BIZ_MAX_LINES
-                }
-                LogStore.get()?.query(filter)
+            val text = try {
+                LogViewAssembler.bizText(LogStore.get(), category, errorOnly)
             } catch (th: Throwable) {
                 th.printStackTrace()
                 null
             }
             runOnUiThread {
-                val store = LogStore.get()
-                if (entries == null || entries.isEmpty()) {
-                    mBinding.tvContent.text = "暂无日志（先到 设置→运行日志 开启采集）"
-                    return@runOnUiThread
-                }
-                val sb = StringBuilder(entries.size * 96)
-                for (e in entries) sb.append(store?.formatEntry(e)).append("\n")
-                mBinding.tvContent.text = sb.toString()
+                mBinding.tvContent.text = text ?: "暂无日志（先到 设置→运行日志 开启采集）"
                 mBinding.scrollLog.post { mBinding.scrollLog.fullScroll(View.FOCUS_UP) }
             }
         }.start()
     }
 
-    /** Tab2 全部日志：AppLog 按天文件，后台线程读取,避免大文件卡主线程 */
+    /** Tab2 全部日志：文件列表/读尾也走 LogStore 门面，后台线程读取,避免大文件卡主线程 */
     private fun loadAllLogs() {
         dayFiles.clear()
-        dayFiles.addAll(AppLog.listLogFiles())
+        dayFiles.addAll(LogViewAssembler.rawFiles(LogStore.get()))
         if (dayFiles.isEmpty()) {
             selectedFile = null
             mBinding.tvSelectedDay.text = "暂无日志"
-            renderAllLogs()
+            mBinding.tvContent.text = "暂无日志"
             return
         }
         if (selectedFile == null || !dayFiles.contains(selectedFile)) {
             selectedFile = dayFiles[0]
         }
-        mBinding.tvSelectedDay.text = selectedFile?.name?.let { dayLabel(it) } ?: "暂无日志"
+        mBinding.tvSelectedDay.text = selectedFile?.name?.let { LogViewAssembler.dayLabel(it) } ?: "暂无日志"
+        val file = selectedFile
         Thread {
-            val lines = selectedFile?.let { AppLog.readTail(it, SHOW_MAX_LINES) } ?: emptyList()
-            val sb = StringBuilder(lines.size * 64)
-            for (line in lines) sb.append(line).append("\n")
-            if (sb.isEmpty()) {
-                runOnUiThread { mBinding.tvContent.text = "暂无内容" }
-            } else {
-                sb.append("\n—— 仅显示最近 ").append(lines.size).append(" 行 ——")
-                runOnUiThread {
-                    mBinding.tvContent.text = sb.toString()
-                    mBinding.scrollLog.post { mBinding.scrollLog.fullScroll(View.FOCUS_DOWN) }
-                }
+            val text = try {
+                LogViewAssembler.rawText(LogStore.get(), file)
+            } catch (th: Throwable) {
+                th.printStackTrace()
+                null
+            }
+            runOnUiThread {
+                mBinding.tvContent.text = text ?: "暂无内容"
+                mBinding.scrollLog.post { mBinding.scrollLog.fullScroll(View.FOCUS_DOWN) }
             }
         }.start()
     }
@@ -195,7 +167,7 @@ class LogActivity : BaseVbActivity<ActivityLogBinding>() {
             AppBubble.toast("暂无日志")
             return
         }
-        val display = Array(dayFiles.size) { i -> dayLabel(dayFiles[i].name) }
+        val display = Array(dayFiles.size) { i -> LogViewAssembler.dayLabel(dayFiles[i].name) }
         XPopup.Builder(this)
             .asBottomList("选择日期", display) { position, _ ->
                 if (position in dayFiles.indices) {
@@ -205,25 +177,6 @@ class LogActivity : BaseVbActivity<ActivityLogBinding>() {
                 }
             }
             .show()
-    }
-
-    /** 只显示文件末尾最新的 SHOW_MAX_LINES 行,避免大日志卡顿 */
-    private fun renderAllLogs() {
-        val file = selectedFile
-        if (file == null) {
-            mBinding.tvContent.text = "暂无日志"
-            return
-        }
-        val lines = AppLog.readTail(file, SHOW_MAX_LINES)
-        val sb = StringBuilder(lines.size * 64)
-        for (line in lines) sb.append(line).append("\n")
-        if (sb.isEmpty()) {
-            mBinding.tvContent.text = "暂无内容"
-        } else {
-            sb.append("\n—— 仅显示最近 ").append(lines.size).append(" 行 ——")
-            mBinding.tvContent.text = sb.toString()
-        }
-        mBinding.scrollLog.post { mBinding.scrollLog.fullScroll(View.FOCUS_DOWN) }
     }
 
     private fun scrollBottom() {
@@ -245,10 +198,10 @@ class LogActivity : BaseVbActivity<ActivityLogBinding>() {
         com.github.tvbox.osc.ui.dialog.ConfirmDialog.show(this, "清空日志",
             "确定清空${if (currentTab == 0) "业务日志" else "全部日志"}吗？", "清空", {
                 if (currentTab == 0) {
-                    LogStore.get()?.clearAll()
+                    LogViewAssembler.clearBiz(LogStore.get())
                     mBinding.tvContent.text = "暂无日志"
                 } else {
-                    AppLog.clearAll()
+                    LogViewAssembler.clearRaw(LogStore.get())
                     selectedFile = null
                     refreshContent()
                 }
@@ -257,30 +210,17 @@ class LogActivity : BaseVbActivity<ActivityLogBinding>() {
     }
 
     private fun export() {
-        if (currentTab == 0) {
-            val store = LogStore.get() ?: run {
-                AppBubble.toast("暂无日志可导出")
-                return
-            }
-            val filter = LogFilter().apply {
-                category = filterCategory
-                minLevel = if (filterErrorOnly) LogStore.LEVEL_ERROR else LogStore.LEVEL_INFO
-                limit = 2000
-            }
-            val file = store.export(filter)
-            if (file == null) {
-                AppBubble.toast("暂无日志可导出")
-                return
-            }
-            shareFile(file)
+        val store = LogStore.get()
+        val file = if (currentTab == 0) {
+            LogViewAssembler.exportBiz(store, filterCategory, filterErrorOnly)
         } else {
-            val file = AppLog.exportAll()
-            if (file == null) {
-                AppBubble.toast("暂无日志可导出")
-                return
-            }
-            shareFile(file)
+            LogViewAssembler.exportRaw(store)
         }
+        if (file == null) {
+            AppBubble.toast("暂无日志可导出")
+            return
+        }
+        shareFile(file)
     }
 
     private fun shareFile(file: File) {
