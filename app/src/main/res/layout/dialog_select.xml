@@ -37,9 +37,8 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
+        android:clipToPadding="false"
         android:paddingHorizontal="10dp"
-        android:scrollbars="vertical"
-        android:fadeScrollbars="false"
         app:layout_constrainedHeight="true"
         app:layout_constraintHeight_max="@dimen/dp_410"
         app:layout_constraintLeft_toLeftOf="parent"
@@ -50,6 +49,17 @@
         app:tv_horizontalSpacingWithMargins="@dimen/dp_10"
         app:tv_verticalSpacingWithMargins="@dimen/dp_10"
         android:paddingBottom="10dp"/>
+
+    <!-- 滚动指示条:仅当列表内容超高(可滚动)时显示;RecyclerView 系统滚动条静止不绘制,故自绘。
+         高度与垂直偏移由 SelectDialog 按 extent/range 动态计算 -->
+    <View
+        android:id="@+id/scroll_thumb"
+        android:layout_width="3dp"
+        android:layout_height="0dp"
+        android:background="@drawable/bg_scroll_thumb"
+        android:visibility="gone"
+        app:layout_constraintRight_toRightOf="@+id/list"
+        app:layout_constraintTop_toTopOf="@+id/list" />
 
     <View
         android:layout_width="match_parent"

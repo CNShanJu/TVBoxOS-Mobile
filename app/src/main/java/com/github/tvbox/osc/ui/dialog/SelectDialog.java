@@ -68,6 +68,12 @@ public class SelectDialog<T> extends AppCenterPopupView {
             setAdapter(selectInterface, itemCallback, data, selectPos);
         }
         clampListHeightToFit();
+        // 自绘滚动指示条:RecyclerView 系统滚动条静止不绘制,列表超高时用右侧 thumb 提示可滚动
+        android.view.View list = findViewById(R.id.list);
+        android.view.View thumb = findViewById(R.id.scroll_thumb);
+        if (list != null && thumb != null) {
+            ScrollThumbIndicator.attach((com.owen.tvrecyclerview.widget.TvRecyclerView) list, thumb);
+        }
     }
 
     /**
