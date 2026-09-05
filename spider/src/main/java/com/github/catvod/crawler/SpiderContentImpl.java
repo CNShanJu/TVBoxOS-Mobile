@@ -29,6 +29,7 @@ public final class SpiderContentImpl implements SpiderContentApi {
             Spider sp = spiderOf(ApiConfig.get().getSource(sourceKey));
             return sp == null ? null : sp.homeContent(filter);
         } catch (Throwable th) {
+            android.util.Log.w("SpiderBridge", "SpiderContent 调用异常", th);
             return null;
         }
     }
@@ -39,6 +40,7 @@ public final class SpiderContentImpl implements SpiderContentApi {
             Spider sp = spiderOf(ApiConfig.get().getSource(sourceKey));
             return sp == null ? null : sp.homeVideoContent();
         } catch (Throwable th) {
+            android.util.Log.w("SpiderBridge", "SpiderContent 调用异常", th);
             return null;
         }
     }
@@ -51,6 +53,7 @@ public final class SpiderContentImpl implements SpiderContentApi {
             java.util.HashMap<String, String> ext = extend == null ? new java.util.HashMap<>() : new java.util.HashMap<>(extend);
             return sp.categoryContent(tid, pg, filter, ext);
         } catch (Throwable th) {
+            android.util.Log.w("SpiderBridge", "SpiderContent 调用异常", th);
             return null;
         }
     }
@@ -61,6 +64,7 @@ public final class SpiderContentImpl implements SpiderContentApi {
             Spider sp = spiderOf(ApiConfig.get().getSource(sourceKey));
             return sp == null ? null : sp.detailContent(ids);
         } catch (Throwable th) {
+            android.util.Log.w("SpiderBridge", "SpiderContent 调用异常", th);
             return null;
         }
     }
@@ -71,6 +75,7 @@ public final class SpiderContentImpl implements SpiderContentApi {
             Spider sp = spiderOf(ApiConfig.get().getSource(sourceKey));
             return sp == null ? null : sp.searchContent(word, quick);
         } catch (Throwable th) {
+            android.util.Log.w("SpiderBridge", "SpiderContent 调用异常", th);
             return null;
         }
     }
@@ -81,6 +86,7 @@ public final class SpiderContentImpl implements SpiderContentApi {
             Spider sp = spiderOf(ApiConfig.get().getSource(sourceKey));
             return sp == null ? null : sp.playerContent(flag, id, vipFlags);
         } catch (Throwable th) {
+            android.util.Log.w("SpiderBridge", "SpiderContent 调用异常", th);
             return null;
         }
     }

@@ -49,6 +49,7 @@ public class DownloadManager {
     public static void setUrlResolverApi(com.github.tvbox.osc.spiderapi.PlayUrlResolverApi api) {
         if (api != null) {
             urlResolverApi = api;
+            android.util.Log.i("TVBox-Download", "setUrlResolverApi: 已注入播放地址解析契约实现=" + api.getClass().getName());
         }
     }
 

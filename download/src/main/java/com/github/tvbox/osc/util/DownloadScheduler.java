@@ -404,7 +404,10 @@ public class DownloadScheduler {
         try {
             com.github.tvbox.osc.spiderapi.ResolveResult rr =
                     DownloadManager.urlResolverApi.resolvePlayUrl(t.sourceKey, t.playFlag, t.episodeRawUrl);
-            if (rr != null && rr.url != null && !rr.url.isEmpty()) {
+            if (rr == null) {
+                Log.i("TVBox-Download", "重解析无结果(契约未注入或解析失败),走嗅探兜底: " + t.fileName
+                        + " url=" + t.episodeRawUrl);
+            } else if (rr.url != null && !rr.url.isEmpty()) {
                 boolean urlChanged = !rr.url.equals(t.url);
                 t.headers = rr.headers; // 无论地址是否变化都同步请求头(防盗链源分片校验)
                 // 类型保护: 原地址是 m3u8 而新解析结果不是(或反之), 说明解析不稳定/源结构变化,

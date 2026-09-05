@@ -18,9 +18,16 @@ public final class SpiderManualCheckImpl implements SpiderManualCheckApi {
         try {
             SourceBean sb = ApiConfig.get().getSource(sourceKey);
             Spider sp = sb == null ? null : ApiConfig.get().getCSP(sb);
-            if (sp == null || !sp.manualVideoCheck()) return null;
-            return sp.isVideoFormat(url);
+            if (sp == null) {
+                android.util.Log.w("SpiderBridge", "manualVideoCheck: 源缺失或无 Spider key=" + sourceKey);
+                return null;
+            }
+            if (!sp.manualVideoCheck()) return null;
+            Boolean r = sp.isVideoFormat(url);
+            android.util.Log.d("SpiderBridge", "manualVideoCheck: key=" + sourceKey + " url=" + url + " -> " + r);
+            return r;
         } catch (Throwable th) {
+            android.util.Log.w("SpiderBridge", "manualVideoCheck 异常: " + sourceKey, th);
             return null;
         }
     }

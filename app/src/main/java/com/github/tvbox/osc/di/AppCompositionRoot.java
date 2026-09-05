@@ -17,6 +17,7 @@ public final class AppCompositionRoot {
 
     /** App.onCreate 网络/下载组件初始化后调用 */
     public static void init() {
+        android.util.Log.i("AppCompositionRoot", "init: 注入 UrlResolver/ManualCheck/Content/NetworkProvider");
         // 下载侧播放地址解析(:spider 提供实现,download 不依赖 :spider 实现)
         com.github.tvbox.osc.util.DownloadManager.setUrlResolverApi(
                 com.github.catvod.crawler.SpiderUrlResolverImpl.get());

@@ -17,12 +17,21 @@ public final class SpiderUrlResolverImpl implements PlayUrlResolverApi {
 
     @Override
     public ResolveResult resolvePlayUrl(String sourceKey, String playFlag, String episodeRawUrl) {
-        if (sourceKey == null || playFlag == null || episodeRawUrl == null) return null;
+        if (sourceKey == null || playFlag == null || episodeRawUrl == null) {
+            android.util.Log.w("SpiderBridge", "resolvePlayUrl: 入参缺失 sourceKey=" + sourceKey
+                    + " playFlag=" + playFlag + " raw=" + episodeRawUrl);
+            return null;
+        }
         try {
             PlayUrlResolver.ResolveResult rr = SpiderApi.resolvePlayUrl(sourceKey, playFlag, episodeRawUrl);
-            if (rr == null || rr.url == null || rr.url.isEmpty()) return null;
+            if (rr == null || rr.url == null || rr.url.isEmpty()) {
+                android.util.Log.w("SpiderBridge", "resolvePlayUrl 解析无结果: " + sourceKey
+                        + "/" + playFlag + " raw=" + episodeRawUrl);
+                return null;
+            }
             return new ResolveResult(rr.url, rr.headers);
         } catch (Throwable th) {
+            android.util.Log.w("SpiderBridge", "resolvePlayUrl 异常: " + sourceKey + "/" + playFlag, th);
             return null;
         }
     }
