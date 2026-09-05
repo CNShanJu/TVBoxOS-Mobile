@@ -71,12 +71,11 @@ public class DownloadManager {
 
     /** 每个任务当前活动的 HTTP 响应,用于暂停/删除时关闭对应连接 */
     final Map<String, Response> activeResponses = new ConcurrentHashMap<>();
-    /** 下载专用客户端:超时比播放请求长(慢速源/本地代理链不易超时) */
-    static final OkHttpClient downloadClient = new OkHttpClient.Builder()
+    /** 下载专用客户端:基于 :core-network 公共根(共享 TLS/UA/Brotli/DNS),超时比播放请求长 */
+    static final OkHttpClient downloadClient = OkGoHelper.newBaseBuilder()
             .connectTimeout(30, TimeUnit.SECONDS)
             .readTimeout(60, TimeUnit.SECONDS)
             .writeTimeout(60, TimeUnit.SECONDS)
-            .addInterceptor(new HttpClient.UserAgentInterceptor())
             .build();
 
     /** 失败自动重试次数(不含首次) */

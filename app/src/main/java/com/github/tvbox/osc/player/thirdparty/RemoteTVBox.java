@@ -126,11 +126,12 @@ public class RemoteTVBox {
     }
 
     private static void post(String url, Map<String, String> params, okhttp3.Callback callback) {
-        OkHttpClient.Builder builder = new OkHttpClient.Builder();
-        builder.readTimeout(1000, TimeUnit.MILLISECONDS);
-        builder.writeTimeout(1000, TimeUnit.MILLISECONDS);
-        builder.connectTimeout(1000, TimeUnit.MILLISECONDS);
-        OkHttpClient client = builder.build();
+        // LAN 探测用 1s 超时;其余策略走 :core-network 公共根
+        OkHttpClient client = com.github.tvbox.osc.util.OkGoHelper.newBaseBuilder()
+                .readTimeout(1000, TimeUnit.MILLISECONDS)
+                .writeTimeout(1000, TimeUnit.MILLISECONDS)
+                .connectTimeout(1000, TimeUnit.MILLISECONDS)
+                .build();
         FormBody.Builder formBodyBuilder = new FormBody.Builder();
         if (params != null && params.size() > 0) {
             for(Map.Entry<String, String> entry : params.entrySet()) {

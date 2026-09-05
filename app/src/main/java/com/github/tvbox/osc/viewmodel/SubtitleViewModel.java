@@ -188,7 +188,8 @@ public class SubtitleViewModel extends ViewModel {
                 .addHeader("Referer", "https://secure.assrt.net")
                 .addHeader("User-Agent", ua)
                 .build();
-        OkHttpClient.Builder builder = new OkHttpClient.Builder()
+        // 走 :core-network 公共根(共享 TLS/UA/连接策略),仅覆盖超时与重定向行为
+        OkHttpClient.Builder builder = com.github.tvbox.osc.util.OkGoHelper.newBaseBuilder()
                 .readTimeout(15, TimeUnit.SECONDS)
                 .writeTimeout(15, TimeUnit.SECONDS)
                 .connectTimeout(15, TimeUnit.SECONDS)
