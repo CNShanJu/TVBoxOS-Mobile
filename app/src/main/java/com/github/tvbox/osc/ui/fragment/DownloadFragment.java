@@ -262,7 +262,7 @@ public class DownloadFragment extends BaseVbFragment<FragmentDownloadBinding> {
                 tvStatus.setText(statusText);
                 tvStatus.setTextColor(statusColor);
                 // 行3:大小 · 速度
-                helper.setText(R.id.tv_size_speed, buildPercentText(task));
+                helper.setText(R.id.tv_size_speed, DownloadDisplay.buildPercentText(task));
                 // 行4:来源 · 存储位置
                 String src = task.sourceName == null ? "" : task.sourceName;
                 helper.setText(R.id.tv_source, "来源 " + (src.isEmpty() ? "未知" : src));
@@ -1218,22 +1218,5 @@ public class DownloadFragment extends BaseVbFragment<FragmentDownloadBinding> {
             th.printStackTrace();
             AppBubble.toast("播放失败:" + th.getMessage());
         }
-    }
-
-    private String buildPercentText(DownloadTask t) {
-        StringBuilder sb = new StringBuilder();
-        if (t.isHls()) {
-            sb.append("分段 ").append(t.doneSegments).append("/").append(t.totalSegments);
-        }
-        if (t.totalBytes > 0) {
-            if (sb.length() > 0) sb.append("  ");
-            sb.append(DownloadDisplay.formatSize(t.downloadedBytes)).append("/").append(DownloadDisplay.formatSize(t.totalBytes));
-        }
-        sb.append(" (").append(t.getProgressPercent()).append("%)");
-        // 实时网速已移至状态行("下载中 xx%"后面),不在此行显示,避免被挤压
-        if (t.state == DownloadTask.STATE_FAILED && t.message != null && !t.message.isEmpty()) {
-            sb.append(" 失败:").append(t.message);
-        }
-        return sb.toString();
     }
 }

@@ -1,5 +1,6 @@
 package com.github.tvbox.osc.util;
 
+import com.github.tvbox.osc.bean.DownloadTask;
 import com.github.tvbox.osc.bean.VideoInfo;
 import com.github.tvbox.osc.download.ArchiveItem;
 
@@ -61,6 +62,23 @@ public final class DownloadDisplay {
         StringBuilder sb = new StringBuilder();
         for (VideoInfo v : files) {
             sb.append(v.getPath()).append('|').append(v.getSize()).append(';');
+        }
+        return sb.toString();
+    }
+
+    /** 任务行"大小 · 进度"文本:分段 N/M + 已下/总量(有字节)+ 百分比;失败附原因 */
+    public static String buildPercentText(DownloadTask t) {
+        StringBuilder sb = new StringBuilder();
+        if (t.isHls()) {
+            sb.append("分段 ").append(t.doneSegments).append("/").append(t.totalSegments);
+        }
+        if (t.totalBytes > 0) {
+            if (sb.length() > 0) sb.append("  ");
+            sb.append(formatSize(t.downloadedBytes)).append("/").append(formatSize(t.totalBytes));
+        }
+        sb.append(" (").append(t.getProgressPercent()).append("%)");
+        if (t.state == DownloadTask.STATE_FAILED && t.message != null && !t.message.isEmpty()) {
+            sb.append(" 失败:").append(t.message);
         }
         return sb.toString();
     }

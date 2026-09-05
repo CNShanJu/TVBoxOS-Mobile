@@ -3,6 +3,7 @@ package com.github.tvbox.osc.util;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 
+import com.github.tvbox.osc.bean.DownloadTask;
 import com.github.tvbox.osc.bean.VideoInfo;
 import com.github.tvbox.osc.download.ArchiveItem;
 
@@ -101,8 +102,39 @@ public class DownloadDisplayTest {
         DownloadDisplay.deleteRecursive(new File(root, "ghost"));
     }
 
+    @Test
+    public void buildPercentText_hlsAndBytesAndFail() {
+        DownloadTask t = new DownloadTask();
+        // HLS: totalSegments>0
+        t.totalSegments = 10;
+        t.doneSegments = 3;
+        t.totalBytes = 1000L * 1024;
+        t.downloadedBytes = 300L * 1024;
+        assertEquals("分段 3/10  300KB/1000KB (30%)", DownloadDisplay.buildPercentText(t));
+
+        DownloadTask bytes = new DownloadTask();
+        bytes.totalBytes = 1024L * 1024;
+        bytes.downloadedBytes = 512 * 1024;
+        assertEquals("512KB/1MB (50%)", DownloadDisplay.buildPercentText(bytes));
+    }
+
+    @Test
+    public void buildPercentText_failedAppendsReason() {
+        DownloadTask t = new DownloadTask();
+        t.totalBytes = 100;
+        t.downloadedBytes = 0;
+        t.state = DownloadTask.STATE_FAILED;
+        t.message = "连接超时";
+        String s = DownloadDisplay.buildPercentText(t);
+        assertTrue(s, s.contains("失败:连接超时"));
+    }
+
     private static void assertTrue(boolean b) {
         org.junit.Assert.assertTrue(b);
+    }
+
+    private static void assertTrue(String msg, boolean b) {
+        org.junit.Assert.assertTrue(msg, b);
     }
 
     private static void assertFalse(boolean b) {
