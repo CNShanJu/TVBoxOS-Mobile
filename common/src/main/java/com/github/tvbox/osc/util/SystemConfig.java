@@ -31,6 +31,12 @@ public final class SystemConfig {
     private static final String KEY_HISTORY_NUM = "history_num";
     private static final String KEY_LIVE_URL = "live_url";
     private static final String KEY_PRIVATE_BROWSING = "private_browsing";
+    // UI/功能偏好（同样沿用旧应用 key，历史设置兼容）
+    private static final String KEY_SHOW_PREVIEW = "show_preview";
+    private static final String KEY_FAST_SEARCH_MODE = "fast_search_mode";
+    private static final String KEY_DEBUG_OPEN = "debug_open";
+    private static final String KEY_IGNORE_SSL_ERROR = "ignore_ssl_error";
+    private static final String KEY_LAN_SERVER_ENABLE = "lan_server_enable";
 
     private static final List<Listener> listeners = new CopyOnWriteArrayList<>();
 
@@ -81,6 +87,31 @@ public final class SystemConfig {
     /** 无痕浏览（不存搜索/观看历史），默认关 */
     public static boolean isPrivateBrowsing() {
         return Hawk.get(KEY_PRIVATE_BROWSING, false);
+    }
+
+    /** 详情页缩略预览，默认开 */
+    public static boolean isShowPreview() {
+        return Hawk.get(KEY_SHOW_PREVIEW, true);
+    }
+
+    /** 快速搜索模式（列表页点击结果直接起快速搜索），默认关 */
+    public static boolean isFastSearchMode() {
+        return Hawk.get(KEY_FAST_SEARCH_MODE, false);
+    }
+
+    /** 调试叠加层/调试日志（播放页 debug 视图、网络日志等），默认关 */
+    public static boolean isDebugOpen() {
+        return Hawk.get(KEY_DEBUG_OPEN, false);
+    }
+
+    /** 忽略 HTTPS 证书错误（默认关：开启会降低 TLS 安全性，仅个别自签名站点用） */
+    public static boolean isIgnoreSslError() {
+        return Hawk.get(KEY_IGNORE_SSL_ERROR, false);
+    }
+
+    /** 局域网服务开关（默认关：关闭时 HTTP 服务仅监听 127.0.0.1） */
+    public static boolean isLanServerEnabled() {
+        return Hawk.get(KEY_LAN_SERVER_ENABLE, false);
     }
 
     // ── 操作（内部校验 + 持久化 + 广播变更）──
@@ -137,6 +168,38 @@ public final class SystemConfig {
         if (isPrivateBrowsing() == on) return;
         Hawk.put(KEY_PRIVATE_BROWSING, on);
         com.github.tvbox.osc.log.LogStore.log(com.github.tvbox.osc.log.Category.SYSTEM, "系统设置: 无痕浏览=" + on);
+        fireChanged();
+    }
+
+    public static void setShowPreview(boolean on) {
+        if (isShowPreview() == on) return;
+        Hawk.put(KEY_SHOW_PREVIEW, on);
+        fireChanged();
+    }
+
+    public static void setFastSearchMode(boolean on) {
+        if (isFastSearchMode() == on) return;
+        Hawk.put(KEY_FAST_SEARCH_MODE, on);
+        fireChanged();
+    }
+
+    public static void setDebugOpen(boolean on) {
+        if (isDebugOpen() == on) return;
+        Hawk.put(KEY_DEBUG_OPEN, on);
+        fireChanged();
+    }
+
+    public static void setIgnoreSslError(boolean on) {
+        if (isIgnoreSslError() == on) return;
+        Hawk.put(KEY_IGNORE_SSL_ERROR, on);
+        com.github.tvbox.osc.log.LogStore.log(com.github.tvbox.osc.log.Category.SYSTEM, "系统设置: 忽略证书错误=" + on);
+        fireChanged();
+    }
+
+    public static void setLanServerEnabled(boolean on) {
+        if (isLanServerEnabled() == on) return;
+        Hawk.put(KEY_LAN_SERVER_ENABLE, on);
+        com.github.tvbox.osc.log.LogStore.log(com.github.tvbox.osc.log.Category.SYSTEM, "系统设置: 局域网服务=" + on);
         fireChanged();
     }
 

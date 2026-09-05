@@ -66,12 +66,12 @@ import com.github.tvbox.osc.ui.dialog.PlayingControlRightDialog;
 import com.github.tvbox.osc.util.AdBlocker;
 import com.github.tvbox.osc.util.DefaultConfig;
 import com.github.tvbox.osc.util.HCallBack;
-import com.github.tvbox.osc.util.HawkConfig;
 import com.github.tvbox.osc.util.HttpClient;
 import com.github.tvbox.osc.util.LOG;
 import com.github.tvbox.osc.util.LoadingAnim;
 import com.github.tvbox.osc.util.PlayerHelper;
 import com.github.tvbox.osc.util.ParseBeanUrls;
+import com.github.tvbox.osc.util.SystemConfig;
 import com.github.tvbox.osc.util.VideoParseRuler;
 import com.github.tvbox.osc.util.player.PlayHistoryRepository;
 import com.github.tvbox.osc.util.thunder.Jianpian;
@@ -82,7 +82,6 @@ import com.github.tvbox.osc.viewmodel.SourceViewModel;
 import com.gyf.immersionbar.BarHide;
 import com.gyf.immersionbar.ImmersionBar;
 import com.lxj.xpopup.core.BasePopupView;
-import com.orhanobut.hawk.Hawk;
 
 import org.apache.commons.lang3.StringUtils;
 import org.greenrobot.eventbus.EventBus;
@@ -1387,7 +1386,7 @@ public class PlayFragment extends BaseLazyFragment {
         if (webView == null) {
             return;
         }
-        ViewGroup.LayoutParams layoutParams = Hawk.get(HawkConfig.DEBUG_OPEN, false)
+        ViewGroup.LayoutParams layoutParams = SystemConfig.isDebugOpen()
                 ? new ViewGroup.LayoutParams(800, 400) :
                 new ViewGroup.LayoutParams(1, 1);
         webView.setFocusable(false);
@@ -1409,7 +1408,7 @@ public class PlayFragment extends BaseLazyFragment {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR1) {
             settings.setMediaPlaybackRequiresUserGesture(false);
         }
-        if (Hawk.get(HawkConfig.DEBUG_OPEN, false)) {
+        if (SystemConfig.isDebugOpen()) {
             settings.setBlockNetworkImage(false);
         } else {
             settings.setBlockNetworkImage(true);
@@ -1464,7 +1463,7 @@ public class PlayFragment extends BaseLazyFragment {
         @Override
         public void onReceivedSslError(WebView webView, SslErrorHandler sslErrorHandler, SslError sslError) {
             // 默认拒绝:只有用户显式开启"忽略证书错误"才放行,防止中间人篡改(同 WebSniffResolver 策略)
-            if (Hawk.get(HawkConfig.IGNORE_SSL_ERROR, false)) {
+            if (SystemConfig.isIgnoreSslError()) {
                 sslErrorHandler.proceed();
             } else {
                 sslErrorHandler.cancel();

@@ -26,7 +26,7 @@ import androidx.annotation.Nullable;
 import com.github.tvbox.osc.base.App;
 import com.github.tvbox.osc.bean.SourceBean;
 import com.github.tvbox.osc.download.DownloadUrlSniffer;
-import com.orhanobut.hawk.Hawk;
+import com.github.tvbox.osc.util.SystemConfig;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -217,7 +217,7 @@ public class WebSniffResolver implements DownloadUrlSniffer {
         @Override
         public void onReceivedSslError(WebView view, SslErrorHandler handler, SslError error) {
             // 默认拒绝(取消加载):只有用户显式开启"忽略证书错误"调试选项时才放行,防止中间人篡改
-            if (Hawk.get(HawkConfig.IGNORE_SSL_ERROR, false)) {
+            if (SystemConfig.isIgnoreSslError()) {
                 handler.proceed();
             } else {
                 handler.cancel();

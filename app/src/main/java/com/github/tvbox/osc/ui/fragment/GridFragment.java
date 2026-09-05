@@ -32,12 +32,11 @@ import com.github.tvbox.osc.ui.dialog.GridFilterDialog;
 import com.github.tvbox.osc.ui.tv.widget.LoadMoreView;
 import com.github.tvbox.osc.ui.widget.ListSwipeRefreshLayout;
 import com.github.tvbox.osc.util.FastClickCheckUtil;
-import com.github.tvbox.osc.util.HawkConfig;
 import com.github.tvbox.osc.util.StackBlurBlur;
+import com.github.tvbox.osc.util.SystemConfig;
 import com.github.tvbox.osc.util.Utils;
 import com.github.tvbox.osc.viewmodel.SourceViewModel;
 import eightbitlab.com.blurview.BlurView;
-import com.orhanobut.hawk.Hawk;
 import com.owen.tvrecyclerview.widget.V7GridLayoutManager;
 import com.owen.tvrecyclerview.widget.V7LinearLayoutManager;
 import java.util.List;
@@ -241,7 +240,7 @@ public class GridFragment extends BaseLazyFragment {
                         focusedView = view;
                         changeView(video.id,video.tag.equals("folder"));
                     }
-                    else if(homeSourceBean.isQuickSearch() && Hawk.get(HawkConfig.FAST_SEARCH_MODE, false) && enableFastSearch()){
+                    else if(homeSourceBean.isQuickSearch() && SystemConfig.isFastSearchMode() && enableFastSearch()){
                         jumpActivity(FastSearchActivity.class, bundle);
                     }else{
                         if(TextUtils.isEmpty(video.id) || video.id.startsWith("msearch:")){

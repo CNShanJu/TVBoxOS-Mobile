@@ -9,7 +9,6 @@ import android.content.Context;
 
 import com.github.catvod.net.SSLCompat;
 import com.github.tvbox.osc.util.urlhttp.BrotliInterceptor;
-import com.orhanobut.hawk.Hawk;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -69,7 +68,7 @@ public class OkGoHelper {
         }
         OkHttpClient.Builder builder = new OkHttpClient.Builder();
         HttpLoggingInterceptor loggingInterceptor = new HttpLoggingInterceptor();
-        if (Hawk.get(HawkConfig.DEBUG_OPEN, false)) {
+        if (SystemConfig.isDebugOpen()) {
             loggingInterceptor.setLevel(HttpLoggingInterceptor.Level.BODY);
         } else {
             loggingInterceptor.setLevel(HttpLoggingInterceptor.Level.NONE);
@@ -123,7 +122,7 @@ public class OkGoHelper {
         OkHttpClient.Builder builder = new OkHttpClient.Builder();
         HttpLoggingInterceptor loggingInterceptor = new HttpLoggingInterceptor();
 
-        if (Hawk.get(HawkConfig.DEBUG_OPEN, false)) {
+        if (SystemConfig.isDebugOpen()) {
             loggingInterceptor.setLevel(HttpLoggingInterceptor.Level.BODY);
         } else {
             loggingInterceptor.setLevel(HttpLoggingInterceptor.Level.NONE);

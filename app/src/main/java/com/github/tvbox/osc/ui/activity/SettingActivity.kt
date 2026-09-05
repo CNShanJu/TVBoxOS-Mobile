@@ -23,7 +23,6 @@ import com.github.tvbox.osc.util.AppLog
 import com.github.tvbox.osc.util.DownloadConfig
 import com.github.tvbox.osc.util.FastClickCheckUtil
 import com.github.tvbox.osc.util.FileUtils
-import com.github.tvbox.osc.util.HawkConfig
 import com.github.tvbox.osc.util.HistoryHelper
 import com.github.tvbox.osc.util.LoadingAnim
 import com.github.tvbox.osc.util.OkGoHelper
@@ -34,7 +33,6 @@ import com.hjq.permissions.OnPermissionCallback
 import com.hjq.permissions.Permission
 import com.hjq.permissions.XXPermissions
 import com.lxj.xpopup.XPopup
-import com.orhanobut.hawk.Hawk
 import okhttp3.HttpUrl
 import tv.danmaku.ijk.media.player.IjkMediaPlayer
 import java.io.File
@@ -77,14 +75,14 @@ class SettingActivity : BaseVbActivity<ActivitySettingBinding>() {
 
         // 局域网服务开关(默认关闭):关闭时 HTTP 服务仅监听 127.0.0.1(订阅/本地播放/代理不受影响);
         // 开启后局域网设备可访问 web 控制台与文件共享,管理型请求需携带进程令牌(见 RemoteServer)。
-        val lanEnabled = Hawk.get(HawkConfig.LAN_SERVER_ENABLE, false)
+        val lanEnabled = SystemConfig.isLanServerEnabled()
         mBinding.switchLanServer.setChecked(lanEnabled)
         updateLanServerDesc(lanEnabled)
         mBinding.llLanServer.setOnClickListener { view: View? ->
             FastClickCheckUtil.check(view)
-            val newVal = !Hawk.get(HawkConfig.LAN_SERVER_ENABLE, false)
+            val newVal = !SystemConfig.isLanServerEnabled()
             mBinding.switchLanServer.setChecked(newVal)
-            Hawk.put(HawkConfig.LAN_SERVER_ENABLE, newVal)
+            SystemConfig.setLanServerEnabled(newVal)
             updateLanServerDesc(newVal)
             AppBubble.toast(
                 if (newVal) "已开启局域网服务,重启应用后生效" else "已关闭局域网服务(仅本机),重启应用后生效"
@@ -93,14 +91,14 @@ class SettingActivity : BaseVbActivity<ActivitySettingBinding>() {
 
         // 忽略证书错误(默认关闭,会降低 TLS 安全性):个别自签名/证书异常站点打不开时再开启;
         // WebView 即时生效,网络请求(OkHttp)在应用重启后按开关重建客户端时生效。
-        val ignoreSsl = Hawk.get(HawkConfig.IGNORE_SSL_ERROR, false)
+        val ignoreSsl = SystemConfig.isIgnoreSslError()
         mBinding.switchIgnoreSsl.setChecked(ignoreSsl)
         updateIgnoreSslDesc(ignoreSsl)
         mBinding.llIgnoreSsl.setOnClickListener { view: View? ->
             FastClickCheckUtil.check(view)
-            val newVal = !Hawk.get(HawkConfig.IGNORE_SSL_ERROR, false)
+            val newVal = !SystemConfig.isIgnoreSslError()
             mBinding.switchIgnoreSsl.setChecked(newVal)
-            Hawk.put(HawkConfig.IGNORE_SSL_ERROR, newVal)
+            SystemConfig.setIgnoreSslError(newVal)
             updateIgnoreSslDesc(newVal)
             AppBubble.toast(
                 if (newVal) "已开启忽略证书错误(仅用于个别自签名站点)" else "已关闭忽略证书错误(恢复证书校验)"

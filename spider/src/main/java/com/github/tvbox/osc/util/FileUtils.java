@@ -10,7 +10,6 @@ import android.content.Context;
 import com.github.tvbox.osc.util.StringUtils;
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
-import com.orhanobut.hawk.Hawk;
 
 import org.json.JSONObject;
 
@@ -153,7 +152,7 @@ public class FileUtils {
             }
             Matcher m = URLJOIN.matcher(name);
             if (m.find()) {
-                if (!Hawk.get(HawkConfig.DEBUG_OPEN, false)) {
+                if (!SystemConfig.isDebugOpen()) {
                     String cache = getCache(MD5.encode(name));
                     if (StringUtils.isEmpty(cache)) {
                         String netStr = get(name);
