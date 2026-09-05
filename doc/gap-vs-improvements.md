@@ -146,6 +146,9 @@ Exo→Media3、EventBus→Flow/接口、Hawk→DataStore、Java→Kotlin 渐进�
   (SubtitleCoordinator)仍使用,真机回归见 9/5 订阅导入日志噪音是否消失。
 - ✅ :download 持久化收口:`internal/{DownloadManager,DownloadStore,DownloadArchive,DownloadPolicy}` 的 Hawk 直存
   (任务列表/档案/并发/WiFi 策略)改走 `config.KeyValueStore`,:download 新增依赖 :core-storage、移除 hawk 库依赖。
+- ✅ DataStore typed 对象支持(PrefsDataStore `putJson/getJson`,gson+TypeToken):`SubscriptionConfig`(订阅列表/
+  默认订阅/搜索历史/源勾选 HashMap)与 `LiveConfig`(偏好标量+历史源列表 json+频道播放配置改存 JSON 文本,
+  频道旧键按访问惰性迁移)均切 DataStore,旧 Hawk 存量导入删键。
 - ✅ DataStore 扩域(SystemConfig):13 键全部迁移(主题/DNS/首页/历史数/直播源/无痕/预览/快搜/调试/SSL/局域网/
   loading_anim),加载动画旧"数字型"历史值跳过避免类型冲突;旧 Hawk 存量类加载时一次性导入并删旧键。
   已覆盖域:下载策略、播放设置、日志、系统级偏好。

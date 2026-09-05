@@ -8,17 +8,22 @@ import androidx.datastore.preferences.core.PreferencesKeys;
 import androidx.datastore.rxjava3.RxDataStore;
 import androidx.datastore.preferences.rxjava3.RxPreferenceDataStoreBuilder;
 
+import com.google.gson.Gson;
+
+import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * 现代化偏好存储(Preferences DataStore)的同步门面(迁移试点:SystemConfig 纯标量域)。
+ * 现代化偏好存储(Preferences DataStore)的同步门面。
  * <p>
  * 语义:启动一次性把磁盘读入内存,get 内存直读;put 同步落盘(串行锁),与旧 Hawk 的
- * "写后立即可读/同步持久化"体验一致。仅支持标量(int/boolean/string/float/long),
- * 对象键仍走 {@link KeyValueStore}(DataStore 化逐域推进)。
+ * "写后立即可读/同步持久化"体验一致。标量(int/boolean/string/float/long)直存;
+ * 对象/容器经 gson JSON 文本存(调用方提供 {@link Type});对象旧存量迁移见各配置门面。
  */
 public final class PrefsDataStore {
+
+    private static final Gson GSON = new Gson();
 
     private static final String FILE_NAME = "prefs.pb";
 
@@ -146,6 +151,38 @@ public final class PrefsDataStore {
             m.set(PreferencesKeys.longKey(key), v);
             return m;
         });
+    }
+
+    /** 对象/容器存为 JSON 文本(调用方读取时提供相同 Type;null 忽略) */
+    public static void putJson(String key, Object value) {
+        if (value == null) return;
+        String s = GSON.toJson(value);
+        cache.put(key, s);
+        RxDataStore<Preferences> st = store;
+        if (st == null) return;
+        synchronized (WRITE_LOCK) {
+            try {
+                st.updateDataAsync(prefs -> {
+                    MutablePreferences m = prefs.toMutablePreferences();
+                    m.set(PreferencesKeys.stringKey(key), s);
+                    return io.reactivex.rxjava3.core.Single.just(m);
+                }).blockingGet();
+            } catch (Throwable th) {
+                th.printStackTrace();
+            }
+        }
+    }
+
+    /** 读取 JSON 文本对象;缺失/解析失败返回 defValue */
+    public static <T> T getJson(String key, Type typeOfT, T defValue) {
+        Object c = cache.get(key);
+        if (!(c instanceof String)) return defValue;
+        try {
+            T r = GSON.fromJson((String) c, typeOfT);
+            return r != null ? r : defValue;
+        } catch (Throwable th) {
+            return defValue;
+        }
     }
 
     /** 删除键(无论原存储类型;整表扫描移除同名校验值) */
