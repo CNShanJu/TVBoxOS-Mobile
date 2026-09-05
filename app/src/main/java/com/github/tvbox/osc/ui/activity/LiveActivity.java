@@ -2,7 +2,6 @@ package com.github.tvbox.osc.ui.activity;
 
 import android.content.Context;
 import android.net.Uri;
-import android.os.CountDownTimer;
 import android.os.Handler;
 import android.util.Base64;
 import android.view.Gravity;
@@ -54,7 +53,6 @@ import com.gyf.immersionbar.ImmersionBar;
 import com.lxj.xpopup.core.BasePopupView;
 import com.owen.tvrecyclerview.widget.V7LinearLayoutManager;
 
-import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
@@ -93,8 +91,6 @@ public class LiveActivity extends BaseActivity {
 
 //EPG   by 龍
     private static LiveChannelItem  channel_Name = null;
-    private CountDownTimer countDownTimer;
-//    private CountDownTimer countDownTimerRightTop;
     TextView tv_channelnum;
     TextView tip_chname;
 
@@ -102,12 +98,6 @@ public class LiveActivity extends BaseActivity {
     public String epgStringAddress ="";
 
     private boolean isBack = false;
-    public static String playUrl;
-    SimpleDateFormat timeFormat = new SimpleDateFormat("yyyy-MM-dd");
-    private CountDownTimer countDownTimer3;
-    private int videoWidth = 1920;
-    private int videoHeight = 1080;
-    private  boolean show = false;
     private PlayerTitleView mPlayerTitleView;
     private BasePopupView mSettingRightDialog;
     private BasePopupView mSettingBottomDialog;
@@ -175,9 +165,6 @@ public class LiveActivity extends BaseActivity {
             tip_chname.setText(channel_Name.getChannelName());
             tv_channelnum.setText("" + channel_Name.getChannelNum());
             //todo 上一/下一/当前节目信息
-            if (countDownTimer != null) {
-                countDownTimer.cancel();
-            }
 
             if (channel_Name == null || channel_Name.getSourceNum() <= 0) {
                 tv_srcinfo.setText("1/1");
