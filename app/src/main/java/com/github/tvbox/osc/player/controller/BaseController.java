@@ -95,10 +95,13 @@ public abstract class BaseController extends BaseVideoController implements Gest
     private View mLoading;
     /**
      * 加载中网速文字(tag=play_load_net_speed,仅点播/本地布局有)。
-     * 注意:播放器 loading 分两类——资源解析/起播准备(PREPARING)与播中缓存(BUFFERING);
-     * 网速只跟"播中缓存"一致(BUFFERING 显示,PREPARING 不显示,避免起播阶段闪速)。
+     * 注意:播放器 loading 分三类——资源解析/起播准备(PREPARING)、首次起播缓冲(未出画面的 BUFFERING)、
+     * 播中缓存(BUFFERING)。网速只跟"出过画面后的播中缓存"一致:起播阶段(解析/准备/首缓冲)不显示,
+     * 避免与"正在获取播放信息/起播转圈"同屏;卡顿重缓冲时才显示速度。
      */
     private View mNetSpeed;
+    /** 是否已出过画面(PLAYING/PREPARED 过);新会话(IDLE)复位,用于区分"首缓冲"与"播中卡顿" */
+    private boolean mEverPrepared = false;
 
     @Override
     protected void initView() {
@@ -113,12 +116,12 @@ public abstract class BaseController extends BaseVideoController implements Gest
         LoadingAnim.apply(mLoading);
     }
 
-    /** loading 显隐(资源解析/起播 PREPARING 与播中缓存 BUFFERING 都转圈) */
+    /** loading 显隐(资源解析/起播准备/播中缓存都转圈) */
     private void setLoadingVisible(boolean visible) {
         if (mLoading != null) mLoading.setVisibility(visible ? VISIBLE : GONE);
     }
 
-    /** 网速显隐:仅播中缓存(BUFFERING)显示,起播准备(PREPARING)不显示 */
+    /** 网速显隐:仅"出过画面后的播中缓存"显示(首缓冲/起播不显示,避免与加载提示同屏) */
     private void setNetSpeedVisible(boolean visible) {
         if (mNetSpeed != null) mNetSpeed.setVisibility(visible ? VISIBLE : GONE);
     }
@@ -132,11 +135,13 @@ public abstract class BaseController extends BaseVideoController implements Gest
     protected void onPlayStateChanged(int playState) {
         super.onPlayStateChanged(playState);
         switch (playState) {
-            case VideoView.STATE_IDLE:
+            case VideoView.STATE_IDLE: // 新会话起点(切集/重播前 release)
+                mEverPrepared = false;
                 setLoadingVisible(false);
                 setNetSpeedVisible(false);
                 break;
             case VideoView.STATE_PLAYING:
+                mEverPrepared = true;
                 setLoadingVisible(false);
                 setNetSpeedVisible(false);
                 break;
@@ -144,19 +149,20 @@ public abstract class BaseController extends BaseVideoController implements Gest
                 setLoadingVisible(false);
                 setNetSpeedVisible(false);
                 break;
-            case VideoView.STATE_PREPARED:
+            case VideoView.STATE_PREPARED: // 已出画面
+                mEverPrepared = true;
             case VideoView.STATE_ERROR:
             case VideoView.STATE_BUFFERED:
                 setLoadingVisible(false);
                 setNetSpeedVisible(false);
                 break;
-            case VideoView.STATE_PREPARING: // 起播准备:loading 转,但网速不显示(非播中缓存)
+            case VideoView.STATE_PREPARING: // 起播准备:loading 转,但网速不显示(尚未出画面)
                 setLoadingVisible(true);
                 setNetSpeedVisible(false);
                 break;
-            case VideoView.STATE_BUFFERING: // 播中缓存:loading + 网速同显
+            case VideoView.STATE_BUFFERING: // 缓存:出过画面(播中卡顿)才显示网速;首缓冲不显示
                 setLoadingVisible(true);
-                setNetSpeedVisible(true);
+                setNetSpeedVisible(mEverPrepared);
                 break;
             case VideoView.STATE_PLAYBACK_COMPLETED:
                 setLoadingVisible(false);
