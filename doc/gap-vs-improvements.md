@@ -238,6 +238,10 @@ Exo→Media3、EventBus→Flow/接口、Hawk→DataStore、Java→Kotlin 渐进�
   TextUtils import 清除;新增 JVM 单测 7 例(格式化边界/命名解析/指纹/递归删)。
   配套:`checkModuleDependencies` 门禁收窄为仅拦截 download.internal(app util 的 Download* 旧实现
   已迁入 internal 并删除,宽拦 util.Download* 已无对象)。(8de5b5ee)
+- ✅ buildPercentText(任务行"大小·进度"文本)并入 DownloadDisplay,补 HLS 混排/纯字节/失败附因用例。
+- ✅ LiveActivity 移除死代码:EPG `getTime(String,String)`/`durationToString(int)` 全仓零调用,删除并清 import。(57203751)
+- ✅ DownloadFragment 聚合分组抽离 `util/DownloadGrouping`(纯数据):DownloadGroup 模型 + 分组/归属/组序/
+  存在性判定迁出,宿主仅留 Facade 取数与委托;JVM 单测 6 例。DownloadFragment 1306→1079 行。(30a792be)
 
 ## 9. 待真机回归后继续(播放器主线尾段,当前挂起)
 - PlayerApi 会话内核**实验选项**:设置页加"播放器内核:PlayerApi 会话(实验)"开关(默认关);
