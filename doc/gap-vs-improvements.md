@@ -208,6 +208,13 @@ Exo→Media3、EventBus→Flow/接口、Hawk→DataStore、Java→Kotlin 渐进�
 - ✅ 字幕字号变更同屏直调化:DetailActivity→PlayFragment 的 TYPE_SUBTITLE_SIZE_CHANGE 广播改为
   playFragment.applySubtitleTextSize 直调(预览播放器与详情页同屏、两端唯一);PlayFragment 移除
   唯一 @Subscribe 及 register/unregister;常量 12 删除。(d9f754eb)
+- ✅ 快速搜索弹窗簇收口 EventBus(DetailActivity 屏内闭环直调):QuickSearchDialog 删注册/@Subscribe/投递,
+  改 Host(onVideoSelected/onWordChange)+appendResults/updateWords 宿主直喂;DetailQuickSearchHelper 注入
+  QuickSearchOutput 输出回调(仅弹窗展示期有效,等价原订阅窗口);DetailActivity tvSite 打开时 setHost+初始
+  直喂累计结果/词表(修复原 show 前广播在弹窗注册前丢失的时序);RefreshEvent 删零引用常量
+  QUICK_SEARCH/SELECT/WORD/WORD_CHANGE(2-5)。保留 TYPE_QUICK_SEARCH_RESULT:SourceViewModel→DetailActivity
+  的多源异步结果流(每源一批、宿主累加),LiveData 单值会丢中间批次,归"SourceViewModel 双轨/注入化"长线。
+  (98a253a3)真机回归点:详情页"来源"快搜弹窗数据流/点词切换/点结果跳详情。
 
 ## 9. 待真机回归后继续(播放器主线尾段,当前挂起)
 - PlayerApi 会话内核**实验选项**:设置页加"播放器内核:PlayerApi 会话(实验)"开关(默认关);
