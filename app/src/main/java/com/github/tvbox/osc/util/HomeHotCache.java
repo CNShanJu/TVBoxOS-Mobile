@@ -1,12 +1,13 @@
 package com.github.tvbox.osc.util;
 
 import com.github.tvbox.osc.config.KeyValueStore;
+import com.github.tvbox.osc.config.PrefsDataStore;
 
 /**
- * 用户页"豆瓣热播"当日缓存（UI 摘 Hawk：UserFragment 的 home_hot/home_hot_day 键收口）。
+ * 用户页"豆瓣热播"当日缓存（UI 摘 Hawk：UserFragment 的 home_hot/home_hot_day 键收口；DataStore 化）。
  * <p>
  * 语义：按自然日缓存热播 JSON；当天命中直接展示,跨天/下拉刷新时清掉重拉。
- * 键沿用旧裸键（历史数据兼容）。
+ * 键沿用旧裸键（历史数据兼容）；旧 Hawk 存量类加载一次性迁移。
  */
 public final class HomeHotCache {
 
@@ -16,25 +17,39 @@ public final class HomeHotCache {
     private HomeHotCache() {
     }
 
+    static {
+        try {
+            if (KeyValueStore.contains(KEY_DAY)) {
+                PrefsDataStore.put(KEY_DAY, KeyValueStore.getString(KEY_DAY, ""));
+                KeyValueStore.delete(KEY_DAY);
+            }
+            if (KeyValueStore.contains(KEY_JSON)) {
+                PrefsDataStore.put(KEY_JSON, KeyValueStore.getString(KEY_JSON, ""));
+                KeyValueStore.delete(KEY_JSON);
+            }
+        } catch (Throwable ignored) {
+        }
+    }
+
     /** 缓存写入日（未缓存返回空串） */
     public static String getDay() {
-        return KeyValueStore.get(KEY_DAY, "");
+        return PrefsDataStore.getString(KEY_DAY, "");
     }
 
     /** 缓存的热播 JSON（未缓存返回空串） */
     public static String getData() {
-        return KeyValueStore.get(KEY_JSON, "");
+        return PrefsDataStore.getString(KEY_JSON, "");
     }
 
     /** 写入当日缓存 */
     public static void save(String day, String json) {
-        KeyValueStore.put(KEY_DAY, day == null ? "" : day);
-        KeyValueStore.put(KEY_JSON, json == null ? "" : json);
+        PrefsDataStore.put(KEY_DAY, day == null ? "" : day);
+        PrefsDataStore.put(KEY_JSON, json == null ? "" : json);
     }
 
     /** 清空当日缓存（下拉刷新强制重拉） */
     public static void clear() {
-        KeyValueStore.delete(KEY_DAY);
-        KeyValueStore.delete(KEY_JSON);
+        PrefsDataStore.delete(KEY_DAY);
+        PrefsDataStore.delete(KEY_JSON);
     }
 }

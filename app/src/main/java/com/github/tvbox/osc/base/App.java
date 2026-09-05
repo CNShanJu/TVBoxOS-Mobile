@@ -134,7 +134,7 @@ public class App extends MultiDexApplication {
         KeyValueStore.init(this);
         // 现代化偏好存储(Preferences DataStore;标量域逐步迁移,见 DownloadPolicy 试点)
         com.github.tvbox.osc.config.PrefsDataStore.init(this);
-        KeyValueStore.put(HawkConfig.DEBUG_OPEN, false);
+        com.github.tvbox.osc.config.PrefsDataStore.put(HawkConfig.DEBUG_OPEN, false);
 
         putDefault(HawkConfig.HOME_REC, 0);                  //推荐: 0=豆瓣热播, 1=站点推荐
         putDefault(HawkConfig.PLAY_TYPE, 2);                 //播放器: 0=系统, 1=IJK, 2=Exo
@@ -291,9 +291,10 @@ public class App extends MultiDexApplication {
         JsLoader.load();
     }
 
+    /** 写默认值:仅当现代化偏好存储尚无该键(各配置门面 getter 亦有默认兜底;不回写旧 Hawk) */
     private void putDefault(String key, Object value) {
-        if (!KeyValueStore.contains(key)) {
-            KeyValueStore.put(key, value);
+        if (!com.github.tvbox.osc.config.PrefsDataStore.contains(key)) {
+            com.github.tvbox.osc.config.PrefsDataStore.put(key, value);
         }
     }
 

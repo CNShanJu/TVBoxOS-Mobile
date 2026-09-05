@@ -65,12 +65,14 @@ public class LocalVideoController extends BaseController implements PlaybackSett
             @Override
             public void callback(Message msg) {
                 switch (msg.what) {
-                    case 1000: { // seek 刷新
+                    case 1000: { // seek 刷新(浮层显示中:loading 让位,见 BaseController)
                         mProgressRoot.setVisibility(VISIBLE);
+                        setSeekPanelVisible(true);
                         break;
                     }
-                    case 1001: { // seek 关闭
+                    case 1001: { // seek 关闭(还原 loading:仍缓冲则重新转圈)
                         mProgressRoot.setVisibility(GONE);
+                        setSeekPanelVisible(false);
                         break;
                     }
                     case 1002: { // 显示底部菜单

@@ -7,7 +7,6 @@ import com.github.tvbox.osc.base.App;
 import com.github.tvbox.osc.bean.IpScanningVo;
 import com.github.tvbox.osc.server.RemoteServer;
 import com.github.tvbox.osc.config.HawkConfig;
-import com.github.tvbox.osc.config.KeyValueStore;
 import com.github.tvbox.osc.util.IpScanning;
 
 import java.io.IOException;
@@ -110,8 +109,20 @@ public class RemoteTVBox {
         return;
     }
 
+    static {
+        // 旧 Hawk 存量一次性迁移(REMOTE_TVBOX)
+        try {
+            if (com.github.tvbox.osc.config.KeyValueStore.contains(HawkConfig.REMOTE_TVBOX)) {
+                String v = (String) com.github.tvbox.osc.config.KeyValueStore.get(HawkConfig.REMOTE_TVBOX, null);
+                if (v != null) com.github.tvbox.osc.config.PrefsDataStore.put(HawkConfig.REMOTE_TVBOX, v);
+                com.github.tvbox.osc.config.KeyValueStore.delete(HawkConfig.REMOTE_TVBOX);
+            }
+        } catch (Throwable ignored) {
+        }
+    }
+
     public static String getAvalible() {
-        return (String) KeyValueStore.get(HawkConfig.REMOTE_TVBOX, null);
+        return com.github.tvbox.osc.config.PrefsDataStore.getString(HawkConfig.REMOTE_TVBOX, null);
     }
 
     public static String getAvalibleActionUrl() {
@@ -122,7 +133,7 @@ public class RemoteTVBox {
     }
 
     public static void setAvalible(String viewHost) {
-        KeyValueStore.put(HawkConfig.REMOTE_TVBOX, viewHost);
+        com.github.tvbox.osc.config.PrefsDataStore.put(HawkConfig.REMOTE_TVBOX, viewHost);
     }
 
     private static void post(String url, Map<String, String> params, okhttp3.Callback callback) {

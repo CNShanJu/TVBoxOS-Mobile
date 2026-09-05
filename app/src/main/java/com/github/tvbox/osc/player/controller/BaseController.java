@@ -102,6 +102,8 @@ public abstract class BaseController extends BaseVideoController implements Gest
     private View mNetSpeed;
     /** 是否已出过画面(PLAYING/PREPARED 过);新会话(IDLE)复位,用于区分"首缓冲"与"播中卡顿" */
     private boolean mEverPrepared = false;
+    /** 快进/快退进度浮层是否显示中;显示期间 loading/网速让位(二者不同时出现),浮层消失后按播放状态还原 */
+    private boolean mSeekPanelVisible = false;
 
     @Override
     protected void initView() {
@@ -114,6 +116,10 @@ public abstract class BaseController extends BaseVideoController implements Gest
         mNetSpeed = findViewWithTag("play_load_net_speed"); // 直播布局无此 tag → null,仅控 loading
         // 播放器加载动画跟随设置页"加载动画"选项(默认/Glowing Fish)
         LoadingAnim.apply(mLoading);
+        // 初始也走状态机:控制器刚 inflate、尚未收到播放状态回调时,把初始态视作 STATE_IDLE
+        // 收敛一次——loading/网速的显隐唯一由 refreshLoadingUi 决定,不依赖布局默认值,
+        // 也不存在"手动隐藏"的第二条路径。
+        refreshLoadingUi(VideoView.STATE_IDLE);
     }
 
     /** loading 显隐(资源解析/起播准备/播中缓存都转圈) */
@@ -124,6 +130,42 @@ public abstract class BaseController extends BaseVideoController implements Gest
     /** 网速显隐:仅"出过画面后的播中缓存"显示(首缓冲/起播不显示,避免与加载提示同屏) */
     private void setNetSpeedVisible(boolean visible) {
         if (mNetSpeed != null) mNetSpeed.setVisibility(visible ? VISIBLE : GONE);
+    }
+
+    /**
+     * 按播放状态刷新 loading/网速显隐。
+     * 快进/快退浮层显示期间一律隐藏,保证 loading 与拖动指示不同时出现;浮层隐藏后按状态还原。
+     */
+    private void refreshLoadingUi(int playState) {
+        boolean showLoading = false;
+        boolean showNetSpeed = false;
+        switch (playState) {
+            case VideoView.STATE_PREPARING: // 起播准备:loading 转,但网速不显示(尚未出画面)
+                showLoading = true;
+                break;
+            case VideoView.STATE_BUFFERING: // 缓存:出过画面(播中卡顿)才显示网速;首缓冲不显示
+                showLoading = true;
+                showNetSpeed = mEverPrepared;
+                break;
+            default:
+                break;
+        }
+        if (mSeekPanelVisible) { // 拖动/遥控快进快退指示显示中:loading 让位,不同屏
+            showLoading = false;
+            showNetSpeed = false;
+        }
+        setLoadingVisible(showLoading);
+        setNetSpeedVisible(showNetSpeed);
+    }
+
+    /**
+     * seek 指示浮层显隐回调(由点播/本地控制器的 1000/1001 消息驱动)。
+     * 显示时立即隐藏 loading/网速,消失时按当前播放状态还原。
+     */
+    public void setSeekPanelVisible(boolean visible) {
+        if (mSeekPanelVisible == visible) return;
+        mSeekPanelVisible = visible;
+        refreshLoadingUi(mCurPlayState);
     }
 
     @Override
@@ -137,38 +179,15 @@ public abstract class BaseController extends BaseVideoController implements Gest
         switch (playState) {
             case VideoView.STATE_IDLE: // 新会话起点(切集/重播前 release)
                 mEverPrepared = false;
-                setLoadingVisible(false);
-                setNetSpeedVisible(false);
                 break;
             case VideoView.STATE_PLAYING:
-                mEverPrepared = true;
-                setLoadingVisible(false);
-                setNetSpeedVisible(false);
-                break;
-            case VideoView.STATE_PAUSED:
-                setLoadingVisible(false);
-                setNetSpeedVisible(false);
-                break;
             case VideoView.STATE_PREPARED: // 已出画面
                 mEverPrepared = true;
-            case VideoView.STATE_ERROR:
-            case VideoView.STATE_BUFFERED:
-                setLoadingVisible(false);
-                setNetSpeedVisible(false);
                 break;
-            case VideoView.STATE_PREPARING: // 起播准备:loading 转,但网速不显示(尚未出画面)
-                setLoadingVisible(true);
-                setNetSpeedVisible(false);
-                break;
-            case VideoView.STATE_BUFFERING: // 缓存:出过画面(播中卡顿)才显示网速;首缓冲不显示
-                setLoadingVisible(true);
-                setNetSpeedVisible(mEverPrepared);
-                break;
-            case VideoView.STATE_PLAYBACK_COMPLETED:
-                setLoadingVisible(false);
-                setNetSpeedVisible(false);
+            default:
                 break;
         }
+        refreshLoadingUi(playState);
     }
 
     /**

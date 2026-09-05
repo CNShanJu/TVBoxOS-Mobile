@@ -26,6 +26,9 @@ import com.github.tvbox.osc.util.AppLog;
 import com.github.tvbox.osc.config.HawkConfig;
 import com.github.tvbox.osc.util.MD5;
 import com.github.tvbox.osc.config.SystemConfig;
+import com.github.tvbox.osc.config.PrefsDataStore;
+import com.google.gson.reflect.TypeToken;
+import java.lang.reflect.Type;
 import com.github.tvbox.osc.util.VideoParseRuler;
 import com.google.gson.Gson;
 import com.google.gson.JsonArray;
@@ -183,7 +186,7 @@ public class ApiConfig implements com.github.tvbox.osc.spiderapi.SourceConfigApi
     }
 
     public void loadConfig(boolean useCache, LoadConfigCallback callback, Activity activity) {
-        String apiUrl = KeyValueStore.get(HawkConfig.API_URL, "");
+        String apiUrl = PrefsDataStore.getString(HawkConfig.API_URL, "");
         if (apiUrl.isEmpty()) {
             callback.error("-1");
             return;
@@ -456,7 +459,7 @@ public class ApiConfig implements com.github.tvbox.osc.spiderapi.SourceConfigApi
             sourceBeanList.put(siteKey, sb);
         }
         if (sourceBeanList != null && sourceBeanList.size() > 0) {
-            String home = KeyValueStore.get(HawkConfig.HOME_API, "");
+            String home = legacyPrefs(HawkConfig.HOME_API, "");
             SourceBean sh = getSource(home);
             if (sh == null)
                 setSourceBean(firstSite);
@@ -482,7 +485,7 @@ public class ApiConfig implements com.github.tvbox.osc.spiderapi.SourceConfigApi
         }
         // 获取默认解析
         if (parseBeanList != null && parseBeanList.size() > 0) {
-            String defaultParse = KeyValueStore.get(HawkConfig.DEFAULT_PARSE, "");
+            String defaultParse = legacyPrefs(HawkConfig.DEFAULT_PARSE, "");
             if (!TextUtils.isEmpty(defaultParse))
                 for (ParseBean pb : parseBeanList) {
                     if (pb.getName().equals(defaultParse))
@@ -543,7 +546,7 @@ public class ApiConfig implements com.github.tvbox.osc.spiderapi.SourceConfigApi
                         //putEPGHistory(epg);
                         // Overwrite with EPG URL from Settings
                         //if (StringUtils.isBlank(epgURL)) {
-                            KeyValueStore.put(HawkConfig.EPG_URL, epg);
+                            PrefsDataStore.put(HawkConfig.EPG_URL, epg);
 //                        } else {
 //                            KeyValueStore.put(HawkConfig.EPG_URL, epgURL);
 //                        }
@@ -572,7 +575,7 @@ public class ApiConfig implements com.github.tvbox.osc.spiderapi.SourceConfigApi
                                 //putEPGHistory(epg);
                                 // Overwrite with EPG URL from Settings
                                 //if (StringUtils.isBlank(epgURL)) {
-                                    KeyValueStore.put(HawkConfig.EPG_URL, epg);
+                                    PrefsDataStore.put(HawkConfig.EPG_URL, epg);
 //                                } else {
 //                                    KeyValueStore.put(HawkConfig.EPG_URL, epgURL);
 //                                }
@@ -680,7 +683,7 @@ public class ApiConfig implements com.github.tvbox.osc.spiderapi.SourceConfigApi
         if(ijkCodes==null){
             ijkCodes = new ArrayList<>();
             boolean foundOldSelect = false;
-            String ijkCodec = KeyValueStore.get(HawkConfig.IJK_CODEC, "");
+            String ijkCodec = PrefsDataStore.getString(HawkConfig.IJK_CODEC, "");
             JsonArray ijkJsonArray = infoJson.has("ijk")?infoJson.get("ijk").getAsJsonArray():defaultJson.get("ijk").getAsJsonArray();
             for (JsonElement opt : ijkJsonArray) {
                 JsonObject obj = (JsonObject) opt;
@@ -710,14 +713,18 @@ public class ApiConfig implements com.github.tvbox.osc.spiderapi.SourceConfigApi
         }
     }
 
+    /** 直播源历史列表 gson 类型(LiveConfig 同格式,DataStore json 共享) */
+    private static final Type LIVE_HISTORY_TYPE = new TypeToken<ArrayList<String>>() {
+    }.getType();
+
     private void putLiveHistory(String url) {
         if (!url.isEmpty()) {
-            ArrayList<String> liveHistory = KeyValueStore.get(HawkConfig.LIVE_HISTORY, new ArrayList<String>());
+            ArrayList<String> liveHistory = PrefsDataStore.getJson(HawkConfig.LIVE_HISTORY, LIVE_HISTORY_TYPE, new ArrayList<String>());
             if (!liveHistory.contains(url))
                 liveHistory.add(0, url);
             if (liveHistory.size() > 20)
                 liveHistory.remove(20);
-            KeyValueStore.put(HawkConfig.LIVE_HISTORY, liveHistory);
+            PrefsDataStore.putJson(HawkConfig.LIVE_HISTORY, liveHistory);
         }
     }
 
@@ -807,16 +814,27 @@ public class ApiConfig implements com.github.tvbox.osc.spiderapi.SourceConfigApi
         return sourceBeanList.get(key);
     }
 
+
+    /** 读现代化偏好,无则查旧 Hawk 并一次性迁移(自用记忆键) */
+    private static String legacyPrefs(String key, String def) {
+        String v = PrefsDataStore.getString(key, null);
+        if (v == null && KeyValueStore.contains(key)) {
+            v = KeyValueStore.getString(key, "");
+            PrefsDataStore.put(key, v);
+            KeyValueStore.delete(key);
+        }
+        return v == null ? def : v;
+    }
     public void setSourceBean(SourceBean sourceBean) {
         this.mHomeSource = sourceBean;
-        KeyValueStore.put(HawkConfig.HOME_API, sourceBean.getKey());
+        PrefsDataStore.put(HawkConfig.HOME_API, sourceBean.getKey());
     }
 
     public void setDefaultParse(ParseBean parseBean) {
         if (this.mDefaultParse != null)
             this.mDefaultParse.setDefault(false);
         this.mDefaultParse = parseBean;
-        KeyValueStore.put(HawkConfig.DEFAULT_PARSE, parseBean.getName());
+        PrefsDataStore.put(HawkConfig.DEFAULT_PARSE, parseBean.getName());
         parseBean.setDefault(true);
     }
 
@@ -855,7 +873,7 @@ public class ApiConfig implements com.github.tvbox.osc.spiderapi.SourceConfigApi
 
         List<IJKCode> ijkCodes = new ArrayList<>();
         boolean foundOldSelect = false;
-        String ijkCodec = KeyValueStore.get(HawkConfig.IJK_CODEC, "");
+        String ijkCodec = PrefsDataStore.getString(HawkConfig.IJK_CODEC, "");
         JsonArray ijkJsonArray = defaultJson.get("ijk").getAsJsonArray();
         for (JsonElement opt : ijkJsonArray) {
             JsonObject obj = (JsonObject) opt;
@@ -894,7 +912,7 @@ public class ApiConfig implements com.github.tvbox.osc.spiderapi.SourceConfigApi
     }
 
     public IJKCode getCurrentIJKCode() {
-        String codeName = KeyValueStore.get(HawkConfig.IJK_CODEC, "");
+        String codeName = PrefsDataStore.getString(HawkConfig.IJK_CODEC, "");
         return getIJKCodec(codeName);
     }
 

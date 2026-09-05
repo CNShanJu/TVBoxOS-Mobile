@@ -146,6 +146,10 @@ Exo→Media3、EventBus→Flow/接口、Hawk→DataStore、Java→Kotlin 渐进�
   (SubtitleCoordinator)仍使用,真机回归见 9/5 订阅导入日志噪音是否消失。
 - ✅ :download 持久化收口:`internal/{DownloadManager,DownloadStore,DownloadArchive,DownloadPolicy}` 的 Hawk 直存
   (任务列表/档案/并发/WiFi 策略)改走 `config.KeyValueStore`,:download 新增依赖 :core-storage、移除 hawk 库依赖。
+- ✅ Hawk→DataStore 分叉修复与收边:`:spider ApiConfig` 共享键(EPG_URL/LIVE_HISTORY/api_url/ijk_codec/自用
+  HOME_API/DEFAULT_PARSE)改走 PrefsDataStore(与订阅/直播/播放域同底层);App.putDefault/DEBUG_OPEN 不再回写
+  Hawk;RemoteTVBox 遥控记忆、HomeHotCache 热播缓存亦切 DataStore(含存量迁移)。js 运行时缓存(local.java)
+  仍留 Hawk,待文件化后评估移除 core-storage 的 hawk 依赖。
 - ✅ DataStore typed 对象支持(PrefsDataStore `putJson/getJson`,gson+TypeToken):`SubscriptionConfig`(订阅列表/
   默认订阅/搜索历史/源勾选 HashMap)与 `LiveConfig`(偏好标量+历史源列表 json+频道播放配置改存 JSON 文本,
   频道旧键按访问惰性迁移)均切 DataStore,旧 Hawk 存量导入删键。
