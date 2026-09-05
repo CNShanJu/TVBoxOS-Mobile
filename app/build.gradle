@@ -174,7 +174,6 @@ dependencies {
         exclude group: 'xmlpull', module: 'xmlpull'
     }
     implementation 'org.greenrobot:eventbus:3.2.0'
-    implementation 'com.orhanobut:hawk:2.0.1'
 
     implementation project(":player")
     implementation project(":quickjs")

@@ -1,6 +1,6 @@
 package com.github.tvbox.osc.player.api;
 
-import com.orhanobut.hawk.Hawk;
+import com.github.tvbox.osc.config.KeyValueStore;
 
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -50,83 +50,83 @@ public final class PlayConfig {
 
     /** 默认播放器：0 系统 1 IJK 2 Exo 10 MX...，默认 0 */
     public static int getPlayType() {
-        return Hawk.get(KEY_PLAY_TYPE, 0);
+        return KeyValueStore.get(KEY_PLAY_TYPE, 0);
     }
 
     /** 渲染方式：0 texture 1 surface，默认 0 */
     public static int getRenderType() {
-        return Hawk.get(KEY_PLAY_RENDER, 0);
+        return KeyValueStore.get(KEY_PLAY_RENDER, 0);
     }
 
     /** 画面缩放（0-5），默认 0 */
     public static int getScaleType() {
-        return Hawk.get(KEY_PLAY_SCALE, 0);
+        return KeyValueStore.get(KEY_PLAY_SCALE, 0);
     }
 
     /** 长按倍速步进（秒），默认 1 */
     public static int getTimeStep() {
-        return Hawk.get(KEY_PLAY_TIME_STEP, 1);
+        return KeyValueStore.get(KEY_PLAY_TIME_STEP, 1);
     }
 
     /** IJK 解码器名，默认 "软解码" */
     public static String getIjkCodec() {
-        return Hawk.get(KEY_IJK_CODEC, "软解码");
+        return KeyValueStore.get(KEY_IJK_CODEC, "软解码");
     }
 
     /** IJK 缓存播放，默认关 */
     public static boolean isIjkCachePlay() {
-        return Hawk.get(KEY_IJK_CACHE_PLAY, false);
+        return KeyValueStore.get(KEY_IJK_CACHE_PLAY, false);
     }
 
     /** 后台播放：0 关闭 1 开启 2 画中画，默认 0 */
     public static int getBackgroundPlayType() {
-        return Hawk.get(KEY_BACKGROUND_PLAY_TYPE, 0);
+        return KeyValueStore.get(KEY_BACKGROUND_PLAY_TYPE, 0);
     }
 
     /** 视频净化（播放页净化控件），默认开 */
     public static boolean isVideoPurify() {
-        return Hawk.get(KEY_VIDEO_PURIFY, true);
+        return KeyValueStore.get(KEY_VIDEO_PURIFY, true);
     }
 
     /** 长按倍速值，默认 2.0 */
     public static float getVideoSpeed() {
-        return Hawk.get(KEY_VIDEO_SPEED, 2.0f);
+        return KeyValueStore.get(KEY_VIDEO_SPEED, 2.0f);
     }
 
     /** 字幕开关，默认关 */
     public static boolean isSubtitleOpen() {
-        return Hawk.get(KEY_SUBTITLE_OPEN, false);
+        return KeyValueStore.get(KEY_SUBTITLE_OPEN, false);
     }
 
     /** 字幕字号，默认 -1（自动） */
     public static int getSubtitleTextSize() {
-        return Hawk.get(KEY_SUBTITLE_TEXT_SIZE, -1);
+        return KeyValueStore.get(KEY_SUBTITLE_TEXT_SIZE, -1);
     }
 
     /** 字幕时间延迟（毫秒），默认 0 */
     public static int getSubtitleTimeDelay() {
-        return Hawk.get(KEY_SUBTITLE_TIME_DELAY, 0);
+        return KeyValueStore.get(KEY_SUBTITLE_TIME_DELAY, 0);
     }
 
     // ── 操作（内部校验 + 持久化 + 广播变更）──
 
     public static void setPlayType(int v) {
         if (getPlayType() == v) return;
-        Hawk.put(KEY_PLAY_TYPE, v);
+        KeyValueStore.put(KEY_PLAY_TYPE, v);
         com.github.tvbox.osc.log.LogStore.log(com.github.tvbox.osc.log.Category.SYSTEM, "播放设置: 播放器=" + v);
         fireChanged();
     }
 
     public static void setRenderType(int v) {
         if (getRenderType() == v) return;
-        Hawk.put(KEY_PLAY_RENDER, v);
+        KeyValueStore.put(KEY_PLAY_RENDER, v);
         com.github.tvbox.osc.log.LogStore.log(com.github.tvbox.osc.log.Category.SYSTEM, "播放设置: 渲染=" + v);
         fireChanged();
     }
 
     public static void setScaleType(int v) {
         if (getScaleType() == v) return;
-        Hawk.put(KEY_PLAY_SCALE, v);
+        KeyValueStore.put(KEY_PLAY_SCALE, v);
         com.github.tvbox.osc.log.LogStore.log(com.github.tvbox.osc.log.Category.SYSTEM, "播放设置: 画面缩放=" + v);
         fireChanged();
     }
@@ -134,7 +134,7 @@ public final class PlayConfig {
     public static void setTimeStep(int v) {
         int val = Math.max(1, v);
         if (getTimeStep() == val) return;
-        Hawk.put(KEY_PLAY_TIME_STEP, val);
+        KeyValueStore.put(KEY_PLAY_TIME_STEP, val);
         com.github.tvbox.osc.log.LogStore.log(com.github.tvbox.osc.log.Category.SYSTEM, "播放设置: 倍速步进=" + val);
         fireChanged();
     }
@@ -142,14 +142,14 @@ public final class PlayConfig {
     public static void setIjkCodec(String name) {
         if (name == null) return;
         if (name.equals(getIjkCodec())) return;
-        Hawk.put(KEY_IJK_CODEC, name);
+        KeyValueStore.put(KEY_IJK_CODEC, name);
         com.github.tvbox.osc.log.LogStore.log(com.github.tvbox.osc.log.Category.SYSTEM, "播放设置: IJK解码=" + name);
         fireChanged();
     }
 
     public static void setIjkCachePlay(boolean on) {
         if (isIjkCachePlay() == on) return;
-        Hawk.put(KEY_IJK_CACHE_PLAY, on);
+        KeyValueStore.put(KEY_IJK_CACHE_PLAY, on);
         com.github.tvbox.osc.log.LogStore.log(com.github.tvbox.osc.log.Category.SYSTEM, "播放设置: IJK缓存播放=" + on);
         fireChanged();
     }
@@ -157,42 +157,42 @@ public final class PlayConfig {
     public static void setBackgroundPlayType(int v) {
         int val = Math.max(0, Math.min(2, v));
         if (getBackgroundPlayType() == val) return;
-        Hawk.put(KEY_BACKGROUND_PLAY_TYPE, val);
+        KeyValueStore.put(KEY_BACKGROUND_PLAY_TYPE, val);
         com.github.tvbox.osc.log.LogStore.log(com.github.tvbox.osc.log.Category.SYSTEM, "播放设置: 后台播放=" + val);
         fireChanged();
     }
 
     public static void setVideoPurify(boolean on) {
         if (isVideoPurify() == on) return;
-        Hawk.put(KEY_VIDEO_PURIFY, on);
+        KeyValueStore.put(KEY_VIDEO_PURIFY, on);
         com.github.tvbox.osc.log.LogStore.log(com.github.tvbox.osc.log.Category.SYSTEM, "播放设置: 视频净化=" + on);
         fireChanged();
     }
 
     public static void setVideoSpeed(float v) {
         if (Float.compare(getVideoSpeed(), v) == 0) return;
-        Hawk.put(KEY_VIDEO_SPEED, v);
+        KeyValueStore.put(KEY_VIDEO_SPEED, v);
         com.github.tvbox.osc.log.LogStore.log(com.github.tvbox.osc.log.Category.SYSTEM, "播放设置: 长按倍速=" + v);
         fireChanged();
     }
 
     public static void setSubtitleOpen(boolean on) {
         if (isSubtitleOpen() == on) return;
-        Hawk.put(KEY_SUBTITLE_OPEN, on);
+        KeyValueStore.put(KEY_SUBTITLE_OPEN, on);
         com.github.tvbox.osc.log.LogStore.log(com.github.tvbox.osc.log.Category.SYSTEM, "播放设置: 字幕开关=" + on);
         fireChanged();
     }
 
     public static void setSubtitleTextSize(int size) {
         if (getSubtitleTextSize() == size) return;
-        Hawk.put(KEY_SUBTITLE_TEXT_SIZE, size);
+        KeyValueStore.put(KEY_SUBTITLE_TEXT_SIZE, size);
         com.github.tvbox.osc.log.LogStore.log(com.github.tvbox.osc.log.Category.SYSTEM, "播放设置: 字幕字号=" + size);
         fireChanged();
     }
 
     public static void setSubtitleTimeDelay(int ms) {
         if (getSubtitleTimeDelay() == ms) return;
-        Hawk.put(KEY_SUBTITLE_TIME_DELAY, ms);
+        KeyValueStore.put(KEY_SUBTITLE_TIME_DELAY, ms);
         com.github.tvbox.osc.log.LogStore.log(com.github.tvbox.osc.log.Category.SYSTEM, "播放设置: 字幕时间延迟=" + ms);
         fireChanged();
     }

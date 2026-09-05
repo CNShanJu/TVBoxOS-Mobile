@@ -31,7 +31,7 @@ import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
-import com.orhanobut.hawk.Hawk;
+import com.github.tvbox.osc.config.KeyValueStore;
 
 import org.apache.commons.lang3.StringUtils;
 import org.json.JSONObject;
@@ -183,7 +183,7 @@ public class ApiConfig implements com.github.tvbox.osc.spiderapi.SourceConfigApi
     }
 
     public void loadConfig(boolean useCache, LoadConfigCallback callback, Activity activity) {
-        String apiUrl = Hawk.get(HawkConfig.API_URL, "");
+        String apiUrl = KeyValueStore.get(HawkConfig.API_URL, "");
         if (apiUrl.isEmpty()) {
             callback.error("-1");
             return;
@@ -456,7 +456,7 @@ public class ApiConfig implements com.github.tvbox.osc.spiderapi.SourceConfigApi
             sourceBeanList.put(siteKey, sb);
         }
         if (sourceBeanList != null && sourceBeanList.size() > 0) {
-            String home = Hawk.get(HawkConfig.HOME_API, "");
+            String home = KeyValueStore.get(HawkConfig.HOME_API, "");
             SourceBean sh = getSource(home);
             if (sh == null)
                 setSourceBean(firstSite);
@@ -482,7 +482,7 @@ public class ApiConfig implements com.github.tvbox.osc.spiderapi.SourceConfigApi
         }
         // 获取默认解析
         if (parseBeanList != null && parseBeanList.size() > 0) {
-            String defaultParse = Hawk.get(HawkConfig.DEFAULT_PARSE, "");
+            String defaultParse = KeyValueStore.get(HawkConfig.DEFAULT_PARSE, "");
             if (!TextUtils.isEmpty(defaultParse))
                 for (ParseBean pb : parseBeanList) {
                     if (pb.getName().equals(defaultParse))
@@ -494,7 +494,7 @@ public class ApiConfig implements com.github.tvbox.osc.spiderapi.SourceConfigApi
         // 直播源
         liveChannelGroupList.clear();           //修复从后台切换重复加载频道列表
         String liveURL = SystemConfig.getLiveUrl();
-        //String epgURL  = Hawk.get(HawkConfig.EPG_URL, "");
+        //String epgURL  = KeyValueStore.get(HawkConfig.EPG_URL, "");
 
         String liveURL_final = null;
         try {
@@ -543,9 +543,9 @@ public class ApiConfig implements com.github.tvbox.osc.spiderapi.SourceConfigApi
                         //putEPGHistory(epg);
                         // Overwrite with EPG URL from Settings
                         //if (StringUtils.isBlank(epgURL)) {
-                            Hawk.put(HawkConfig.EPG_URL, epg);
+                            KeyValueStore.put(HawkConfig.EPG_URL, epg);
 //                        } else {
-//                            Hawk.put(HawkConfig.EPG_URL, epgURL);
+//                            KeyValueStore.put(HawkConfig.EPG_URL, epgURL);
 //                        }
                     }
 
@@ -572,9 +572,9 @@ public class ApiConfig implements com.github.tvbox.osc.spiderapi.SourceConfigApi
                                 //putEPGHistory(epg);
                                 // Overwrite with EPG URL from Settings
                                 //if (StringUtils.isBlank(epgURL)) {
-                                    Hawk.put(HawkConfig.EPG_URL, epg);
+                                    KeyValueStore.put(HawkConfig.EPG_URL, epg);
 //                                } else {
-//                                    Hawk.put(HawkConfig.EPG_URL, epgURL);
+//                                    KeyValueStore.put(HawkConfig.EPG_URL, epgURL);
 //                                }
                             }
 
@@ -680,7 +680,7 @@ public class ApiConfig implements com.github.tvbox.osc.spiderapi.SourceConfigApi
         if(ijkCodes==null){
             ijkCodes = new ArrayList<>();
             boolean foundOldSelect = false;
-            String ijkCodec = Hawk.get(HawkConfig.IJK_CODEC, "");
+            String ijkCodec = KeyValueStore.get(HawkConfig.IJK_CODEC, "");
             JsonArray ijkJsonArray = infoJson.has("ijk")?infoJson.get("ijk").getAsJsonArray():defaultJson.get("ijk").getAsJsonArray();
             for (JsonElement opt : ijkJsonArray) {
                 JsonObject obj = (JsonObject) opt;
@@ -712,12 +712,12 @@ public class ApiConfig implements com.github.tvbox.osc.spiderapi.SourceConfigApi
 
     private void putLiveHistory(String url) {
         if (!url.isEmpty()) {
-            ArrayList<String> liveHistory = Hawk.get(HawkConfig.LIVE_HISTORY, new ArrayList<String>());
+            ArrayList<String> liveHistory = KeyValueStore.get(HawkConfig.LIVE_HISTORY, new ArrayList<String>());
             if (!liveHistory.contains(url))
                 liveHistory.add(0, url);
             if (liveHistory.size() > 20)
                 liveHistory.remove(20);
-            Hawk.put(HawkConfig.LIVE_HISTORY, liveHistory);
+            KeyValueStore.put(HawkConfig.LIVE_HISTORY, liveHistory);
         }
     }
 
@@ -809,14 +809,14 @@ public class ApiConfig implements com.github.tvbox.osc.spiderapi.SourceConfigApi
 
     public void setSourceBean(SourceBean sourceBean) {
         this.mHomeSource = sourceBean;
-        Hawk.put(HawkConfig.HOME_API, sourceBean.getKey());
+        KeyValueStore.put(HawkConfig.HOME_API, sourceBean.getKey());
     }
 
     public void setDefaultParse(ParseBean parseBean) {
         if (this.mDefaultParse != null)
             this.mDefaultParse.setDefault(false);
         this.mDefaultParse = parseBean;
-        Hawk.put(HawkConfig.DEFAULT_PARSE, parseBean.getName());
+        KeyValueStore.put(HawkConfig.DEFAULT_PARSE, parseBean.getName());
         parseBean.setDefault(true);
     }
 
@@ -855,7 +855,7 @@ public class ApiConfig implements com.github.tvbox.osc.spiderapi.SourceConfigApi
 
         List<IJKCode> ijkCodes = new ArrayList<>();
         boolean foundOldSelect = false;
-        String ijkCodec = Hawk.get(HawkConfig.IJK_CODEC, "");
+        String ijkCodec = KeyValueStore.get(HawkConfig.IJK_CODEC, "");
         JsonArray ijkJsonArray = defaultJson.get("ijk").getAsJsonArray();
         for (JsonElement opt : ijkJsonArray) {
             JsonObject obj = (JsonObject) opt;
@@ -894,7 +894,7 @@ public class ApiConfig implements com.github.tvbox.osc.spiderapi.SourceConfigApi
     }
 
     public IJKCode getCurrentIJKCode() {
-        String codeName = Hawk.get(HawkConfig.IJK_CODEC, "");
+        String codeName = KeyValueStore.get(HawkConfig.IJK_CODEC, "");
         return getIJKCodec(codeName);
     }
 

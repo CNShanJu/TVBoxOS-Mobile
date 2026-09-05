@@ -38,7 +38,6 @@ dependencies {
     implementation 'com.google.code.gson:gson:2.10.1'
     implementation 'com.squareup.okhttp3:okhttp:4.12.0'
     implementation 'com.squareup.okhttp3:okhttp-dnsoverhttps:4.12.0' // Spider.safeDns
-    implementation 'com.orhanobut:hawk:2.0.1'
     implementation 'net.sourceforge.streamsupport:android-retrofuture:1.7.4' // util.js 的 java9.util.concurrent
     implementation('com.thoughtworks.xstream:xstream:1.4.20') { // MovieSort 注解
         exclude group: 'xmlpull', module: 'xmlpull'

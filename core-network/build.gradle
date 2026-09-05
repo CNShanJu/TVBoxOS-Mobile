@@ -32,8 +32,7 @@ dependencies {
     implementation 'com.squareup.okhttp3:okhttp:4.12.0'
     implementation 'com.squareup.okhttp3:logging-interceptor:4.12.0'
     implementation 'com.squareup.okhttp3:okhttp-dnsoverhttps:4.12.0'
-    implementation 'com.orhanobut:hawk:2.0.1'
     implementation 'com.google.code.gson:gson:2.10.1'
     implementation project(':log') // 系统配置变更业务日志(LogStore 便捷方法)
-    implementation project(':core-storage') // SystemConfig/HawkConfig 归位后由 core-storage 提供(config 包)
+    implementation project(':core-storage') // config 包(KeyValueStore/SystemConfig/HawkConfig)由 core-storage 提供
 }
