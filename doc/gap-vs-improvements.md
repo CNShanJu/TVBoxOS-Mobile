@@ -146,6 +146,10 @@ Exo→Media3、EventBus→Flow/接口、Hawk→DataStore、Java→Kotlin 渐进�
   (SubtitleCoordinator)仍使用,真机回归见 9/5 订阅导入日志噪音是否消失。
 - ✅ :download 持久化收口:`internal/{DownloadManager,DownloadStore,DownloadArchive,DownloadPolicy}` 的 Hawk 直存
   (任务列表/档案/并发/WiFi 策略)改走 `config.KeyValueStore`,:download 新增依赖 :core-storage、移除 hawk 库依赖。
+- ✅ :download 大值键脱离配置存储:任务列表(download_tasks_v1)/档案(download_archive_v1)改存应用私有文件
+  `filesDir/*.json`(gson+原子 tmp rename),启动读文件、旧 Hawk 存量一次性迁移并删旧键;load 移到
+  `DownloadManager.init(context)` 后 boot()(解决"构造早于 appContext"时序);并发/WiFi 等小偏好仍在
+  KeyValueStore。配置存储(DataStore 化候选)不再承载大对象。
 - ✅ :log 日志配置依赖倒置(DataStore 化前置):新增 `log.LogConfigStore` 端口,`LogConfig` 不再直 Hawk,由
   宿主注入 core-storage `DefaultLogConfigStore`(基于 KeyValueStore)或未来 DataStore 实现;:log 移除 hawk 依赖。
   → 第三方 hawk 现仅 core-storage `KeyValueStore` 单一持有,DataStore 化(第五阶段)前置已清。

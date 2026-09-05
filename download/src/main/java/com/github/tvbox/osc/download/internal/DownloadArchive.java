@@ -3,41 +3,79 @@ package com.github.tvbox.osc.download.internal;
 import com.github.tvbox.osc.bean.DownloadTask;
 import com.github.tvbox.osc.download.ArchiveItem;
 import com.github.tvbox.osc.config.KeyValueStore;
+import com.google.gson.Gson;
+import com.google.gson.reflect.TypeToken;
 
 import java.io.File;
+import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.List;
 
 /**
  * 已下载档案（长期保留，独立于 7 天任务日志）：
  * 任务完成时写入；删文件联动删档案；重启对账清理失效项（文件丢失 → 删档案）。
- * 数据在下载模块内部维护（Hawk 键），对外经 {@link DownloadFacade} 访问。
+ * 数据在下载模块内部维护（私有文件 download_archive_v1.json，旧版 Hawk 键一次性迁移），
+ * 对外经 {@link DownloadFacade} 访问。
  */
 public final class DownloadArchive {
 
     private static final String HAWK_KEY = "download_archive_v1";
+
+    private static final Gson GSON = new Gson();
+    private static final Type ARCHIVE_LIST_TYPE = new TypeToken<List<ArchiveItem>>() {
+    }.getType();
 
     private static volatile DownloadArchive instance;
 
     private final List<ArchiveItem> items = new ArrayList<>();
 
     private DownloadArchive() {
+    }
+
+    /** App init 注入 appContext 后由 DownloadManager.boot 调用:文件加载(旧 Hawk 存量一次性迁移)+ 对账 */
+    synchronized void load() {
         try {
-            List<ArchiveItem> saved = KeyValueStore.get(HAWK_KEY, new ArrayList<ArchiveItem>());
+            List<ArchiveItem> saved = readArchiveFile();
+            if (saved == null) {
+                saved = KeyValueStore.get(HAWK_KEY, new ArrayList<ArchiveItem>());
+                if (saved != null) writeArchiveFile(saved);
+                KeyValueStore.delete(HAWK_KEY);
+            }
             if (saved != null) {
                 items.addAll(saved);
-                // 对账：文件已丢失的档案视为失效,清理
-                boolean changed = false;
-                for (int i = items.size() - 1; i >= 0; i--) {
-                    ArchiveItem it = items.get(i);
-                    if (it.savePath != null && !new File(it.savePath).exists()) {
-                        items.remove(i);
-                        changed = true;
-                    }
-                }
-                if (changed) persist();
             }
+            // 对账：文件已丢失的档案视为失效,清理
+            boolean changed = false;
+            for (int i = items.size() - 1; i >= 0; i--) {
+                ArchiveItem it = items.get(i);
+                if (it.savePath != null && !new File(it.savePath).exists()) {
+                    items.remove(i);
+                    changed = true;
+                }
+            }
+            if (changed) persist();
         } catch (Throwable ignored) {
+        }
+    }
+
+    private static File archiveFile() {
+        return JsonFiles.privateFile("download_archive_v1.json");
+    }
+
+    private static List<ArchiveItem> readArchiveFile() {
+        String s = JsonFiles.readUtf8(archiveFile());
+        if (s == null) return null;
+        List<ArchiveItem> r = GSON.fromJson(s, ARCHIVE_LIST_TYPE);
+        return r == null ? new ArrayList<>() : r;
+    }
+
+    private static void writeArchiveFile(List<ArchiveItem> list) {
+        File f = archiveFile();
+        if (f == null) return;
+        try {
+            JsonFiles.writeUtf8Atomic(f, GSON.toJson(list == null ? new ArrayList<ArchiveItem>() : list, ARCHIVE_LIST_TYPE));
+        } catch (Throwable th) {
+            th.printStackTrace();
         }
     }
 
@@ -240,7 +278,7 @@ public final class DownloadArchive {
 
     private void persist() {
         try {
-            KeyValueStore.put(HAWK_KEY, new ArrayList<>(items));
+            writeArchiveFile(new ArrayList<>(items));
         } catch (Throwable ignored) {
         }
     }

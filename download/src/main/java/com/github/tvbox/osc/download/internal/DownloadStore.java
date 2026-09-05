@@ -5,10 +5,13 @@ import android.util.Log;
 import android.content.Context;
 import com.github.tvbox.osc.bean.DownloadTask;
 import com.github.tvbox.osc.config.KeyValueStore;
+import com.google.gson.Gson;
+import com.google.gson.reflect.TypeToken;
 
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.InputStream;
+import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -21,7 +24,7 @@ import okhttp3.Response;
 
 /**
  * 任务记录器（Task-Recorder）：任务列表存取 / 状态查询 / 完成记录对账 / 海报资源。
- * 数据与持久化（Hawk）在下载模块内部维护，对外经 DownloadManager 门面访问。
+ * 数据在下载模块内部维护（私有文件 download_tasks_v1.json），对外经 DownloadManager 门面访问。
  */
 public class DownloadStore {
 
@@ -47,10 +50,45 @@ public class DownloadStore {
         this.dm = dm;
     }
 
-    /** 启动加载:读 Hawk + 进程重启状态归位(下载中/等待/调度暂停 -> 用户暂停,待手动继续) */
+    /** 任务列表持久化文件(App init 注入 appContext 后可用) */
+    static File tasksFile() {
+        return JsonFiles.privateFile("download_tasks_v1.json");
+    }
+
+    private static final Gson GSON = new Gson();
+    private static final Type TASK_LIST_TYPE = new TypeToken<List<DownloadTask>>() {
+    }.getType();
+
+    private static List<DownloadTask> readTasksFile() {
+        String s = JsonFiles.readUtf8(tasksFile());
+        if (s == null) return null;
+        List<DownloadTask> r = GSON.fromJson(s, TASK_LIST_TYPE);
+        return r == null ? new ArrayList<>() : r;
+    }
+
+    /** 任务列表写私有文件(调用方保证频率/串行;persist 异步,迁移一次性) */
+    static void writeTasksFile(List<DownloadTask> list) {
+        File f = tasksFile();
+        if (f == null) return;
+        try {
+            JsonFiles.writeUtf8Atomic(f, GSON.toJson(list == null ? new ArrayList<DownloadTask>() : list, TASK_LIST_TYPE));
+        } catch (Throwable th) {
+            th.printStackTrace();
+        }
+    }
+
+    /** 启动加载:读文件(旧版 Hawk 存量一次性迁移)+ 进程重启状态归位(下载中/等待/调度暂停 -> 用户暂停,待手动继续) */
     void load() {
         try {
-            List<DownloadTask> saved = KeyValueStore.get(DownloadManager.HAWK_KEY, new ArrayList<DownloadTask>());
+            List<DownloadTask> saved = readTasksFile();
+            if (saved == null) {
+                // 旧版(Hawk 键)存量一次性迁移:读后写文件并删除旧键
+                saved = KeyValueStore.get(DownloadManager.HAWK_KEY, new ArrayList<DownloadTask>());
+                if (saved != null) {
+                    writeTasksFile(saved);
+                }
+                KeyValueStore.delete(DownloadManager.HAWK_KEY);
+            }
             if (saved != null) dm.tasks.addAll(saved);
         } catch (Throwable th) {
             th.printStackTrace(); // 存储损坏时兜底为空列表,不阻塞下载器启动

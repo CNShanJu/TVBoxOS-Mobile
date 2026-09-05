@@ -5,7 +5,6 @@ import android.os.Looper;
 
 import com.github.tvbox.osc.bean.DownloadTask;
 import com.github.tvbox.osc.util.OkGoHelper;
-import com.github.tvbox.osc.config.KeyValueStore;
 
 import org.greenrobot.eventbus.EventBus;
 
@@ -55,10 +54,13 @@ public class DownloadManager {
     /** 注入的 application context（独立模块 :download，App 启动时 init 注入） */
     static volatile android.content.Context appContext;
 
+    /** 数据加载/组件启动完成标记(init 注入 appContext 后执行一次) */
+    private volatile boolean booted = false;
+
     final List<DownloadTask> tasks = new ArrayList<>();
     final Object lock = new Object();
 
-    /** 持久化:后台单线程执行,避免主线程批量入队时被 KeyValueStore.put(加密+磁盘IO)卡死 */
+    /** 持久化:后台单线程执行,避免主线程批量入队时被磁盘 IO 卡死 */
     private final ExecutorService persistExecutor = Executors.newSingleThreadExecutor(r -> {
         Thread t = new Thread(r, "tvbox-persist");
         t.setDaemon(true);
@@ -118,9 +120,16 @@ public class DownloadManager {
         executor = new DownloadExecutor(this);
         policy = new DownloadPolicy(this);
         archive = com.github.tvbox.osc.download.internal.DownloadArchive.get();
+    }
+
+    /** App init 注入 appContext 后执行一次:任务/档案文件加载(含旧 Hawk 迁移)+ 孤儿清理 + 调度启动 */
+    synchronized void boot() {
+        if (booted) return;
+        booted = true;
         store.load();
         // Bug5: 孤儿 tmpDir 回收(启动时任务已加载,无写入中,安全)
         FileCleaner.cleanupOrphanTmpDirs(tasks);
+        archive.load();
         scheduler.startWorker();
         scheduler.subscribeNetworkEvents(); // 网络事件统一源:SystemStateMonitor(见任务C)
     }
@@ -138,6 +147,8 @@ public class DownloadManager {
         FileCleaner.setAppContext(appContext);
         DownloadStore.setAppContext(appContext);
         com.github.tvbox.osc.download.internal.DownloadNotifier.init(context);
+        // 注入完成后启动(任务/档案文件加载依赖 appContext;早于任何 UI 使用)
+        get().boot();
     }
 
     // ------------------------------------------------------------------
@@ -160,7 +171,7 @@ public class DownloadManager {
     // 基础设施（组件共用）
     // ------------------------------------------------------------------
 
-    /** 持久化(异步+合并):后台单线程写 Hawk,且始终写最新快照 */
+    /** 持久化(异步+合并):后台单线程写私有文件,且始终写最新快照 */
     void persist() {
         List<DownloadTask> snapshot;
         synchronized (tasks) {
@@ -179,7 +190,7 @@ public class DownloadManager {
                     pendingSnapshot = null;
                 }
                 try {
-                    KeyValueStore.put(HAWK_KEY, toWrite);
+                    DownloadStore.writeTasksFile(toWrite);
                 } catch (Throwable th) {
                     th.printStackTrace();
                 }
