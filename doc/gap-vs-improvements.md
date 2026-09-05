@@ -26,7 +26,7 @@
 | `:spider-api` / `:spider` | ✅ 试点 | 字符串通道(SpiderContentApi)仍在(过渡兼容)；`ApiConfig` 仍暴露具体 Spider(内部实现需留) |
 | `:download` | ⚠️ | Facade 已接入；`DownloadManager/Scheduler/Executor/Archive/Core/Store/Config` 仍 public(改进.txt §六要求 internal 化) |
 | `:player-api` / `:player` | ⚠️ | 契约 + 原型已接；app 仍直用 `MyVideoView`/IJK/Exo、`PlayerTrackHelper` 按内核 instanceof 分发 |
-| `:ui-common` / ui-kit | ⚠️ | ui-common=纯资源 ✅；app 内无 ui-kit package，通用 View 未归拢 |
+| `:ui-common` / ui-kit | ⚠️ | ui-common=纯资源 ✅；app 内已建 ui-kit package（6 个纯净组件），通用 View 归拢中 |
 | `:playback` / feature-* | ❌ | 未建（改进.txt 第三/四阶段，需真机回归环境） |
 
 ## 4. 穿透点（UI/上层直读下层实现，新代码应避免）
@@ -38,6 +38,9 @@
   播放器/业务耦合视图(Player*View/FrostedGlassUtil)仍留 widget 包。
 - 直播偏好已收口:`util.LiveConfig` 门面(connectTimeout/showTime/showNetSpeed/channelReverse/crossGroup/
   lastChannel/liveHistory),LiveActivity/三个设置弹窗/历史源弹窗不再裸读 Hawk;EPG_URL 仍跨模块(spider 写)。
+- 直播设置弹窗重复已合并:`ui/dialog/LiveSettingPanel` 共享协调器,LiveSettingDialog(底部)/
+  LiveSettingRightDialog(抽屉)收敛为薄壳(-372 行);LiveActivity 内嵌面板(showSettingGroup 家族)
+  无活调用入口(仅注释),tvRightSettingLayout 可见性分支为死代码,待真机回归确认后删除。
 
 ## 5. 大文件拆分（§三）— 未完成
 | 文件 | 行数 | 期望 |
