@@ -59,7 +59,6 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
-import java.util.Hashtable;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
@@ -95,7 +94,6 @@ public class LiveActivity extends BaseActivity {
 
 //EPG   by 龍
     private static LiveChannelItem  channel_Name = null;
-    private static Hashtable hsEpg = new Hashtable();
     private CountDownTimer countDownTimer;
 //    private CountDownTimer countDownTimerRightTop;
     TextView tv_channelnum;
@@ -104,11 +102,8 @@ public class LiveActivity extends BaseActivity {
     TextView tv_srcinfo;
     public String epgStringAddress ="";
 
-    private boolean isSHIYI = false;
     private boolean isBack = false;
     public static String playUrl;
-    //kenson
-    private ImageView imgLiveIcon;
     SimpleDateFormat timeFormat = new SimpleDateFormat("yyyy-MM-dd");
     private CountDownTimer countDownTimer3;
     private int videoWidth = 1920;
@@ -176,8 +171,6 @@ public class LiveActivity extends BaseActivity {
 
     //显示底部EPG
     private void showBottomEpg() {
-        if (isSHIYI)
-            return;
         if (channel_Name.getChannelName() != null) {
             mPlayerTitleView.setTitle(channel_Name.getChannelName());
             tip_chname.setText(channel_Name.getChannelName());
@@ -338,7 +331,6 @@ public class LiveActivity extends BaseActivity {
         }
 
         channel_Name = currentLiveChannelItem;
-        isSHIYI=false;
         isBack = false;
         if(currentLiveChannelItem.getUrl().indexOf("PLTV/8888") !=-1){
             currentLiveChannelItem.setinclude_back(true);
