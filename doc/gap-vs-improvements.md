@@ -191,3 +191,11 @@ Exo→Media3、EventBus→Flow/接口、Hawk→DataStore、Java→Kotlin 渐进�
   已无 EventBus 事件/依赖,event 目录删除。
 - ⚠️ DownloadFragment 已完成 Facade 订阅去 EventBus;app 其余 EventBus 点(搜索/快速搜索/历史/直播等
   refresh 事件)仍为跨 Fragment 通信,逐步收口属"状态/事件管理"长线项。
+
+## 9. 待真机回归后继续(播放器主线尾段,当前挂起)
+- PlayerApi 会话内核**实验选项**:设置页加"播放器内核:PlayerApi 会话(实验)"开关(默认关);
+  开启时点播走 PlayerFactory 创建的内核并驱动基础播放 + PlaybackSessions 会话观察,与 doikki 路径并行对比。
+  需控制器/字幕/进度接线与真机调,决定先不做,待播放器相关批次(会话/内核统一/字幕装载/电量/网速/DataStore/
+  SAF)真机回归通过后,再按完整方案实现。
+- 回归通过后可继续:SourceViewModel `xml()/json()` 纯函数提取(type0/1 下沉前置,等值可单测);
+  EventBus 跨页 refresh 逐类收口;core-storage hawk 依赖下线(一次性迁移通道退役)。
