@@ -13,7 +13,7 @@ import com.github.tvbox.osc.R;
 import com.github.tvbox.osc.bean.VodInfo;
 import com.github.tvbox.osc.ui.activity.DetailActivity;
 import com.github.tvbox.osc.ui.adapter.SeriesAdapter;
-import com.github.tvbox.osc.ui.widget.GridSpacingItemDecoration;
+import com.github.tvbox.osc.ui.kit.GridSpacingItemDecoration;
 import com.github.tvbox.osc.util.Utils;
 
 import org.jetbrains.annotations.NotNull;

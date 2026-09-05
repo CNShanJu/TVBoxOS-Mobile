@@ -1,4 +1,4 @@
-package com.github.tvbox.osc.ui.widget;
+package com.github.tvbox.osc.ui.kit;
 
 import android.graphics.Rect;
 import android.view.View;

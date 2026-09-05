@@ -1,4 +1,4 @@
-package com.github.tvbox.osc.ui.widget;
+package com.github.tvbox.osc.ui.kit;
 
 import android.content.Context;
 import android.util.AttributeSet;

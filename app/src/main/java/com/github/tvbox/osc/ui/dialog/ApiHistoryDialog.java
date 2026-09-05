@@ -11,7 +11,7 @@ import com.chad.library.adapter.base.BaseQuickAdapter;
 import com.github.tvbox.osc.R;
 import com.github.tvbox.osc.databinding.DialogTitleListBinding;
 import com.github.tvbox.osc.ui.adapter.TitleWithDelAdapter;
-import com.github.tvbox.osc.ui.widget.LinearSpacingItemDecoration;
+import com.github.tvbox.osc.ui.kit.LinearSpacingItemDecoration;
 import com.github.tvbox.osc.util.HawkConfig;
 import com.lxj.xpopup.XPopup;
 import com.lxj.xpopup.core.BottomPopupView;

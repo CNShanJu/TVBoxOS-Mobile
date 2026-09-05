@@ -49,7 +49,7 @@ import com.github.tvbox.osc.ui.dialog.LivePasswordDialog;
 import com.github.tvbox.osc.ui.dialog.LiveSettingDialog;
 import com.github.tvbox.osc.ui.dialog.LiveSettingRightDialog;
 import com.github.tvbox.osc.ui.tv.widget.ViewObj;
-import com.github.tvbox.osc.ui.widget.LinearSpacingItemDecoration;
+import com.github.tvbox.osc.ui.kit.LinearSpacingItemDecoration;
 import com.github.tvbox.osc.ui.widget.PlayerMenuView;
 import com.github.tvbox.osc.ui.widget.PlayerTitleView;
 import com.github.tvbox.osc.util.FastClickCheckUtil;

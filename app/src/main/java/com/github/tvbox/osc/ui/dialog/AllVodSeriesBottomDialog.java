@@ -11,7 +11,7 @@ import com.chad.library.adapter.base.BaseQuickAdapter;
 import com.chad.library.adapter.base.BaseViewHolder;
 import com.github.tvbox.osc.R;
 import com.github.tvbox.osc.bean.VodInfo;
-import com.github.tvbox.osc.ui.widget.GridSpacingItemDecoration;
+import com.github.tvbox.osc.ui.kit.GridSpacingItemDecoration;
 import com.github.tvbox.osc.ui.widget.RoundChip;
 import com.github.tvbox.osc.util.Utils;
 import com.lxj.xpopup.interfaces.OnSelectListener;

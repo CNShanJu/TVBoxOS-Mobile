@@ -15,7 +15,7 @@ import com.github.tvbox.osc.databinding.DialogAllChannelBinding;
 import com.github.tvbox.osc.ui.activity.LiveActivity;
 import com.github.tvbox.osc.ui.adapter.LiveChannelGroupNewAdapter;
 import com.github.tvbox.osc.ui.adapter.LiveChannelItemNewAdapter;
-import com.github.tvbox.osc.ui.widget.GridSpacingItemDecoration;
+import com.github.tvbox.osc.ui.kit.GridSpacingItemDecoration;
 import com.github.tvbox.osc.util.FastClickCheckUtil;
 import com.github.tvbox.osc.util.Utils;
 import com.lxj.xpopup.XPopup;

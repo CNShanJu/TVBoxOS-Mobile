@@ -31,9 +31,11 @@
 
 ## 4. 穿透点（UI/上层直读下层实现，新代码应避免）
 - UI 直读 `Hawk`：`LiveActivity`(20+)、`LiveSettingDialog/RightDialog`、`DetailActivity`、`UserFragment`、`PlayFragment`、`GridFragment`、`ApiHistoryDialog`、`LiveApiDialog` 等 ~65 处。
-- UI 直触 DAO/存储实现：`DetailActivity`/`UserFragment`/`DownloadFragment` → `com.github.tvbox.osc.cache.RoomDataManger`（3 处，应改走 Repository）。
-- UI/业务自建线程池：`PlayFragment`(PLAYED_RECORD_EXECUTOR/parseThreadPool)、`Thunder`、subtitle `DefaultTaskExecutor`、`LocalVideoFrameLoader`/`LocalVideoAdapter` 等 `new*ThreadPool`；未全部收口到模块级执行器。
+- UI 直触 DAO/存储实现：已清零(app `RoomDataManger` 直读已收口到 HistoryRepository)。
+- UI/业务自建线程池：`PlayFragment`(PLAYED_RECORD_EXECUTOR/parseThreadPool)、`Thunder`、subtitle `DefaultTaskExecutor`、`LocalVideoFrameLoader`/`LocalVideoAdapter` 等 `new*ThreadPool`；未全部收口到模块级执行器（各点均有串行/取消语义约束，随大页面拆分一并治理）。
 - EventBus 仍广泛(register/post ~37 处)；新事件仍有出现，未真正退为"仅兼容层"。
+- ui-kit:app 内已建 `com.github.tvbox.osc.ui.kit`(§2.7 第一阶段),迁入 6 个纯净组件;
+  播放器/业务耦合视图(Player*View/FrostedGlassUtil)仍留 widget 包。
 
 ## 5. 大文件拆分（§三）— 未完成
 | 文件 | 行数 | 期望 |

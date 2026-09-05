@@ -36,7 +36,7 @@
             android:textColor="@color/text_foreground"
             android:textSize="15sp" />
 
-        <com.github.tvbox.osc.ui.widget.AppSwitch
+        <com.github.tvbox.osc.ui.kit.AppSwitch
             android:id="@+id/switch_wifi"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"

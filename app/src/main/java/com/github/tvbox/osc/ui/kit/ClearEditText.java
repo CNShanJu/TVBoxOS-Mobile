@@ -1,4 +1,4 @@
-package com.github.tvbox.osc.ui.widget;
+package com.github.tvbox.osc.ui.kit;
 
 import android.annotation.SuppressLint;
 import android.content.Context;

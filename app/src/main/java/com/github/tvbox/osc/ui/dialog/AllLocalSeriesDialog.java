@@ -11,7 +11,7 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.github.tvbox.osc.R;
 import com.github.tvbox.osc.bean.VodInfo;
 import com.github.tvbox.osc.ui.adapter.SeriesAdapter;
-import com.github.tvbox.osc.ui.widget.GridSpacingItemDecoration;
+import com.github.tvbox.osc.ui.kit.GridSpacingItemDecoration;
 import com.github.tvbox.osc.util.Utils;
 import com.lxj.xpopup.interfaces.OnSelectListener;
 

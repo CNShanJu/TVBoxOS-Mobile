@@ -25,7 +25,7 @@ import java.util.ArrayList;
 public class DownloadSettingsDialog extends AppCenterPopupView {
 
     private TextView mTvConcurrent;
-    private com.github.tvbox.osc.ui.widget.AppSwitch mSwitchWifi;
+    private com.github.tvbox.osc.ui.kit.AppSwitch mSwitchWifi;
 
     public DownloadSettingsDialog(@NonNull @NotNull Context context) {
         super(context);

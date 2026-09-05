@@ -6,7 +6,7 @@
     android:layout_height="match_parent"
     android:orientation="vertical">
 
-    <com.github.tvbox.osc.ui.widget.AppTitleBar
+    <com.github.tvbox.osc.ui.kit.AppTitleBar
         android:id="@+id/title_bar"
         android:layout_width="match_parent"
         android:layout_height="45dp"
@@ -203,7 +203,7 @@
                         android:layout_height="wrap_content"
                         android:layout_weight="1" />
 
-                    <com.github.tvbox.osc.ui.widget.AppSwitch
+                    <com.github.tvbox.osc.ui.kit.AppSwitch
                         android:id="@+id/switchPrivateBrowsing"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
@@ -239,7 +239,7 @@
                         android:textColor="@color/text_sub_foreground"
                         android:textSize="12sp"/>
 
-                    <com.github.tvbox.osc.ui.widget.AppSwitch
+                    <com.github.tvbox.osc.ui.kit.AppSwitch
                         android:id="@+id/switchLanServer"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
@@ -276,7 +276,7 @@
                         android:textColor="@color/text_sub_foreground"
                         android:textSize="12sp"/>
 
-                    <com.github.tvbox.osc.ui.widget.AppSwitch
+                    <com.github.tvbox.osc.ui.kit.AppSwitch
                         android:id="@+id/switchIgnoreSsl"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
@@ -317,7 +317,7 @@
                         android:layout_height="wrap_content"
                         android:layout_weight="1" />
 
-                    <com.github.tvbox.osc.ui.widget.AppSwitch
+                    <com.github.tvbox.osc.ui.kit.AppSwitch
                         android:id="@+id/switchDlWifiOnly"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
@@ -457,7 +457,7 @@
                         android:layout_height="wrap_content"
                         android:layout_weight="1" />
 
-                    <com.github.tvbox.osc.ui.widget.AppSwitch
+                    <com.github.tvbox.osc.ui.kit.AppSwitch
                         android:id="@+id/switchVideoPurify"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
@@ -486,7 +486,7 @@
                         android:layout_height="wrap_content"
                         android:layout_weight="1" />
 
-                    <com.github.tvbox.osc.ui.widget.AppSwitch
+                    <com.github.tvbox.osc.ui.kit.AppSwitch
                         android:id="@+id/switchSubscriptionLog"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
@@ -762,7 +762,7 @@
                         android:layout_height="wrap_content"
                         android:layout_weight="1" />
 
-                    <com.github.tvbox.osc.ui.widget.AppSwitch
+                    <com.github.tvbox.osc.ui.kit.AppSwitch
                         android:id="@+id/switchIjkCachePlay"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"

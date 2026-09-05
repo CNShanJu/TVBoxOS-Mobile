@@ -63,7 +63,7 @@ import com.github.tvbox.osc.ui.dialog.DownloadSeriesRightDialog;
 import com.github.tvbox.osc.ui.dialog.QuickSearchDialog;
 import com.github.tvbox.osc.ui.dialog.VideoDetailDialog;
 import com.github.tvbox.osc.ui.fragment.PlayFragment;
-import com.github.tvbox.osc.ui.widget.LinearSpacingItemDecoration;
+import com.github.tvbox.osc.ui.kit.LinearSpacingItemDecoration;
 import com.github.tvbox.osc.util.BroadcastUtils;
 import com.github.tvbox.osc.util.DetailQuickSearchHelper;
 import com.github.tvbox.osc.util.EpisodeDownloadBatch;
