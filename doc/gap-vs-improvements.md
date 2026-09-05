@@ -146,6 +146,9 @@ Exo→Media3、EventBus→Flow/接口、Hawk→DataStore、Java→Kotlin 渐进�
   (SubtitleCoordinator)仍使用,真机回归见 9/5 订阅导入日志噪音是否消失。
 - ✅ :download 持久化收口:`internal/{DownloadManager,DownloadStore,DownloadArchive,DownloadPolicy}` 的 Hawk 直存
   (任务列表/档案/并发/WiFi 策略)改走 `config.KeyValueStore`,:download 新增依赖 :core-storage、移除 hawk 库依赖。
+- ✅ :log 日志配置依赖倒置(DataStore 化前置):新增 `log.LogConfigStore` 端口,`LogConfig` 不再直 Hawk,由
+  宿主注入 core-storage `DefaultLogConfigStore`(基于 KeyValueStore)或未来 DataStore 实现;:log 移除 hawk 依赖。
+  → 第三方 hawk 现仅 core-storage `KeyValueStore` 单一持有,DataStore 化(第五阶段)前置已清。
 - ✅ 剩余 hawk 直用收口:core-network `AppLog`(运行日志开关)、player-api `PlayConfig/PlayerFactory`(播放偏好
   /默认播放器)、spider `ApiConfig` 与 `util/js/local`(订阅配置缓存/js 运行时缓存)全部改走 `KeyValueStore`;
   相应移除 core-network/player-api/spider/app 的 hawk 库依赖。第三方 hawk 仅剩持有者:core-storage(KeyValueStore

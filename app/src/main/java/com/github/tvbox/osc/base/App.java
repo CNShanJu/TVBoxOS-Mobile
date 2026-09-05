@@ -156,6 +156,8 @@ public class App extends MultiDexApplication {
             LogStore.setAppVersion(v + "(" + c + ")");
         } catch (Throwable ignored) {
         }
+        // 日志配置持久化走 core-storage 配置封装(依赖倒置;先于 LogStore.init,避免同一键两侧分叉)
+        com.github.tvbox.osc.log.LogConfig.setStore(com.github.tvbox.osc.config.DefaultLogConfigStore.get());
         LogStore.init(this);
     }
 
