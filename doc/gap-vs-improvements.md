@@ -250,6 +250,11 @@ Exo→Media3、EventBus→Flow/接口、Hawk→DataStore、Java→Kotlin 渐进�
 - ✅ 任务行文本拼装下沉 DownloadDisplay:titleText(剧名·集名判重)/statusLine(状态+百分比+网速,
   收尾省略整体百分比)/sourceText(未知来源)/swipeActionText(继续/重试/暂停);convert 仅剩 setText
   与色调取色。DownloadDisplayTest 累计 15 例。DownloadFragment →1016 行。(0d929aeb)
+- ✅ FormatSRT 解析样例单测(字幕装载纯解析链路首测):双字幕顺序+毫秒精确、多行 <br /> 连接、
+  空输入零字幕。(ffbd4988)
+- ✅ LiveActivity 死代码收尾:showBottomEpg 无用空 Handler、一批零使用字段(playUrl/timeFormat/
+  countDownTimer3/videoWidth/videoHeight/show)+ 从未赋值的 countDownTimer(恒空 cancel 块)删除,
+  清 CountDownTimer/SimpleDateFormat import。LiveActivity 815→731 行。(679881bb/b8e0b7ce)
 - ✅ 直播分组密码门禁抽离 `util/LiveChannelAuth`:isPasswordConfirmed/needInputPassword/
   visibleChannels 纯逻辑(组数据+确认集合传参),LiveActivity 三方法改委托;单测 4 例。
   (9bdcc169)
