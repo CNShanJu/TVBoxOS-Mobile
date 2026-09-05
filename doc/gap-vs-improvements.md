@@ -258,6 +258,13 @@ Exo→Media3、EventBus→Flow/接口、Hawk→DataStore、Java→Kotlin 渐进�
 - ✅ SourceViewModel 死代码/冗余清理:删除零调用 getSortFilter(及 gson JsonArray/JsonElement/
   JsonObject/LinkedHashMap import);sortJson/sortXml 未用的 MutableLiveData result 参数去除
   (解析后由调用方发布),4 处调用点同步。(1ddead9b)
+- ✅ DetailActivity 下载弹窗数据模型抽离 `util/DownloadSeriesModel`(纯):勾选集名收集、
+  按全集正表重建选集副本并写 episodeId、批量状态查询数组拆分;宿主仅做弹窗类型分派与
+  Facade episodeId 工厂注入。单测 4 例。(308572ba)
+- ✅ 批量下载结果文案下沉 EpisodeDownloadBatch.toastMessage(Outcome)(六路文案纯映射),
+  宿主只弹 toast + null 兜底;单测覆盖各分支。DetailActivity 下载弹窗状态层数据/文案面
+  已纯化;剩余为 UI 弹窗实例/生命周期编排(全屏退出、抽屉/底部弹窗分派、Facade 订阅),
+  与宿主强耦合,深拆需真机背书。(2f7149d1)
 - ✅ 直播分组密码门禁抽离 `util/LiveChannelAuth`:isPasswordConfirmed/needInputPassword/
   visibleChannels 纯逻辑(组数据+确认集合传参),LiveActivity 三方法改委托;单测 4 例。
   (9bdcc169)
