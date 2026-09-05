@@ -1012,6 +1012,7 @@ public class LocalVideoController extends BaseController implements PlaybackSett
         simSlideStart = false;
         simSeekPosition = 0;
         simSlideOffset = 0;
+        dismissSeekPanel(); // 遥控 seek 结束:浮层立即消失,状态机马上接管 loading
     }
 
     public void tvSlideStart(int dir) {

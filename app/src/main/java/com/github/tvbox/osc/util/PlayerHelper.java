@@ -46,48 +46,9 @@ public class PlayerHelper {
             e.printStackTrace();
         }
         IJKCode codec = IjkCodecConfigProviders.get().getIJKCodec(ijkCode);
-        PlayerFactory playerFactory;
-        if (playerType == 1) {
-            playerFactory = new PlayerFactory<IjkMediaPlayer>() {
-                @Override
-                public IjkMediaPlayer createPlayer(Context context) {
-                    return new IjkMediaPlayer(context, codec);
-                }
-            };
-            try {
-                tv.danmaku.ijk.media.player.IjkMediaPlayer.loadLibrariesOnce(new IjkLibLoader() {
-                    @Override
-                    public void loadLibrary(String s) throws UnsatisfiedLinkError, SecurityException {
-                        try {
-                            System.loadLibrary(s);
-                        } catch (Throwable th) {
-                            th.printStackTrace();
-                        }
-                    }
-                });
-            } catch (Throwable th) {
-                th.printStackTrace();
-            }
-        } else if (playerType == 2) {
-            playerFactory = new PlayerFactory<EXOmPlayer>() {
-                @Override
-                public EXOmPlayer createPlayer(Context context) {
-                    return new EXOmPlayer(context);
-                }
-            };
-        } else {
-            playerFactory = AndroidMediaPlayerFactory.create();
-        }
-        RenderViewFactory renderViewFactory = null;
-        switch (renderType) {
-            case 0:
-            default:
-                renderViewFactory = TextureRenderViewFactory.create();
-                break;
-            case 1:
-                renderViewFactory = SurfaceRenderViewFactory.create();
-                break;
-        }
+        PlayerFactory playerFactory = com.github.tvbox.osc.player.PlayerKernels.doikkiFactory(playerType, codec);
+        if (playerType == 1) com.github.tvbox.osc.player.PlayerKernels.ensureIjkLibrariesLoaded();
+        RenderViewFactory renderViewFactory = com.github.tvbox.osc.player.PlayerKernels.renderFactory(renderType);
         videoView.setPlayerFactory(playerFactory);
         videoView.setRenderViewFactory(renderViewFactory);
         videoView.setScreenScaleType(scale);
@@ -96,69 +57,18 @@ public class PlayerHelper {
     public static void updateCfg(VideoView videoView) {
         if (videoView == null) return; // 防御:播放器视图未初始化时跳过
         int playType = PlayConfig.getPlayType();
-        PlayerFactory playerFactory;
-        if (playType == 1) {
-            playerFactory = new PlayerFactory<IjkMediaPlayer>() {
-                @Override
-                public IjkMediaPlayer createPlayer(Context context) {
-                    return new IjkMediaPlayer(context, null);
-                }
-            };
-            try {
-                tv.danmaku.ijk.media.player.IjkMediaPlayer.loadLibrariesOnce(new IjkLibLoader() {
-                    @Override
-                    public void loadLibrary(String s) throws UnsatisfiedLinkError, SecurityException {
-                        try {
-                            System.loadLibrary(s);
-                        } catch (Throwable th) {
-                            th.printStackTrace();
-                        }
-                    }
-                });
-            } catch (Throwable th) {
-                th.printStackTrace();
-            }
-        } else if (playType == 2) {
-            playerFactory = new PlayerFactory<EXOmPlayer>() {
-                @Override
-                public EXOmPlayer createPlayer(Context context) {
-                    return new EXOmPlayer(context);
-                }
-            };
-        } else {
-            playerFactory = AndroidMediaPlayerFactory.create();
-        }
+        PlayerFactory playerFactory = com.github.tvbox.osc.player.PlayerKernels.doikkiFactory(playType, null);
+        if (playType == 1) com.github.tvbox.osc.player.PlayerKernels.ensureIjkLibrariesLoaded();
         int renderType = PlayConfig.getRenderType();
-        RenderViewFactory renderViewFactory = null;
-        switch (renderType) {
-            case 0:
-            default:
-                renderViewFactory = TextureRenderViewFactory.create();
-                break;
-            case 1:
-                renderViewFactory = SurfaceRenderViewFactory.create();
-                break;
-        }
+        RenderViewFactory renderViewFactory = com.github.tvbox.osc.player.PlayerKernels.renderFactory(renderType);
         videoView.setPlayerFactory(playerFactory);
         videoView.setRenderViewFactory(renderViewFactory);
     }
 
 
     public static void init() {
-        try {
-            tv.danmaku.ijk.media.player.IjkMediaPlayer.loadLibrariesOnce(new IjkLibLoader() {
-                @Override
-                public void loadLibrary(String s) throws UnsatisfiedLinkError, SecurityException {
-                    try {
-                        System.loadLibrary(s);
-                    } catch (Throwable th) {
-                        th.printStackTrace();
-                    }
-                }
-            });
-        } catch (Throwable th) {
-            th.printStackTrace();
-        }
+        // IJK 动态库加载单点(PlayerKernels)
+        com.github.tvbox.osc.player.PlayerKernels.ensureIjkLibrariesLoaded();
     }
 
     public static String getPlayerName(int playType) {

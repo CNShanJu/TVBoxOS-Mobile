@@ -208,32 +208,14 @@ public final class AppCompositionRoot {
         }
     }
 
-    /** 按内核类型创建独立 VideoView(工厂语义与 PlayerHelper.updateCfg 对齐;渲染默认 texture) */
+    /** 按内核类型创建独立 VideoView(内核/渲染统一经 PlayerKernels;渲染默认 texture) */
     private static xyz.doikki.videoplayer.player.VideoView newVideoView(Context context, int playType) {
         xyz.doikki.videoplayer.player.VideoView vv = new xyz.doikki.videoplayer.player.VideoView(context);
-        if (playType == 1) {
-            // IJK 内核工厂(与 PlayerHelper.updateCfg 相同)
-            vv.setPlayerFactory(new xyz.doikki.videoplayer.player.PlayerFactory<com.github.tvbox.osc.player.IjkMediaPlayer>() {
-                @Override
-                public com.github.tvbox.osc.player.IjkMediaPlayer createPlayer(Context ctx) {
-                    return new com.github.tvbox.osc.player.IjkMediaPlayer(ctx, null);
-                }
-            });
-        } else {
-            vv.setPlayerFactory(new xyz.doikki.videoplayer.player.PlayerFactory<com.github.tvbox.osc.player.EXOmPlayer>() {
-                @Override
-                public com.github.tvbox.osc.player.EXOmPlayer createPlayer(Context ctx) {
-                    return new com.github.tvbox.osc.player.EXOmPlayer(ctx);
-                }
-            });
-        }
+        // 内核单点(与 PlayerHelper.updateCfg 同源;Media3 升级只改 PlayerKernels)
+        vv.setPlayerFactory(com.github.tvbox.osc.player.PlayerKernels.doikkiFactory(playType, null));
         try {
             int renderType = com.github.tvbox.osc.player.api.PlayConfig.getRenderType();
-            if (renderType == 1) {
-                vv.setRenderViewFactory(com.github.tvbox.osc.player.render.SurfaceRenderViewFactory.create());
-            } else {
-                vv.setRenderViewFactory(xyz.doikki.videoplayer.render.TextureRenderViewFactory.create());
-            }
+            vv.setRenderViewFactory(com.github.tvbox.osc.player.PlayerKernels.renderFactory(renderType));
         } catch (Throwable th) {
             android.util.Log.w("AppCompositionRoot", "VideoView 渲染工厂设置失败(原型)", th);
         }

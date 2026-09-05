@@ -4,18 +4,16 @@ import android.content.Intent;
 import android.content.res.Configuration;
 import android.os.Bundle;
 import android.text.TextUtils;
-import android.view.Gravity;
+import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.animation.BounceInterpolator;
 import android.widget.LinearLayout;
-import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.GridLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
-import com.blankj.utilcode.util.ConvertUtils;
 import com.github.tvbox.osc.util.AppBubble;
 import com.github.tvbox.osc.util.StackBlurBlur;
 import com.chad.library.adapter.base.BaseQuickAdapter;
@@ -72,6 +70,8 @@ public class UserFragment extends BaseLazyFragment {
     /** 下拉刷新容器(首页列表根布局),绑定一次 */
     private ListSwipeRefreshLayout mSwipeRefresh = null;
     private boolean swipeRefreshBound = false;
+    /** 列表末尾"到底了"提示(共享组件 item_view_end_tip):默认隐藏,仅列表可滚动(超过一屏)时显示 */
+    private View mEndTip = null;
 
     public static UserFragment newInstance(List<Movie.Video> recVod) {
         return new UserFragment().setArguments(recVod);
@@ -188,6 +188,7 @@ public class UserFragment extends BaseLazyFragment {
             if (homeSourceRec != null && homeSourceRec.size() > 0) {
                 homeHotVodAdapter.setNewData(homeSourceRec);
                 showSuccess();
+                updateEndTip();
             } else {
                 showEmpty();
             }
@@ -209,22 +210,31 @@ public class UserFragment extends BaseLazyFragment {
     }
 
     /**
-     * 列表末尾"到底了"提示:滚动到最底可见,空态由 LoadSir 覆盖层接管不受影响
+     * 列表末尾"到底了"提示:使用共享组件 item_view_end_tip(文案 @string/brvah_load_end,
+     * 与分类页 loadmore 的到底提示同源),默认隐藏,由 updateEndTip 按需显示。
      */
     private void addEndFooter() {
-        TextView footer = new TextView(mContext);
-        footer.setText("—— 到底了 ——");
-        footer.setTextColor(getResources().getColor(R.color.text_sub_foreground));
-        footer.setAlpha(0.55f); // 弱化亮度过高,提升透明感
-        footer.setTextSize(12);
-        footer.setGravity(Gravity.CENTER);
-        // 占满整行使文字水平居中;上下留 4dp,贴近底部(列表 paddingBottom=12dp)
-        footer.setLayoutParams(new RecyclerView.LayoutParams(
-                RecyclerView.LayoutParams.MATCH_PARENT,
-                RecyclerView.LayoutParams.WRAP_CONTENT));
-        int pad = ConvertUtils.dp2px(4f);
-        footer.setPadding(pad, pad, pad, pad);
-        homeHotVodAdapter.addFooterView(footer);
+        mEndTip = LayoutInflater.from(mContext).inflate(R.layout.item_view_end_tip, null);
+        mEndTip.setVisibility(View.GONE);
+        homeHotVodAdapter.addFooterView(mEndTip);
+    }
+
+    /**
+     * 数据就绪后刷新"到底了":默认不显示——只有列表内容确实能滚动(超过一屏、滚到底才有提示意义)
+     * 时才显示;一屏即可看完的内容不显示,避免"到底了"常驻造成假噪音。
+     * 空数据一律不显示(由 LoadSir 空态接管)。
+     */
+    private void updateEndTip() {
+        if (mEndTip == null) return;
+        if (homeHotVodAdapter.getData().isEmpty()) {
+            mEndTip.setVisibility(View.GONE);
+            return;
+        }
+        tvHotList1.post(() -> {
+            if (mEndTip == null || tvHotList1 == null) return;
+            boolean scrollable = tvHotList1.canScrollVertically(1) || tvHotList1.canScrollVertically(-1);
+            mEndTip.setVisibility(scrollable ? View.VISIBLE : View.GONE);
+        });
     }
 
     /**
@@ -252,6 +262,7 @@ public class UserFragment extends BaseLazyFragment {
             if (homeSourceRec != null && homeSourceRec.size() > 0) {
                 showSuccess();
                 adapter.setNewData(homeSourceRec);
+                updateEndTip();
             }else {
                 showEmpty();
             }
@@ -272,10 +283,15 @@ public class UserFragment extends BaseLazyFragment {
                     if (hotMovies != null && hotMovies.size() > 0) {
                         showSuccess();
                         adapter.setNewData(hotMovies);
+                        updateEndTip();
                         finishSwipeRefresh();
                         return;
                     }
                 }
+            }
+            // 首次加载给出状态;下拉刷新时已有旧数据则不整页盖住
+            if (adapter.getData().isEmpty()) {
+                showLoading();
             }
             String doubanUrl = "https://movie.douban.com/j/new_search_subjects?sort=U&range=0,10&tags=&playable=1&start=0&year_range=" + year + "," + year;
             Map<String, String> headers = new HashMap<>();
@@ -291,6 +307,7 @@ public class UserFragment extends BaseLazyFragment {
                             if (videos.size()>0){
                                 showSuccess();
                                 adapter.setNewData(videos);
+                                updateEndTip();
                             }else {
                                 showEmpty();
                             }
@@ -301,10 +318,13 @@ public class UserFragment extends BaseLazyFragment {
 
                 @Override
                 public void onError(Throwable e) {
-                    // 保持原行为(旧列表不变); 下拉刷新要收尾
+                    // 保持原行为(旧列表不变); 首载失败也要有状态,避免一直停在 loading
                     mActivity.runOnUiThread(new Runnable() {
                         @Override
                         public void run() {
+                            if (adapter.getData().isEmpty()) {
+                                showEmpty();
+                            }
                             finishSwipeRefresh();
                         }
                     });

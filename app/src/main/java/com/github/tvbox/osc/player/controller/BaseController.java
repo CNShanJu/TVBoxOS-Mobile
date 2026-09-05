@@ -168,6 +168,17 @@ public abstract class BaseController extends BaseVideoController implements Gest
         refreshLoadingUi(mCurPlayState);
     }
 
+    /**
+     * seek 动作结束(手势松手/遥控器松键):立即关闭进度浮层,不等 1s 超时。
+     * 浮层一消失状态机立刻按当前播放状态接管 loading/网速——若 seek 后确实在缓冲,
+     * loading 马上如实显示;不会出现"浮层还挂着、loading 被压住 1 秒后才冒出来"的拖沓感。
+     */
+    public void dismissSeekPanel() {
+        mHandler.removeMessages(1000);
+        mHandler.removeMessages(1001);
+        mHandler.sendEmptyMessage(1001); // 子类 1001:浮层 GONE + setSeekPanelVisible(false)
+    }
+
     @Override
     protected void setProgress(int duration, int position) {
         super.setProgress(duration, position);
@@ -427,11 +438,13 @@ public abstract class BaseController extends BaseVideoController implements Gest
                     if (mSeekPosition >= 0) {
                         mControlWrapper.seekTo(mSeekPosition);
                         mSeekPosition = -1;
+                        dismissSeekPanel(); // seek 结束:浮层立即消失,状态机马上接管 loading
                     }
                     break;
                 case MotionEvent.ACTION_CANCEL:
                     stopSlide();
                     mSeekPosition = -1;
+                    dismissSeekPanel();
                     break;
             }
         }
