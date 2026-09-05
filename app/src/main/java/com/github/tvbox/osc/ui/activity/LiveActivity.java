@@ -1,9 +1,5 @@
 package com.github.tvbox.osc.ui.activity;
 
-import android.animation.Animator;
-import android.animation.AnimatorListenerAdapter;
-import android.animation.IntEvaluator;
-import android.animation.ObjectAnimator;
 import android.content.Context;
 import android.net.Uri;
 import android.os.CountDownTimer;
@@ -14,7 +10,6 @@ import android.view.Gravity;
 import android.view.KeyEvent;
 import android.view.View;
 import android.view.View.OnClickListener;
-import android.view.ViewGroup;
 import android.widget.FrameLayout;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
@@ -35,20 +30,15 @@ import com.github.tvbox.osc.base.BaseActivity;
 import com.github.tvbox.osc.bean.CastVideo;
 import com.github.tvbox.osc.bean.LiveChannelGroup;
 import com.github.tvbox.osc.bean.LiveChannelItem;
-import com.github.tvbox.osc.bean.LiveSettingGroup;
-import com.github.tvbox.osc.bean.LiveSettingItem;
 import com.github.tvbox.osc.player.controller.LiveNewController;
 import com.github.tvbox.osc.util.LivePlayerManager;
 import com.github.tvbox.osc.ui.adapter.LiveChannelGroupNewAdapter;
 import com.github.tvbox.osc.ui.adapter.LiveChannelItemNewAdapter;
-import com.github.tvbox.osc.ui.adapter.LiveSettingGroupAdapter;
-import com.github.tvbox.osc.ui.adapter.LiveSettingItemAdapter;
 import com.github.tvbox.osc.ui.dialog.AllChannelsRightDialog;
 import com.github.tvbox.osc.ui.dialog.CastListDialog;
 import com.github.tvbox.osc.ui.dialog.LivePasswordDialog;
 import com.github.tvbox.osc.ui.dialog.LiveSettingDialog;
 import com.github.tvbox.osc.ui.dialog.LiveSettingRightDialog;
-import com.github.tvbox.osc.ui.tv.widget.ViewObj;
 import com.github.tvbox.osc.ui.kit.LinearSpacingItemDecoration;
 import com.github.tvbox.osc.ui.widget.PlayerMenuView;
 import com.github.tvbox.osc.ui.widget.PlayerTitleView;
@@ -66,7 +56,6 @@ import com.lxj.xpopup.XPopup;
 import com.lxj.xpopup.core.BasePopupView;
 import com.lxj.xpopup.enums.PopupPosition;
 import com.orhanobut.hawk.Hawk;
-import com.owen.tvrecyclerview.widget.TvRecyclerView;
 import com.owen.tvrecyclerview.widget.V7LinearLayoutManager;
 
 import java.text.ParseException;
@@ -97,13 +86,6 @@ public class LiveActivity extends BaseActivity {
     private RecyclerView mLiveChannelView;
     public LiveChannelGroupNewAdapter liveChannelGroupAdapter;
     public LiveChannelItemNewAdapter liveChannelItemAdapter;
-
-    private LinearLayout tvRightSettingLayout;
-    private TvRecyclerView mSettingGroupView;
-    private TvRecyclerView mSettingItemView;
-    private LiveSettingGroupAdapter liveSettingGroupAdapter;
-    private LiveSettingItemAdapter liveSettingItemAdapter;
-    private List<LiveSettingGroup> liveSettingGroupList = new ArrayList<>();
 
     public static  int currentChannelGroupIndex = 0;
     private Handler mHandler = new Handler();
@@ -170,9 +152,6 @@ public class LiveActivity extends BaseActivity {
         mChannelGroupView.addItemDecoration(new LinearSpacingItemDecoration(20,true));
         mLiveChannelView.addItemDecoration(new LinearSpacingItemDecoration(20,true));
 
-        tvRightSettingLayout = findViewById(R.id.tvRightSettingLayout);
-        mSettingGroupView = findViewById(R.id.mSettingGroupView);
-        mSettingItemView = findViewById(R.id.mSettingItemView);
         tvChannelInfo = findViewById(R.id.tvChannel);
 
         //EPG  findViewById  by 龍
@@ -196,10 +175,7 @@ public class LiveActivity extends BaseActivity {
         initVideoView();
         initChannelGroupView();
         initLiveChannelView();
-        initSettingGroupView();
-        initSettingItemView();
         initLiveChannelList();
-        initLiveSettingGroupList();
     }
 
     //显示底部EPG
@@ -229,10 +205,7 @@ public class LiveActivity extends BaseActivity {
 
     @Override
     public void onBackPressed() {
-        if (tvRightSettingLayout.getVisibility() == View.VISIBLE) {
-            mHandler.removeCallbacks(mHideSettingLayoutRun);
-            mHandler.post(mHideSettingLayoutRun);
-        } else if(isBack){
+        if(isBack){
             isBack= false;
             playPreSource();
         } else if(mSettingBottomDialog!=null && mSettingBottomDialog.isShow()){//适配底部导航栏(手势条闪屏)变成view模式后在back时手动隐藏
@@ -251,7 +224,7 @@ public class LiveActivity extends BaseActivity {
         if (event.getAction() == KeyEvent.ACTION_DOWN) {
             int keyCode = event.getKeyCode();
             if (keyCode == KeyEvent.KEYCODE_MENU) {
-                //showSettingGroup();
+                // 菜单键预留:直播设置已走底部/抽屉弹窗(showSettingDialog)
             } else if (!isListOrSettingLayoutVisible()) {
                 switch (keyCode) {
                     case KeyEvent.KEYCODE_DPAD_UP:
@@ -269,8 +242,6 @@ public class LiveActivity extends BaseActivity {
                     case KeyEvent.KEYCODE_DPAD_LEFT:
                         if(isBack){
 
-                        }else{
-                            //showSettingGroup();
                         }
                         break;
                     case KeyEvent.KEYCODE_DPAD_RIGHT:
@@ -320,11 +291,6 @@ public class LiveActivity extends BaseActivity {
     }
 
     private void showChannelList() {
-        if (tvRightSettingLayout.getVisibility() == View.VISIBLE) {
-            mHandler.removeCallbacks(mHideSettingLayoutRun);
-            mHandler.post(mHideSettingLayoutRun);
-            return;
-        }
         //重新载入上一次状态
         liveChannelItemAdapter.setNewData(getLiveChannels(currentChannelGroupIndex));
         if (currentLiveChannelIndex > -1){
@@ -343,15 +309,9 @@ public class LiveActivity extends BaseActivity {
                 currentLiveChannelItem.getSourceIndex() + 1, currentLiveChannelItem.getSourceNum()));
 
         FrameLayout.LayoutParams lParams = new FrameLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT);
-        if (tvRightSettingLayout.getVisibility() == View.VISIBLE) {
-            lParams.gravity = Gravity.LEFT;
-            lParams.leftMargin = 60;
-            lParams.topMargin = 30;
-        } else {
-            lParams.gravity = Gravity.RIGHT;
-            lParams.rightMargin = 60;
-            lParams.topMargin = 30;
-        }
+        lParams.gravity = Gravity.RIGHT;
+        lParams.rightMargin = 60;
+        lParams.topMargin = 30;
         tvChannelInfo.setLayoutParams(lParams);
 
         tvChannelInfo.setVisibility(View.VISIBLE);
@@ -427,73 +387,6 @@ public class LiveActivity extends BaseActivity {
         playChannel(currentChannelGroupIndex, currentLiveChannelIndex, true);
     }
 
-    //显示设置列表
-    private void showSettingGroup() {
-
-        if (tvRightSettingLayout.getVisibility() == View.INVISIBLE) {
-            if (!isCurrentLiveChannelValid()) return;
-            //重新载入默认状态
-            loadCurrentSourceList();
-            liveSettingGroupAdapter.setNewData(liveSettingGroupList);
-            selectSettingGroup(0, false);
-            mSettingGroupView.smoothScrollToPosition(0);
-            mSettingItemView.smoothScrollToPosition(currentLiveChannelItem.getSourceIndex());
-            mHandler.postDelayed(mFocusAndShowSettingGroup, 200);
-        } else {
-            mHandler.removeCallbacks(mHideSettingLayoutRun);
-            mHandler.post(mHideSettingLayoutRun);
-        }
-    }
-
-    private Runnable mFocusAndShowSettingGroup = new Runnable() {
-        @Override
-        public void run() {
-            if (mSettingGroupView.isScrolling() || mSettingItemView.isScrolling() || mSettingGroupView.isComputingLayout() || mSettingItemView.isComputingLayout()) {
-                mHandler.postDelayed(this, 100);
-            } else {
-                RecyclerView.ViewHolder holder = mSettingGroupView.findViewHolderForAdapterPosition(0);
-                if (holder != null)
-                    holder.itemView.requestFocus();
-                tvRightSettingLayout.setVisibility(View.VISIBLE);
-                ViewGroup.MarginLayoutParams params = (ViewGroup.MarginLayoutParams) tvRightSettingLayout.getLayoutParams();
-                if (tvRightSettingLayout.getVisibility() == View.VISIBLE) {
-                    ViewObj viewObj = new ViewObj(tvRightSettingLayout, params);
-                    ObjectAnimator animator = ObjectAnimator.ofObject(viewObj, "marginRight", new IntEvaluator(), -tvRightSettingLayout.getLayoutParams().width, 0);
-                    animator.setDuration(200);
-                    animator.addListener(new AnimatorListenerAdapter() {
-                        @Override
-                        public void onAnimationEnd(Animator animation) {
-                            super.onAnimationEnd(animation);
-                            mHandler.postDelayed(mHideSettingLayoutRun, 5000);
-                        }
-                    });
-                    animator.start();
-                }
-            }
-        }
-    };
-
-    private Runnable mHideSettingLayoutRun = new Runnable() {
-        @Override
-        public void run() {
-            ViewGroup.MarginLayoutParams params = (ViewGroup.MarginLayoutParams) tvRightSettingLayout.getLayoutParams();
-            if (tvRightSettingLayout.getVisibility() == View.VISIBLE) {
-                ViewObj viewObj = new ViewObj(tvRightSettingLayout, params);
-                ObjectAnimator animator = ObjectAnimator.ofObject(viewObj, "marginRight", new IntEvaluator(), 0, -tvRightSettingLayout.getLayoutParams().width);
-                animator.setDuration(200);
-                animator.addListener(new AnimatorListenerAdapter() {
-                    @Override
-                    public void onAnimationEnd(Animator animation) {
-                        super.onAnimationEnd(animation);
-                        tvRightSettingLayout.setVisibility(View.INVISIBLE);
-                        liveSettingGroupAdapter.setSelectedGroupIndex(-1);
-                    }
-                });
-                animator.start();
-            }
-        }
-    };
-
 //    private void initVideoView() {
 //        StandardVideoController controller = new StandardVideoController(this);
 //        controller.addControlComponent(new LiveControlView(this)); //直播控制条
@@ -515,7 +408,7 @@ public class LiveActivity extends BaseActivity {
 
             @Override
             public void setting() {
-                //showSettingGroup();
+                // 直播设置已走 showSettingDialog(底部/抽屉弹窗),这里不再内嵌面板
             }
 
             @Override
@@ -653,134 +546,6 @@ public class LiveActivity extends BaseActivity {
         playChannel(liveChannelGroupAdapter.getSelectedGroupIndex(), position, false);
     }
 
-    private void initSettingGroupView() {
-        mSettingGroupView.setHasFixedSize(true);
-        mSettingGroupView.setLayoutManager(new V7LinearLayoutManager(this.mContext, 1, false));
-
-        liveSettingGroupAdapter = new LiveSettingGroupAdapter();
-        mSettingGroupView.setAdapter(liveSettingGroupAdapter);
-        mSettingGroupView.addOnScrollListener(new RecyclerView.OnScrollListener() {
-            @Override
-            public void onScrollStateChanged(@NonNull RecyclerView recyclerView, int newState) {
-                super.onScrollStateChanged(recyclerView, newState);
-                mHandler.removeCallbacks(mHideSettingLayoutRun);
-                mHandler.postDelayed(mHideSettingLayoutRun, 5000);
-            }
-        });
-
-        liveSettingGroupAdapter.setOnItemClickListener(new BaseQuickAdapter.OnItemClickListener() {
-            @Override
-            public void onItemClick(BaseQuickAdapter adapter, View view, int position) {
-                FastClickCheckUtil.check(view);
-                selectSettingGroup(position, false);
-            }
-        });
-    }
-
-    private void selectSettingGroup(int position, boolean focus) {
-        if (!isCurrentLiveChannelValid()) return;
-        if (focus) {
-            liveSettingGroupAdapter.setFocusedGroupIndex(position);
-            liveSettingItemAdapter.setFocusedItemIndex(-1);
-        }
-        if (position == liveSettingGroupAdapter.getSelectedGroupIndex() || position < -1)
-            return;
-
-        liveSettingGroupAdapter.setSelectedGroupIndex(position);
-        liveSettingItemAdapter.setNewData(liveSettingGroupList.get(position).getLiveSettingItems());
-
-        switch (position) {
-            case 0:
-                liveSettingItemAdapter.selectItem(currentLiveChannelItem.getSourceIndex(), true, false);
-                break;
-            case 1:
-                liveSettingItemAdapter.selectItem(livePlayerManager.getLivePlayerScale(), true, true);
-                break;
-            case 2:
-                liveSettingItemAdapter.selectItem(livePlayerManager.getLivePlayerType(), true, true);
-                break;
-        }
-        int smoothScrollToPosition = liveSettingItemAdapter.getSelectedItemIndex();
-        if (smoothScrollToPosition < 0) smoothScrollToPosition = 0;
-        mSettingItemView.smoothScrollToPosition(smoothScrollToPosition);
-        mHandler.removeCallbacks(mHideSettingLayoutRun);
-        mHandler.postDelayed(mHideSettingLayoutRun, 5000);
-    }
-
-    private void initSettingItemView() {
-        mSettingItemView.setHasFixedSize(true);
-        mSettingItemView.setLayoutManager(new V7LinearLayoutManager(this.mContext, 1, false));
-
-        liveSettingItemAdapter = new LiveSettingItemAdapter();
-        mSettingItemView.setAdapter(liveSettingItemAdapter);
-        mSettingItemView.addOnScrollListener(new RecyclerView.OnScrollListener() {
-            @Override
-            public void onScrollStateChanged(@NonNull RecyclerView recyclerView, int newState) {
-                super.onScrollStateChanged(recyclerView, newState);
-                mHandler.removeCallbacks(mHideSettingLayoutRun);
-                mHandler.postDelayed(mHideSettingLayoutRun, 5000);
-            }
-        });
-
-        liveSettingItemAdapter.setOnItemClickListener(new BaseQuickAdapter.OnItemClickListener() {
-            @Override
-            public void onItemClick(BaseQuickAdapter adapter, View view, int position) {
-                FastClickCheckUtil.check(view);
-                clickSettingItem(position);
-            }
-        });
-    }
-
-    private void clickSettingItem(int position) {
-        int settingGroupIndex = liveSettingGroupAdapter.getSelectedGroupIndex();
-        if (settingGroupIndex < 4) {
-            if (position == liveSettingItemAdapter.getSelectedItemIndex())
-                return;
-            liveSettingItemAdapter.selectItem(position, true, true);
-        }
-        switch (settingGroupIndex) {
-            case 0://线路切换
-                currentLiveChannelItem.setSourceIndex(position);
-                playChannel(currentChannelGroupIndex, currentLiveChannelIndex,true);
-                break;
-            case 1://画面比例
-                livePlayerManager.changeLivePlayerScale(mVideoView, position, currentLiveChannelItem.getChannelName());
-                break;
-            case 2://播放解码
-                mVideoView.release();
-                livePlayerManager.changeLivePlayerType(mVideoView, position, currentLiveChannelItem.getChannelName());
-                mVideoView.setUrl(currentLiveChannelItem.getUrl());
-                mVideoView.start();
-                break;
-            case 3://超时换源
-                LiveConfig.setConnectTimeout(position);
-                break;
-            case 4://偏好设置
-                boolean select = false;
-                switch (position) {
-                    case 0:
-                        select = !LiveConfig.showTime();
-                        LiveConfig.setShowTime(select);
-                        break;
-                    case 1:
-                        select = !LiveConfig.showNetSpeed();
-                        LiveConfig.setShowNetSpeed(select);
-                        break;
-                    case 2:
-                        select = !LiveConfig.channelReverse();
-                        LiveConfig.setChannelReverse(select);
-                        break;
-                    case 3:
-                        select = !LiveConfig.crossGroup();
-                        LiveConfig.setCrossGroup(select);
-                        break;
-                }
-                liveSettingItemAdapter.selectItem(position, select, false);
-                break;
-        }
-        mHandler.removeCallbacks(mHideSettingLayoutRun);
-        mHandler.postDelayed(mHideSettingLayoutRun, 5000);
-    }
 
     private void initLiveChannelList() {
         List<LiveChannelGroup> list = ApiConfig.get().getChannelGroupList();
@@ -898,62 +663,12 @@ public class LiveActivity extends BaseActivity {
 
         livePlayerManager.init(mVideoView);
 
-        tvRightSettingLayout.setVisibility(View.INVISIBLE);
-
         liveChannelGroupAdapter.setNewData(liveChannelGroupList);
         selectChannelGroup(lastChannelGroupIndex, false, lastLiveChannelIndex);
     }
 
     private boolean isListOrSettingLayoutVisible() {
-        return tvLeftChannelListLayout.getVisibility() == View.VISIBLE || tvRightSettingLayout.getVisibility() == View.VISIBLE;
-    }
-
-    private void initLiveSettingGroupList() {
-        ArrayList<String> groupNames = new ArrayList<>(Arrays.asList("线路选择", "画面比例", "播放解码", "超时换源", "偏好设置"));
-        ArrayList<ArrayList<String>> itemsArrayList = new ArrayList<>();
-        ArrayList<String> sourceItems = new ArrayList<>();
-        ArrayList<String> scaleItems = new ArrayList<>(Arrays.asList("默认", "16:9", "4:3", "填充", "原始", "裁剪"));
-        ArrayList<String> playerDecoderItems = new ArrayList<>(Arrays.asList("系统", "ijk硬解", "ijk软解", "exo"));
-        ArrayList<String> timeoutItems = new ArrayList<>(Arrays.asList("5s", "10s", "15s", "20s", "25s", "30s"));
-        ArrayList<String> personalSettingItems = new ArrayList<>(Arrays.asList("显示时间", "显示网速", "换台反转", "跨选分类"));
-        itemsArrayList.add(sourceItems);
-        itemsArrayList.add(scaleItems);
-        itemsArrayList.add(playerDecoderItems);
-        itemsArrayList.add(timeoutItems);
-        itemsArrayList.add(personalSettingItems);
-
-        liveSettingGroupList.clear();
-        for (int i = 0; i < groupNames.size(); i++) {
-            LiveSettingGroup liveSettingGroup = new LiveSettingGroup();
-            ArrayList<LiveSettingItem> liveSettingItemList = new ArrayList<>();
-            liveSettingGroup.setGroupIndex(i);
-            liveSettingGroup.setGroupName(groupNames.get(i));
-            for (int j = 0; j < itemsArrayList.get(i).size(); j++) {
-                LiveSettingItem liveSettingItem = new LiveSettingItem();
-                liveSettingItem.setItemIndex(j);
-                liveSettingItem.setItemName(itemsArrayList.get(i).get(j));
-                liveSettingItemList.add(liveSettingItem);
-            }
-            liveSettingGroup.setLiveSettingItems(liveSettingItemList);
-            liveSettingGroupList.add(liveSettingGroup);
-        }
-        liveSettingGroupList.get(3).getLiveSettingItems().get(LiveConfig.connectTimeout()).setItemSelected(true);
-        liveSettingGroupList.get(4).getLiveSettingItems().get(0).setItemSelected(LiveConfig.showTime());
-        liveSettingGroupList.get(4).getLiveSettingItems().get(1).setItemSelected(LiveConfig.showNetSpeed());
-        liveSettingGroupList.get(4).getLiveSettingItems().get(2).setItemSelected(LiveConfig.channelReverse());
-        liveSettingGroupList.get(4).getLiveSettingItems().get(3).setItemSelected(LiveConfig.crossGroup());
-    }
-
-    private void loadCurrentSourceList() {
-        ArrayList<String> currentSourceNames = currentLiveChannelItem.getChannelSourceNames();
-        ArrayList<LiveSettingItem> liveSettingItemList = new ArrayList<>();
-        for (int j = 0; j < currentSourceNames.size(); j++) {
-            LiveSettingItem liveSettingItem = new LiveSettingItem();
-            liveSettingItem.setItemIndex(j);
-            liveSettingItem.setItemName(currentSourceNames.get(j));
-            liveSettingItemList.add(liveSettingItem);
-        }
-        liveSettingGroupList.get(0).setLiveSettingItems(liveSettingItemList);
+        return tvLeftChannelListLayout.getVisibility() == View.VISIBLE;
     }
 
     private void showPasswordDialog(int groupIndex, int liveChannelIndex) {
