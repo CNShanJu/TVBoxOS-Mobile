@@ -192,6 +192,11 @@ Exo→Media3、EventBus→Flow/接口、Hawk→DataStore、Java→Kotlin 渐进�
 - ⚠️ DownloadFragment 已完成 Facade 订阅去 EventBus;app 其余 EventBus 点(搜索/快速搜索/历史/直播等
   refresh 事件)仍为跨 Fragment 通信,逐步收口属"状态/事件管理"长线项。
 
+## 10. 处理记录(按轮追加)
+- ✅ SourceViewModel type0/1 解析纯函数化:`spider-api/AbsXmlParser.parseXml/parseJson/normalize`(XStream 白名单加固、
+  xml 清洗、线路串→beanList、sourceKey 回填),VM `xml()/json()` 改为解析+`publishDetailPayload` 副作用分离;
+  建议真机回归 type0/1 列表/详情/搜索与 type3 typed 路径。并行侧同文件改动(absXml 简化)已合流,评审一次。
+
 ## 9. 待真机回归后继续(播放器主线尾段,当前挂起)
 - PlayerApi 会话内核**实验选项**:设置页加"播放器内核:PlayerApi 会话(实验)"开关(默认关);
   开启时点播走 PlayerFactory 创建的内核并驱动基础播放 + PlaybackSessions 会话观察,与 doikki 路径并行对比。
