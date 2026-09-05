@@ -23,7 +23,6 @@ import com.github.tvbox.osc.event.RefreshEvent;
 import com.github.tvbox.osc.player.api.PlayConfig;
 import com.github.tvbox.osc.ui.activity.DetailActivity;
 import com.github.tvbox.osc.util.AppManager;
-import com.github.tvbox.osc.config.HawkConfig;
 import com.github.tvbox.osc.util.Utils;
 import com.gyf.immersionbar.ImmersionBar;
 import com.hjq.bar.OnTitleBarListener;
@@ -32,7 +31,6 @@ import com.kingja.loadsir.callback.Callback;
 import com.kingja.loadsir.core.LoadService;
 import com.kingja.loadsir.core.LoadSir;
 import com.lxj.xpopup.impl.LoadingPopupView;
-import com.orhanobut.hawk.Hawk;
 
 import org.greenrobot.eventbus.EventBus;
 import org.greenrobot.eventbus.Subscribe;

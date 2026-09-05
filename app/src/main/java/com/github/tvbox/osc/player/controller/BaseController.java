@@ -93,7 +93,11 @@ public abstract class BaseController extends BaseVideoController implements Gest
 
     private TextView mSlideInfo;
     private View mLoading;
-    /** 加载中网速文字(tag=play_load_net_speed,仅点播/本地布局有):与 loading 同显隐保持一致 */
+    /**
+     * 加载中网速文字(tag=play_load_net_speed,仅点播/本地布局有)。
+     * 注意:播放器 loading 分两类——资源解析/起播准备(PREPARING)与播中缓存(BUFFERING);
+     * 网速只跟"播中缓存"一致(BUFFERING 显示,PREPARING 不显示,避免起播阶段闪速)。
+     */
     private View mNetSpeed;
 
     @Override
@@ -109,11 +113,14 @@ public abstract class BaseController extends BaseVideoController implements Gest
         LoadingAnim.apply(mLoading);
     }
 
-    /** loading 与网速同显隐:缓冲/准备中显示,其余隐藏(网速与 loading 严格一致,消除时显时不显) */
+    /** loading 显隐(资源解析/起播 PREPARING 与播中缓存 BUFFERING 都转圈) */
     private void setLoadingVisible(boolean visible) {
-        int v = visible ? VISIBLE : GONE;
-        if (mLoading != null) mLoading.setVisibility(v);
-        if (mNetSpeed != null) mNetSpeed.setVisibility(v);
+        if (mLoading != null) mLoading.setVisibility(visible ? VISIBLE : GONE);
+    }
+
+    /** 网速显隐:仅播中缓存(BUFFERING)显示,起播准备(PREPARING)不显示 */
+    private void setNetSpeedVisible(boolean visible) {
+        if (mNetSpeed != null) mNetSpeed.setVisibility(visible ? VISIBLE : GONE);
     }
 
     @Override
@@ -127,24 +134,33 @@ public abstract class BaseController extends BaseVideoController implements Gest
         switch (playState) {
             case VideoView.STATE_IDLE:
                 setLoadingVisible(false);
+                setNetSpeedVisible(false);
                 break;
             case VideoView.STATE_PLAYING:
                 setLoadingVisible(false);
+                setNetSpeedVisible(false);
                 break;
             case VideoView.STATE_PAUSED:
                 setLoadingVisible(false);
+                setNetSpeedVisible(false);
                 break;
             case VideoView.STATE_PREPARED:
             case VideoView.STATE_ERROR:
             case VideoView.STATE_BUFFERED:
                 setLoadingVisible(false);
+                setNetSpeedVisible(false);
                 break;
-            case VideoView.STATE_PREPARING:
-            case VideoView.STATE_BUFFERING:
+            case VideoView.STATE_PREPARING: // 起播准备:loading 转,但网速不显示(非播中缓存)
                 setLoadingVisible(true);
+                setNetSpeedVisible(false);
+                break;
+            case VideoView.STATE_BUFFERING: // 播中缓存:loading + 网速同显
+                setLoadingVisible(true);
+                setNetSpeedVisible(true);
                 break;
             case VideoView.STATE_PLAYBACK_COMPLETED:
                 setLoadingVisible(false);
+                setNetSpeedVisible(false);
                 break;
         }
     }

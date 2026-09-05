@@ -28,12 +28,10 @@ import com.github.tvbox.osc.ui.dialog.CastListDialog;
 import com.github.tvbox.osc.ui.dialog.DialogCoordinator;
 import com.github.tvbox.osc.ui.dialog.PlayingControlRightDialog;
 import com.github.tvbox.osc.util.BroadcastUtils;
-import com.github.tvbox.osc.config.HawkConfig;
 import com.github.tvbox.osc.util.PipHelper;
 import com.github.tvbox.osc.util.PlayerHelper;
 import com.google.common.reflect.TypeToken;
 import com.lxj.xpopup.core.BasePopupView;
-import com.orhanobut.hawk.Hawk;
 
 import org.greenrobot.eventbus.EventBus;
 import org.greenrobot.eventbus.Subscribe;

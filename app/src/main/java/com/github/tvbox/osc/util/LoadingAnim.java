@@ -1,6 +1,5 @@
 package com.github.tvbox.osc.util;
 import com.github.tvbox.osc.config.SystemConfig;
-import com.github.tvbox.osc.config.HawkConfig;
 
 import android.content.Context;
 import android.view.View;
@@ -8,7 +7,6 @@ import android.view.View;
 import com.airbnb.lottie.LottieAnimationView;
 import com.airbnb.lottie.LottieDrawable;
 import com.github.tvbox.osc.base.App;
-import com.orhanobut.hawk.Hawk;
 
 import org.json.JSONObject;
 

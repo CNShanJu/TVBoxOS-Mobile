@@ -1,5 +1,4 @@
 package com.github.tvbox.osc.server;
-import com.github.tvbox.osc.config.HawkConfig;
 
 import android.content.ComponentName;
 import android.content.Context;

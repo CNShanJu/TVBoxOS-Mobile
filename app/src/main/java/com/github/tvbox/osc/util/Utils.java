@@ -11,7 +11,6 @@ import androidx.appcompat.app.AppCompatDelegate;
 import com.github.tvbox.osc.base.App;
 import com.github.tvbox.osc.bean.VideoInfo;
 import com.github.tvbox.osc.bean.VodInfo;
-import com.orhanobut.hawk.Hawk;
 
 import java.util.ArrayList;
 import java.util.Formatter;

@@ -7,9 +7,7 @@ import com.github.tvbox.osc.bean.IJKCode;
 import com.github.tvbox.osc.player.api.IjkCodecConfigProviders;
 import com.github.tvbox.osc.player.api.PlayConfig;
 import com.github.tvbox.osc.util.FileUtils;
-import com.github.tvbox.osc.config.HawkConfig;
 import com.github.tvbox.osc.util.MD5;
-import com.orhanobut.hawk.Hawk;
 
 import java.io.File;
 import java.util.LinkedHashMap;
