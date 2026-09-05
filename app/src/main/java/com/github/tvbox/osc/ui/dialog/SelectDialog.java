@@ -51,6 +51,12 @@ public class SelectDialog<T> extends AppCenterPopupView {
         return layoutId;
     }
 
+    /** 布局自带滚动区(TvRecyclerView),超高由列表自滚,不整卡包裹 */
+    @Override
+    protected boolean contentSelfScrollable() {
+        return true;
+    }
+
     @Override
     protected void onCreate() {
         super.onCreate();
@@ -60,6 +66,45 @@ public class SelectDialog<T> extends AppCenterPopupView {
         }
         if (selectInterface != null && itemCallback != null && data != null) {
             setAdapter(selectInterface, itemCallback, data, selectPos);
+        }
+        clampListHeightToFit();
+    }
+
+    /**
+     * 内容自带滚动区(TvRecyclerView):超高由列表自滚、标题固定,不整卡包裹。
+     * 列表可用高 = maxHeight(70%屏) - 固定区(标题+上下边距);
+     * 用 UNSPECIFIED 量"自然内容高"判断是否超高(不受 XPopup 容器已钳高影响),
+     * 超高时把列表压到可用高内,由 TvRecyclerView 自己滚动。
+     */
+    private void clampListHeightToFit() {
+        final android.view.View root = findViewById(R.id.cl_root);
+        final android.view.View list = findViewById(R.id.list);
+        if (root == null || list == null) return;
+        list.post(this::applyListHeightClamp);
+    }
+
+    private void applyListHeightClamp() {
+        try {
+            final android.view.View root = findViewById(R.id.cl_root);
+            final android.view.View list = findViewById(R.id.list);
+            if (root == null || list == null) return;
+            int maxH = getMaxHeight();
+            if (maxH <= 0) return;
+            // 用 UNSPECIFIED 重新测量整卡"自然高"(不受 XPopup 容器钳高影响),判断是否真的超高
+            int wSpec = android.view.View.MeasureSpec.makeMeasureSpec(root.getWidth(), android.view.View.MeasureSpec.EXACTLY);
+            int hSpec = android.view.View.MeasureSpec.makeMeasureSpec(0, android.view.View.MeasureSpec.UNSPECIFIED);
+            root.measure(wSpec, hSpec);
+            int naturalH = root.getMeasuredHeight();
+            if (naturalH <= maxH) return; // 未超高:保持 wrap(短列表自适应)
+            int naturalListH = list.getMeasuredHeight();
+            int fixedH = naturalH - naturalListH;
+            int available = maxH - fixedH;
+            if (available <= 0) available = maxH / 2;
+            android.view.ViewGroup.LayoutParams lp = list.getLayoutParams();
+            lp.height = available;
+            list.setLayoutParams(lp);
+            list.requestLayout();
+        } catch (Throwable ignored) {
         }
     }
 

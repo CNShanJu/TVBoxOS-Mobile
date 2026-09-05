@@ -46,18 +46,32 @@ public abstract class AppCenterPopupView extends CenterPopupView {
         return Math.round(shortSide * 0.7f);
     }
 
+    /**
+     * 内容根是否自带滚动能力(列表/ScrollView)。
+     * 默认 false:内容超高时由基类把整卡包进 ScrollView 兜底;
+     * 自带滚动区的弹窗(如 SelectDialog 的 TvRecyclerView)应返回 true,
+     * 由内容区自行吃掉超高余量滚动,避免"整卡滚动"。
+     */
+    protected boolean contentSelfScrollable() {
+        return false;
+    }
+
     @Override
     protected void onCreate() {
         super.onCreate();
-        // 内容超高时自动包一层 ScrollView:防止被 maxHeight 裁剪(标题/按钮结构内容区滚动)
+        // 内容超高且不自带滚动区时,自动包一层 ScrollView:防止被 maxHeight 裁剪(纯文本/按钮弹窗兜底)
+        if (!contentSelfScrollable()) {
+            wrapContentInScrollIfOverflow();
+        }
+    }
+
+    private void wrapContentInScrollIfOverflow() {
         try {
             final View content = getPopupImplView();
             if (content != null) {
                 content.post(() -> {
                     try {
                         int maxH = getMaxHeight();
-                        Rect r = new Rect();
-                        content.getDrawingRect(r);
                         if (content.getHeight() > maxH) {
                             wrapInScrollView(content);
                         }
