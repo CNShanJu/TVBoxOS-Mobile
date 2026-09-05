@@ -71,33 +71,37 @@ public final class AbsXmlParser {
 
     /** 归一:回填 sourceKey;把线路串(如 a$b#c$d)解析为 beanList。typed 产物亦须过此步(线路可选) */
     public static void normalize(AbsXml data, String sourceKey) {
-        if (data.movie != null && data.movie.videoList != null) {
-            for (Movie.Video video : data.movie.videoList) {
-                if (video.urlBean != null && video.urlBean.infoList != null) {
-                    for (Movie.Video.UrlBean.UrlInfo urlInfo : video.urlBean.infoList) {
-                        String[] str;
-                        if (urlInfo.urls != null && urlInfo.urls.contains("#")) {
-                            str = urlInfo.urls.split("#");
-                        } else {
-                            str = urlInfo.urls == null ? new String[0] : new String[]{urlInfo.urls};
-                        }
-                        List<Movie.Video.UrlBean.UrlInfo.InfoBean> infoBeanList = new ArrayList<>();
-                        for (String s : str) {
-                            String[] ss = s.split("\\$");
-                            if (ss.length > 0) {
-                                if (ss.length >= 2) {
-                                    infoBeanList.add(new Movie.Video.UrlBean.UrlInfo.InfoBean(ss[0], ss[1]));
-                                } else {
-                                    infoBeanList.add(new Movie.Video.UrlBean.UrlInfo.InfoBean(
-                                            (infoBeanList.size() + 1) + "", ss[0]));
-                                }
+        if (data == null || data.movie == null || data.movie.videoList == null) {
+            return;
+        }
+        for (Movie.Video video : data.movie.videoList) {
+            if (video.urlBean != null && video.urlBean.infoList != null) {
+                for (Movie.Video.UrlBean.UrlInfo urlInfo : video.urlBean.infoList) {
+                    String[] str;
+                    if (urlInfo.urls != null && urlInfo.urls.contains("#")) {
+                        str = urlInfo.urls.split("#");
+                    } else {
+                        String single = urlInfo.urls;
+                        // 空/空白线路文本不产出垃圾剧集条目
+                        str = (single == null || single.trim().isEmpty())
+                                ? new String[0] : new String[]{single};
+                    }
+                    List<Movie.Video.UrlBean.UrlInfo.InfoBean> infoBeanList = new ArrayList<>();
+                    for (String s : str) {
+                        String[] ss = s.split("\\$");
+                        if (ss.length > 0) {
+                            if (ss.length >= 2) {
+                                infoBeanList.add(new Movie.Video.UrlBean.UrlInfo.InfoBean(ss[0], ss[1]));
+                            } else {
+                                infoBeanList.add(new Movie.Video.UrlBean.UrlInfo.InfoBean(
+                                        (infoBeanList.size() + 1) + "", ss[0]));
                             }
                         }
-                        urlInfo.beanList = infoBeanList;
                     }
+                    urlInfo.beanList = infoBeanList;
                 }
-                video.sourceKey = sourceKey;
             }
+            video.sourceKey = sourceKey;
         }
     }
 }
