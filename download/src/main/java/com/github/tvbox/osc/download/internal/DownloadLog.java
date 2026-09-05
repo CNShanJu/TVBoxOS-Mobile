@@ -1,5 +1,6 @@
-package com.github.tvbox.osc.download;
+package com.github.tvbox.osc.download.internal;
 
+import com.github.tvbox.osc.download.DownloadSubType;
 import com.github.tvbox.osc.log.Category;
 import com.github.tvbox.osc.log.CategoryLogger;
 import com.github.tvbox.osc.log.LogStore;

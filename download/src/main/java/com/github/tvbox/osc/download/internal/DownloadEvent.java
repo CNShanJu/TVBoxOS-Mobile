@@ -1,4 +1,4 @@
-package com.github.tvbox.osc.download;
+package com.github.tvbox.osc.download.internal;
 
 /**
  * 下载任务变更事件（结构性变更：新增/删除/状态机切换/批量变更，UI 据此全量刷新）。

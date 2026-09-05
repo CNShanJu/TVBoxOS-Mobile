@@ -1,8 +1,6 @@
-package com.github.tvbox.osc.download.task;
+package com.github.tvbox.osc.download.internal;
 
 import com.github.tvbox.osc.bean.DownloadTask;
-import com.github.tvbox.osc.util.DownloadExecutor;
-import com.github.tvbox.osc.util.DownloadManager;
 
 import java.io.File;
 

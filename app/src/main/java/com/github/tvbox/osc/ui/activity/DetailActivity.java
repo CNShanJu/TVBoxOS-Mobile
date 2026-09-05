@@ -1112,7 +1112,7 @@ public class DetailActivity extends BaseVbActivity<ActivityDetailBinding> {
         final String vodName = getDownloadVodName();
         SourceViewModel.spThreadPool.execute(() -> {
             // 先清理该剧的文件不存在档案(本地删文件后, 打开抽屉立即恢复"未下载")
-            com.github.tvbox.osc.download.DownloadArchive.get().removeOrphansByVod(vodName, sourceName);
+            com.github.tvbox.osc.download.DownloadFacade.get().removeArchiveOrphansByVod(vodName, sourceName);
             List<VodInfo.VodSeries> copy = buildDownloadSeriesCopy();
             int[] states = buildDownloadStates(copy, sourceName, vodName);
             runOnUiThread(() -> {

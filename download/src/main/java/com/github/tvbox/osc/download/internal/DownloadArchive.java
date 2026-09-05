@@ -1,6 +1,7 @@
-package com.github.tvbox.osc.download;
+package com.github.tvbox.osc.download.internal;
 
 import com.github.tvbox.osc.bean.DownloadTask;
+import com.github.tvbox.osc.download.ArchiveItem;
 import com.orhanobut.hawk.Hawk;
 
 import java.io.File;

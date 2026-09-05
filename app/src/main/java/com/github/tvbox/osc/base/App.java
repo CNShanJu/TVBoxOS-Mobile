@@ -106,7 +106,7 @@ public class App extends MultiDexApplication {
         // 方案A:注册无头 WebView 嗅探器(嗅探型源任务启动前用它拿真实播放地址,串行复用保会话)
         com.github.tvbox.osc.download.DownloadFacade.setUrlSniffer(com.github.tvbox.osc.util.WebSniffResolver.get());
         // 下载完成通知渠道(可选增强)
-        com.github.tvbox.osc.download.DownloadNotifier.init(this);
+        
         // 全局系统状态监控(网络/前后台/横竖屏/电量/磁盘, 基座层)
         SystemStateMonitor.init(this);
     }

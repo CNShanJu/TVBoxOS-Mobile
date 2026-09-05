@@ -10,7 +10,7 @@ import java.util.Map;
  * 真实播放地址 + 请求头（UA/Referer/Cookie），防盗链源的分片才能下载。
  * <p>
  * 由 :app 模块的 {@code WebSniffResolver} 实现，App 启动时注册到
- * {@link com.github.tvbox.osc.util.DownloadManager}；DownloadScheduler 在任务
+ * {@link com.github.tvbox.osc.download.internal.DownloadManager}；DownloadScheduler 在任务
  * 启动前/地址过期重解析时调用。实现须保证同一 WebView 串行复用（Cookie/登录会话不丢）。
  */
 public interface DownloadUrlSniffer {

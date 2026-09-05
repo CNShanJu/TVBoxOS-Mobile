@@ -61,7 +61,7 @@ def appSourceDirs = [
         new File(rootDir, 'app/src/main/java'),
         new File(rootDir, 'app/src/test/java'),
 ]
-def forbiddenDownloadImports = ~/import\s+com\.github\.tvbox\.osc\.util\.Download\w+\s*;/
+def forbiddenDownloadImports = ~/import\s+com\.github\.tvbox\.osc\.(util\.Download\w+|download\.internal\.\w+)\s*;/
 
 tasks.register('checkModuleDependencies') {
     group = 'verification'
@@ -80,11 +80,11 @@ tasks.register('checkModuleDependencies') {
                 }
             }
         }
-        // app 源码不得直接 import 下载内部实现(UI 只依赖 DownloadFacade)
+        // app 源码不得直接 import 下载内部实现(UI 只依赖 DownloadFacade;java+kt 都查)
         appSourceDirs.each { dir ->
             if (!dir.exists()) return
             dir.eachFileRecurse(groovy.io.FileType.FILES) { f ->
-                if (f.name.endsWith('.java')) {
+                if (f.name.endsWith('.java') || f.name.endsWith('.kt')) {
                     def src = f.getText('UTF-8')
                     if (forbiddenDownloadImports.matcher(src).find()) {
                         violations << "app 源码禁止 import 下载内部实现: ${f.path}"

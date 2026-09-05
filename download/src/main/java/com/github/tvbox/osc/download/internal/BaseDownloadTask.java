@@ -1,4 +1,4 @@
-package com.github.tvbox.osc.download.task;
+package com.github.tvbox.osc.download.internal;
 
 import com.github.tvbox.osc.bean.DownloadTask;
 

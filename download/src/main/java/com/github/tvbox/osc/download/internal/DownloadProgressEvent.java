@@ -1,4 +1,4 @@
-package com.github.tvbox.osc.download;
+package com.github.tvbox.osc.download.internal;
 
 /**
  * 下载进度事件(轻量、高频):只携带发生进度的任务 id,供 UI(下载页)对该任务做

@@ -1,7 +1,6 @@
-package com.github.tvbox.osc.download.task;
+package com.github.tvbox.osc.download.internal;
 
 import com.github.tvbox.osc.bean.DownloadTask;
-import com.github.tvbox.osc.util.DownloadExecutor;
 
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -65,21 +64,21 @@ public final class DownloadTaskRegistry {
                 String typeName = obj.getClass().getSimpleName();
                 android.util.Log.i("TVBox-Download", "任务分发: " + (t == null || t.fileName == null ? "?" : t.fileName)
                         + " -> " + typeName + " url=" + (t == null ? "null" : t.url));
-                com.github.tvbox.osc.download.DownloadLog.LOG.info(
+                com.github.tvbox.osc.download.internal.DownloadLog.LOG.info(
                         com.github.tvbox.osc.download.DownloadSubType.RESOLVE,
                         "任务分发: " + (t == null || t.fileName == null ? "?" : t.fileName) + " -> " + typeName
                                 + " url=" + (t == null ? "null" : t.url),
-                        com.github.tvbox.osc.download.DownloadLog.extras(t == null ? null : t.episodeId));
+                        com.github.tvbox.osc.download.internal.DownloadLog.extras(t == null ? null : t.episodeId));
                 return obj;
             }
         }
         android.util.Log.i("TVBox-Download", "任务分发(兜底直链): " + (t == null || t.fileName == null ? "?" : t.fileName)
                 + " url=" + (t == null ? "null" : t.url));
-        com.github.tvbox.osc.download.DownloadLog.LOG.info(
+        com.github.tvbox.osc.download.internal.DownloadLog.LOG.info(
                 com.github.tvbox.osc.download.DownloadSubType.RESOLVE,
                 "任务分发(兜底直链): " + (t == null || t.fileName == null ? "?" : t.fileName)
                         + " url=" + (t == null ? "null" : t.url),
-                com.github.tvbox.osc.download.DownloadLog.extras(t == null ? null : t.episodeId));
+                com.github.tvbox.osc.download.internal.DownloadLog.extras(t == null ? null : t.episodeId));
         return new NormalFileDownloadTask(t, listener, executor);
     }
 }

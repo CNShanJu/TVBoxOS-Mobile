@@ -621,7 +621,7 @@ public class DownloadFragment extends BaseVbFragment<FragmentDownloadBinding> {
         }
         int done = 0;
         for (com.github.tvbox.osc.download.ArchiveItem it :
-                com.github.tvbox.osc.download.DownloadArchive.get().queryByVod(currentVodGroup, currentSourceName)) {
+                com.github.tvbox.osc.download.DownloadFacade.get().queryArchiveByVod(currentVodGroup, currentSourceName)) {
             if (it.savePath != null && new File(it.savePath).exists()) done++;
         }
         mBinding.tvTabDownloading.setText(downloading > 0 ? "正在下载 (" + downloading + ")" : "正在下载");
@@ -810,7 +810,7 @@ public class DownloadFragment extends BaseVbFragment<FragmentDownloadBinding> {
                             // deleteFile=true 兜底: 文件夹删除失败(权限/占用)时再尝试删单个文件
                             for (com.github.tvbox.osc.download.ArchiveItem it : g.doneItems) {
                                 if (it.episodeId != null) {
-                                    com.github.tvbox.osc.download.DownloadArchive.get().remove(it.episodeId, true);
+                                    com.github.tvbox.osc.download.DownloadFacade.get().deleteArchive(it.episodeId, true);
                                 }
                             }
                         } else {
@@ -885,9 +885,9 @@ public class DownloadFragment extends BaseVbFragment<FragmentDownloadBinding> {
         }
         // 完成项可能只在档案表(任务记录已清理): 同步删档案(deleteFiles=true 连文件一起删)
         com.github.tvbox.osc.download.ArchiveItem it =
-                com.github.tvbox.osc.download.DownloadArchive.get().findByPath(path);
+                com.github.tvbox.osc.download.DownloadFacade.get().findArchiveByPath(path);
         if (it != null) {
-            com.github.tvbox.osc.download.DownloadArchive.get().remove(it.episodeId, deleteFiles);
+            com.github.tvbox.osc.download.DownloadFacade.get().deleteArchive(it.episodeId, deleteFiles);
             return;
         }
         if (deleteFiles) {
@@ -923,7 +923,7 @@ public class DownloadFragment extends BaseVbFragment<FragmentDownloadBinding> {
         }
         // 已完成集（档案表长期数据源）
         for (com.github.tvbox.osc.download.ArchiveItem it :
-                com.github.tvbox.osc.download.DownloadArchive.get().getAll()) {
+                com.github.tvbox.osc.download.DownloadFacade.get().getAllArchive()) {
             if (it.savePath == null || !new File(it.savePath).exists()) continue;
             String src = it.sourceName == null ? "" : it.sourceName;
             String name = it.vodName == null ? "" : it.vodName;
@@ -953,7 +953,7 @@ public class DownloadFragment extends BaseVbFragment<FragmentDownloadBinding> {
             if (t.state != DownloadTask.STATE_COMPLETED) return true;
         }
         for (com.github.tvbox.osc.download.ArchiveItem it :
-                com.github.tvbox.osc.download.DownloadArchive.get().getAll()) {
+                com.github.tvbox.osc.download.DownloadFacade.get().getAllArchive()) {
             if (!name.equals(it.vodName)) continue;
             if (!wantSrc.equals(it.sourceName == null ? "" : it.sourceName)) continue;
             if (it.savePath != null && new File(it.savePath).exists()) return true;
@@ -979,7 +979,7 @@ public class DownloadFragment extends BaseVbFragment<FragmentDownloadBinding> {
         // 播放过的集索引集合(SP key=sourceKey|vodId);episodeId 取第一条推导
         Set<String> played = null;
         for (com.github.tvbox.osc.download.ArchiveItem it :
-                com.github.tvbox.osc.download.DownloadArchive.get().queryByVod(vodName, sourceName)) {
+                com.github.tvbox.osc.download.DownloadFacade.get().queryArchiveByVod(vodName, sourceName)) {
             if (played == null) played = playedIndicesOf(it.episodeId);
             if (it.savePath == null) continue;
             File f = new File(it.savePath);
@@ -1091,7 +1091,7 @@ public class DownloadFragment extends BaseVbFragment<FragmentDownloadBinding> {
         }
         // 聚合组可能只剩档案(任务已清理/全部完成后): 从档案表补找 pic, 避免封面一直占位
         for (com.github.tvbox.osc.download.ArchiveItem it :
-                com.github.tvbox.osc.download.DownloadArchive.get().queryByVod(name, source)) {
+                com.github.tvbox.osc.download.DownloadFacade.get().queryArchiveByVod(name, source)) {
             if (it.pic != null && !it.pic.isEmpty()) return it.pic;
         }
         return null;

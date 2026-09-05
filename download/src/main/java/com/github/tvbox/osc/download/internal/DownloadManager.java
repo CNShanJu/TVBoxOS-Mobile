@@ -1,11 +1,10 @@
-package com.github.tvbox.osc.util;
+package com.github.tvbox.osc.download.internal;
 
 import android.os.Handler;
 import android.os.Looper;
 
 import com.github.tvbox.osc.bean.DownloadTask;
-import com.github.tvbox.osc.download.DownloadProgressEvent;
-import com.github.tvbox.osc.download.DownloadEvent;
+import com.github.tvbox.osc.util.OkGoHelper;
 import com.orhanobut.hawk.Hawk;
 
 import org.greenrobot.eventbus.EventBus;
@@ -111,14 +110,14 @@ public class DownloadManager {
     final DownloadExecutor executor;
     final DownloadPolicy policy;
     /** 已下载档案（长期保留，5.3） */
-    final com.github.tvbox.osc.download.DownloadArchive archive;
+    final com.github.tvbox.osc.download.internal.DownloadArchive archive;
 
     private DownloadManager() {
         store = new DownloadStore(this);
         scheduler = new DownloadScheduler(this);
         executor = new DownloadExecutor(this);
         policy = new DownloadPolicy(this);
-        archive = com.github.tvbox.osc.download.DownloadArchive.get();
+        archive = com.github.tvbox.osc.download.internal.DownloadArchive.get();
         store.load();
         // Bug5: 孤儿 tmpDir 回收(启动时任务已加载,无写入中,安全)
         FileCleaner.cleanupOrphanTmpDirs(tasks);
@@ -138,7 +137,7 @@ public class DownloadManager {
         appContext = context == null ? null : context.getApplicationContext();
         FileCleaner.setAppContext(appContext);
         DownloadStore.setAppContext(appContext);
-        com.github.tvbox.osc.download.DownloadNotifier.init(context);
+        com.github.tvbox.osc.download.internal.DownloadNotifier.init(context);
     }
 
     // ------------------------------------------------------------------
@@ -282,8 +281,8 @@ public class DownloadManager {
             synchronized (tasks) {
                 snapshot = new ArrayList<>(tasks);
             }
-            com.github.tvbox.osc.download.DownloadForegroundService.startIfNeeded(appContext, snapshot);
-            com.github.tvbox.osc.download.DownloadForegroundService.stopIfIdle(appContext, snapshot);
+            com.github.tvbox.osc.download.internal.DownloadForegroundService.startIfNeeded(appContext, snapshot);
+            com.github.tvbox.osc.download.internal.DownloadForegroundService.stopIfIdle(appContext, snapshot);
         } catch (Throwable ignored) {
         }
     }

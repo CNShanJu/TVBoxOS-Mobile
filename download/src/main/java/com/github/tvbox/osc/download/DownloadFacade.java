@@ -1,9 +1,12 @@
 package com.github.tvbox.osc.download;
 
 import com.github.tvbox.osc.bean.DownloadTask;
+import com.github.tvbox.osc.download.internal.DownloadArchive;
+import com.github.tvbox.osc.download.internal.DownloadEvent;
+import com.github.tvbox.osc.download.internal.DownloadManager;
+import com.github.tvbox.osc.download.internal.DownloadProgressEvent;
 import com.github.tvbox.osc.log.LogEntry;
 import com.github.tvbox.osc.log.LogStore;
-import com.github.tvbox.osc.util.DownloadManager;
 
 import org.greenrobot.eventbus.EventBus;
 import org.greenrobot.eventbus.Subscribe;
@@ -66,19 +69,20 @@ public final class DownloadFacade {
     // 装配入口(App 组合根调用一次;UI 不接触):转发到模块内部 DownloadManager
     // ------------------------------------------------------------------
 
-    /** App 启动初始化:注入 context(保存目录/海报/网络监听/通知)。仅组合根调用一次 */
+    /** App 启动初始化:注入 context(保存目录/海报/网络监听/通知渠道)。仅组合根调用一次 */
     public static void init(android.content.Context context) {
-        com.github.tvbox.osc.util.DownloadManager.init(context);
+        com.github.tvbox.osc.download.internal.DownloadManager.init(context);
+        com.github.tvbox.osc.download.internal.DownloadNotifier.init(context);
     }
 
     /** 注册播放地址解析契约实现(:spider 提供;App 组合根注入) */
     public static void setUrlResolverApi(com.github.tvbox.osc.spiderapi.PlayUrlResolverApi api) {
-        com.github.tvbox.osc.util.DownloadManager.setUrlResolverApi(api);
+        com.github.tvbox.osc.download.internal.DownloadManager.setUrlResolverApi(api);
     }
 
     /** 注册下载地址嗅探器(type0 嗅探源用;:app 模块实现并注入) */
     public static void setUrlSniffer(com.github.tvbox.osc.download.DownloadUrlSniffer sniffer) {
-        com.github.tvbox.osc.util.DownloadManager.setUrlSniffer(sniffer);
+        com.github.tvbox.osc.download.internal.DownloadManager.setUrlSniffer(sniffer);
     }
 
     // ------------------------------------------------------------------
@@ -290,31 +294,31 @@ public final class DownloadFacade {
 
     /** 是否仅 WiFi 下载(默认开启;移动网络下下载前强提醒确认) */
     public boolean isWifiOnly() {
-        return com.github.tvbox.osc.util.DownloadManager.get().isWifiOnly();
+        return com.github.tvbox.osc.download.internal.DownloadManager.get().isWifiOnly();
     }
 
     public void setWifiOnly(boolean wifiOnly) {
-        com.github.tvbox.osc.util.DownloadManager.get().setWifiOnly(wifiOnly);
+        com.github.tvbox.osc.download.internal.DownloadManager.get().setWifiOnly(wifiOnly);
     }
 
     /** 最大并发下载数(1-5) */
     public int getMaxConcurrent() {
-        return com.github.tvbox.osc.util.DownloadManager.get().getMaxConcurrent();
+        return com.github.tvbox.osc.download.internal.DownloadManager.get().getMaxConcurrent();
     }
 
     /** 设置最大并发数(1-5),触发重新调度 */
     public void setMaxConcurrent(int n) {
-        com.github.tvbox.osc.util.DownloadManager.get().setMaxConcurrent(n);
+        com.github.tvbox.osc.download.internal.DownloadManager.get().setMaxConcurrent(n);
     }
 
     /** 当前网络是否为移动网络(蜂窝) */
     public boolean isMobileNetwork() {
-        return com.github.tvbox.osc.util.DownloadManager.isMobileNetwork();
+        return com.github.tvbox.osc.download.internal.DownloadManager.isMobileNetwork();
     }
 
     /** 下载保存根目录 */
     public java.io.File getSaveDir() {
-        return com.github.tvbox.osc.util.DownloadManager.getSaveDir();
+        return com.github.tvbox.osc.download.internal.DownloadManager.getSaveDir();
     }
 
     // ------------------------------------------------------------------
@@ -323,17 +327,17 @@ public final class DownloadFacade {
 
     /** 构建统一剧集标识: sourceKey|vodId|playFlag|playIndex */
     public String buildEpisodeId(String sourceKey, String vodId, String playFlag, int playIndex) {
-        return com.github.tvbox.osc.util.DownloadCore.buildEpisodeId(sourceKey, vodId, playFlag, playIndex);
+        return com.github.tvbox.osc.download.internal.DownloadCore.buildEpisodeId(sourceKey, vodId, playFlag, playIndex);
     }
 
     /** 批量查询剧集状态:0=未下载;1=已下载完成且文件存在;2=已有任务(下载中/排队/暂停);3=失败 */
     public int[] getEpisodeStates(String[] episodeIds, String sourceName, String vodName, String[] episodeNames) {
-        return com.github.tvbox.osc.util.DownloadCore.getEpisodeStates(episodeIds, sourceName, vodName, episodeNames);
+        return com.github.tvbox.osc.download.internal.DownloadCore.getEpisodeStates(episodeIds, sourceName, vodName, episodeNames);
     }
 
     /** 单集下载状态(语义同上) */
     public int getEpisodeState(String episodeId, String sourceName, String vodName, String episodeName) {
-        return com.github.tvbox.osc.util.DownloadCore.getEpisodeState(episodeId, sourceName, vodName, episodeName);
+        return com.github.tvbox.osc.download.internal.DownloadCore.getEpisodeState(episodeId, sourceName, vodName, episodeName);
     }
 
     // ------------------------------------------------------------------
@@ -357,6 +361,26 @@ public final class DownloadFacade {
     /** 重命名成品文件（同步更新档案） */
     public boolean renameArchive(String episodeId, String newName) {
         return DownloadArchive.get().rename(episodeId, newName);
+    }
+
+    /** 某剧(名称+源名)的已下载档案(下载管理页分组用) */
+    public List<ArchiveItem> queryArchiveByVod(String vodName, String sourceName) {
+        return DownloadArchive.get().queryByVod(vodName, sourceName);
+    }
+
+    /** 全部已下载档案(下载管理页分组数据源) */
+    public List<ArchiveItem> getAllArchive() {
+        return DownloadArchive.get().getAll();
+    }
+
+    /** 按成品文件路径查档案(下载管理页删除完成项定位用) */
+    public ArchiveItem findArchiveByPath(String savePath) {
+        return DownloadArchive.get().findByPath(savePath);
+    }
+
+    /** 删除某剧的孤儿档案记录(文件名全没了只剩档案) */
+    public int removeArchiveOrphansByVod(String vodName, String sourceName) {
+        return DownloadArchive.get().removeOrphansByVod(vodName, sourceName);
     }
 
     // ------------------------------------------------------------------

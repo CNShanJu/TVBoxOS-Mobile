@@ -1,4 +1,4 @@
-package com.github.tvbox.osc.download;
+package com.github.tvbox.osc.download.internal;
 
 import android.app.Notification;
 import android.app.NotificationChannel;

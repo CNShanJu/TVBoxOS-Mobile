@@ -1,4 +1,4 @@
-package com.github.tvbox.osc.util;
+package com.github.tvbox.osc.download.internal;
 
 import android.os.Build;
 import android.os.Environment;

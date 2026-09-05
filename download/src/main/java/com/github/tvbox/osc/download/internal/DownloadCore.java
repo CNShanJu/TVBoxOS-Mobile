@@ -1,4 +1,4 @@
-package com.github.tvbox.osc.util;
+package com.github.tvbox.osc.download.internal;
 
 import com.github.tvbox.osc.bean.DownloadTask;
 import com.github.tvbox.osc.bean.VodInfo;
@@ -77,7 +77,7 @@ public class DownloadCore {
             String eid = episodeIds[i];
             if (eid != null && !eid.isEmpty() && !eid.contains("||")) {
                 // 5.3: 已下载档案(长期)优先——任务记录清理后详情页"已下载"仍准确
-                if (com.github.tvbox.osc.download.DownloadArchive.get().isDownloaded(eid)) {
+                if (com.github.tvbox.osc.download.internal.DownloadArchive.get().isDownloaded(eid)) {
                     states[i] = 1;
                     continue;
                 }
@@ -113,7 +113,7 @@ public class DownloadCore {
     public static int getEpisodeState(String episodeId, String sourceName, String vodName, String episodeName) {
         if (episodeId != null && !episodeId.isEmpty() && !episodeId.contains("||")) {
             // 5.3: 已下载档案(长期)优先
-            if (com.github.tvbox.osc.download.DownloadArchive.get().isDownloaded(episodeId)) {
+            if (com.github.tvbox.osc.download.internal.DownloadArchive.get().isDownloaded(episodeId)) {
                 return 1;
             }
             DownloadTask t = getTaskByEpisode(episodeId);
@@ -134,7 +134,7 @@ public class DownloadCore {
     /** 是否已下载完成且文件存在（档案优先，任务回退） */
     public static boolean isDownloaded(String episodeId) {
         if (episodeId != null && !episodeId.isEmpty()) {
-            if (com.github.tvbox.osc.download.DownloadArchive.get().isDownloaded(episodeId)) {
+            if (com.github.tvbox.osc.download.internal.DownloadArchive.get().isDownloaded(episodeId)) {
                 return true;
             }
         }

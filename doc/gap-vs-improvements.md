@@ -13,7 +13,7 @@
 | 项 | 状态 | 现状/残留 |
 |---|---|---|
 | SourceViewModel 走 SpiderApi | ✅ type3 typed 优先+回退 | type0/1/4 仍在 VM 内走 `HttpClient`+`xml()/json()/sortJson()` 内联解析；VM 内仍大量 EventBus.post。ApiConfig 直读已清零：源注册表/首页源/vip 旗标改经 `spider-api.SourceConfigApi`（`SourceConfigProviders` 注入，ApiConfig 实现契约） |
-| DownloadFragment 走 DownloadFacade | ⚠️ | 控制/查询已走 Facade；仍 import `util.DownloadManager`（读 `MSG_*` 阶段文案）→ 把 MSG 常量并入 `DownloadFacade` 后 UI 摘除该 import |
+| DownloadFragment 走 DownloadFacade | ✅ | MSG_* 已并入 Facade;UI 无 `util.DownloadManager`/内部实现 import(门禁含 kt) |
 | DetailActivity 不直调 DownloadManager | ✅ | 另：仍直用 `cache.RoomDataManger.getVodInfo`（DAO 泄漏点，见 §4） |
 | 注册并使用 PlayerFactory | ⚠️ | 已注册 IJK(1)/Exo(2) adapter + `PlaybackSessions`/`VideoViewPlayerApi` 会话原型；PlayFragment 仍直持 `MyVideoView`/内核，session 仅日志观察 |
 
@@ -22,9 +22,9 @@
 |---|---|---|
 | `:core-model` | ✅ | `ParseBean` 仍在 `:spider`（本轮迁移）+ 含行为(getUrl proxy 替换 / mixUrl Base64) → 迁移时纯化 |
 | `:core-network` | ⚠️ | 目录/模块名已对齐(:core-network,原 common);内部仍是"公共垃圾桶"：`util/{HawkConfig,SystemConfig,HttpClient,OkGoHelper,AES,MD5,AdBlocker,AppLog,LOG,urlhttp/*}`、`event/*`(EventBus 事件)。改进.txt §2.8 期望逐步拆并 |
-| `:core-storage` | ⚠️ | data/cache/Repository 已出；DAO 仍外泄(app `RoomDataManger` 3 处)；Hawk 类型安全封装未做 |
+| `:core-storage` | ⚠️ | data/cache/Repository 已出；app 无 DAO 直读(RoomDataManger 死 import 已清);Hawk 类型安全封装未做 |
 | `:spider-api` / `:spider` | ✅ 试点 | 字符串通道(SpiderContentApi)仍在(过渡兼容)；`ApiConfig` 仍暴露具体 Spider(内部实现需留) |
-| `:download` | ⚠️ | Facade 已接入；`DownloadManager/Scheduler/Executor/Archive/Core/Store/Config` 仍 public(改进.txt §六要求 internal 化) |
+| `:download` | ✅ | 内部实现已收 `...download.internal` 包(Manager/Scheduler/Executor/Core/Store/Config/Policy/Archive/Notifier/Log/task 全族),公开包仅 Facade+模型/接口;app 零内部实现引用(门禁 java+kt 全查) |
 | `:player-api` / `:player` | ⚠️ | 契约 + 原型已接；app 仍直用 `MyVideoView`/IJK/Exo、`PlayerTrackHelper` 按内核 instanceof 分发 |
 | `:ui-common` / ui-kit | ⚠️ | ui-common=纯资源 ✅；app 内已建 ui-kit package（6 个纯净组件），通用 View 归拢中 |
 | `:playback` / feature-* | ❌ | 未建（改进.txt 第三/四阶段，需真机回归环境） |
@@ -129,7 +129,14 @@ Exo→Media3、EventBus→Flow/接口、Hawk→DataStore、Java→Kotlin 渐进�
   改走契约,清理 LivePlayerManager/FolderAdapter/DoubanSuggestAdapter/RemoteServer 四处死 import。
   至此 app 代码对 `:spider` ApiConfig 的引用仅剩 AppCompositionRoot 桥接点(组合根,合法),业务/UI 全经
   spider-api/player-api 契约。
-- ⚠️ common/event 收口：已删 HistoryStateEvent/TopStateEvent(零引用孤儿)、DownloadEvent/RefreshEvent/ServerEvent
+- ✅ download internal 化(§六"实现放 internal 包"):19 个实现/辅助类移入 `com.github.tvbox.osc.download.internal`
+  (util/{Manager,Scheduler,Executor,Core,Store,Config,Policy,FileCleaner}、task/*、根包 Archive/Log/Notifier/
+  ForegroundService/Event/ProgressEvent);DownloadFacade 增补委托(queryArchiveByVod/getAllArchive/
+  findArchiveByPath/removeArchiveOrphansByVod,init 内含 Notifier 初始化);app 泄漏点全改走 Facade
+  (App/DetailActivity/DownloadFragment 归档调用、SettingActivity 下载设置原直读 util.DownloadConfig 改 Facade);
+  checkModuleDependencies 源码门禁扩展覆盖 .kt 与 download.internal 包,防回归。
+- ✅ app 内 3 处 `RoomDataManger` 死 import 已删(CollectActivity/HomeFragment/HistoryActivity,无实际调用)。
+- ⚠️ common/event 收口:已删 HistoryStateEvent/TopStateEvent(零引用孤儿)、DownloadEvent/RefreshEvent/ServerEvent
   各自归位业务/app 模块；common 仅剩 LogEvent(common 内 LOG.java 自用,EventBus 空投遗留——无人订阅,待日志页改造后清理)。
 - ⚠️ DownloadFragment 已完成 Facade 订阅去 EventBus;app 其余 EventBus 点(搜索/快速搜索/历史/直播等
   refresh 事件)仍为跨 Fragment 通信,逐步收口属"状态/事件管理"长线项。

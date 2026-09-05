@@ -1,13 +1,9 @@
-package com.github.tvbox.osc.util;
+package com.github.tvbox.osc.download.internal;
 
 import android.util.Log;
 
 import com.github.tvbox.osc.bean.DownloadTask;
-import com.github.tvbox.osc.download.DownloadLog;
 import com.github.tvbox.osc.download.DownloadSubType;
-import com.github.tvbox.osc.download.task.BaseDownloadTask;
-import com.github.tvbox.osc.download.task.DownloadTaskRegistry;
-import com.github.tvbox.osc.download.task.TaskListener;
 import com.github.tvbox.osc.state.SystemEvent;
 import com.github.tvbox.osc.state.SystemState;
 import com.github.tvbox.osc.state.SystemStateMonitor;

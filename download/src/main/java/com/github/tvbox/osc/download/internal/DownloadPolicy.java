@@ -1,4 +1,4 @@
-package com.github.tvbox.osc.util;
+package com.github.tvbox.osc.download.internal;
 
 import android.content.Context;
 import android.net.ConnectivityManager;

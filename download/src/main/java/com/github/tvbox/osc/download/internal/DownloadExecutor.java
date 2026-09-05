@@ -1,4 +1,4 @@
-package com.github.tvbox.osc.util;
+package com.github.tvbox.osc.download.internal;
 
 import android.media.MediaCodec;
 import android.media.MediaExtractor;
@@ -8,8 +8,8 @@ import android.net.Uri;
 import android.util.Log;
 
 import com.github.tvbox.osc.bean.DownloadTask;
-import com.github.tvbox.osc.download.DownloadLog;
 import com.github.tvbox.osc.download.DownloadSubType;
+import com.github.tvbox.osc.util.HttpClient;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -208,7 +208,7 @@ public class DownloadExecutor {
         t.downloadedBytes = t.totalBytes;
         DownloadLog.LOG.success(DownloadSubType.SAVE, "下载完成: " + t.fileName, DownloadLog.extras(t.episodeId));
         dm.archive.add(t); // 5.3: 完成写已下载档案(长期,先于清理)
-        com.github.tvbox.osc.download.DownloadNotifier.notifyCompleted(t); // 可选增强: 完成通知
+        com.github.tvbox.osc.download.internal.DownloadNotifier.notifyCompleted(t); // 可选增强: 完成通知
         dm.persist();
         dm.notifyChanged();
     }
@@ -472,7 +472,7 @@ public class DownloadExecutor {
         // 档案写成功后才清理分片目录(父级 tmp 保留)
         deleteSegmentsDir(t);
         t.tmpDir = null;
-        com.github.tvbox.osc.download.DownloadNotifier.notifyCompleted(t); // 可选增强: 完成通知
+        com.github.tvbox.osc.download.internal.DownloadNotifier.notifyCompleted(t); // 可选增强: 完成通知
         dm.persist();
         dm.notifyChanged();
     }
