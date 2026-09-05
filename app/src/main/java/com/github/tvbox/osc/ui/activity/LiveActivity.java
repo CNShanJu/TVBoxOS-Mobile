@@ -4,7 +4,6 @@ import android.content.Context;
 import android.net.Uri;
 import android.os.CountDownTimer;
 import android.os.Handler;
-import android.os.Looper;
 import android.util.Base64;
 import android.view.Gravity;
 import android.view.KeyEvent;
@@ -185,9 +184,6 @@ public class LiveActivity extends BaseActivity {
             } else {
                 tv_srcinfo.setText("线路" + (channel_Name.getSourceIndex() + 1) + "/" + channel_Name.getSourceNum());
             }
-
-            Handler handler = new Handler(Looper.getMainLooper());
-
         }
     }
 
