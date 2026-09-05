@@ -451,6 +451,7 @@ public class DetailActivity extends BaseVbActivity<ActivityDetailBinding> {
 
     /**
      * 排序(倒序/正序切换):反转全集列表(与弹窗/详情页共用同一状态 vodInfo.reverseSort)。
+     * 同步刷新详情页选集区排序按钮文字(弹窗/下载抽屉内排序后详情页文字跟随一致)。
      *
      * @return 反转后的状态:true=已倒序(按钮应显示"正序");false=正序(按钮显示"倒序")
      */
@@ -462,6 +463,8 @@ public class DetailActivity extends BaseVbActivity<ActivityDetailBinding> {
             vodInfo.playIndex = (vodInfo.seriesMap.get(vodInfo.playFlag).size() - 1) - vodInfo.playIndex;
             seriesAdapter.notifyDataSetChanged();
         }
+        // 详情页选集区按钮文字跟随共用状态(弹窗内排序也同步;原调用点手调 updateSortButtonText 保留无害)
+        updateSortButtonText();
         return vodInfo != null && vodInfo.reverseSort;
     }
 
