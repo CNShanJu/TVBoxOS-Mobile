@@ -87,7 +87,7 @@ Exo→Media3、EventBus→Flow/接口、Hawk→DataStore、Java→Kotlin 渐进�
 - ⚠️ UI 直读 Hawk、`PlayerTrackHelper` instanceof 内核、app 仍直用内核类型(MyVideoView/IKJ/Exo,
   集中在播放链路:PlayFragment/PlayerHelper/PlayService/LocalPlayActivity + App 组合根装配)——属播放器
   全驱动重构,需真机回归后再收口。
-- ⚠️ common/event 仍存 RefreshEvent/ServerEvent(app 用)/LogEvent(common 内用),及 HistoryStateEvent/
-  TopStateEvent(无引用残留,可删候选)。
+- ⚠️ common/event 收口：已删 HistoryStateEvent/TopStateEvent(零引用孤儿)、DownloadEvent/RefreshEvent/ServerEvent
+  各自归位业务/app 模块；common 仅剩 LogEvent(common 内 LOG.java 自用,EventBus 空投遗留——无人订阅,待日志页改造后清理)。
 - ⚠️ DownloadFragment 已完成 Facade 订阅去 EventBus;app 其余 EventBus 点(搜索/快速搜索/历史/直播等
   refresh 事件)仍为跨 Fragment 通信,逐步收口属"状态/事件管理"长线项。
