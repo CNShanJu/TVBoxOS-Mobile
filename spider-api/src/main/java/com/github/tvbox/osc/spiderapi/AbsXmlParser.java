@@ -69,8 +69,8 @@ public final class AbsXmlParser {
         return data;
     }
 
-    /** 归一:回填 sourceKey;把线路串(如 a$b#c$d)解析为 beanList */
-    private static void normalize(AbsXml data, String sourceKey) {
+    /** 归一:回填 sourceKey;把线路串(如 a$b#c$d)解析为 beanList。typed 产物亦须过此步(线路可选) */
+    public static void normalize(AbsXml data, String sourceKey) {
         if (data.movie != null && data.movie.videoList != null) {
             for (Movie.Video video : data.movie.videoList) {
                 if (video.urlBean != null && video.urlBean.infoList != null) {

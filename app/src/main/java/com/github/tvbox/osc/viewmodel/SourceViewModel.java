@@ -762,6 +762,7 @@ public class SourceViewModel extends ViewModel {
                 thunderLoop:
                 for (int idx=0;idx<video.urlBean.infoList.size();idx++) {
                     Movie.Video.UrlBean.UrlInfo urlInfo = video.urlBean.infoList.get(idx);
+                    if (urlInfo.beanList == null) continue; // 防御:无线路列表不判雷
                     for (Movie.Video.UrlBean.UrlInfo.InfoBean infoBean : urlInfo.beanList) {
                         if(Thunder.isSupportUrl(infoBean.url)){
                             hasThunder=true;
@@ -822,14 +823,13 @@ public class SourceViewModel extends ViewModel {
 
 
     /**
-     * typed(强类型)结果预处理:回填 sourceKey 归属,与字符串通道 parse 之后的数据一致;
-     * typed 通道的线路/剧集结构由 :spider 强类型实现直接给出,不再重复拆分。
+     * typed/字符串通道统一归一:回填 sourceKey + 把线路串拆成 beanList
+     * (typed 端即使只给 urls 文本,也能保证 checkThunder/选集可用)。
      * 发布副作用(postValue/EventBus)仍由调用方各自完成。
      */
     private void absXml(com.github.tvbox.osc.bean.AbsXml typed, String sourceKey) {
-        if (typed == null || typed.movie == null || typed.movie.videoList == null) return;
-        for (Movie.Video video : typed.movie.videoList) {
-            video.sourceKey = sourceKey;
+        if (typed != null) {
+            com.github.tvbox.osc.spiderapi.AbsXmlParser.normalize(typed, sourceKey);
         }
     }
 
