@@ -233,6 +233,11 @@ Exo→Media3、EventBus→Flow/接口、Hawk→DataStore、Java→Kotlin 渐进�
   悬空引用已销毁弹窗/Activity。(d2580119)
 - ✅ SortParser type0 XML 分类样例单测(parseSortXml 已测:rss/class/ty 解析 + filters 空补 +
   畸形输入返回 null;JSON 分支原有覆盖)。双通道均 JVM 可测。(9077b3fd)
+- ✅ DownloadFragment 纯展示逻辑抽离为 `util.DownloadDisplay`(纯静态,无 Android 依赖):
+  剧集名/清晰度/索引段解析、尺寸/速度格式化、列表指纹、递归删除;DownloadFragment 净 -78 行、
+  TextUtils import 清除;新增 JVM 单测 7 例(格式化边界/命名解析/指纹/递归删)。
+  配套:`checkModuleDependencies` 门禁收窄为仅拦截 download.internal(app util 的 Download* 旧实现
+  已迁入 internal 并删除,宽拦 util.Download* 已无对象)。(8de5b5ee)
 
 ## 9. 待真机回归后继续(播放器主线尾段,当前挂起)
 - PlayerApi 会话内核**实验选项**:设置页加"播放器内核:PlayerApi 会话(实验)"开关(默认关);
