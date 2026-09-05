@@ -161,8 +161,9 @@ public abstract class BaseController extends BaseVideoController implements Gest
     /**
      * seek 指示浮层显隐回调(由点播/本地控制器的 1000/1001 消息驱动)。
      * 显示时立即隐藏 loading/网速,消失时按当前播放状态还原。
+     * 属播放器 UI 内部实现细节,不外扩为公开契约(见 改进.txt §六)。
      */
-    public void setSeekPanelVisible(boolean visible) {
+    protected void setSeekPanelVisible(boolean visible) {
         if (mSeekPanelVisible == visible) return;
         mSeekPanelVisible = visible;
         refreshLoadingUi(mCurPlayState);
@@ -172,8 +173,9 @@ public abstract class BaseController extends BaseVideoController implements Gest
      * seek 动作结束(手势松手/遥控器松键):立即关闭进度浮层,不等 1s 超时。
      * 浮层一消失状态机立刻按当前播放状态接管 loading/网速——若 seek 后确实在缓冲,
      * loading 马上如实显示;不会出现"浮层还挂着、loading 被压住 1 秒后才冒出来"的拖沓感。
+     * 属播放器 UI 内部实现细节,不外扩为公开契约(见 改进.txt §六)。
      */
-    public void dismissSeekPanel() {
+    protected void dismissSeekPanel() {
         mHandler.removeMessages(1000);
         mHandler.removeMessages(1001);
         mHandler.sendEmptyMessage(1001); // 子类 1001:浮层 GONE + setSeekPanelVisible(false)

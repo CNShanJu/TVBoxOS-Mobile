@@ -13,7 +13,7 @@ import androidx.recyclerview.widget.DiffUtil;
 import com.github.tvbox.osc.R;
 import com.github.tvbox.osc.bean.Subtitle;
 import com.github.tvbox.osc.bean.VodInfo;
-import com.github.tvbox.osc.player.MyVideoView;
+import com.github.tvbox.osc.player.PlayerSession;
 import com.github.tvbox.osc.player.PlayerTrackHelper;
 import com.github.tvbox.osc.player.TrackInfo;
 import com.github.tvbox.osc.player.TrackInfoBean;
@@ -40,14 +40,14 @@ import xyz.doikki.videoplayer.player.AbstractPlayer;
  * 的全部交互与状态同步，宿主（PlayFragment）只保留薄转发。
  * <p>
  * 依赖注入：Activity（弹窗/回调 UI 线程）、{@link VodController}（mSubtitleView / openSubtitle /
- * startProgress）、{@link MyVideoView}（getMediaPlayer）。行为与迁出前的 PlayFragment 私有方法逐行等价，
+ * startProgress）、{@link PlayerSession}（内核取用 kernel()）。行为与迁出前的 PlayFragment 私有方法逐行等价，
  * 内核差异（轨道/字幕回调）统一经 {@link PlayerTrackHelper}。
  */
 public final class SubtitleCoordinator {
 
     private final Activity mActivity;
     private final VodController mController;
-    private final MyVideoView mVideoView;
+    private final PlayerSession mPlaySession;
 
     /** 当前播放字幕上下文（每次播放结果变化由宿主 set 一次） */
     @Nullable
@@ -56,10 +56,10 @@ public final class SubtitleCoordinator {
     private String mSubtitleCacheKey;
 
     public SubtitleCoordinator(@NonNull Activity activity, @NonNull VodController controller,
-                               @NonNull MyVideoView videoView) {
+                               @NonNull PlayerSession playSession) {
         mActivity = activity;
         mController = controller;
-        mVideoView = videoView;
+        mPlaySession = playSession;
     }
 
     /** 更新当前剧集字幕上下文（playResult.subt / subtKey）；每次切集调用 */
@@ -72,7 +72,7 @@ public final class SubtitleCoordinator {
 
     /** 装载字幕：恢复缓存/外部字幕，否则自动选中文内置字幕；显隐跟随"字幕"开关 */
     public void initSubtitleView() {
-        AbstractPlayer mediaPlayer = mVideoView.getMediaPlayer();
+        AbstractPlayer mediaPlayer = mPlaySession.kernel();
         TrackInfo trackInfo = PlayerTrackHelper.getTrackInfo(mediaPlayer);
         if (trackInfo != null && trackInfo.getSubtitle().size() > 0) {
             mController.mSubtitleView.hasInternal = true;
@@ -92,7 +92,7 @@ public final class SubtitleCoordinator {
             }
         });
 
-        mController.mSubtitleView.bindToMediaPlayer(mVideoView.getMediaPlayer());
+        mController.mSubtitleView.bindToMediaPlayer(mPlaySession.kernel());
         String cacheKey = mSubtitleCacheKey;
         if (cacheKey != null) {
             mController.mSubtitleView.setPlaySubtitleCacheKey(cacheKey);
@@ -124,13 +124,13 @@ public final class SubtitleCoordinator {
                     if (lowerLang.contains("zh") || lowerLang.contains("ch")) {
                         hasCh = true;
                         if (selectedIndex != subtitleTrackInfoBean.trackId) {
-                            PlayerTrackHelper.selectTrack(mVideoView.getMediaPlayer(), subtitleTrackInfoBean);
+                            PlayerTrackHelper.selectTrack(mPlaySession.kernel(), subtitleTrackInfoBean);
                             break;
                         }
                     }
                 }
                 if (!hasCh) {
-                    PlayerTrackHelper.selectTrack(mVideoView.getMediaPlayer(), subtitleTrackList.get(0));
+                    PlayerTrackHelper.selectTrack(mPlaySession.kernel(), subtitleTrackList.get(0));
                 }
             }
         }
@@ -235,7 +235,7 @@ public final class SubtitleCoordinator {
 
     /** 切换音轨 */
     public void openAudioTrackDialog() {
-        AbstractPlayer mediaPlayer = mVideoView.getMediaPlayer();
+        AbstractPlayer mediaPlayer = mPlaySession.kernel();
         TrackInfo trackInfo = PlayerTrackHelper.getTrackInfo(mediaPlayer);
         if (trackInfo == null) {
             AppBubble.toast("没有音轨");
@@ -291,7 +291,7 @@ public final class SubtitleCoordinator {
 
     /** 切换内置字幕 */
     public void openInternalSubtitleDialog() {
-        AbstractPlayer mediaPlayer = mVideoView.getMediaPlayer();
+        AbstractPlayer mediaPlayer = mPlaySession.kernel();
         TrackInfo trackInfo = PlayerTrackHelper.getTrackInfo(mediaPlayer);
         if (trackInfo == null) {
             AppBubble.toast("没有内置字幕");

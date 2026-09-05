@@ -333,7 +333,7 @@ public class PlayFragment extends BaseLazyFragment {
         });
         mVideoView.setVideoController(mController);
         mPlaySession = new com.github.tvbox.osc.player.PlayerSession(mVideoView);
-        mSubtitleCoordinator = new com.github.tvbox.osc.util.player.SubtitleCoordinator(mActivity, mController, mVideoView);
+        mSubtitleCoordinator = new com.github.tvbox.osc.util.player.SubtitleCoordinator(mActivity, mController, mPlaySession);
     }
 
     public boolean hideAllDialogSuccess(){

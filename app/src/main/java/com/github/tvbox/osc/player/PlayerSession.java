@@ -93,4 +93,9 @@ public final class PlayerSession {
     public com.github.tvbox.osc.player.VideoViewPlayerApi playerApi() {
         return video == null ? null : new com.github.tvbox.osc.player.VideoViewPlayerApi(video, false);
     }
+
+    /** 底层内核(doikki AbstractPlayer;字幕/轨道装载用)。换内核时此处返回适配层内核 */
+    public xyz.doikki.videoplayer.player.AbstractPlayer kernel() {
+        return video == null ? null : video.getMediaPlayer();
+    }
 }
