@@ -43,7 +43,7 @@ import com.github.tvbox.osc.bean.Movie;
 import com.github.tvbox.osc.bean.ParseBean;
 import com.github.tvbox.osc.bean.SourceBean;
 import com.github.tvbox.osc.bean.VodInfo;
-import com.github.tvbox.osc.cache.RoomDataManger;
+import com.github.tvbox.osc.repo.HistoryRepositories;
 import com.github.tvbox.osc.constant.IntentKey;
 import com.github.tvbox.osc.databinding.ActivityDetailBinding;
 import com.github.tvbox.osc.event.RefreshEvent;
@@ -659,7 +659,7 @@ public class DetailActivity extends BaseVbActivity<ActivityDetailBinding> {
                         mBinding.mGridView.setVisibility(View.VISIBLE);
                         mBinding.mEmptyPlaylist.setVisibility(View.GONE);
 
-                        VodInfo vodInfoRecord = RoomDataManger.getVodInfo(sourceKey, vodId);
+                        VodInfo vodInfoRecord = HistoryRepositories.history().get(sourceKey, vodId);
                         // 读取历史记录
                         if (vodInfoRecord != null) {
                             vodInfo.playIndex = Math.max(vodInfoRecord.playIndex, 0);

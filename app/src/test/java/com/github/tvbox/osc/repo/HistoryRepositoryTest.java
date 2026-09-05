@@ -52,6 +52,11 @@ public class HistoryRepositoryTest {
             }
             return out;
         }
+
+        @Override
+        public VodInfo get(String sourceKey, String vodId) {
+            return store.get(key(sourceKey, vodId));
+        }
     }
 
     private VodInfo vod(String sourceKey, String id, String name) {
@@ -105,5 +110,15 @@ public class HistoryRepositoryTest {
                 sourceKey -> "srcA".equals(sourceKey), 0);
         assertEquals(1, filtered.size());
         assertNotNull(filtered.get(0));
+    }
+
+    @Test
+    public void get_bySourceAndVodId() {
+        HistoryRepositories.history().save("srcA", vod("srcA", "1", "影片1"));
+        VodInfo hit = HistoryRepositories.history().get("srcA", "1");
+        assertNotNull(hit);
+        assertEquals("影片1", hit.name);
+        assertTrue(HistoryRepositories.history().get("srcA", "nope") == null);
+        assertTrue(HistoryRepositories.history().get("other", "1") == null);
     }
 }

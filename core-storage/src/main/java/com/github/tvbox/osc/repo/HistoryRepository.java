@@ -22,4 +22,7 @@ public interface HistoryRepository {
 
     /** 查询历史列表;sourceExists 可为 null=不过滤;historyTrimLimit<=0=不裁剪 */
     List<VodInfo> query(int limit, Predicate<String> sourceExists, int historyTrimLimit);
+
+    /** 按 sourceKey+vodId 取单条历史(无则 null;UI 回填观看记录等场景用) */
+    VodInfo get(String sourceKey, String vodId);
 }

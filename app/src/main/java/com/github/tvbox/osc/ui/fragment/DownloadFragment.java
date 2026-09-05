@@ -1034,7 +1034,7 @@ public class DownloadFragment extends BaseVbFragment<FragmentDownloadBinding> {
         if (set == null) set = new LinkedHashSet<>();
         // 历史回填:观看记录里"上次看到"的集也算播放过(功能上线前的老数据)
         try {
-            com.github.tvbox.osc.bean.VodInfo rec = com.github.tvbox.osc.cache.RoomDataManger.getVodInfo(
+            com.github.tvbox.osc.bean.VodInfo rec = com.github.tvbox.osc.repo.HistoryRepositories.history().get(
                     episodeId.substring(0, first), episodeId.substring(first + 1, second));
             if (rec != null && rec.playIndex >= 0) set.add(String.valueOf(rec.playIndex));
         } catch (Throwable ignored) {

@@ -51,7 +51,8 @@ Exo→Media3、EventBus→Flow/接口、Hawk→DataStore、Java→Kotlin 渐进�
    `:spider` 的 `ParseBeanUrls.url()/mixUrl()`（调用点 PlayUrlResolver/PlayFragment 已切换）。
 2. ⚠️ download public 面 internal 化：`MSG_*` 阶段文案唯一权威已并入 `DownloadFacade`，
    `DownloadFragment` 摘除 `util.DownloadManager` import；`DownloadManager/Scheduler/Executor/Archive` 等仍 public，待降可见性。
-3. 🔜 app 内 `RoomDataManger` 直读 → Repository 查询方法。
+3. ✅ app 内 `RoomDataManger` 直读已清零：UI 改走 `HistoryRepositories.history().get(...)`
+   （接口新增 get(sourceKey,vodId)，Fake/单测同步）。
 4. 🔜 `common/util/HawkConfig/SystemConfig/HttpClient` 分模块收口（网络→core-network，配置→core-storage/新 config）。
 5. 🔜 UI 摘 Hawk（先 Live 设置类）/自建线程池（收口到共享执行器）。
 6. ⏸ playback shell + PlayFragment/DetailActivity 大拆分（需真机回归）。

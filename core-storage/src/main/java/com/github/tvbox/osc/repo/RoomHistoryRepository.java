@@ -44,4 +44,9 @@ public final class RoomHistoryRepository implements HistoryRepository {
     public List<VodInfo> query(int limit, Predicate<String> sourceExists, int historyTrimLimit) {
         return RoomDataManger.getAllVodRecord(limit, sourceExists, historyTrimLimit);
     }
+
+    @Override
+    public VodInfo get(String sourceKey, String vodId) {
+        return RoomDataManger.getVodInfo(sourceKey, vodId);
+    }
 }
