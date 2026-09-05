@@ -106,13 +106,21 @@
 - App 组合根 `AppCompositionRoot.init()` 注入全部服务;`SortParser` 由 app 迁入 :spider-api 后单测随迁
   (`SortParserTest`),排序/筛选解析可 JVM 验证。
 
+### 1.11 playback 会话层原型(roadmap 2.1 第一部分)
+- `:player-api` 新增 `PlaybackSessions`:会话键注册表(bind/unbind/observe/release + 内建 PLAYER 日志)。
+- app 新增 `VideoViewPlayerApi`(⑥ 适配层):包 doikki VideoView,以**轮询 getCurrentPlayState 差分**映射
+  引擎无关 `PlayState`,不向共享视图挂额外 OnStateChangeListener(避免与既有 Controller 监听冲突)。
+- `AppCompositionRoot` 注册 PlayerFactory type=1(IJK)/type=2(Exo) adapter(工厂语义与 PlayerHelper.updateCfg 对齐)。
+- `PlayFragment` 播放入口 bind 会话(仅日志观察:state/buffering/error/completion)、切集与销毁时释放,
+  不改变现有 mVideoView/Controller 控制流;真机回归后再收敛为 session.play/pause/observe 全驱动。
+
 ## 2. 待后续（需真机回归或架构决策）
 
 | 项 | 说明 |
 |---|---|
 | PlayFragment(~1.8k) 进一步拆分 | 字幕/播放器控制器与宿主深度耦合，无回归环境不强行搬移 |
 | `util/player/PlayParseHelper.java`（未引用） | 疑似拆分遗留件，未接入任何调用方；可选择接线或删除 |
-| player-api PlayerFactory 适配器注册 | 已有 PlayerFactory/PlayerApi/PlayOptions 契约，尚未注册 EXO/IJK adapter |
+| playback 会话全驱动 | 原型(观察/日志)已接;PlayFragment 收敛到 session.play/pause/observe 需真机回归 |
 | 强类型收尾 | 字符串通道(SpiderContentApi)仍为过渡兼容层,待 FakeSpiderService 单测覆盖后可删 |
 | 局域网服务热切换 | 有意不做：重启应用生效即可（热重启会打断回环播放代理流） |
 | web 控制台静态资源(~260KB)精简 | 视觉设计类工作，另行处理 |

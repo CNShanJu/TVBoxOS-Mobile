@@ -125,6 +125,8 @@ public class PlayFragment extends BaseLazyFragment {
     private VodController mController;
     private SourceViewModel sourceViewModel;
     private Handler mHandler;
+    /** playback 会话原型:当前播放对应的会话键(PlaybackSessions 观察/日志用;不驱动内核) */
+    private String playbackSessionKey;
 
     private final long videoDuration = -1;
     /**
@@ -827,9 +829,79 @@ public class PlayFragment extends BaseLazyFragment {
                     }
                     mVideoView.start();
                     mController.resetSpeed();
+                    bindPlaybackSession(finalUrl); // playback 会话原型:观察当前内核状态/进度(仅日志,不驱动)
                 }
             }
         });
+    }
+
+    /**
+     * playback 会话原型(roadmap 2.1):内核对内开始播放后,把共享 mVideoView 包成
+     * {@link com.github.tvbox.osc.player.VideoViewPlayerApi}(ownsVideoView=false,不夺权)
+     * 注册到 {@link com.github.tvbox.osc.player.api.PlaybackSessions} 并挂只读日志观察者;
+     * 用于链路排查(状态/缓冲/错误/进度),不改变现有 mVideoView/Controller 控制流。
+     */
+    private void bindPlaybackSession(String url) {
+        try {
+            releasePlaybackSession();
+            if (mVideoView == null || mVodInfo == null || mVodInfo.id == null) return;
+            playbackSessionKey = "vod|" + sourceKey + "|" + mVodInfo.id + "|" + mVodInfo.playFlag
+                    + "|" + mVodInfo.playIndex;
+            com.github.tvbox.osc.player.VideoViewPlayerApi api =
+                    new com.github.tvbox.osc.player.VideoViewPlayerApi(mVideoView, false);
+            com.github.tvbox.osc.player.api.PlaybackSessions.Session session =
+                    com.github.tvbox.osc.player.api.PlaybackSessions.bind(playbackSessionKey, api, true);
+            if (session == null) {
+                playbackSessionKey = null;
+                return;
+            }
+            api.init(requireActivity(), null, null); // 启动状态轮询(不挂 VideoView 额外监听)
+            session.observe(new com.github.tvbox.osc.player.api.PlayListener() {
+                @Override
+                public void onStateChanged(com.github.tvbox.osc.player.api.PlayState state) {
+                    android.util.Log.d("PlaybackSession", "[" + playbackSessionKey + "] state=" + state);
+                }
+
+                @Override
+                public void onBufferingStart() {
+                    android.util.Log.d("PlaybackSession", "[" + playbackSessionKey + "] buffering start");
+                }
+
+                @Override
+                public void onBufferingEnd() {
+                    android.util.Log.d("PlaybackSession", "[" + playbackSessionKey + "] buffering end");
+                }
+
+                @Override
+                public void onError(int code, String message) {
+                    android.util.Log.w("PlaybackSession", "[" + playbackSessionKey + "] error code=" + code
+                            + " msg=" + message);
+                }
+
+                @Override
+                public void onCompletion() {
+                    android.util.Log.d("PlaybackSession", "[" + playbackSessionKey + "] completed");
+                }
+            });
+            android.util.Log.d("PlaybackSession", "[" + playbackSessionKey + "] bind url=" + url);
+        } catch (Throwable th) {
+            android.util.Log.w("PlaybackSession", "bind 会话异常(原型,不影响播放)", th);
+            playbackSessionKey = null;
+        }
+    }
+
+    /** playback 会话原型:释放会话观察(不释放共享 mVideoView;视频释放仍由原流程负责) */
+    private void releasePlaybackSession() {
+        try {
+            if (playbackSessionKey != null) {
+                com.github.tvbox.osc.player.api.PlaybackSessions.release(playbackSessionKey);
+                android.util.Log.d("PlaybackSession", "[" + playbackSessionKey + "] unbind");
+                playbackSessionKey = null;
+            }
+        } catch (Throwable th) {
+            android.util.Log.w("PlaybackSession", "release 会话异常(原型)", th);
+            playbackSessionKey = null;
+        }
     }
 
     private void initSubtitleView() {
@@ -1046,6 +1118,7 @@ public class PlayFragment extends BaseLazyFragment {
         sourceViewModel.playResult.removeObserver(mObserverPlayResult);
 
         EventBus.getDefault().unregister(this);
+        releasePlaybackSession(); // playback 会话原型:随视图销毁释放会话观察(共享视图不在此释放)
         if (mVideoView != null) {
             mVideoView.release();
             mVideoView = null;
@@ -1132,6 +1205,7 @@ public class PlayFragment extends BaseLazyFragment {
 
         stopParse();
         initParseLoadFound();
+        releasePlaybackSession(); // playback 会话原型:切换前释放上一会话(只停观察,不释放共享 mVideoView)
         if (mVideoView != null) mVideoView.release();
         String subtitleCacheKey = mVodInfo.sourceKey + "-" + mVodInfo.id + "-" + mVodInfo.playFlag + "-" + mVodInfo.playIndex + "-" + vs.name + "-subt";
         String progressKey = mVodInfo.sourceKey + mVodInfo.id + mVodInfo.playFlag + mVodInfo.playIndex + vs.name;

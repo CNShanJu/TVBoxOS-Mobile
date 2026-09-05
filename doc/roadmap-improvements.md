@@ -8,6 +8,8 @@
 > ✅ :core-model/:core-storage/:core-network/:spider-api 模块齐位；SourceViewModel/嗅探/播放解析均走 spider-api 契约(app getCSP=0)。
 > ✅ 1.3 强类型试点:detail/search(quick/聚合)/category/homeContent/homeVideoContent(type3)均已 typed 优先+字符串回退;
 > SortParser 迁入 :spider-api 供 VM/契约层共用,排序/筛选解析链路有 JVM 单测。
+> ✅ 2.1 原型:PlayerFactory 注册 IJK(1)/Exo(2) adapter + PlaybackSessions 会话层 + VideoViewPlayerApi + PlayFragment 日志观察入口
+> (真机回归后再收敛为 session 全驱动)。
 
 ## P0 收尾易做项（先清低风险尾巴）
 | # | 事项 | 现状 | 做法 | 验收 |
@@ -28,7 +30,7 @@
 ## P2 播放器与页面（需真机回归，专项立项）
 | # | 事项 | 现状 | 做法 | 验收 |
 |---|---|---|---|---|
-| 2.1 | player-api 接线 + playback 会话层 | ❌ | 注册 EXO/IJK adapter；PlayFragment 收敛到 `session.play/pause/seek/observe/release`；真机全流程 | UI 无内核类型/`instanceof`；内核可替换 |
+| 2.1 | player-api 接线 + playback 会话层 | ⚠️ 原型已落地 | PlayerFactory 注册 IJK(1)/Exo(2) adapter(AppCompositionRoot);新增 PlaybackSessions 会话注册表 + VideoViewPlayerApi(轮询映射,不抢共享视图监听);PlayFragment 播放入口 bind/释放 仅日志观察 | PlayFragment 收敛到 session.play/pause/observe/release(真机回归后) |
 | 2.2 | PlayFragment 拆分 | ❌ | PlayViewModel/Coordinator/SubtitleCoordinator/HistoryRepository | 行数明显下降且行为不变 |
 | 2.3 | DetailActivity 补齐拆分 | ⚠️ 已拆两块 | DetailViewModel/Repository/EpisodeSelectionState | 同上 |
 | 2.4 | 字幕能力迁入 playback | ❌ | subtitle 包迁 playback 模块 | app 不再直接持字幕实现细节 |
