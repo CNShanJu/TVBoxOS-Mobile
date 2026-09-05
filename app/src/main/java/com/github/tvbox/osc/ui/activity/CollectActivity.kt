@@ -43,7 +43,7 @@ class CollectActivity : BaseVbActivity<ActivityCollectBinding>() {
             com.github.tvbox.osc.ui.dialog.ConfirmDialog.show(this, "提示", "确定清空全部收藏?", "清空", {
                 showLoadingDialog()
                 lifecycleScope.launch(Dispatchers.IO) {
-                    RoomDataManger.deleteVodCollectAll()
+                    com.github.tvbox.osc.repo.HistoryRepositories.collect().clear()
                     withContext(Dispatchers.Main) {
                         dismissLoadingDialog()
                         collectAdapter.setNewData(ArrayList())
@@ -61,7 +61,7 @@ class CollectActivity : BaseVbActivity<ActivityCollectBinding>() {
                     val name = vodInfo.name
                     com.github.tvbox.osc.ui.dialog.ConfirmDialog.show(this, "提示", "取消收藏《" + name + "》?", "取消收藏", {
                         collectAdapter.remove(position)
-                        RoomDataManger.deleteVodCollect(vodInfo.id)
+                        com.github.tvbox.osc.repo.HistoryRepositories.collect().deleteById(vodInfo.id)
                         com.github.tvbox.osc.log.LogStore.log(com.github.tvbox.osc.log.Category.SYSTEM, "取消收藏: " + name)
                         if (collectAdapter.data.isEmpty()) {
                             mBinding.topTip.visibility = View.GONE
@@ -95,7 +95,7 @@ class CollectActivity : BaseVbActivity<ActivityCollectBinding>() {
 
     private fun initData() {
         lifecycleScope.launch(Dispatchers.IO) {
-            val allVodRecord = RoomDataManger.getAllVodCollect()
+            val allVodRecord = com.github.tvbox.osc.repo.HistoryRepositories.collect().query()
             val vodInfoList: MutableList<VodCollect> = ArrayList()
             for (vodInfo in allVodRecord) {
                 vodInfoList.add(vodInfo)

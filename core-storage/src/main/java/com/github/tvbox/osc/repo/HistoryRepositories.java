@@ -4,6 +4,7 @@ package com.github.tvbox.osc.repo;
 public final class HistoryRepositories {
 
     private static volatile HistoryRepository history = RoomHistoryRepository.get();
+    private static volatile CollectRepository collect = RoomCollectRepository.get();
 
     private HistoryRepositories() {
     }
@@ -16,6 +17,17 @@ public final class HistoryRepositories {
     public static void setHistory(HistoryRepository repo) {
         if (repo != null) {
             history = repo;
+        }
+    }
+
+    public static CollectRepository collect() {
+        return collect;
+    }
+
+    /** 测试/注入用 */
+    public static void setCollect(CollectRepository repo) {
+        if (repo != null) {
+            collect = repo;
         }
     }
 }
