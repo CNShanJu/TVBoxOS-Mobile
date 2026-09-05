@@ -7,10 +7,6 @@ package com.github.tvbox.osc.event;
  */
 public class RefreshEvent {
     public static final int TYPE_REFRESH = 0;
-    public static final int TYPE_QUICK_SEARCH = 2;
-    public static final int TYPE_QUICK_SEARCH_SELECT = 3;
-    public static final int TYPE_QUICK_SEARCH_WORD = 4;
-    public static final int TYPE_QUICK_SEARCH_WORD_CHANGE = 5;
     public static final int TYPE_SEARCH_RESULT = 6;
     public static final int TYPE_QUICK_SEARCH_RESULT = 7;
     public static final int TYPE_REFRESH_NOTIFY = 15;

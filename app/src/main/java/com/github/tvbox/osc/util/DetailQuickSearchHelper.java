@@ -3,13 +3,10 @@ package com.github.tvbox.osc.util;
 import com.github.tvbox.osc.bean.AbsXml;
 import com.github.tvbox.osc.bean.Movie;
 import com.github.tvbox.osc.bean.SourceBean;
-import com.github.tvbox.osc.event.RefreshEvent;
 import com.github.tvbox.osc.viewmodel.SourceViewModel;
 import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
-
-import org.greenrobot.eventbus.EventBus;
 
 import java.net.URLEncoder;
 import java.util.ArrayList;
@@ -22,16 +19,33 @@ import java.util.List;
  * <p>
  * 职责:
  * 1. 编排各源快速搜索请求:分词词表维护、源筛选、请求发起;
- * 2. 结果聚合:去重当前正在查看的影片后,累计到 quickSearchData 并广播给快速搜索弹窗;
+ * 2. 结果聚合:去重当前正在查看的影片后,累计到 quickSearchData 并交给宿主显示(快速搜索弹窗);
  * 3. 线程池治理:不再每次 newFixedThreadPool(5),统一提交到应用级共享线程池
  *    {@link HeavyTaskUtil#getBigTaskExecutorService()};
  * 4. 取消/去重:每轮搜索持有自增 token(epoch),真正发起前校验 token 是否仍是最新,
  *    过期的排队任务直接丢弃;弹窗关闭时暂停(未启动的任务收进 pending 队列,弹窗再开时续跑)。
  * <p>
- * 该类为纯逻辑组件,不持有任何 View/Activity 引用;UI(弹窗展示/词表回填)仍由
- * DetailActivity 通过 EventBus 与 getter 完成,与抽取前行为等价。
+ * 该类为纯逻辑组件,不持有任何 View/Activity 引用;UI(弹窗展示/词表回填)由宿主通过
+ * {@link #setQuickSearchOutput(QuickSearchOutput)} 注入的输出回调完成(替代原 EventBus 广播,
+ * 行为等价:输出仅在弹窗打开期间被宿主转交,宿主自行负责线程/生命周期)。
  */
 public class DetailQuickSearchHelper {
+
+    /** 宿主输出回调:新的累计结果 / 词表就绪时被调用(原 EventBus TYPE_QUICK_SEARCH / WORD 直调化) */
+    public interface QuickSearchOutput {
+        /** 一批新聚合结果(已去重当前影片) */
+        void onResults(List<Movie.Video> data);
+
+        /** 最新词表(分词接口返回后整表刷新) */
+        void onWords(List<String> words);
+    }
+
+    private QuickSearchOutput quickSearchOutput;
+
+    /** 注入宿主输出回调(每次弹窗打开前设置;宿主负责转交到目标 View 的线程/生命周期) */
+    public void setQuickSearchOutput(QuickSearchOutput quickSearchOutput) {
+        this.quickSearchOutput = quickSearchOutput;
+    }
 
     /** 当前详情影片过滤用(结果聚合时去掉正在查看的影片),由宿主在结果到达时传入 */
     public void setCurrentVod(String sourceKey, String vodId) {
@@ -72,12 +86,12 @@ public class DetailQuickSearchHelper {
         this.sourceViewModel = sourceViewModel;
     }
 
-    /** 供宿主在弹窗展示时广播的当前累计结果(与抽取前共用同一列表对象,行为一致) */
+    /** 供宿主在弹窗展示时读取的当前累计结果(与抽取前共用同一列表对象,行为一致) */
     public List<Movie.Video> getQuickSearchData() {
         return quickSearchData;
     }
 
-    /** 供宿主在弹窗展示时广播的词表(与抽取前共用同一列表对象,行为一致) */
+    /** 供宿主在弹窗展示时读取的词表(与抽取前共用同一列表对象,行为一致) */
     public List<String> getQuickSearchWords() {
         return quickSearchWord;
     }
@@ -89,7 +103,7 @@ public class DetailQuickSearchHelper {
 
     /**
      * 发起快速搜索(原 startQuickSearch):仅首次真正初始化;再点只是把已累计结果/词表
-     * 交给弹窗(由宿主负责广播)。
+     * 交给弹窗(由宿主负责展示)。
      *
      * @param vodName 当前详情影片名(搜索词来源;抽取前读取 mVideo.name)
      */
@@ -116,7 +130,9 @@ public class DetailQuickSearchHelper {
                             th.printStackTrace();
                         }
                         List<String> words = new ArrayList<>(new HashSet<>(quickSearchWord));
-                        EventBus.getDefault().post(new RefreshEvent(RefreshEvent.TYPE_QUICK_SEARCH_WORD, words));
+                        if (quickSearchOutput != null) {
+                            quickSearchOutput.onWords(words);
+                        }
                     }
 
                     @Override
@@ -211,7 +227,7 @@ public class DetailQuickSearchHelper {
     }
 
     /**
-     * 结果聚合(原 DetailActivity.searchData):去除正在查看的影片后累计并广播。
+     * 结果聚合(原 DetailActivity.searchData):去除正在查看的影片后累计并交给宿主。
      * 与旧实现一致:AbsXml 为空或列表为空时静默返回。
      */
     public void handleQuickSearchResult(AbsXml absXml) {
@@ -229,7 +245,9 @@ public class DetailQuickSearchHelper {
                 return;
             }
             quickSearchData.addAll(data);
-            EventBus.getDefault().post(new RefreshEvent(RefreshEvent.TYPE_QUICK_SEARCH, data));
+            if (quickSearchOutput != null) {
+                quickSearchOutput.onResults(data);
+            }
         }
     }
 

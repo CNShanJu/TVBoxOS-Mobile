@@ -88,7 +88,6 @@ import com.lxj.xpopup.enums.PopupPosition;
 import com.lxj.xpopup.interfaces.OnSelectListener;
 import com.owen.tvrecyclerview.widget.V7LinearLayoutManager;
 
-import org.greenrobot.eventbus.EventBus;
 import org.greenrobot.eventbus.Subscribe;
 import org.greenrobot.eventbus.ThreadMode;
 import org.json.JSONObject;
@@ -116,8 +115,10 @@ import java.util.concurrent.Executors;
 public class DetailActivity extends BaseVbActivity<ActivityDetailBinding> {
     private PlayFragment playFragment = null;
     private SourceViewModel sourceViewModel;
-    /** 详情页"快速搜索"请求编排(共享线程池 + epoch 去重/暂停;UI 只负责弹窗展示与广播) */
+    /** 详情页"快速搜索"请求编排(共享线程池 + epoch 去重/暂停;UI 只负责弹窗展示与直喂数据) */
     private DetailQuickSearchHelper quickSearchHelper;
+    /** 快速搜索弹窗(当前打开的实例;宿主直调喂数据/收回调,不再经 EventBus) */
+    private QuickSearchDialog mQuickSearchDialog;
     private Movie.Video mVideo;
     private VodInfo vodInfo;
     public SeriesFlagAdapter seriesFlagAdapter;
@@ -378,17 +379,53 @@ public class DetailActivity extends BaseVbActivity<ActivityDetailBinding> {
 
         mBinding.tvSite.setOnClickListener(view -> {
             // 快速搜索编排已收敛到 DetailQuickSearchHelper(共享线程池+epoch 去重/暂停语义)
+            if (mQuickSearchDialog != null && mQuickSearchDialog.isShow()) {
+                return; // 已展示中,忽略连点
+            }
             quickSearchHelper.startQuickSearch(mVideo.name);
-            QuickSearchDialog quickSearchDialog = new QuickSearchDialog(DetailActivity.this);
-            EventBus.getDefault().post(new RefreshEvent(RefreshEvent.TYPE_QUICK_SEARCH, quickSearchHelper.getQuickSearchData()));
-            EventBus.getDefault().post(new RefreshEvent(RefreshEvent.TYPE_QUICK_SEARCH_WORD, quickSearchHelper.getQuickSearchWords()));
+            mQuickSearchDialog = new QuickSearchDialog(DetailActivity.this);
+            // 点击行为直调宿主(原 EventBus SELECT/WORD_CHANGE 收口)
+            mQuickSearchDialog.setHost(new QuickSearchDialog.Host() {
+                @Override
+                public void onVideoSelected(Movie.Video video) {
+                    loadDetail(video.id, video.sourceKey);
+                }
+
+                @Override
+                public void onWordChange(String word) {
+                    quickSearchHelper.switchSearchWord(word);
+                }
+            });
+            // helper 结果/词表桥到弹窗:只在弹窗展示期间有效(原 EventBus 订阅窗口语义)
+            quickSearchHelper.setQuickSearchOutput(new DetailQuickSearchHelper.QuickSearchOutput() {
+                @Override
+                public void onResults(List<Movie.Video> data) {
+                    runOnUiThread(() -> {
+                        QuickSearchDialog dialog = mQuickSearchDialog;
+                        if (dialog != null && dialog.isShow()) dialog.appendResults(data);
+                    });
+                }
+
+                @Override
+                public void onWords(List<String> words) {
+                    runOnUiThread(() -> {
+                        QuickSearchDialog dialog = mQuickSearchDialog;
+                        if (dialog != null && dialog.isShow()) dialog.updateWords(words);
+                    });
+                }
+            });
             // 弹窗打开:放行被暂停/暂存的源搜索(等价旧 pauseRunnable 续跑)
             quickSearchHelper.onQuickSearchDialogOpened();
-            quickSearchDialog.setOnDismissListener(dialog -> {
-                // 弹窗关闭:暂停后续排队任务(等价旧 shutdownNow 收集 pauseRunnable)
+            mQuickSearchDialog.setOnDismissListener(dialog -> {
+                // 弹窗关闭:暂停后续排队任务(等价旧 shutdownNow 收集 pauseRunnable),断开输出桥
                 quickSearchHelper.onQuickSearchDialogClosed();
+                quickSearchHelper.setQuickSearchOutput(null);
+                mQuickSearchDialog = null;
             });
-            quickSearchDialog.show();
+            mQuickSearchDialog.show();
+            // 初始直喂已累计结果/词表(替代原 show 前广播;show 后 onCreate 已建 adapter)
+            mQuickSearchDialog.appendResults(new ArrayList<>(quickSearchHelper.getQuickSearchData()));
+            mQuickSearchDialog.updateWords(new ArrayList<>(quickSearchHelper.getQuickSearchWords()));
         });
         mBinding.tvChangeLine.setOnClickListener(v -> {
             FastClickCheckUtil.check(v);
@@ -753,16 +790,6 @@ public class DetailActivity extends BaseVbActivity<ActivityDetailBinding> {
                     insertVod(sourceKey, vodInfo);
                 }
 
-            }
-        } else if (event.type == RefreshEvent.TYPE_QUICK_SEARCH_SELECT) {
-            if (event.obj != null) {
-                Movie.Video video = (Movie.Video) event.obj;
-                loadDetail(video.id, video.sourceKey);
-            }
-        } else if (event.type == RefreshEvent.TYPE_QUICK_SEARCH_WORD_CHANGE) {
-            if (event.obj != null) {
-                String word = (String) event.obj;
-                quickSearchHelper.switchSearchWord(word);
             }
         } else if (event.type == RefreshEvent.TYPE_QUICK_SEARCH_RESULT) {
             try {
