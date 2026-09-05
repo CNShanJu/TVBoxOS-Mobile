@@ -110,6 +110,8 @@ import xyz.doikki.videoplayer.player.ProgressManager;
 
 public class PlayFragment extends BaseLazyFragment {
     private MyVideoView mVideoView;
+    /** 播放会话门面(指令统一入口;底层暂为共享 MyVideoView,内核隔离见 player/PlayerSession) */
+    private com.github.tvbox.osc.player.PlayerSession mPlaySession;
     private TextView mPlayLoadTip;
     private ImageView mPlayLoadErr;
     private View mPlayLoading;
@@ -330,6 +332,7 @@ public class PlayFragment extends BaseLazyFragment {
             }
         });
         mVideoView.setVideoController(mController);
+        mPlaySession = new com.github.tvbox.osc.player.PlayerSession(mVideoView);
         mSubtitleCoordinator = new com.github.tvbox.osc.util.player.SubtitleCoordinator(mActivity, mController, mVideoView);
     }
 
@@ -585,8 +588,7 @@ public class PlayFragment extends BaseLazyFragment {
         if (mActivity == null || !isAdded()) return;
         requireActivity().runOnUiThread(() -> {
             stopParse();
-            if (mVideoView != null) {
-                mVideoView.release();
+            if (mPlaySession != null) mPlaySession.release();
 
                 if (finalUrl != null) {
                     recordPlayedEpisode();
@@ -607,17 +609,13 @@ public class PlayFragment extends BaseLazyFragment {
                     }
                     hideTip();
                     PlayerHelper.updateCfg(mVideoView, mVodPlayerCfg);
-                    mVideoView.setProgressKey(progressKey);
-                    if (headers != null) {
-                        mVideoView.setUrl(finalUrl, headers);
-                    } else {
-                        mVideoView.setUrl(finalUrl);
+                    // 起播统一经 PlayerSession(设进度键+URL+start;内核隔离入口)
+                    if (mPlaySession != null) {
+                        mPlaySession.play(finalUrl, progressKey, headers);
                     }
-                    mVideoView.start();
                     mController.resetSpeed();
                     bindPlaybackSession(finalUrl); // playback 会话原型:观察当前内核状态/进度(仅日志,不驱动)
                 }
-            }
         });
     }
 
@@ -818,29 +816,21 @@ public class PlayFragment extends BaseLazyFragment {
     @Override
     public void onPause() {
         super.onPause();
-        if (mVideoView != null) {
-            mVideoView.pause();
-        }
+        if (mPlaySession != null) mPlaySession.pause();
     }
 
     @Override
     public void onResume() {
         super.onResume();
-        if (mVideoView != null) {
-            mVideoView.resume();
-        }
+        if (mPlaySession != null) mPlaySession.resume();
     }
 
     @Override
     public void onHiddenChanged(boolean hidden) {
         if (hidden) {
-            if (mVideoView != null) {
-                mVideoView.pause();
-            }
+            if (mPlaySession != null) mPlaySession.pause();
         } else {
-            if (mVideoView != null) {
-                mVideoView.resume();
-            }
+            if (mPlaySession != null) mPlaySession.resume();
         }
         super.onHiddenChanged(hidden);
     }
@@ -853,10 +843,8 @@ public class PlayFragment extends BaseLazyFragment {
 
         EventBus.getDefault().unregister(this);
         releasePlaybackSession(); // playback 会话原型:随视图销毁释放会话观察(共享视图不在此释放)
-        if (mVideoView != null) {
-            mVideoView.release();
-            mVideoView = null;
-        }
+        if (mPlaySession != null) mPlaySession.release();
+        mVideoView = null;
         stopLoadWebView(true);
         stopParse();
         Thunder.stop(true);//停止磁力下载
@@ -940,7 +928,7 @@ public class PlayFragment extends BaseLazyFragment {
         stopParse();
         initParseLoadFound();
         releasePlaybackSession(); // playback 会话原型:切换前释放上一会话(只停观察,不释放共享 mVideoView)
-        if (mVideoView != null) mVideoView.release();
+        if (mPlaySession != null) mPlaySession.release();
         String subtitleCacheKey = mVodInfo.sourceKey + "-" + mVodInfo.id + "-" + mVodInfo.playFlag + "-" + mVodInfo.playIndex + "-" + vs.name + "-subt";
         String progressKey = mVodInfo.sourceKey + mVodInfo.id + mVodInfo.playFlag + mVodInfo.playIndex + vs.name;
         //重新播放清除现有进度
