@@ -683,7 +683,7 @@ public class SourceViewModel extends ViewModel {
 
     private AbsSortXml sortJson(MutableLiveData<AbsSortXml> result, String json) {
         // 解析已抽到 SortParser(纯静态、可单测);result 由调用方发布
-        return com.github.tvbox.osc.util.SortParser.parseSortJson(json);
+        return com.github.tvbox.osc.spiderapi.SortParser.parseSortJson(json);
     }
 
     /**
@@ -712,7 +712,7 @@ public class SourceViewModel extends ViewModel {
 
     private AbsSortXml sortXml(MutableLiveData<AbsSortXml> result, String xml) {
         // 解析已抽到 SortParser(纯静态、可单测)
-        return com.github.tvbox.osc.util.SortParser.parseSortXml(xml);
+        return com.github.tvbox.osc.spiderapi.SortParser.parseSortXml(xml);
     }
 
     private void absXml(AbsXml data, String sourceKey) {

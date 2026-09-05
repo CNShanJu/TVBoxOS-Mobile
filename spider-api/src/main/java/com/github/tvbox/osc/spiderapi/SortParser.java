@@ -1,4 +1,4 @@
-package com.github.tvbox.osc.util;
+package com.github.tvbox.osc.spiderapi;
 
 import com.github.tvbox.osc.bean.AbsSortJson;
 import com.github.tvbox.osc.bean.AbsSortXml;
