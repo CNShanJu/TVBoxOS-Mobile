@@ -199,6 +199,15 @@ Exo→Media3、EventBus→Flow/接口、Hawk→DataStore、Java→Kotlin 渐进�
 - ✅ 真机 NPE 修复(typed 通道):absXml(typed) 改走公开的 `AbsXmlParser.normalize`,统一回填 sourceKey 并
   拆分线路串→beanList(此前并行简化把 typed 端拆分丢掉,checkThunder 遍历 null beanList 崩溃);另加
   beanList 空防御。gate 绿。真机回归点:type3 typed 详情/播放/雷资源判定。(commit 348fca79)
+- ✅ AbsXmlParser XML 样例 + 防御回归:parseXml type0 多线路 dd/空 year/state 样例;normalize typed 路径
+  (仅 urls 文本补 beanList,对应真机 NPE);normalize 自身加固 null data/空白 urls。(6c07f31f)
+- ✅ RefreshEvent 零订阅死类型/死投递清理:全仓 @Subscribe 审计后删 TYPE_HISTORY_REFRESH、
+  TYPE_API_URL_CHANGE/TYPE_PUSH_URL(仅 ControlManager 投,零订阅;push 本就"暂未实现")、
+  LocalPlayActivity finish() 投 TYPE_REFRESH ""(处理器仅认 Integer/JSONObject)。遥控推送常量 16/17
+  由并行侧按新编号保留声明,未动。(86ea62be)
+- ✅ 字幕字号变更同屏直调化:DetailActivity→PlayFragment 的 TYPE_SUBTITLE_SIZE_CHANGE 广播改为
+  playFragment.applySubtitleTextSize 直调(预览播放器与详情页同屏、两端唯一);PlayFragment 移除
+  唯一 @Subscribe 及 register/unregister;常量 12 删除。(d9f754eb)
 
 ## 9. 待真机回归后继续(播放器主线尾段,当前挂起)
 - PlayerApi 会话内核**实验选项**:设置页加"播放器内核:PlayerApi 会话(实验)"开关(默认关);
