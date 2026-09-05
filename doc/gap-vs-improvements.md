@@ -12,8 +12,8 @@
 ## 2. 第一阶段验收对照（§七·一）
 | 项 | 状态 | 现状/残留 |
 |---|---|---|
-| SourceViewModel 走 SpiderApi | ✅ type3 typed 优先+回退 | type0/1/4 仍在 VM 内走 `HttpClient`+`xml()/json()/sortJson()` 内联解析；未到 `SourceViewModel(SpiderService)` 可 Fake 形态；VM 内仍大量 EventBus.post |
-| DownloadFragment 走 DownloadFacade | ⚠️ | 控制/查询已走 Facade；仍 import `util.DownloadManager`（读 `MSG_*` 阶段文案）→ 本轮把 MSG 常量并入 `DownloadFacade`，UI 摘除该 import |
+| SourceViewModel 走 SpiderApi | ✅ type3 typed 优先+回退 | type0/1/4 仍在 VM 内走 `HttpClient`+`xml()/json()/sortJson()` 内联解析；VM 内仍大量 EventBus.post。ApiConfig 直读已清零：源注册表/首页源/vip 旗标改经 `spider-api.SourceConfigApi`（`SourceConfigProviders` 注入，ApiConfig 实现契约） |
+| DownloadFragment 走 DownloadFacade | ⚠️ | 控制/查询已走 Facade；仍 import `util.DownloadManager`（读 `MSG_*` 阶段文案）→ 把 MSG 常量并入 `DownloadFacade` 后 UI 摘除该 import |
 | DetailActivity 不直调 DownloadManager | ✅ | 另：仍直用 `cache.RoomDataManger.getVodInfo`（DAO 泄漏点，见 §4） |
 | 注册并使用 PlayerFactory | ⚠️ | 已注册 IJK(1)/Exo(2) adapter + `PlaybackSessions`/`VideoViewPlayerApi` 会话原型；PlayFragment 仍直持 `MyVideoView`/内核，session 仅日志观察 |
 
@@ -63,7 +63,7 @@
 | PlayFragment.java | ~1610 | PlayViewModel/Coordinator/PlayerSession(SubtitleCoordinator/PlayHistoryRepository 已抽,见 §8) |
 | DetailActivity.java | ~1276 | DetailViewModel/Repository/EpisodeSelectionState（已拆出少量 Helper） |
 | DownloadFragment.java | ~1208 | 已大量走 Facade，可继续薄化 |
-| SourceViewModel.java | ~930 | 依赖 SpiderService、可 Fake 单测 |
+| SourceViewModel.java | ~970 | 源元信息已走 `SourceConfigApi` 契约；type0/1 内联解析/EventBus 仍留(进一步依赖注入化) |
 
 ## 6. 现代化（§七·五）— 全部未启动（符合"最后做"）
 Exo→Media3、EventBus→Flow/接口、Hawk→DataStore、Java→Kotlin 渐进、Hilt（按需）、ui-common→ui-kit 拆分。
@@ -99,6 +99,10 @@ Exo→Media3、EventBus→Flow/接口、Hawk→DataStore、Java→Kotlin 渐进�
   PlayFragment 的 getSavedProgress/saveProgress/切集与重置 delete 六处触点全委托,HistoryRepositories/MD5
   直读清零;JVM 单测 7 例(Fake CacheRepository:roundTrip/skip 取大/String 兼容/删除)。
   配套:common `MD5.string2MD5/encrypt` 的空值判断去 Android TextUtils 依赖(行为等价,纯算法类可 JVM 测)。
+- ✅ SourceViewModel 去 ApiConfig 直读:新增 `spider-api.SourceConfigApi`(getSource/getHomeSourceBean/
+  getVipParseFlags,只用 core-model 类型)+ `SourceConfigProviders` 持有者(:spider 的 ApiConfig 实现契约,
+  AppCompositionRoot.init 注入);SourceViewModel 改持 `SourceConfigApi` 字段,8 处 `ApiConfig.get().*` 清零,
+  不再 import :spider 的 ApiConfig 类(VM 侧源元信息可经接口注入 Fake;type0/1 内联解析仍留)。
 - ⚠️ common/event 收口：已删 HistoryStateEvent/TopStateEvent(零引用孤儿)、DownloadEvent/RefreshEvent/ServerEvent
   各自归位业务/app 模块；common 仅剩 LogEvent(common 内 LOG.java 自用,EventBus 空投遗留——无人订阅,待日志页改造后清理)。
 - ⚠️ DownloadFragment 已完成 Facade 订阅去 EventBus;app 其余 EventBus 点(搜索/快速搜索/历史/直播等

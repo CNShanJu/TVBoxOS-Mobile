@@ -40,6 +40,9 @@ public final class AppCompositionRoot {
         // 强类型分类/首页视频(type3;失败自动回退字符串通道)
         com.github.tvbox.osc.spiderapi.SpiderHomeProviders.set(
                 com.github.catvod.crawler.SpiderHomeImpl.get());
+        // 源配置元信息(ApiConfig 即契约实现:源注册表/首页源/vip 解析旗标)
+        com.github.tvbox.osc.spiderapi.SourceConfigProviders.set(
+                com.github.tvbox.osc.api.ApiConfig.get());
         // 网络客户端提供者:general/noRedirect 来自 OkGoHelper;playback 复用 Exo 已建实例
         networkProvider = new com.github.tvbox.osc.net.NetworkProvider() {
             @Override

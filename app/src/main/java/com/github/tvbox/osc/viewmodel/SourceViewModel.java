@@ -6,7 +6,6 @@ import android.util.Base64;
 import androidx.lifecycle.MutableLiveData;
 import androidx.lifecycle.ViewModel;
 
-import com.github.tvbox.osc.api.ApiConfig;
 import com.github.tvbox.osc.base.App;
 import com.github.tvbox.osc.bean.AbsJson;
 import com.github.tvbox.osc.bean.AbsSortJson;
@@ -23,6 +22,8 @@ import com.github.tvbox.osc.util.HttpClient;
 import com.github.tvbox.osc.util.LOG;
 import com.github.tvbox.osc.util.SystemConfig;
 import com.github.tvbox.osc.util.thunder.Thunder;
+import com.github.tvbox.osc.spiderapi.SourceConfigApi;
+import com.github.tvbox.osc.spiderapi.SourceConfigProviders;
 import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
@@ -71,7 +72,12 @@ public class SourceViewModel extends ViewModel {
         quickSearchResult = new MutableLiveData<>();
         detailResult = new MutableLiveData<>();
         playResult = new MutableLiveData<>();
+        // 源配置元信息契约(AppCompositionRoot 已注入 :spider 的 ApiConfig 实现;可注入 Fake)
+        sourceConfig = SourceConfigProviders.get();
     }
+
+    /** 源配置元信息契约(源注册表/首页源/vip 解析旗标;不再直读 :spider 的 ApiConfig) */
+    private final SourceConfigApi sourceConfig;
 
     /** 爬虫串行池：统一委托 SpiderApi（quickjs 单线程限制，全模块共用同一串行执行器） */
     public static final ExecutorService spThreadPool = com.github.catvod.crawler.SpiderApi.serialExecutor();
@@ -82,7 +88,7 @@ public class SourceViewModel extends ViewModel {
             sortResult.postValue(null);
             return;
         }
-        SourceBean sourceBean = ApiConfig.get().getSource(sourceKey);
+        SourceBean sourceBean = sourceConfig.getSource(sourceKey);
         int type = sourceBean.getType();
         if (type == 3) {
             // 调试辅助:jar 源首页加载 trace(定位 jar 内 toast 触发源;tag=SpiderTrace)
@@ -237,7 +243,7 @@ public class SourceViewModel extends ViewModel {
     }
     // categoryContent
     public void getList(MovieSort.SortData sortData, int page) {
-        SourceBean homeSourceBean = ApiConfig.get().getHomeSourceBean();
+        SourceBean homeSourceBean = sourceConfig.getHomeSourceBean();
         int type = homeSourceBean.getType();
         if (type == 3) {
             spThreadPool.execute(new Runnable() {
@@ -442,7 +448,7 @@ public class SourceViewModel extends ViewModel {
     }
     // detailContent
     public void getDetail(String sourceKey, String id) {
-        SourceBean sourceBean = ApiConfig.get().getSource(sourceKey);
+        SourceBean sourceBean = sourceConfig.getSource(sourceKey);
         if (sourceBean == null) {
             // 源不存在(订阅变更/失效等),通知空结果,避免崩溃
             detailResult.postValue(null);
@@ -501,7 +507,7 @@ public class SourceViewModel extends ViewModel {
     }
     // searchContent
     public void getSearch(String sourceKey, String wd) {
-        SourceBean sourceBean = ApiConfig.get().getSource(sourceKey);
+        SourceBean sourceBean = sourceConfig.getSource(sourceKey);
         int type = sourceBean.getType();
         if (type == 3) {
             try {
@@ -574,7 +580,7 @@ public class SourceViewModel extends ViewModel {
     }
     // searchContent
     public void getQuickSearch(String sourceKey, String wd) {
-        SourceBean sourceBean = ApiConfig.get().getSource(sourceKey);
+        SourceBean sourceBean = sourceConfig.getSource(sourceKey);
         int type = sourceBean.getType();
         if (type == 3) {
             try {
@@ -641,7 +647,7 @@ public class SourceViewModel extends ViewModel {
     }
     // playerContent
     public void getPlay(String sourceKey, String playFlag, String progressKey, String url, String subtitleKey) {
-        SourceBean sourceBean = ApiConfig.get().getSource(sourceKey);
+        SourceBean sourceBean = sourceConfig.getSource(sourceKey);
         int type = sourceBean.getType();
         if (type == 3) {
             spThreadPool.execute(new Runnable() {
@@ -649,7 +655,7 @@ public class SourceViewModel extends ViewModel {
                 public void run() {
                     try {
                         String json = com.github.tvbox.osc.spiderapi.SpiderContentProviders.get()
-                                .playerContent(sourceBean.getKey(), playFlag, url, ApiConfig.get().getVipParseFlags());
+                                .playerContent(sourceBean.getKey(), playFlag, url, sourceConfig.getVipParseFlags());
                         JSONObject result = new JSONObject(json);
                         result.put("key", url);
                         result.put("proKey", progressKey);

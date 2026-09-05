@@ -53,8 +53,12 @@ import java.util.regex.Pattern;
  * @author pj567
  * @date :2020/12/18
  * @description:
+ * <p>
+ * 实现 {@link com.github.tvbox.osc.spiderapi.SourceConfigApi}：源配置元信息契约
+ * （getSource/getHomeSourceBean/getVipParseFlags），由 AppCompositionRoot 注入，
+ * app 侧 ViewModel 经接口读取，不直依赖本类。
  */
-public class ApiConfig {
+public class ApiConfig implements com.github.tvbox.osc.spiderapi.SourceConfigApi {
     /** 注入的 application context（独立模块 :spider，不依赖 app 类） */
     private static volatile Context appContext;
     /** 局域网地址前缀（由 app 侧 ControlManager 初始化后注入，替代直接依赖） */
