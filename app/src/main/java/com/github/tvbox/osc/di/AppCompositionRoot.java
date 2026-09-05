@@ -27,6 +27,9 @@ public final class AppCompositionRoot {
         // 首页/分类/详情/搜索/播放解析内容(SourceViewModel 不取具体 Spider)
         com.github.tvbox.osc.spiderapi.SpiderContentProviders.set(
                 com.github.catvod.crawler.SpiderContentImpl.get());
+        // 强类型详情(type3,解析下沉 :spider;失败自动回退字符串通道)
+        com.github.tvbox.osc.spiderapi.SpiderDetailProviders.set(
+                com.github.catvod.crawler.SpiderDetailImpl.get());
         // 网络客户端提供者:general/noRedirect 来自 OkGoHelper;playback 复用 Exo 已建实例
         networkProvider = new com.github.tvbox.osc.net.NetworkProvider() {
             @Override

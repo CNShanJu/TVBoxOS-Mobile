@@ -23,29 +23,27 @@
             android:textSize="22sp" />
     </LinearLayout>
 
-    <!-- 外层整体滚动(与设置页一致):MBox 标题吸顶固定,选项卡片+版本号随内容滚动;
-         子布局必须 wrap_content 才能在内容高于屏幕时可滚动,否则版本号会被顶到屏外且无法上滑 -->
-    <ScrollView
+    <!-- 中间选项区:高度固定=吃满标题与底部版本号之间的剩余空间;选项行超出时在卡片内部滚动,
+         版本号固定在页面底部不参与滚动 -->
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1"
-        android:scrollbars="none"
-        android:paddingBottom="20dp"
-        android:clipToPadding="false"
-        >
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:layout_margin="20dp">
+        android:orientation="vertical"
+        android:layout_marginHorizontal="20dp"
+        android:background="@drawable/bg_large_round_gray">
 
-            <!-- 选项卡片:随内容自然撑开,超高时整体随外层滚动,保证下方版本号可达 -->
+        <ScrollView
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:scrollbars="none"
+            android:clipToPadding="false"
+            android:paddingVertical="12dp">
+
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:paddingVertical="20dp"
-                android:background="@drawable/bg_large_round_gray">
+                android:orientation="vertical">
 
             <LinearLayout
                 android:id="@+id/llSubscription"
@@ -437,23 +435,21 @@
 
             </LinearLayout>
 
-            <!-- 版本号:位于选项卡片下方(卡片外), 随内容滚动; 底部导航栏已改为占布局高度,
-                 内容区在导航栏上方结束, 版本号不会再被遮挡, 内容超高时可上滑看到 -->
-            </LinearLayout>
-
-            <TextView
-                android:id="@+id/tv_version"
-                android:textSize="13sp"
-                tools:text="v3.0.0"
-                android:paddingVertical="12dp"
-                android:layout_marginTop="6dp"
-                android:layout_marginBottom="6dp"
-                android:layout_gravity="center_horizontal"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:textColor="@color/text_sub_foreground"
-                />
+                </LinearLayout>
+            </ScrollView>
         </LinearLayout>
-    </ScrollView>
+
+        <TextView
+            android:id="@+id/tv_version"
+            android:textSize="13sp"
+            tools:text="v3.0.0"
+            android:paddingVertical="12dp"
+            android:layout_marginTop="10dp"
+            android:layout_marginBottom="12dp"
+            android:layout_gravity="center_horizontal"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textColor="@color/text_sub_foreground"
+            />
 </LinearLayout>
 

@@ -390,6 +390,15 @@ public class SourceViewModel extends ViewModel {
                 @Override
                 public void run() {
                     try {
+                        // 强类型试点:解析下沉 :spider(SpiderDetailImpl);失败回退字符串通道(行为不变)
+                        com.github.tvbox.osc.bean.AbsXml typed =
+                                com.github.tvbox.osc.spiderapi.SpiderDetailProviders.get().detail(sourceKey, id);
+                        if (typed != null && typed.movie != null) {
+                            absXml(typed, sourceBean.getKey());
+                            checkThunder(typed, 0); // 内部按需 postValue(detailResult)
+                            return;
+                        }
+                        android.util.Log.i("SpiderBridge", "detail(typed) 不可用,回退字符串通道: key=" + sourceKey + " id=" + id);
                         List<String> ids = new ArrayList<>();
                         ids.add(id);
                         json(detailResult, com.github.tvbox.osc.spiderapi.SpiderContentProviders.get()
