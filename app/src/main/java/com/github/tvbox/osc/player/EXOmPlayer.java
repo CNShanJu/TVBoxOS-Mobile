@@ -19,9 +19,11 @@ import com.google.android.exoplayer2.trackselection.MappingTrackSelector;
 import com.google.android.exoplayer2.trackselection.MappingTrackSelector.MappedTrackInfo;
 import com.google.android.exoplayer2.util.MimeTypes;
 
+import java.util.List;
+
 import xyz.doikki.videoplayer.exo.ExoMediaPlayer;
 
-public class EXOmPlayer extends ExoMediaPlayer {
+public class EXOmPlayer extends ExoMediaPlayer implements KernelTrackSupport {
     private String audioId = "";
     private String subtitleId = "";
 
@@ -117,4 +119,38 @@ public class EXOmPlayer extends ExoMediaPlayer {
         mMediaPlayer.addListener(listener);
     }
 
+    // ── KernelTrackSupport（⑥ 适配层：PlayerTrackHelper 不再 instanceof 本类）──
+
+    @Override
+    public void selectTrack(@Nullable TrackInfoBean videoTrackBean) {
+        if (videoTrackBean == null) {
+            // 与旧 helper 一致:null bean 直接忽略(保留本内核 selectExoTrack(null)=清字幕的底层能力)
+            return;
+        }
+        selectExoTrack(videoTrackBean);
+    }
+
+    @Override
+    public boolean requiresControllerProgressRestart() {
+        return true; // Exo 切换轨道后需 startProgress 恢复
+    }
+
+    @Override
+    public void setOnSubtitleListener(PlayerTrackHelper.SubtitleListener listener) {
+        if (listener == null) return;
+        setOnTimedTextListener(new Player.Listener() {
+            @Override
+            public void onCues(@androidx.annotation.NonNull List<com.google.android.exoplayer2.text.Cue> cues) {
+                try {
+                    if (cues.size() > 0 && cues.get(0).text != null) {
+                        listener.onSubtitle(cues.get(0).text.toString());
+                    } else {
+                        listener.onSubtitle(null);
+                    }
+                } catch (Throwable th) {
+                    android.util.Log.w("PlayerTrackHelper", "Exo cue 回调异常: " + th.getMessage());
+                }
+            }
+        });
+    }
 }

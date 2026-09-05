@@ -16,11 +16,12 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 import tv.danmaku.ijk.media.player.IMediaPlayer;
+import tv.danmaku.ijk.media.player.IjkTimedText;
 import tv.danmaku.ijk.media.player.misc.ITrackInfo;
 import tv.danmaku.ijk.media.player.misc.IjkTrackInfo;
 import xyz.doikki.videoplayer.ijk.IjkPlayer;
 
-public class IjkMediaPlayer extends IjkPlayer {
+public class IjkMediaPlayer extends IjkPlayer implements KernelTrackSupport {
 
     private IJKCode codec = null;
 
@@ -162,4 +163,34 @@ public class IjkMediaPlayer extends IjkPlayer {
         mMediaPlayer.setOnTimedTextListener(listener);
     }
 
+    // ── KernelTrackSupport（⑥ 适配层：PlayerTrackHelper 不再 instanceof 本类）──
+
+    @Override
+    public void selectTrack(@androidx.annotation.Nullable TrackInfoBean bean) {
+        if (bean == null) {
+            // IJK 无"清字幕选择"接口,置 0 由内核忽略;原 helper 对 null bean 直接返回,保持一致
+            return;
+        }
+        setTrack(bean.trackId);
+    }
+
+    @Override
+    public boolean requiresControllerProgressRestart() {
+        return false; // IJK 由内核自行恢复进度
+    }
+
+    @Override
+    public void setOnSubtitleListener(PlayerTrackHelper.SubtitleListener listener) {
+        if (listener == null) return;
+        setOnTimedTextListener(new IMediaPlayer.OnTimedTextListener() {
+            @Override
+            public void onTimedText(IMediaPlayer mp, IjkTimedText text) {
+                try {
+                    listener.onSubtitle(text == null ? null : text.getText());
+                } catch (Throwable th) {
+                    android.util.Log.w("PlayerTrackHelper", "IJK timed text 回调异常: " + th.getMessage());
+                }
+            }
+        });
+    }
 }

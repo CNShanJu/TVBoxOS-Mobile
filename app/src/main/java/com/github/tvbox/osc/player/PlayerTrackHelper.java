@@ -5,20 +5,15 @@ import android.util.Log;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
-import com.google.android.exoplayer2.Player;
-import com.google.android.exoplayer2.text.Cue;
-
 import java.util.List;
-
-import tv.danmaku.ijk.media.player.IMediaPlayer;
-import tv.danmaku.ijk.media.player.IjkTimedText;
 
 import xyz.doikki.videoplayer.player.AbstractPlayer;
 
 /**
  * 播放器内核能力收敛层（⑥ 适配层第一步）：
  * 调用方（PlayFragment 等）不再直接 `instanceof` 强转内核类型，
- * track/字幕相关操作统一走本类——后续内核适配器化/Media3 升级时只改这里。
+ * track/字幕相关操作统一走本类——各内核实现 {@link KernelTrackSupport} 承载差异，
+ * 后续 Media3 升级 = 新增实现，适配层零改动。
  */
 public final class PlayerTrackHelper {
 
@@ -33,58 +28,28 @@ public final class PlayerTrackHelper {
 
     /** 获取音轨/字幕信息（内核无关）；不支持的内核返回 null */
     public static TrackInfo getTrackInfo(AbstractPlayer mediaPlayer) {
-        if (mediaPlayer instanceof IjkMediaPlayer) {
-            return ((IjkMediaPlayer) mediaPlayer).getTrackInfo();
-        }
-        if (mediaPlayer instanceof EXOmPlayer) {
-            return ((EXOmPlayer) mediaPlayer).getTrackInfo();
-        }
-        return null;
+        return mediaPlayer instanceof KernelTrackSupport
+                ? ((KernelTrackSupport) mediaPlayer).getTrackInfo() : null;
     }
 
-    /** 切换轨道：IJK 按 trackId / Exo 按 TrackInfoBean；不支持的内核忽略 */
-    public static void selectTrack(AbstractPlayer mediaPlayer, TrackInfoBean bean) {
+    /** 切换轨道（IJK 按 trackId / Exo 按 TrackInfoBean）；null bean 或未实现内核忽略 */
+    public static void selectTrack(AbstractPlayer mediaPlayer, @Nullable TrackInfoBean bean) {
         if (mediaPlayer == null || bean == null) return;
-        if (mediaPlayer instanceof IjkMediaPlayer) {
-            ((IjkMediaPlayer) mediaPlayer).setTrack(bean.trackId);
-        } else if (mediaPlayer instanceof EXOmPlayer) {
-            ((EXOmPlayer) mediaPlayer).selectExoTrack(bean);
+        if (mediaPlayer instanceof KernelTrackSupport) {
+            ((KernelTrackSupport) mediaPlayer).selectTrack(bean);
         }
     }
 
     /** 切换后是否需调用方恢复进度 UI（仅 Exo 需要 startProgress，IJK 由内核自行恢复） */
     public static boolean requiresControllerProgressRestart(AbstractPlayer mediaPlayer) {
-        return mediaPlayer instanceof EXOmPlayer;
+        return mediaPlayer instanceof KernelTrackSupport
+                && ((KernelTrackSupport) mediaPlayer).requiresControllerProgressRestart();
     }
 
-    /** 注册内置字幕回调（IJK/Exo 差异在此收敛，回调统一为文本）；不支持的内核忽略 */
+    /** 注册内置字幕回调（IJK/Exo 差异由内核实现收敛，回调统一为文本）；不支持的内核忽略 */
     public static void setOnSubtitleListener(@NonNull AbstractPlayer mediaPlayer, @NonNull SubtitleListener listener) {
-        if (mediaPlayer instanceof IjkMediaPlayer) {
-            ((IjkMediaPlayer) mediaPlayer).setOnTimedTextListener(new IMediaPlayer.OnTimedTextListener() {
-                @Override
-                public void onTimedText(IMediaPlayer mp, IjkTimedText text) {
-                    try {
-                        listener.onSubtitle(text == null ? null : text.getText());
-                    } catch (Throwable th) {
-                        Log.w("PlayerTrackHelper", "IJK timed text 回调异常: " + th.getMessage());
-                    }
-                }
-            });
-        } else if (mediaPlayer instanceof EXOmPlayer) {
-            ((EXOmPlayer) mediaPlayer).setOnTimedTextListener(new Player.Listener() {
-                @Override
-                public void onCues(@NonNull List<Cue> cues) {
-                    try {
-                        if (cues.size() > 0 && cues.get(0).text != null) {
-                            listener.onSubtitle(cues.get(0).text.toString());
-                        } else {
-                            listener.onSubtitle(null);
-                        }
-                    } catch (Throwable th) {
-                        Log.w("PlayerTrackHelper", "Exo cue 回调异常: " + th.getMessage());
-                    }
-                }
-            });
+        if (mediaPlayer instanceof KernelTrackSupport) {
+            ((KernelTrackSupport) mediaPlayer).setOnSubtitleListener(listener);
         }
     }
 }
