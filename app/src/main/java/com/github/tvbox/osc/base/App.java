@@ -107,6 +107,9 @@ public class App extends MultiDexApplication {
         // 组合根:嗅探型源“手动视频判定”同样走 spider-api 契约
         com.github.tvbox.osc.spiderapi.SpiderManualCheckProviders.set(
                 com.github.catvod.crawler.SpiderManualCheckImpl.get());
+        // 组合根:分类/首页/详情/搜索/播放解析内容走 spider-api 契约(SourceViewModel 不再取具体 Spider)
+        com.github.tvbox.osc.spiderapi.SpiderContentProviders.set(
+                com.github.catvod.crawler.SpiderContentImpl.get());
         // 方案A:注册无头 WebView 嗅探器(嗅探型源任务启动前用它拿真实播放地址,串行复用保会话)
         com.github.tvbox.osc.util.DownloadManager.setUrlSniffer(com.github.tvbox.osc.util.WebSniffResolver.get());
         // 下载完成通知渠道(可选增强)

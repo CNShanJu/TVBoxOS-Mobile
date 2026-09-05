@@ -6,7 +6,6 @@ import android.util.Base64;
 import androidx.lifecycle.MutableLiveData;
 import androidx.lifecycle.ViewModel;
 
-import com.github.catvod.crawler.Spider;
 import com.github.tvbox.osc.api.ApiConfig;
 import com.github.tvbox.osc.base.App;
 import com.github.tvbox.osc.bean.AbsJson;
@@ -96,8 +95,8 @@ public class SourceViewModel extends ViewModel {
                     Future<String> future = executor.submit(new Callable<String>() {
                         @Override
                         public String call() throws Exception {
-                            Spider sp = ApiConfig.get().getCSP(sourceBean);
-                            return sp.homeContent(true);
+                            return com.github.tvbox.osc.spiderapi.SpiderContentProviders.get()
+                                    .homeContent(sourceBean.getKey(), true);
                         }
                     });
                     String sortJson = null;
@@ -226,8 +225,9 @@ public class SourceViewModel extends ViewModel {
                 @Override
                 public void run() {
                     try {
-                        Spider sp = ApiConfig.get().getCSP(homeSourceBean);
-                        json(listResult, sp.categoryContent(sortData.id, page + "", true, sortData.filterSelect), homeSourceBean.getKey());
+                        json(listResult, com.github.tvbox.osc.spiderapi.SpiderContentProviders.get()
+                                        .categoryContent(homeSourceBean.getKey(), sortData.id, page + "", true, sortData.filterSelect),
+                                homeSourceBean.getKey());
                     } catch (Throwable th) {
                         th.printStackTrace();
                     }
@@ -312,8 +312,8 @@ public class SourceViewModel extends ViewModel {
                     Future<String> future = executor.submit(new Callable<String>() {
                         @Override
                         public String call() throws Exception {
-                            Spider sp = ApiConfig.get().getCSP(sourceBean);
-                            return sp.homeVideoContent();
+                            return com.github.tvbox.osc.spiderapi.SpiderContentProviders.get()
+                                    .homeVideoContent(sourceBean.getKey());
                         }
                     });
                     String sortJson = null;
@@ -390,10 +390,10 @@ public class SourceViewModel extends ViewModel {
                 @Override
                 public void run() {
                     try {
-                        Spider sp = ApiConfig.get().getCSP(sourceBean);
                         List<String> ids = new ArrayList<>();
                         ids.add(id);
-                        json(detailResult, sp.detailContent(ids), sourceBean.getKey());
+                        json(detailResult, com.github.tvbox.osc.spiderapi.SpiderContentProviders.get()
+                                .detailContent(sourceBean.getKey(), ids), sourceBean.getKey());
                     } catch (Throwable th) {
                         th.printStackTrace();
                     }
@@ -432,8 +432,8 @@ public class SourceViewModel extends ViewModel {
         int type = sourceBean.getType();
         if (type == 3) {
             try {
-                Spider sp = ApiConfig.get().getCSP(sourceBean);
-                String search = sp.searchContent(wd, false);
+                String search = com.github.tvbox.osc.spiderapi.SpiderContentProviders.get()
+                        .searchContent(sourceBean.getKey(), wd, false);
                 if(!TextUtils.isEmpty(search)){
                     json(searchResult, search, sourceBean.getKey());
                 } else {
@@ -495,8 +495,8 @@ public class SourceViewModel extends ViewModel {
         int type = sourceBean.getType();
         if (type == 3) {
             try {
-                Spider sp = ApiConfig.get().getCSP(sourceBean);
-                json(quickSearchResult, sp.searchContent(wd, true), sourceBean.getKey());
+                json(quickSearchResult, com.github.tvbox.osc.spiderapi.SpiderContentProviders.get()
+                        .searchContent(sourceBean.getKey(), wd, true), sourceBean.getKey());
             } catch (Throwable th) {
                 th.printStackTrace();
             }
@@ -554,9 +554,9 @@ public class SourceViewModel extends ViewModel {
             spThreadPool.execute(new Runnable() {
                 @Override
                 public void run() {
-                    Spider sp = ApiConfig.get().getCSP(sourceBean);
                     try {
-                        String json = sp.playerContent(playFlag, url, ApiConfig.get().getVipParseFlags());
+                        String json = com.github.tvbox.osc.spiderapi.SpiderContentProviders.get()
+                                .playerContent(sourceBean.getKey(), playFlag, url, ApiConfig.get().getVipParseFlags());
                         JSONObject result = new JSONObject(json);
                         result.put("key", url);
                         result.put("proKey", progressKey);
