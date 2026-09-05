@@ -29,18 +29,12 @@ import com.github.tvbox.osc.bean.VideoInfo;
 import com.github.tvbox.osc.databinding.FragmentDownloadBinding;
 import com.github.tvbox.osc.constant.CacheConst;
 import com.github.tvbox.osc.download.DownloadFacade;
-import com.github.tvbox.osc.download.DownloadProgressEvent;
-import com.github.tvbox.osc.event.DownloadEvent;
 import com.github.tvbox.osc.ui.activity.LocalPlayActivity;
 import com.github.tvbox.osc.ui.adapter.LocalVideoAdapter;
 import com.github.tvbox.osc.ui.dialog.ConfirmDialog;
 import com.github.tvbox.osc.ui.dialog.DeleteDownloadDialog;
 import com.github.tvbox.osc.ui.dialog.DialogCoordinator;
 import com.github.tvbox.osc.util.Utils;
-
-import org.greenrobot.eventbus.EventBus;
-import org.greenrobot.eventbus.Subscribe;
-import org.greenrobot.eventbus.ThreadMode;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -383,22 +377,39 @@ public class DownloadFragment extends BaseVbFragment<FragmentDownloadBinding> {
         });
         mBinding.rvDone.setAdapter(localVideoAdapter);
 
-        EventBus.getDefault().register(this);
         refresh();
+    }
+
+    /** 下载结构变更(全量刷新)与任务进度(局部刷新)经 DownloadFacade 订阅;仅在页面可见时挂载 */
+    private boolean mDownloadEventsSubscribed = false;
+
+    private final DownloadFacade.DownloadStatusListener mDownloadStatusListener = this::refresh;
+    private final DownloadFacade.TaskProgressListener mTaskProgressListener = this::onTaskProgress;
+
+    private void subscribeDownloadEvents() {
+        if (mDownloadEventsSubscribed) return;
+        DownloadFacade.get().register(mDownloadStatusListener);
+        DownloadFacade.get().registerProgress(mTaskProgressListener);
+        mDownloadEventsSubscribed = true;
+    }
+
+    private void unsubscribeDownloadEvents() {
+        if (!mDownloadEventsSubscribed) return;
+        DownloadFacade.get().unregister(mDownloadStatusListener);
+        DownloadFacade.get().unregisterProgress(mTaskProgressListener);
+        mDownloadEventsSubscribed = false;
     }
 
     @Override
     public void onStart() {
         super.onStart();
-        if (!EventBus.getDefault().isRegistered(this)) {
-            EventBus.getDefault().register(this);
-        }
+        subscribeDownloadEvents();
     }
 
     @Override
     public void onStop() {
         super.onStop();
-        EventBus.getDefault().unregister(this);
+        unsubscribeDownloadEvents();
     }
 
     /** 返回键处理:详情页先退多选再退聚合,聚合根级退多选后返回 false */
@@ -440,21 +451,12 @@ public class DownloadFragment extends BaseVbFragment<FragmentDownloadBinding> {
         return false;
     }
 
-    /** 结构性变更(新增/删除/状态机切换/批量变更/初始化) → 全量重建(仅低频发生,频率可接受) */
-    @Subscribe(threadMode = ThreadMode.MAIN)
-    public void onDownloadEvent(DownloadEvent event) {
-        refresh();
-    }
-
-    /**
-     * 任务级进度事件(带任务 id,高频,由 DownloadManager.flushProgress 节流后广播):
+    /** 任务级进度回调(带任务 id,高频,由 DownloadManager.flushProgress 节流后经 Facade 转发):
      * 只对该任务在"正在下载"列表中的可见条目做局部 notifyItemChanged,不做全量重建——
      * 避免每次 HLS 分片进度都重新聚合全部任务/检查文件/setNewData(任务 B)。
-     * UI 状态(展开/多选/勾选/滑动)均由任务对象与 adapter 字段驱动,单行重绑不会丢状态。
-     */
-    @Subscribe(threadMode = ThreadMode.MAIN)
-    public void onDownloadProgressEvent(DownloadProgressEvent event) {
-        if (event == null || event.taskId == null || event.taskId.isEmpty()) return;
+     * UI 状态(展开/多选/勾选/滑动)均由任务对象与 adapter 字段驱动,单行重绑不会丢状态。 */
+    private void onTaskProgress(String taskId) {
+        if (taskId == null || taskId.isEmpty()) return;
         // 底部"可用空间/设置"条:进度期间磁盘占用持续变化,轻量刷新(StatFs 开销极小)
         updateStorageText();
         // 聚合根级卡片只展示 任务数/已完成集数,不含进度百分比/网速 → 进度事件无需刷聚合
@@ -465,7 +467,7 @@ public class DownloadFragment extends BaseVbFragment<FragmentDownloadBinding> {
         if (data == null || data.isEmpty()) return;
         for (int i = 0; i < data.size(); i++) {
             DownloadTask t = data.get(i);
-            if (t != null && event.taskId.equals(t.id)) {
+            if (t != null && taskId.equals(t.id)) {
                 downloadingAdapter.notifyItemChanged(i);
                 return;
             }

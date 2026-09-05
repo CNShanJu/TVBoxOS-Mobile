@@ -1,7 +1,6 @@
 package com.github.tvbox.osc.download;
 
 import com.github.tvbox.osc.bean.DownloadTask;
-import com.github.tvbox.osc.event.DownloadEvent;
 import com.github.tvbox.osc.log.LogEntry;
 import com.github.tvbox.osc.log.LogStore;
 import com.github.tvbox.osc.util.DownloadManager;
@@ -46,8 +45,14 @@ public final class DownloadFacade {
         void onChanged();
     }
 
+    /** 任务级进度监听（高频：某任务进度推进即回调一次，主线程；UI 只做该任务行局部刷新） */
+    public interface TaskProgressListener {
+        void onTaskProgress(String taskId);
+    }
+
     private static final DownloadFacade instance = new DownloadFacade();
     private final List<DownloadStatusListener> listeners = new CopyOnWriteArrayList<>();
+    private final List<TaskProgressListener> progressListeners = new CopyOnWriteArrayList<>();
 
     private DownloadFacade() {
         EventBus.getDefault().register(this);
@@ -248,12 +253,32 @@ public final class DownloadFacade {
         listeners.remove(l);
     }
 
+    /** 订阅任务级进度（高频；按 taskId 局部刷新用） */
+    public void registerProgress(TaskProgressListener l) {
+        if (l != null && !progressListeners.contains(l)) progressListeners.add(l);
+    }
+
+    public void unregisterProgress(TaskProgressListener l) {
+        progressListeners.remove(l);
+    }
+
     @Subscribe(threadMode = ThreadMode.MAIN)
     public void onDownloadEvent(DownloadEvent e) {
         if (e == null || e.type != DownloadEvent.TYPE_CHANGE) return;
         for (DownloadStatusListener l : listeners) {
             try {
                 l.onChanged();
+            } catch (Throwable ignored) {
+            }
+        }
+    }
+
+    @Subscribe(threadMode = ThreadMode.MAIN)
+    public void onDownloadProgressEvent(DownloadProgressEvent e) {
+        if (e == null || e.taskId == null || e.taskId.isEmpty()) return;
+        for (TaskProgressListener l : progressListeners) {
+            try {
+                l.onTaskProgress(e.taskId);
             } catch (Throwable ignored) {
             }
         }

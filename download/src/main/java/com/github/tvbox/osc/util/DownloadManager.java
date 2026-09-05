@@ -5,7 +5,7 @@ import android.os.Looper;
 
 import com.github.tvbox.osc.bean.DownloadTask;
 import com.github.tvbox.osc.download.DownloadProgressEvent;
-import com.github.tvbox.osc.event.DownloadEvent;
+import com.github.tvbox.osc.download.DownloadEvent;
 import com.orhanobut.hawk.Hawk;
 
 import org.greenrobot.eventbus.EventBus;

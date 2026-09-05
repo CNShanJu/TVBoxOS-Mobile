@@ -51,6 +51,11 @@
   已合并:LiveSettingDialog↔Right / DownloadSeriesDialog↔Right / PlayingControlDialog↔Right。
   说明:AllVodSeriesBottom↔Right 是**刻意差异**(Bottom 本地 RoundChip 网格单选,Right 复用
   DetailActivity 的 SeriesAdapter+flags 且 onDismiss 复位 grid)——不强行合并,保持两套适配器契约。
+- DownloadEvent 自 common/event 迁入 download 模块(事件归业务模块,§2.8);common 仅剩
+  RefreshEvent/ServerEvent(app 用)、LogEvent(common 内用)、HistoryStateEvent/TopStateEvent(无引用残留)。
+- DownloadFragment 不再直连 EventBus:下载结构变更走 DownloadFacade.DownloadStatusListener、
+  任务级进度走新增 DownloadFacade.TaskProgressListener(onTaskProgress(taskId))——改进.txt §五
+  "跨页状态由 Facade 提供订阅"落地;UI 零 org.greenrobot.eventbus import。
 
 ## 5. 大文件拆分（§三）— 未完成
 | 文件 | 行数 | 期望 |
