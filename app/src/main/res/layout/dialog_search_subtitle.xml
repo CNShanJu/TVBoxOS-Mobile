@@ -10,7 +10,7 @@
     <com.lihang.ShadowLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        app:hl_layoutBackground="#6632364E"
+        app:hl_layoutBackground="@color/bg_popup"
         app:hl_cornerRadius="@dimen/radius_card"
         android:layout_marginHorizontal="10dp">
 
@@ -35,7 +35,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:background="@drawable/input_search"
+                    android:background="@drawable/bg_small_round_gray"
                     android:hint="请输入字幕名称"
                     android:inputType="text"
                     android:maxLines="1"
@@ -43,8 +43,8 @@
                     android:paddingTop="8dp"
                     android:paddingRight="@dimen/dp_2"
                     android:paddingBottom="@dimen/dp_10"
-                    android:textColor="@color/color_FFFFFF"
-                    android:textColorHint="@color/color_6CFFFFFF"
+                    android:textColor="@color/text_foreground"
+                    android:textColorHint="@color/text_sub_foreground"
                     android:textSize="14sp"
                     android:imeOptions="actionSearch"/>
 

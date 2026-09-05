@@ -1,13 +1,11 @@
 package com.github.tvbox.osc.ui.dialog;
 
 import android.content.Context;
-import android.graphics.drawable.GradientDrawable;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 
 import com.github.tvbox.osc.R;
-import com.github.tvbox.osc.util.Utils;
 import com.lxj.xpopup.XPopup;
 import com.lxj.xpopup.core.CenterPopupView;
 
@@ -15,7 +13,8 @@ import org.jetbrains.annotations.NotNull;
 
 /**
  * 主题化确认弹窗(标题 + 消息 + 取消/确定):
- * 弹窗背景按 app 主题取色(浅色白 / 深色深),圆角统一走主题圆角档 radius_dialog,
+ * 弹窗背景直接来自布局根(dialog_confirm = bg_large_round_popup → 主题色 bg_popup,
+ * 半透明度由 theme_colors 的 bg_popup_alpha 控制, 深浅色随主题),圆角走主题圆角档 radius_dialog,
  * 与 DeleteDownloadDialog 等下载相关弹窗视觉一致(替代 XPopup 默认 asConfirm 的库内固定圆角)。
  *
  * <p><b>必须通过 {@link #show(Context, String, String, String, Runnable)} 弹出</b>:
@@ -54,12 +53,7 @@ public class ConfirmDialog extends AppCenterPopupView {
     @Override
     protected void onCreate() {
         super.onCreate();
-        // 弹窗背景:按 app 主题取色(浅色白 / 深色深),圆角统一 radius_dialog
-        boolean dark = Utils.isAppDarkTheme();
-        GradientDrawable bg = new GradientDrawable();
-        bg.setColor(dark ? 0xFF2A2D32 : 0xFFFFFFFF);
-        bg.setCornerRadius(getContext().getResources().getDimension(R.dimen.radius_dialog));
-        getPopupImplView().setBackground(bg);
+        // 弹窗背景由布局根 dialog_confirm 提供(bg_large_round_popup → 主题 bg_popup,含 bg_popup_alpha 透明度)
 
         TextView tvTitle = findViewById(R.id.tv_title);
         TextView tvMessage = findViewById(R.id.tv_message);
