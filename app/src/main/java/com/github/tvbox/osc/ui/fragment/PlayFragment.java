@@ -85,8 +85,6 @@ import com.lxj.xpopup.core.BasePopupView;
 
 import org.apache.commons.lang3.StringUtils;
 import org.greenrobot.eventbus.EventBus;
-import org.greenrobot.eventbus.Subscribe;
-import org.greenrobot.eventbus.ThreadMode;
 import org.jetbrains.annotations.NotNull;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -150,10 +148,13 @@ public class PlayFragment extends BaseLazyFragment {
         return R.layout.activity_play;
     }
 
-    @Subscribe(threadMode = ThreadMode.MAIN)
-    public void refresh(RefreshEvent event) {
-        if (event.type == RefreshEvent.TYPE_SUBTITLE_SIZE_CHANGE) {
-            mSubtitleCoordinator.applySubtitleSize((int) event.obj);
+    /**
+     * 字幕字号变更(预览/全屏比例切换后由宿主 DetailActivity 直调;替代原 EventBus
+     * TYPE_SUBTITLE_SIZE_CHANGE 广播——同屏两端唯一,无需全局事件)。
+     */
+    public void applySubtitleTextSize(int size) {
+        if (mSubtitleCoordinator != null) {
+            mSubtitleCoordinator.applySubtitleSize(size);
         }
     }
 
@@ -176,7 +177,6 @@ public class PlayFragment extends BaseLazyFragment {
     }
 
     private void initView() {
-        EventBus.getDefault().register(this);
         mHandler = new Handler(new Handler.Callback() {
             @Override
             public boolean handleMessage(@NonNull Message msg) {
@@ -862,7 +862,6 @@ public class PlayFragment extends BaseLazyFragment {
         //手动注销
         sourceViewModel.playResult.removeObserver(mObserverPlayResult);
 
-        EventBus.getDefault().unregister(this);
         releasePlaybackSession(); // playback 会话原型:随视图销毁释放会话观察(共享视图不在此释放)
         if (mBatteryListener != null) {
             com.github.tvbox.osc.state.SystemStateMonitor monitor = com.github.tvbox.osc.state.SystemStateMonitor.get();

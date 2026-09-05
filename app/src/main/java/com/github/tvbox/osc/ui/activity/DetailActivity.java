@@ -886,7 +886,10 @@ public class DetailActivity extends BaseVbActivity<ActivityDetailBinding> {
         if (!fullWindows) {
             subtitleTextSize *= 0.6;
         }
-        EventBus.getDefault().post(new RefreshEvent(RefreshEvent.TYPE_SUBTITLE_SIZE_CHANGE, subtitleTextSize));
+        // 预览播放器与详情页同屏,直调取代 EventBus TYPE_SUBTITLE_SIZE_CHANGE 广播
+        if (playFragment != null) {
+            playFragment.applySubtitleTextSize(subtitleTextSize);
+        }
     }
 
     /**

@@ -13,7 +13,6 @@ public class RefreshEvent {
     public static final int TYPE_QUICK_SEARCH_WORD_CHANGE = 5;
     public static final int TYPE_SEARCH_RESULT = 6;
     public static final int TYPE_QUICK_SEARCH_RESULT = 7;
-    public static final int TYPE_SUBTITLE_SIZE_CHANGE = 12;
     public static final int TYPE_REFRESH_NOTIFY = 15;
     /** 遥控/局域网推送:订阅接口地址变更 */
     public static final int TYPE_API_URL_CHANGE = 16;
