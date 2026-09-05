@@ -160,6 +160,44 @@ public final class DownloadDisplay {
         return bytesPerSec + "B/s";
     }
 
+    // ── 任务行文本拼装(纯;convert 内只做 setText) ──
+
+    /** 行1:剧名 · 集名(集名与剧名相同或为空时不追加) */
+    public static String titleText(DownloadTask t) {
+        String vodName = t.vodName == null ? "" : t.vodName;
+        String ep = t.episodeName;
+        if (ep != null && !ep.isEmpty() && !ep.equals(t.vodName)) {
+            return vodName + " · " + ep;
+        }
+        return vodName;
+    }
+
+    /** 状态行完整文本:状态(+整体百分比,收尾阶段省略)+ 实时网速(仅下载中非收尾) */
+    public static String statusLine(DownloadTask t) {
+        String status = statusTextOf(t);
+        boolean stageOwns = stageMessageOwnsProgress(t.message);
+        String line = stageOwns
+                ? status
+                : status + " · " + t.getProgressPercent() + "%";
+        if (shouldShowSpeed(t) && t.speed > 0) {
+            line += " · " + formatSpeed(t.speed);
+        }
+        return line;
+    }
+
+    /** 行4:来源文本(空来源显示"未知") */
+    public static String sourceText(String sourceName) {
+        String src = sourceName == null ? "" : sourceName;
+        return "来源 " + (src.isEmpty() ? "未知" : src);
+    }
+
+    /** 左滑暂停/继续按钮文案:暂停中=继续,失败=重试,其余=暂停 */
+    public static String swipeActionText(DownloadTask t) {
+        if (t.state == DownloadTask.STATE_PAUSED) return "继续";
+        if (t.state == DownloadTask.STATE_FAILED) return "重试";
+        return "暂停";
+    }
+
     /** 文件大小文本 */
     public static String formatSize(long bytes) {
         if (bytes < 1024 * 1024) return (bytes / 1024) + "KB";

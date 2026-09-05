@@ -180,15 +180,9 @@ public class DownloadFragment extends BaseVbFragment<FragmentDownloadBinding> {
             protected void convert(@NonNull BaseViewHolder helper, DownloadTask task) {
                 // 封面图:本地海报文件(缺失显示搜索页同款占位图并懒拉取)
                 bindPoster(helper.getView(R.id.iv_cover), DownloadGrouping.vodNameOf(task), task.pic);
-                // 行1:剧名 · 集名
-                String name = task.vodName == null ? "" : task.vodName;
-                String ep = task.episodeName;
-                if (ep != null && !ep.isEmpty() && !ep.equals(task.vodName)) {
-                    name = name + " · " + ep;
-                }
-                helper.setText(R.id.tv_name, name);
+                // 行1:剧名 · 集名(拼装抽到 DownloadDisplay)
+                helper.setText(R.id.tv_name, DownloadDisplay.titleText(task));
                 // 行2:状态 · 进度(文本/色调/阶段判定抽到 DownloadDisplay,颜色在此取)
-                String status = DownloadDisplay.statusTextOf(task);
                 int statusColor;
                 switch (DownloadDisplay.statusToneOf(task)) {
                     case ERROR:
@@ -202,22 +196,12 @@ public class DownloadFragment extends BaseVbFragment<FragmentDownloadBinding> {
                         break;
                 }
                 TextView tvStatus = helper.getView(R.id.tv_status);
-                // 收尾阶段(合并x%/剩K片)message 自带进度,不再追加整体百分比(此时进度恒为100%)
-                boolean stageHasProgress = DownloadDisplay.stageMessageOwnsProgress(task.message);
-                String statusText = stageHasProgress
-                        ? status
-                        : status + " · " + task.getProgressPercent() + "%";
-                // 实时网速:仅真正下载中显示,放在"下载中 xx%"后面(大小行不显示,避免被挤压)
-                if (DownloadDisplay.shouldShowSpeed(task) && task.speed > 0) {
-                    statusText += " · " + DownloadDisplay.formatSpeed(task.speed);
-                }
-                tvStatus.setText(statusText);
+                tvStatus.setText(DownloadDisplay.statusLine(task));
                 tvStatus.setTextColor(statusColor);
-                // 行3:大小 · 速度
+                // 行3:大小 · 进度
                 helper.setText(R.id.tv_size_speed, DownloadDisplay.buildPercentText(task));
                 // 行4:来源 · 存储位置
-                String src = task.sourceName == null ? "" : task.sourceName;
-                helper.setText(R.id.tv_source, "来源 " + (src.isEmpty() ? "未知" : src));
+                helper.setText(R.id.tv_source, DownloadDisplay.sourceText(task.sourceName));
                 // 操作按钮:统一左滑滑出(不区分大小屏,宽屏同样滑出右侧 暂停/删除 操作区)
                 View swipeBehind = helper.getView(R.id.swipe_behind);
                 View front = helper.getView(R.id.item_front);
@@ -228,13 +212,7 @@ public class DownloadFragment extends BaseVbFragment<FragmentDownloadBinding> {
                 } else {
                     swipeBehind.setVisibility(View.VISIBLE);
                     TextView btnSwipe = helper.getView(R.id.btn_swipe_pause);
-                    if (task.state == DownloadTask.STATE_PAUSED) {
-                        btnSwipe.setText("继续");
-                    } else if (task.state == DownloadTask.STATE_FAILED) {
-                        btnSwipe.setText("重试");
-                    } else {
-                        btnSwipe.setText("暂停");
-                    }
+                    btnSwipe.setText(DownloadDisplay.swipeActionText(task));
                     front.setTranslationX(swipedTaskIds.contains(task.id) ? -swipeRevealPx() : 0);
                     attachSwipe(front, task);
                     helper.addOnClickListener(R.id.btn_swipe_pause, R.id.btn_swipe_delete);

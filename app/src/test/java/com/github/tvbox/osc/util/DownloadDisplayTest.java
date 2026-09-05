@@ -186,6 +186,48 @@ public class DownloadDisplayTest {
         return t;
     }
 
+    // ── 行文本拼装 ──
+
+    @Test
+    public void titleText_appendsEpisodeOnlyWhenDifferent() {
+        DownloadTask t = state(DownloadTask.STATE_DOWNLOADING, null);
+        t.vodName = "剧A";
+        t.episodeName = null;
+        assertEquals("剧A", DownloadDisplay.titleText(t));
+        t.episodeName = "剧A";
+        assertEquals("剧A", DownloadDisplay.titleText(t)); // 与剧名相同不追加
+        t.episodeName = "第1集";
+        assertEquals("剧A · 第1集", DownloadDisplay.titleText(t));
+        t.vodName = null;
+        t.episodeName = "";
+        assertEquals("", DownloadDisplay.titleText(t));
+    }
+
+    @Test
+    public void statusLine_composesStatusPercentSpeed() {
+        DownloadTask t = state(DownloadTask.STATE_DOWNLOADING, "普通");
+        t.totalBytes = 1024L * 1024;
+        t.downloadedBytes = 512 * 1024;
+        t.speed = 0;
+        assertEquals("下载中 · 50%", DownloadDisplay.statusLine(t));
+        t.speed = 1024 * 1024;
+        assertEquals("下载中 · 50% · 1.0MB/s", DownloadDisplay.statusLine(t));
+        // 收尾阶段(message 自带进度)省略整体百分比
+        t.message = DownloadFacade.MSG_MERGING;
+        t.speed = 0;
+        assertEquals(DownloadFacade.MSG_MERGING, DownloadDisplay.statusLine(t));
+    }
+
+    @Test
+    public void sourceText_and_swipeActionText() {
+        assertEquals("来源 未知", DownloadDisplay.sourceText(null));
+        assertEquals("来源 未知", DownloadDisplay.sourceText(""));
+        assertEquals("来源 饭太硬", DownloadDisplay.sourceText("饭太硬"));
+        assertEquals("继续", DownloadDisplay.swipeActionText(state(DownloadTask.STATE_PAUSED, null)));
+        assertEquals("重试", DownloadDisplay.swipeActionText(state(DownloadTask.STATE_FAILED, null)));
+        assertEquals("暂停", DownloadDisplay.swipeActionText(state(DownloadTask.STATE_DOWNLOADING, null)));
+    }
+
     private static void assertTrue(boolean b) {
         org.junit.Assert.assertTrue(b);
     }
