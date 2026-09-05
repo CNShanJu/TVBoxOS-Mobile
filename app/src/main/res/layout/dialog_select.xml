@@ -38,6 +38,8 @@
         android:layout_height="wrap_content"
         android:orientation="vertical"
         android:paddingHorizontal="10dp"
+        android:scrollbars="vertical"
+        android:fadeScrollbars="false"
         app:layout_constrainedHeight="true"
         app:layout_constraintHeight_max="@dimen/dp_410"
         app:layout_constraintLeft_toLeftOf="parent"
