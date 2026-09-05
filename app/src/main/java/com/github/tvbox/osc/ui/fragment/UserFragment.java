@@ -20,7 +20,6 @@ import com.github.tvbox.osc.R;
 import com.github.tvbox.osc.base.BaseLazyFragment;
 import com.github.tvbox.osc.bean.Movie;
 import com.github.tvbox.osc.bean.VodInfo;
-import com.github.tvbox.osc.event.ServerEvent;
 import com.github.tvbox.osc.ui.activity.CollectActivity;
 import com.github.tvbox.osc.ui.activity.DetailActivity;
 import com.github.tvbox.osc.ui.activity.FastSearchActivity;
@@ -45,10 +44,6 @@ import com.owen.tvrecyclerview.widget.TvRecyclerView;
 import com.owen.tvrecyclerview.widget.V7GridLayoutManager;
 import com.owen.tvrecyclerview.widget.V7LinearLayoutManager;
 import eightbitlab.com.blurview.BlurView;
-
-import org.greenrobot.eventbus.EventBus;
-import org.greenrobot.eventbus.Subscribe;
-import org.greenrobot.eventbus.ThreadMode;
 
 import java.util.ArrayList;
 import java.util.Calendar;
