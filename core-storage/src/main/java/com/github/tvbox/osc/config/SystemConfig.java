@@ -40,6 +40,61 @@ public final class SystemConfig {
 
     private static final List<Listener> listeners = new CopyOnWriteArrayList<>();
 
+    static {
+        migrateLegacy();
+    }
+
+    /** 旧 Hawk 存量一次性迁移到 PrefsDataStore(DataStore 化扩域;类加载执行,PrefsDataStore 已由 App 启动早期 init) */
+    private static volatile boolean migratedLegacy = false;
+
+    private static synchronized void migrateLegacy() {
+        if (migratedLegacy) return;
+        migratedLegacy = true;
+        try {
+            moveInt(KEY_DOH_URL, 0);
+            moveInt(KEY_THEME, 0);
+            moveInt(KEY_HOME_REC, 0);
+            moveInt(KEY_HISTORY_NUM, 0);
+            moveString(KEY_LIVE_URL, "");
+            moveBool(KEY_PRIVATE_BROWSING, false);
+            moveBool(KEY_SHOW_PREVIEW, true);
+            moveBool(KEY_FAST_SEARCH_MODE, false);
+            moveBool(KEY_DEBUG_OPEN, false);
+            moveBool(KEY_IGNORE_SSL_ERROR, false);
+            moveBool(KEY_LAN_SERVER_ENABLE, false);
+            // loading_anim:仅迁移字符串(旧数字型 0/1 极老选择已弃,不迁移避免类型冲突)
+            if (KeyValueStore.contains(KEY_LOADING_ANIM)) {
+                Object legacy = KeyValueStore.get(KEY_LOADING_ANIM, null);
+                if (legacy instanceof String) {
+                    PrefsDataStore.put(KEY_LOADING_ANIM, legacy);
+                }
+                KeyValueStore.delete(KEY_LOADING_ANIM);
+            }
+        } catch (Throwable ignored) {
+        }
+    }
+
+    private static void moveInt(String key, int def) {
+        if (KeyValueStore.contains(key)) {
+            PrefsDataStore.put(key, KeyValueStore.getInt(key, def));
+            KeyValueStore.delete(key);
+        }
+    }
+
+    private static void moveBool(String key, boolean def) {
+        if (KeyValueStore.contains(key)) {
+            PrefsDataStore.put(key, KeyValueStore.getBoolean(key, def));
+            KeyValueStore.delete(key);
+        }
+    }
+
+    private static void moveString(String key, String def) {
+        if (KeyValueStore.contains(key)) {
+            PrefsDataStore.put(key, KeyValueStore.getString(key, def));
+            KeyValueStore.delete(key);
+        }
+    }
+
     private SystemConfig() {
     }
 
@@ -51,67 +106,67 @@ public final class SystemConfig {
 
     /** 安全 DNS 选项索引（0 关闭），默认 0 */
     public static int getDohUrl() {
-        return KeyValueStore.get(KEY_DOH_URL, 0);
+        return PrefsDataStore.getInt(KEY_DOH_URL, 0);
     }
 
     /** 主题：0 跟随系统 1 浅色 2 深色，默认 0 */
     public static int getTheme() {
-        return KeyValueStore.get(KEY_THEME, 0);
+        return PrefsDataStore.getInt(KEY_THEME, 0);
     }
 
     /** 加载动画文件夹名（空串=默认），默认空 */
     public static String getLoadingAnim() {
-        return KeyValueStore.get(KEY_LOADING_ANIM, "");
+        return PrefsDataStore.getString(KEY_LOADING_ANIM, "");
     }
 
     /** 加载动画原始存储值（兼容旧数字 0/1 等历史值，供 LoadingAnim 兼容解析；新代码用 {@link #getLoadingAnim()}） */
     public static Object getLoadingAnimRaw() {
-        return KeyValueStore.get(KEY_LOADING_ANIM, null);
+        return PrefsDataStore.getString(KEY_LOADING_ANIM, null);
     }
 
     /** 主页内容显示：0 豆瓣热播 1 站点推荐 2 关闭，默认 0 */
     public static int getHomeRec() {
-        return KeyValueStore.get(KEY_HOME_REC, 0);
+        return PrefsDataStore.getInt(KEY_HOME_REC, 0);
     }
 
     /** 保留历史记录数量选项，默认 0 */
     public static int getHistoryNum() {
-        return KeyValueStore.get(KEY_HISTORY_NUM, 0);
+        return PrefsDataStore.getInt(KEY_HISTORY_NUM, 0);
     }
 
     /** 直播源地址，默认空 */
     public static String getLiveUrl() {
-        return KeyValueStore.get(KEY_LIVE_URL, "");
+        return PrefsDataStore.getString(KEY_LIVE_URL, "");
     }
 
     /** 无痕浏览（不存搜索/观看历史），默认关 */
     public static boolean isPrivateBrowsing() {
-        return KeyValueStore.get(KEY_PRIVATE_BROWSING, false);
+        return PrefsDataStore.getBoolean(KEY_PRIVATE_BROWSING, false);
     }
 
     /** 详情页缩略预览，默认开 */
     public static boolean isShowPreview() {
-        return KeyValueStore.get(KEY_SHOW_PREVIEW, true);
+        return PrefsDataStore.getBoolean(KEY_SHOW_PREVIEW, true);
     }
 
     /** 快速搜索模式（列表页点击结果直接起快速搜索），默认关 */
     public static boolean isFastSearchMode() {
-        return KeyValueStore.get(KEY_FAST_SEARCH_MODE, false);
+        return PrefsDataStore.getBoolean(KEY_FAST_SEARCH_MODE, false);
     }
 
     /** 调试叠加层/调试日志（播放页 debug 视图、网络日志等），默认关 */
     public static boolean isDebugOpen() {
-        return KeyValueStore.get(KEY_DEBUG_OPEN, false);
+        return PrefsDataStore.getBoolean(KEY_DEBUG_OPEN, false);
     }
 
     /** 忽略 HTTPS 证书错误（默认关：开启会降低 TLS 安全性，仅个别自签名站点用） */
     public static boolean isIgnoreSslError() {
-        return KeyValueStore.get(KEY_IGNORE_SSL_ERROR, false);
+        return PrefsDataStore.getBoolean(KEY_IGNORE_SSL_ERROR, false);
     }
 
     /** 局域网服务开关（默认关：关闭时 HTTP 服务仅监听 127.0.0.1） */
     public static boolean isLanServerEnabled() {
-        return KeyValueStore.get(KEY_LAN_SERVER_ENABLE, false);
+        return PrefsDataStore.getBoolean(KEY_LAN_SERVER_ENABLE, false);
     }
 
     // ── 操作（内部校验 + 持久化 + 广播变更）──
@@ -119,7 +174,7 @@ public final class SystemConfig {
     public static void setDohUrl(int pos) {
         int v = Math.max(0, pos);
         if (getDohUrl() == v) return;
-        KeyValueStore.put(KEY_DOH_URL, v);
+        PrefsDataStore.put(KEY_DOH_URL, v);
         com.github.tvbox.osc.log.LogStore.log(com.github.tvbox.osc.log.Category.SYSTEM, "系统设置: 安全DNS=" + v);
         fireChanged();
     }
@@ -127,7 +182,7 @@ public final class SystemConfig {
     public static void setTheme(int tag) {
         int v = Math.max(0, Math.min(2, tag));
         if (getTheme() == v) return;
-        KeyValueStore.put(KEY_THEME, v);
+        PrefsDataStore.put(KEY_THEME, v);
         com.github.tvbox.osc.log.LogStore.log(com.github.tvbox.osc.log.Category.SYSTEM, "系统设置: 主题=" + v);
         fireChanged();
     }
@@ -135,7 +190,7 @@ public final class SystemConfig {
     public static void setLoadingAnim(String name) {
         String v = name == null ? "" : name;
         if (v.equals(getLoadingAnim())) return;
-        KeyValueStore.put(KEY_LOADING_ANIM, v);
+        PrefsDataStore.put(KEY_LOADING_ANIM, v);
         com.github.tvbox.osc.log.LogStore.log(com.github.tvbox.osc.log.Category.SYSTEM, "系统设置: 加载动画=" + v);
         fireChanged();
     }
@@ -143,7 +198,7 @@ public final class SystemConfig {
     public static void setHomeRec(int type) {
         int v = Math.max(0, Math.min(2, type));
         if (getHomeRec() == v) return;
-        KeyValueStore.put(KEY_HOME_REC, v);
+        PrefsDataStore.put(KEY_HOME_REC, v);
         com.github.tvbox.osc.log.LogStore.log(com.github.tvbox.osc.log.Category.SYSTEM, "系统设置: 首页内容=" + v);
         fireChanged();
     }
@@ -151,7 +206,7 @@ public final class SystemConfig {
     public static void setHistoryNum(int num) {
         int v = Math.max(0, num);
         if (getHistoryNum() == v) return;
-        KeyValueStore.put(KEY_HISTORY_NUM, v);
+        PrefsDataStore.put(KEY_HISTORY_NUM, v);
         com.github.tvbox.osc.log.LogStore.log(com.github.tvbox.osc.log.Category.SYSTEM, "系统设置: 历史记录数=" + v);
         fireChanged();
     }
@@ -159,46 +214,46 @@ public final class SystemConfig {
     public static void setLiveUrl(String url) {
         String v = url == null ? "" : url;
         if (v.equals(getLiveUrl())) return;
-        KeyValueStore.put(KEY_LIVE_URL, v);
+        PrefsDataStore.put(KEY_LIVE_URL, v);
         com.github.tvbox.osc.log.LogStore.log(com.github.tvbox.osc.log.Category.SYSTEM, "系统设置: 直播源=" + v);
         fireChanged();
     }
 
     public static void setPrivateBrowsing(boolean on) {
         if (isPrivateBrowsing() == on) return;
-        KeyValueStore.put(KEY_PRIVATE_BROWSING, on);
+        PrefsDataStore.put(KEY_PRIVATE_BROWSING, on);
         com.github.tvbox.osc.log.LogStore.log(com.github.tvbox.osc.log.Category.SYSTEM, "系统设置: 无痕浏览=" + on);
         fireChanged();
     }
 
     public static void setShowPreview(boolean on) {
         if (isShowPreview() == on) return;
-        KeyValueStore.put(KEY_SHOW_PREVIEW, on);
+        PrefsDataStore.put(KEY_SHOW_PREVIEW, on);
         fireChanged();
     }
 
     public static void setFastSearchMode(boolean on) {
         if (isFastSearchMode() == on) return;
-        KeyValueStore.put(KEY_FAST_SEARCH_MODE, on);
+        PrefsDataStore.put(KEY_FAST_SEARCH_MODE, on);
         fireChanged();
     }
 
     public static void setDebugOpen(boolean on) {
         if (isDebugOpen() == on) return;
-        KeyValueStore.put(KEY_DEBUG_OPEN, on);
+        PrefsDataStore.put(KEY_DEBUG_OPEN, on);
         fireChanged();
     }
 
     public static void setIgnoreSslError(boolean on) {
         if (isIgnoreSslError() == on) return;
-        KeyValueStore.put(KEY_IGNORE_SSL_ERROR, on);
+        PrefsDataStore.put(KEY_IGNORE_SSL_ERROR, on);
         com.github.tvbox.osc.log.LogStore.log(com.github.tvbox.osc.log.Category.SYSTEM, "系统设置: 忽略证书错误=" + on);
         fireChanged();
     }
 
     public static void setLanServerEnabled(boolean on) {
         if (isLanServerEnabled() == on) return;
-        KeyValueStore.put(KEY_LAN_SERVER_ENABLE, on);
+        PrefsDataStore.put(KEY_LAN_SERVER_ENABLE, on);
         com.github.tvbox.osc.log.LogStore.log(com.github.tvbox.osc.log.Category.SYSTEM, "系统设置: 局域网服务=" + on);
         fireChanged();
     }
