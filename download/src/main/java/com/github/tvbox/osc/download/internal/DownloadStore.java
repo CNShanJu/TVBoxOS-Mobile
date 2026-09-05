@@ -4,7 +4,7 @@ import android.util.Log;
 
 import android.content.Context;
 import com.github.tvbox.osc.bean.DownloadTask;
-import com.orhanobut.hawk.Hawk;
+import com.github.tvbox.osc.config.KeyValueStore;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -50,7 +50,7 @@ public class DownloadStore {
     /** 启动加载:读 Hawk + 进程重启状态归位(下载中/等待/调度暂停 -> 用户暂停,待手动继续) */
     void load() {
         try {
-            List<DownloadTask> saved = Hawk.get(DownloadManager.HAWK_KEY, new ArrayList<DownloadTask>());
+            List<DownloadTask> saved = KeyValueStore.get(DownloadManager.HAWK_KEY, new ArrayList<DownloadTask>());
             if (saved != null) dm.tasks.addAll(saved);
         } catch (Throwable th) {
             th.printStackTrace(); // 存储损坏时兜底为空列表,不阻塞下载器启动

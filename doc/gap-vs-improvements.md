@@ -144,6 +144,8 @@ Exo→Media3、EventBus→Flow/接口、Hawk→DataStore、Java→Kotlin 渐进�
   改用 `ActivityResultContracts.OpenDocument`(*/* + 扩展名校验),仅接受 ExternalStorageProvider 主卷并转真实
   路径后仍以 clan:// 订阅源加入(保留记忆导入目录/去重/权限门禁);hedzr 选择器在字幕本地字幕导入
   (SubtitleCoordinator)仍使用,真机回归见 9/5 订阅导入日志噪音是否消失。
+- ✅ :download 持久化收口:`internal/{DownloadManager,DownloadStore,DownloadArchive,DownloadPolicy}` 的 Hawk 直存
+  (任务列表/档案/并发/WiFi 策略)改走 `config.KeyValueStore`,:download 新增依赖 :core-storage、移除 hawk 库依赖。
 - ✅ app 对第三方 Hawk 依赖清零:App 启动装配(Hawk.init→`KeyValueStore.init`、默认值 putDefault/订阅文件同步→`SubscriptionConfig`+
   KeyValueStore)与 RemoteTVBox(遥控主机记忆)亦改走 core-storage config 封装;app 源码零
   `com.orhanobut.hawk` import/调用(仅 core-storage `KeyValueStore` 持有 Hawk)。

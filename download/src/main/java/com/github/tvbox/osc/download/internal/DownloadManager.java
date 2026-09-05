@@ -5,7 +5,7 @@ import android.os.Looper;
 
 import com.github.tvbox.osc.bean.DownloadTask;
 import com.github.tvbox.osc.util.OkGoHelper;
-import com.orhanobut.hawk.Hawk;
+import com.github.tvbox.osc.config.KeyValueStore;
 
 import org.greenrobot.eventbus.EventBus;
 
@@ -58,7 +58,7 @@ public class DownloadManager {
     final List<DownloadTask> tasks = new ArrayList<>();
     final Object lock = new Object();
 
-    /** 持久化:后台单线程执行,避免主线程批量入队时被 Hawk.put(加密+磁盘IO)卡死 */
+    /** 持久化:后台单线程执行,避免主线程批量入队时被 KeyValueStore.put(加密+磁盘IO)卡死 */
     private final ExecutorService persistExecutor = Executors.newSingleThreadExecutor(r -> {
         Thread t = new Thread(r, "tvbox-persist");
         t.setDaemon(true);
@@ -179,7 +179,7 @@ public class DownloadManager {
                     pendingSnapshot = null;
                 }
                 try {
-                    Hawk.put(HAWK_KEY, toWrite);
+                    KeyValueStore.put(HAWK_KEY, toWrite);
                 } catch (Throwable th) {
                     th.printStackTrace();
                 }

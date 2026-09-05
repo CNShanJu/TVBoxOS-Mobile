@@ -2,7 +2,7 @@ package com.github.tvbox.osc.download.internal;
 
 import com.github.tvbox.osc.bean.DownloadTask;
 import com.github.tvbox.osc.download.ArchiveItem;
-import com.orhanobut.hawk.Hawk;
+import com.github.tvbox.osc.config.KeyValueStore;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -23,7 +23,7 @@ public final class DownloadArchive {
 
     private DownloadArchive() {
         try {
-            List<ArchiveItem> saved = Hawk.get(HAWK_KEY, new ArrayList<ArchiveItem>());
+            List<ArchiveItem> saved = KeyValueStore.get(HAWK_KEY, new ArrayList<ArchiveItem>());
             if (saved != null) {
                 items.addAll(saved);
                 // 对账：文件已丢失的档案视为失效,清理
@@ -240,7 +240,7 @@ public final class DownloadArchive {
 
     private void persist() {
         try {
-            Hawk.put(HAWK_KEY, new ArrayList<>(items));
+            KeyValueStore.put(HAWK_KEY, new ArrayList<>(items));
         } catch (Throwable ignored) {
         }
     }

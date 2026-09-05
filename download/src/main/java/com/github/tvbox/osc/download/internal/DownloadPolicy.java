@@ -10,7 +10,7 @@ import android.os.StatFs;
 import com.github.tvbox.osc.bean.DownloadTask;
 import com.github.tvbox.osc.state.SystemEvent;
 import com.github.tvbox.osc.state.SystemStateMonitor;
-import com.orhanobut.hawk.Hawk;
+import com.github.tvbox.osc.config.KeyValueStore;
 
 import java.io.File;
 import java.util.Map;
@@ -38,7 +38,7 @@ public class DownloadPolicy {
         this.dm = dm;
         int savedConcurrent = 3;
         try {
-            savedConcurrent = Hawk.get(DownloadManager.HAWK_MAX_CONCURRENT, 3);
+            savedConcurrent = KeyValueStore.get(DownloadManager.HAWK_MAX_CONCURRENT, 3);
         } catch (Throwable ignored) {
         }
         maxConcurrent = Math.max(1, Math.min(5, savedConcurrent));
@@ -75,7 +75,7 @@ public class DownloadPolicy {
         int v = Math.max(1, Math.min(5, n));
         maxConcurrent = v;
         try {
-            Hawk.put(DownloadManager.HAWK_MAX_CONCURRENT, v);
+            KeyValueStore.put(DownloadManager.HAWK_MAX_CONCURRENT, v);
         } catch (Throwable ignored) {
         }
         dm.notifyChanged();
@@ -85,7 +85,7 @@ public class DownloadPolicy {
     /** 是否仅 WiFi 下载(默认开启,移动网络下载前需强提醒确认) */
     boolean isWifiOnly() {
         try {
-            return Hawk.get(DownloadManager.HAWK_WIFI_ONLY, true);
+            return KeyValueStore.get(DownloadManager.HAWK_WIFI_ONLY, true);
         } catch (Throwable th) {
             return true;
         }
@@ -93,7 +93,7 @@ public class DownloadPolicy {
 
     void setWifiOnly(boolean wifiOnly) {
         try {
-            Hawk.put(DownloadManager.HAWK_WIFI_ONLY, wifiOnly);
+            KeyValueStore.put(DownloadManager.HAWK_WIFI_ONLY, wifiOnly);
         } catch (Throwable ignored) {
         }
     }
