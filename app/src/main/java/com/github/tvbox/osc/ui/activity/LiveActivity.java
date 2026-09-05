@@ -44,7 +44,6 @@ import com.github.tvbox.osc.ui.widget.PlayerMenuView;
 import com.github.tvbox.osc.ui.widget.PlayerTitleView;
 import com.github.tvbox.osc.util.FastClickCheckUtil;
 import com.github.tvbox.osc.util.HCallBack;
-import com.github.tvbox.osc.util.HawkConfig;
 import com.github.tvbox.osc.util.AppLog;
 import com.github.tvbox.osc.util.HttpClient;
 import com.github.tvbox.osc.util.LiveConfig;
@@ -53,7 +52,6 @@ import com.google.gson.JsonArray;
 import com.gyf.immersionbar.BarHide;
 import com.gyf.immersionbar.ImmersionBar;
 import com.lxj.xpopup.core.BasePopupView;
-import com.orhanobut.hawk.Hawk;
 import com.owen.tvrecyclerview.widget.V7LinearLayoutManager;
 
 import java.text.ParseException;
@@ -136,7 +134,7 @@ public class LiveActivity extends BaseActivity {
                 .hideBar(BarHide.FLAG_HIDE_NAVIGATION_BAR)
                 .init();
         context = this;
-        epgStringAddress = Hawk.get(HawkConfig.EPG_URL,"");
+        epgStringAddress = LiveConfig.epgUrl();
         if(epgStringAddress == null || epgStringAddress.length()<5)
             epgStringAddress = "http://epg.51zmt.top:8000/api/diyp/";
 

@@ -2,6 +2,8 @@ package com.github.tvbox.osc.util;
 
 import com.orhanobut.hawk.Hawk;
 
+import org.json.JSONObject;
+
 import java.util.ArrayList;
 
 /**
@@ -100,5 +102,31 @@ public final class LiveConfig {
     /** 整体写回历史源列表 */
     public static void setLiveHistory(ArrayList<String> history) {
         Hawk.put(HawkConfig.LIVE_HISTORY, history == null ? new ArrayList<String>() : history);
+    }
+
+    // ── EPG / 频道播放配置 ──
+
+    /** EPG 地址(由 :spider ApiConfig 加载订阅时写入,此处只读;未配置返回空串,调用方给默认值) */
+    public static String epgUrl() {
+        return Hawk.get(HawkConfig.EPG_URL, "");
+    }
+
+    /** 某频道的播放配置覆写(未覆写返回 null,走默认配置) */
+    public static JSONObject channelPlayerConfig(String channelName) {
+        if (channelName == null || channelName.isEmpty()) return null;
+        Object v = Hawk.get(channelName, null);
+        return v instanceof JSONObject ? (JSONObject) v : null;
+    }
+
+    /** 覆写/更新某频道播放配置 */
+    public static void setChannelPlayerConfig(String channelName, JSONObject cfg) {
+        if (channelName == null || channelName.isEmpty()) return;
+        Hawk.put(channelName, cfg);
+    }
+
+    /** 清除某频道覆写(回到默认配置) */
+    public static void deleteChannelPlayerConfig(String channelName) {
+        if (channelName == null || channelName.isEmpty()) return;
+        Hawk.delete(channelName);
     }
 }

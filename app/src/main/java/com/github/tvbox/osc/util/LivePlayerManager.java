@@ -4,7 +4,6 @@ import androidx.annotation.NonNull;
 import androidx.exifinterface.media.ExifInterface;
 
 import com.github.tvbox.osc.player.api.PlayConfig;
-import com.orhanobut.hawk.Hawk;
 
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -40,7 +39,7 @@ public class LivePlayerManager {
     }
 
     public void getLiveChannelPlayer(VideoView videoView, String channelName) {
-        JSONObject playerConfig = Hawk.get(channelName, null);
+        JSONObject playerConfig = LiveConfig.channelPlayerConfig(channelName);
         if (playerConfig == null) {
             if (!currentPlayerConfig.toString().equals(defaultPlayerConfig.toString()))
                 getDefaultLiveChannelPlayer(videoView);
@@ -125,9 +124,9 @@ public class LivePlayerManager {
         PlayerHelper.updateCfg(videoView, playerConfig);
 
         if (playerConfig.toString().equals(defaultPlayerConfig.toString()))
-            Hawk.delete(channelName);
+            LiveConfig.deleteChannelPlayerConfig(channelName);
         else
-            Hawk.put(channelName, playerConfig);
+            LiveConfig.setChannelPlayerConfig(channelName, playerConfig);
 
         currentPlayerConfig = playerConfig;
     }
@@ -142,9 +141,9 @@ public class LivePlayerManager {
             e.printStackTrace();
         }
         if (playerConfig.toString().equals(defaultPlayerConfig.toString()))
-            Hawk.delete(channelName);
+            LiveConfig.deleteChannelPlayerConfig(channelName);
         else
-            Hawk.put(channelName, playerConfig);
+            LiveConfig.setChannelPlayerConfig(channelName, playerConfig);
 
         currentPlayerConfig = playerConfig;
     }

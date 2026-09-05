@@ -35,7 +35,7 @@ import com.github.tvbox.osc.ui.adapter.GridAdapter;
 import com.github.tvbox.osc.ui.widget.ListSwipeRefreshLayout;
 import com.github.tvbox.osc.util.FastClickCheckUtil;
 import com.github.tvbox.osc.util.HCallBack;
-import com.github.tvbox.osc.util.HawkConfig;
+import com.github.tvbox.osc.util.HomeHotCache;
 import com.github.tvbox.osc.util.HttpClient;
 import com.github.tvbox.osc.util.SystemConfig;
 import com.github.tvbox.osc.util.UA;
@@ -44,7 +44,6 @@ import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
-import com.orhanobut.hawk.Hawk;
 import com.owen.tvrecyclerview.widget.TvRecyclerView;
 import com.owen.tvrecyclerview.widget.V7GridLayoutManager;
 import com.owen.tvrecyclerview.widget.V7LinearLayoutManager;
@@ -196,8 +195,7 @@ public class UserFragment extends BaseLazyFragment {
             return;
         }
         try {
-            Hawk.delete("home_hot_day");
-            Hawk.delete("home_hot");
+            HomeHotCache.clear();
         } catch (Throwable ignored) {
         }
         initHomeHotVod(homeHotVodAdapter);
@@ -266,9 +264,9 @@ public class UserFragment extends BaseLazyFragment {
             int month = cal.get(Calendar.MONTH) + 1;
             int day = cal.get(Calendar.DATE);
             String today = String.format("%d%d%d", year, month, day);
-            String requestDay = Hawk.get("home_hot_day", "");
+            String requestDay = HomeHotCache.getDay();
             if (requestDay.equals(today)) {
-                String json = Hawk.get("home_hot", "");
+                String json = HomeHotCache.getData();
                 if (!json.isEmpty()) {
                     ArrayList<Movie.Video> hotMovies = loadHots(json);
                     if (hotMovies != null && hotMovies.size() > 0) {
@@ -285,8 +283,7 @@ public class UserFragment extends BaseLazyFragment {
             HttpClient.get(doubanUrl, headers, null, new HCallBack() {
                 @Override
                 public void onSuccess(String netJson) {
-                    Hawk.put("home_hot_day", today);
-                    Hawk.put("home_hot", netJson);
+                    HomeHotCache.save(today, netJson);
                     mActivity.runOnUiThread(new Runnable() {
                         @Override
                         public void run() {

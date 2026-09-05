@@ -30,9 +30,9 @@
 | `:playback` / feature-* | ❌ | 未建（改进.txt 第三/四阶段，需真机回归环境） |
 
 ## 4. 穿透点（UI/上层直读下层实现，新代码应避免）
-- UI 直读 `Hawk`：订阅/搜索域已收口 `util.SubscriptionConfig`(apiUrl/subscriptions/searchHistory/checkedSources/
-  导入目录记忆 → SubscriptionActivity/FastSearchActivity/SearchHelper/HomeFragment 去 Hawk 直读);系统级偏好已
-  收口 `SystemConfig`;剩余裸读:UserFragment home_hot 缓存、LivePlayerManager 频道配置、EPG_URL、RemoteTVBox。
+- UI 直读 `Hawk`：**UI 层已清零**。直播偏好→`LiveConfig`(含 EPG 只读、频道播放配置覆写);系统级偏好→
+  `SystemConfig`;订阅/搜索域→`util.SubscriptionConfig`;用户页热播缓存→`util.HomeHotCache`。剩余裸读写仅在
+  装配/封装边界:App.java 订阅默认注入与 putDefault(启动装配)、RemoteTVBox(类内方法封装)、各配置门面内部。
 - UI 直触 DAO/存储实现：已清零(app `RoomDataManger` 直读已收口到 HistoryRepository)。
 - UI/业务自建线程池：`PlayFragment`(PLAYED_RECORD_EXECUTOR/parseThreadPool)、`Thunder`、subtitle `DefaultTaskExecutor`、`LocalVideoFrameLoader`/`LocalVideoAdapter` 等 `new*ThreadPool`；未全部收口到模块级执行器（各点均有串行/取消语义约束，随大页面拆分一并治理）。
 - EventBus 仍广泛(register/post ~37 处)；新事件仍有出现，未真正退为"仅兼容层"。
@@ -79,11 +79,10 @@ Exo→Media3、EventBus→Flow/接口、Hawk→DataStore、Java→Kotlin 渐进�
 3. ✅ app 内 `RoomDataManger` 直读已清零：UI 改走 `HistoryRepositories.history().get(...)`
    （接口新增 get(sourceKey,vodId)，Fake/单测同步）。
 4. 🔜 `:core-network`(原 common)`util/{HawkConfig,SystemConfig,HttpClient}` 分模块收口（网络留下，配置→core-storage/新 config）。
-5. ⚠️ UI 摘 Hawk：直播偏好已收口 `LiveConfig`;系统级偏好已收口 `SystemConfig`(showPreview/fastSearchMode/
-   debugOpen/ignoreSslError/lanServerEnable);订阅/搜索域已收口 `util.SubscriptionConfig`(apiUrl/subscriptions/
-   searchHistory/checkedSources/导入目录;SubscriptionActivity/FastSearchActivity/SearchHelper/HomeFragment 去
-   Hawk 直读,HomeFragment 的 HOME_REC 归 SystemConfig);剩余:UserFragment home_hot 缓存、LivePlayerManager
-   频道配置、EPG_URL、RemoteTVBox。
+5. ✅ UI 摘 Hawk(UI 层清零):直播偏好 `LiveConfig`(connectTimeout/showTime/netSpeed/channelReverse/
+   crossGroup/lastChannel/liveHistory + EPG 只读 + 频道播放配置覆写);系统级 `SystemConfig`;订阅/搜索域
+   `util.SubscriptionConfig`;用户页热播缓存 `util.HomeHotCache`。UI/页面/Helper 对 Hawk 与 HawkConfig 键的
+   裸读写全部改走门面;残留仅在装配(App 订阅注入/putDefault)与类内封装(RemoteTVBox)与门面自身。
 6. ⏸ playback shell + PlayFragment/DetailActivity 大拆分（需真机回归）。
 7. ⏸ feature 模块化、Media3/DataStore/Hilt（长期）。
 
