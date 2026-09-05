@@ -173,7 +173,7 @@ public class PlayFragment extends BaseLazyFragment {
             e.printStackTrace();
         }
         long skip = st * 1000L;
-        Object theCache=CacheManager.getCache(MD5.string2MD5(url));
+        Object theCache=com.github.tvbox.osc.repo.HistoryRepositories.cache().get(MD5.string2MD5(url));
         if (theCache == null) {
             return skip;
         }
@@ -220,7 +220,7 @@ public class PlayFragment extends BaseLazyFragment {
         ProgressManager progressManager = new ProgressManager() {
             @Override
             public void saveProgress(String url, long progress) {
-                CacheManager.save(MD5.string2MD5(url), progress);
+                com.github.tvbox.osc.repo.HistoryRepositories.cache().save(MD5.string2MD5(url), progress);
             }
 
             @Override
@@ -242,7 +242,7 @@ public class PlayFragment extends BaseLazyFragment {
                 String preProgressKey = progressKey;
                 PlayFragment.this.playNext(rmProgress);
                 if (rmProgress && preProgressKey != null)
-                    CacheManager.delete(MD5.string2MD5(preProgressKey), 0);
+                    com.github.tvbox.osc.repo.HistoryRepositories.cache().delete(MD5.string2MD5(preProgressKey), 0);
             }
 
             @Override
@@ -857,7 +857,7 @@ public class PlayFragment extends BaseLazyFragment {
 
         mController.mSubtitleView.bindToMediaPlayer(mVideoView.getMediaPlayer());
         mController.mSubtitleView.setPlaySubtitleCacheKey(subtitleCacheKey);
-        String subtitlePathCache = (String) CacheManager.getCache(MD5.string2MD5(subtitleCacheKey));
+        String subtitlePathCache = (String) com.github.tvbox.osc.repo.HistoryRepositories.cache().get(MD5.string2MD5(subtitleCacheKey));
         if (subtitlePathCache != null && !subtitlePathCache.isEmpty()) {
             mController.mSubtitleView.setSubtitlePath(subtitlePathCache);
         } else {
@@ -1137,8 +1137,8 @@ public class PlayFragment extends BaseLazyFragment {
         String progressKey = mVodInfo.sourceKey + mVodInfo.id + mVodInfo.playFlag + mVodInfo.playIndex + vs.name;
         //重新播放清除现有进度
         if (reset) {
-            CacheManager.delete(MD5.string2MD5(progressKey), 0);
-            CacheManager.delete(MD5.string2MD5(subtitleCacheKey), 0);
+            com.github.tvbox.osc.repo.HistoryRepositories.cache().delete(MD5.string2MD5(progressKey), 0);
+            com.github.tvbox.osc.repo.HistoryRepositories.cache().delete(MD5.string2MD5(subtitleCacheKey), 0);
         }
         if (Jianpian.isJpUrl(vs.url)) {//荐片地址特殊判断
             String jp_url = vs.url;

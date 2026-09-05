@@ -5,6 +5,7 @@ public final class HistoryRepositories {
 
     private static volatile HistoryRepository history = RoomHistoryRepository.get();
     private static volatile CollectRepository collect = RoomCollectRepository.get();
+    private static volatile CacheRepository cache = RoomCacheRepository.get();
 
     private HistoryRepositories() {
     }
@@ -28,6 +29,17 @@ public final class HistoryRepositories {
     public static void setCollect(CollectRepository repo) {
         if (repo != null) {
             collect = repo;
+        }
+    }
+
+    public static CacheRepository cache() {
+        return cache;
+    }
+
+    /** 测试/注入用 */
+    public static void setCache(CacheRepository repo) {
+        if (repo != null) {
+            cache = repo;
         }
     }
 }

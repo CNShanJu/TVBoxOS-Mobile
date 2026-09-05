@@ -116,10 +116,10 @@ public class DefaultSubtitleEngine implements SubtitleEngine {
                     File cacheSubtitleFile = new File(subtitleFile);
                     boolean writeResult = FileUtils.writeSimple(subtitleLoadSuccessResult.content.getBytes(), cacheSubtitleFile);
                     if (writeResult) {
-                        CacheManager.save(MD5.string2MD5(getPlaySubtitleCacheKey()), subtitleFile);
+                        com.github.tvbox.osc.repo.HistoryRepositories.cache().save(MD5.string2MD5(getPlaySubtitleCacheKey()), subtitleFile);
                     }
                 } else {
-                    CacheManager.save(MD5.string2MD5(getPlaySubtitleCacheKey()), path);
+                    com.github.tvbox.osc.repo.HistoryRepositories.cache().save(MD5.string2MD5(getPlaySubtitleCacheKey()), path);
                 }
             }
 
