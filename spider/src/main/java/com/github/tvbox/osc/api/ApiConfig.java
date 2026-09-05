@@ -895,11 +895,16 @@ public class ApiConfig {
     }
 
     public IJKCode getIJKCodec(String name) {
-        for (IJKCode code : getIjkCodes()) {
-            if (code.getName().equals(name))
-                return code;
+        List<IJKCode> all = getIjkCodes();
+        if (name != null) {
+            for (IJKCode code : all) {
+                if (name.equals(code.getName())) {
+                    return code;
+                }
+            }
         }
-        return ijkCodes.get(0);
+        // 原实现直接 ijkCodes.get(0):离线时成员字段 ijkCodes 为 null 或列表为空都会崩溃,统一从非空列表取
+        return all.isEmpty() ? null : all.get(0);
     }
 
     String clanToAddress(String lanLink) {

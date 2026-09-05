@@ -1,3 +1,12 @@
+// 局域网管理鉴权令牌:由 /token.js 注入(window.TVBOX_TOKEN)。
+// 令牌随所有 AJAX 请求以 X-TVBox-Token 头发送;服务重启后令牌变化,刷新页面即可重新获取。
+(function () {
+    var t = window.TVBOX_TOKEN;
+    if (t) {
+        $.ajaxSetup({ headers: { 'X-TVBox-Token': t } });
+    }
+})();
+
 function search() {
     doAction('search', { word: $('#search_key_word').val() });
 }

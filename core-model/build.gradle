@@ -1,0 +1,24 @@
+plugins {
+    id 'java-library'
+}
+
+// 纯模型模块(改进.txt 第二阶段):不依赖任何 Android 模块/API。
+// 存放跨模块共享的业务 DTO(bean);Android 耦合字段需解耦后再迁入。
+java {
+    sourceCompatibility = JavaVersion.VERSION_1_8
+    targetCompatibility = JavaVersion.VERSION_1_8
+}
+
+// 与 Android 模块一致:源码统一 UTF-8(仓库内中文注释按 UTF-8 保存)
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+}
+
+dependencies {
+    // Movie/MovieSort/AbsXml 等使用 XStream 注解(XStream 1.4.20,与各模块版本一致)
+    implementation('com.thoughtworks.xstream:xstream:1.4.20') {
+        exclude group: 'xmlpull', module: 'xmlpull'
+    }
+    // AbsSortJson 等使用 Gson @SerializedName(版本与各模块一致)
+    implementation 'com.google.code.gson:gson:2.10.1'
+}

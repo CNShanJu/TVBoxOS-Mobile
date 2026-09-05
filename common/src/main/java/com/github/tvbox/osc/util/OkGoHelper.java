@@ -18,8 +18,6 @@ import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
-import javax.net.ssl.HostnameVerifier;
-import javax.net.ssl.SSLSession;
 import javax.net.ssl.SSLSocketFactory;
 
 import okhttp3.Cache;
@@ -115,11 +113,13 @@ public class OkGoHelper {
         return noRedirectClient;
     }
 
-    /** App 启动时调用一次（context 注入；Exo/Picasso 初始化由 app 侧在 init 后自行完成） */
-    public static void init(Context context) {
-        appContext = context == null ? null : context.getApplicationContext();
-        initDnsOverHttps();
-
+    /**
+     * 公共根 Builder:默认客户端、免重定向客户端与播放器客户端共用的基础配置
+     * (日志/UA/Brotli/连接规格/超时/安全DNS/SSL)。
+     * 注意:OkHttpClient.newBuilder() 派生的客户端共享连接池属正常设计,
+     * 这里合并的是"从不同根 Builder 各自重复初始化"的公共部分,避免重复创建配置。
+     */
+    public static OkHttpClient.Builder newBaseBuilder() {
         OkHttpClient.Builder builder = new OkHttpClient.Builder();
         HttpLoggingInterceptor loggingInterceptor = new HttpLoggingInterceptor();
 
@@ -131,8 +131,6 @@ public class OkGoHelper {
         builder.addInterceptor(loggingInterceptor);
         // 默认 User-Agent:还原 OkGo 的全局 UA 行为,部分源接口无 UA 会拒绝请求
         builder.addInterceptor(new HttpClient.UserAgentInterceptor());
-
-        //builder.retryOnConnectionFailure(false);
         builder.connectionSpecs(getConnectionSpec());
         builder.addInterceptor(new BrotliInterceptor());
         builder.readTimeout(DEFAULT_MILLISECONDS, TimeUnit.MILLISECONDS)
@@ -146,10 +144,17 @@ public class OkGoHelper {
         } catch (Throwable th) {
             th.printStackTrace();
         }
+        return builder;
+    }
 
-        OkHttpClient okHttpClient = builder.build();
+    /** App 启动时调用一次（context 注入；Exo/Picasso 初始化由 app 侧在 init 后自行完成） */
+    public static void init(Context context) {
+        appContext = context == null ? null : context.getApplicationContext();
+        initDnsOverHttps();
 
-        defaultClient = okHttpClient;
+        OkHttpClient.Builder builder = newBaseBuilder();
+
+        defaultClient = builder.build();
 
         builder.followRedirects(false);
         builder.followSslRedirects(false);
@@ -160,12 +165,9 @@ public class OkGoHelper {
         try {
             final SSLSocketFactory sslSocketFactory = new SSLCompat();
             builder.sslSocketFactory(sslSocketFactory, SSLCompat.TM);
-            builder.hostnameVerifier(new HostnameVerifier() {
-                @Override
-                public boolean verify(String hostname, SSLSession session) {
-                    return true;
-                }
-            });
+            // 不设置 hostnameVerifier:保持 OkHttp 默认主机名校验。
+            // 原实现恒返回 true,任何证书(含攻击者自签/错域名证书)都会通过,流量易被中间人篡改。
+            // 如个别自签名站点需要放行,由用户显式开启 HawkConfig.IGNORE_SSL_ERROR 后再处理。
         } catch (Exception e) {
             throw new RuntimeException(e);
         }

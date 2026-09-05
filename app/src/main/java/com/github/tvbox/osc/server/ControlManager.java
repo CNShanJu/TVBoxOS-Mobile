@@ -57,8 +57,11 @@ public class ControlManager {
         if (mServer != null) {
             return;
         }
+        // 默认仅绑定本机回环:本 App 的订阅/本地播放/代理全部走 127.0.0.1,无需对局域网开放端口。
+        // 需要局域网文件共享/远程管理(web 控制台)时,显式开启 HawkConfig.LAN_SERVER_ENABLE 后重启生效。
+        boolean lanEnabled = Hawk.get(HawkConfig.LAN_SERVER_ENABLE, false);
         do {
-            mServer = new RemoteServer(RemoteServer.serverPort, mContext);
+            mServer = new RemoteServer(lanEnabled ? null : "127.0.0.1", RemoteServer.serverPort, mContext);
             mServer.setDataReceiver(new DataReceiver() {
                 @Override
                 public void onTextReceived(String text) {

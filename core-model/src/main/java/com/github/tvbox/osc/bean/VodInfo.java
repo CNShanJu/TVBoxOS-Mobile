@@ -1,7 +1,5 @@
 package com.github.tvbox.osc.bean;
 
-import com.github.tvbox.osc.api.ApiConfig;
-
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Collections;

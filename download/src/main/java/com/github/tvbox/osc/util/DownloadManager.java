@@ -4,6 +4,7 @@ import android.os.Handler;
 import android.os.Looper;
 
 import com.github.tvbox.osc.bean.DownloadTask;
+import com.github.tvbox.osc.download.DownloadProgressEvent;
 import com.github.tvbox.osc.event.DownloadEvent;
 import com.orhanobut.hawk.Hawk;
 
@@ -85,7 +86,8 @@ public class DownloadManager {
     public static final String MSG_REMUX = "文件封装中";
     public static final String MSG_REPAIRING = "补片中";
 
-    /** 变更事件去抖:进度高频刷新合并为至多每 500ms 广播一次 */
+    /** 结构性变更事件去抖:合并为至多每 500ms 广播一次 DownloadEvent(全量刷新信号);
+     *  高频"进度"变更不再走这里(见 flushProgress -> DownloadProgressEvent,带任务id,UI 局部刷新) */
     private final Handler notifyHandler = new Handler(Looper.getMainLooper());
     private final Runnable notifyRunnable = () ->
             EventBus.getDefault().post(new DownloadEvent(DownloadEvent.TYPE_CHANGE));
@@ -111,7 +113,7 @@ public class DownloadManager {
         // Bug5: 孤儿 tmpDir 回收(启动时任务已加载,无写入中,安全)
         FileCleaner.cleanupOrphanTmpDirs(tasks);
         scheduler.startWorker();
-        scheduler.registerNetworkCallback();
+        scheduler.subscribeNetworkEvents(); // 网络事件统一源:SystemStateMonitor(见任务C)
     }
 
     public static synchronized DownloadManager get() {
@@ -183,11 +185,83 @@ public class DownloadManager {
     }
 
     void notifyChanged() {
-        // 去抖:高频进度事件(每任务每800ms一次)合并,避免下载页被刷屏
+        // 结构/状态变更去抖:高频事件合并,避免下载页被刷屏(进度高频走 flushProgress)
         notifyHandler.removeCallbacks(notifyRunnable);
         notifyHandler.postDelayed(notifyRunnable, 500);
         // 前台服务保活:调度状态变化后同步(有下载中→启动/刷新, 无→停止)
         updateForegroundService();
+    }
+
+    // ------------------------------------------------------------------
+    // 进度型刷新(任务 A/B 共用):高频进度只更新内存,落盘+广播合并到窗口内
+    // ------------------------------------------------------------------
+
+    /** 高频进度(直链窗口 / HLS 每分片 / 合并进度)落盘与广播的合并窗口(ms) */
+    private static final long PROGRESS_FLUSH_MS = 600L;
+    /** 进度节流共享锁(多下载线程并发调用) */
+    private final Object progressLock = new Object();
+    /** 上次实际落盘时间戳 */
+    private long lastProgressFlush = 0L;
+    /** 窗口内最近一次进度的任务 id(兜底广播携带它,UI 据此局部刷新该行,不漏尾部) */
+    private String pendingProgressTaskId = null;
+    /** 是否已安排窗口末的兜底落盘定时器 */
+    private boolean progressTimerScheduled = false;
+    private final Handler progressFlushHandler = new Handler(Looper.getMainLooper());
+    private final Runnable progressTimerRunnable = new Runnable() {
+        @Override
+        public void run() {
+            synchronized (progressLock) {
+                progressTimerScheduled = false;
+                lastProgressFlush = System.currentTimeMillis();
+            }
+            doProgressFlush();
+        }
+    };
+
+    /**
+     * 进度型刷新(高频调用,如每下载一个 HLS 分片/直链每 800ms 窗口/合并进度):
+     * 被节流的是"任务列表快照的磁盘落盘 + 进度广播"——进度字段(下载字节/分片数/网速等)
+     * 由执行器线程直接写任务对象内存,其余代码读取时始终是最新内存值,不受节流影响。
+     * <p>
+     * 策略:600ms 窗口内多次调用只落盘/广播一次(窗口满后的调用立即执行);
+     * 窗口末尾由主线程定时器兜底一次,持续进度不漏尾部。
+     * 暂停/失败/完成等终态事件不经过本方法,由调用方 persist+notifyChanged 立即强制落盘(不丢终态)。
+     */
+    void flushProgress(DownloadTask t) {
+        String id = t == null ? null : t.id;
+        boolean fireNow = false;
+        boolean needTimer = false;
+        long delay = PROGRESS_FLUSH_MS;
+        synchronized (progressLock) {
+            pendingProgressTaskId = id; // 记住最近进度任务(窗口末兜底事件带它)
+            long now = System.currentTimeMillis();
+            if (now - lastProgressFlush >= PROGRESS_FLUSH_MS) {
+                lastProgressFlush = now;
+                fireNow = true;
+            } else if (!progressTimerScheduled) {
+                progressTimerScheduled = true;
+                needTimer = true;
+                delay = Math.max(1L, lastProgressFlush + PROGRESS_FLUSH_MS - now);
+            }
+        }
+        if (fireNow) {
+            doProgressFlush();
+        } else if (needTimer) {
+            progressFlushHandler.postDelayed(progressTimerRunnable, delay);
+        }
+    }
+
+    /** 执行一次进度落盘 + 轻量广播(带最近进度任务 id);锁外调用,幂等 */
+    private void doProgressFlush() {
+        String id;
+        synchronized (progressLock) {
+            id = pendingProgressTaskId;
+            pendingProgressTaskId = null;
+        }
+        persist();
+        if (id != null) {
+            EventBus.getDefault().post(new DownloadProgressEvent(id));
+        }
     }
 
     /** 前台服务保活(可选增强):存在下载中/等待任务时拉起,全部结束停止;进度通知去抖由 persist 频控 */

@@ -20,8 +20,6 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import com.blankj.utilcode.util.GsonUtils;
 import com.blankj.utilcode.util.SPUtils;
 import com.github.tvbox.osc.util.AppBubble;
-import com.bumptech.glide.Glide;
-import com.bumptech.glide.load.engine.DiskCacheStrategy;
 import com.chad.library.adapter.base.BaseQuickAdapter;
 import com.chad.library.adapter.base.BaseViewHolder;
 import com.github.tvbox.osc.R;
@@ -30,6 +28,8 @@ import com.github.tvbox.osc.bean.DownloadTask;
 import com.github.tvbox.osc.bean.VideoInfo;
 import com.github.tvbox.osc.databinding.FragmentDownloadBinding;
 import com.github.tvbox.osc.constant.CacheConst;
+import com.github.tvbox.osc.download.DownloadFacade;
+import com.github.tvbox.osc.download.DownloadProgressEvent;
 import com.github.tvbox.osc.event.DownloadEvent;
 import com.github.tvbox.osc.ui.activity.LocalPlayActivity;
 import com.github.tvbox.osc.ui.adapter.LocalVideoAdapter;
@@ -333,9 +333,9 @@ public class DownloadFragment extends BaseVbFragment<FragmentDownloadBinding> {
             int id = view.getId();
             if (id == R.id.btn_swipe_pause) {
                 if (t.state == DownloadTask.STATE_PAUSED || t.state == DownloadTask.STATE_FAILED) {
-                    DownloadManager.get().resume(t);
+                    DownloadFacade.get().resume(t);
                 } else {
-                    DownloadManager.get().pause(t);
+                    DownloadFacade.get().pause(t);
                 }
                 // 左滑操作区点击后收起
                 swipedTaskIds.remove(t.id);
@@ -367,8 +367,8 @@ public class DownloadFragment extends BaseVbFragment<FragmentDownloadBinding> {
             VideoInfo info = localVideoAdapter.getItem(position);
             if (info == null) return;
             if (localVideoAdapter.isSelectMode()) {
-                info.setChecked(!info.isChecked());
-                localVideoAdapter.notifyDataSetChanged();
+                // 走适配器勾选入口:计数增量维护 + 只刷新该行
+                localVideoAdapter.setItemChecked(info, !info.isChecked());
             } else {
                 playFile(info);
             }
@@ -377,8 +377,7 @@ public class DownloadFragment extends BaseVbFragment<FragmentDownloadBinding> {
             VideoInfo info = localVideoAdapter.getItem(position);
             if (info != null) {
                 if (!localVideoAdapter.isSelectMode()) localVideoAdapter.setSelectMode(true);
-                info.setChecked(true);
-                localVideoAdapter.notifyDataSetChanged();
+                localVideoAdapter.setItemChecked(info, true);
                 updateToolbar();
             }
             return true;
@@ -446,9 +445,37 @@ public class DownloadFragment extends BaseVbFragment<FragmentDownloadBinding> {
         return false;
     }
 
+    /** 结构性变更(新增/删除/状态机切换/批量变更/初始化) → 全量重建(仅低频发生,频率可接受) */
     @Subscribe(threadMode = ThreadMode.MAIN)
     public void onDownloadEvent(DownloadEvent event) {
         refresh();
+    }
+
+    /**
+     * 任务级进度事件(带任务 id,高频,由 DownloadManager.flushProgress 节流后广播):
+     * 只对该任务在"正在下载"列表中的可见条目做局部 notifyItemChanged,不做全量重建——
+     * 避免每次 HLS 分片进度都重新聚合全部任务/检查文件/setNewData(任务 B)。
+     * UI 状态(展开/多选/勾选/滑动)均由任务对象与 adapter 字段驱动,单行重绑不会丢状态。
+     */
+    @Subscribe(threadMode = ThreadMode.MAIN)
+    public void onDownloadProgressEvent(DownloadProgressEvent event) {
+        if (event == null || event.taskId == null || event.taskId.isEmpty()) return;
+        // 底部"可用空间/设置"条:进度期间磁盘占用持续变化,轻量刷新(StatFs 开销极小)
+        updateStorageText();
+        // 聚合根级卡片只展示 任务数/已完成集数,不含进度百分比/网速 → 进度事件无需刷聚合
+        if (currentVodGroup == null) return;
+        // 只有"正在下载"tab 的该剧任务行展示进度
+        if (currentTab != TAB_DOWNLOADING) return;
+        List<DownloadTask> data = downloadingAdapter.getData();
+        if (data == null || data.isEmpty()) return;
+        for (int i = 0; i < data.size(); i++) {
+            DownloadTask t = data.get(i);
+            if (t != null && event.taskId.equals(t.id)) {
+                downloadingAdapter.notifyItemChanged(i);
+                return;
+            }
+        }
+        // 任务不属于当前剧集分组(未找到行)或已不在该列表:无需任何操作
     }
 
     private void switchTab(int tab) {
@@ -516,6 +543,8 @@ public class DownloadFragment extends BaseVbFragment<FragmentDownloadBinding> {
             }
         }
         localVideoAdapter.setNewData(files);
+        // 数据重建后同步一次选中计数(BRVAH notifyDataSetChanged 为 final,列表重建无法被计数拦截)
+        localVideoAdapter.syncSelection();
     }
 
     /** 下载完成列表指纹:文件路径 + 大小 */
@@ -564,7 +593,7 @@ public class DownloadFragment extends BaseVbFragment<FragmentDownloadBinding> {
     /** 当前剧集是否存在未完成(下载中/等待/暂停/失败)的任务 */
     private boolean hasInProgressInGroup() {
         if (currentVodGroup == null) return false;
-        for (DownloadTask t : DownloadManager.get().getTasks()) {
+        for (DownloadTask t : DownloadFacade.get().getTasks()) {
             if (t.state != DownloadTask.STATE_COMPLETED && inGroup(t, currentVodGroup, currentSourceName)) {
                 return true;
             }
@@ -589,7 +618,7 @@ public class DownloadFragment extends BaseVbFragment<FragmentDownloadBinding> {
     private void updateTabCounts() {
         if (currentVodGroup == null) return;
         int downloading = 0;
-        for (DownloadTask t : DownloadManager.get().getTasks()) {
+        for (DownloadTask t : DownloadFacade.get().getTasks()) {
             if (t.state == DownloadTask.STATE_COMPLETED) continue;
             if (inGroup(t, currentVodGroup, currentSourceName)) downloading++;
         }
@@ -686,10 +715,7 @@ public class DownloadFragment extends BaseVbFragment<FragmentDownloadBinding> {
             for (DownloadTask t : tasksInGroup(currentVodGroup, currentSourceName)) selectedTaskIds.add(t.id);
             downloadingAdapter.notifyDataSetChanged();
         } else {
-            for (VideoInfo item : localVideoAdapter.getData()) {
-                item.setChecked(true);
-            }
-            localVideoAdapter.notifyDataSetChanged();
+            localVideoAdapter.selectAll();
         }
         updateToolbar();
     }
@@ -703,10 +729,7 @@ public class DownloadFragment extends BaseVbFragment<FragmentDownloadBinding> {
             selectedTaskIds.clear();
             downloadingAdapter.notifyDataSetChanged();
         } else {
-            for (VideoInfo item : localVideoAdapter.getData()) {
-                item.setChecked(false);
-            }
-            localVideoAdapter.notifyDataSetChanged();
+            localVideoAdapter.cancelAllSelection();
         }
         updateToolbar();
     }
@@ -714,7 +737,7 @@ public class DownloadFragment extends BaseVbFragment<FragmentDownloadBinding> {
     /** 当前详情下载中多选作用域:该剧内选中的任务 */
     private List<DownloadTask> currentDlScope() {
         List<DownloadTask> scope = new ArrayList<>();
-        for (DownloadTask t : DownloadManager.get().getTasks()) {
+        for (DownloadTask t : DownloadFacade.get().getTasks()) {
             if (t.state == DownloadTask.STATE_COMPLETED) continue;
             if (inGroup(t, currentVodGroup, currentSourceName) && selectedTaskIds.contains(t.id)) {
                 scope.add(t);
@@ -731,7 +754,7 @@ public class DownloadFragment extends BaseVbFragment<FragmentDownloadBinding> {
             if (t.state == DownloadTask.STATE_DOWNLOADING
                     || t.state == DownloadTask.STATE_WAITING
                     || t.state == DownloadTask.STATE_SYSTEM_PAUSED) {
-                DownloadManager.get().pause(t);
+                DownloadFacade.get().pause(t);
                 n++;
             }
         }
@@ -744,7 +767,7 @@ public class DownloadFragment extends BaseVbFragment<FragmentDownloadBinding> {
         int n = 0;
         for (DownloadTask t : scope) {
             if (t.state == DownloadTask.STATE_PAUSED || t.state == DownloadTask.STATE_FAILED) {
-                DownloadManager.get().resume(t);
+                DownloadFacade.get().resume(t);
                 n++;
             }
         }
@@ -891,7 +914,7 @@ public class DownloadFragment extends BaseVbFragment<FragmentDownloadBinding> {
         Map<String, DownloadGroup> map = new LinkedHashMap<>();
         Map<String, Long> firstTime = new LinkedHashMap<>();
         // 下载中/未完成任务（运行态）
-        for (DownloadTask t : DownloadManager.get().getTasks()) {
+        for (DownloadTask t : DownloadFacade.get().getTasks()) {
             if (t.state == DownloadTask.STATE_COMPLETED) continue; // 已完成走档案
             String src = t.sourceName == null ? "" : t.sourceName;
             String name = vodNameOf(t);
@@ -933,7 +956,7 @@ public class DownloadFragment extends BaseVbFragment<FragmentDownloadBinding> {
     /** 该剧(剧名+来源)是否仍存在于聚合(用于详情页自动退回):有下载中任务 或 有已完成档案 */
     private boolean isGroupPresent(String name, String source) {
         String wantSrc = source == null ? "" : source;
-        for (DownloadTask t : DownloadManager.get().getTasks()) {
+        for (DownloadTask t : DownloadFacade.get().getTasks()) {
             if (!name.equals(vodNameOf(t))) continue;
             if (!wantSrc.equals(t.sourceName == null ? "" : t.sourceName)) continue;
             if (t.state != DownloadTask.STATE_COMPLETED) return true;
@@ -950,7 +973,7 @@ public class DownloadFragment extends BaseVbFragment<FragmentDownloadBinding> {
     /** 该剧未完成的任务列表(按加入时间排序) */
     private List<DownloadTask> tasksInGroup(String vodName, String sourceName) {
         List<DownloadTask> list = new ArrayList<>();
-        for (DownloadTask t : DownloadManager.get().getTasks()) {
+        for (DownloadTask t : DownloadFacade.get().getTasks()) {
             if (t.state != DownloadTask.STATE_COMPLETED && inGroup(t, vodName, sourceName)) {
                 list.add(t);
             }
@@ -1070,7 +1093,7 @@ public class DownloadFragment extends BaseVbFragment<FragmentDownloadBinding> {
 
     /** 该剧的封面 URL(取该剧任一任务携带的 pic; 任务已清理/全部完成时从档案表补找) */
     private String picOf(String name, String source) {
-        for (DownloadTask t : DownloadManager.get().getTasks()) {
+        for (DownloadTask t : DownloadFacade.get().getTasks()) {
             if (inGroup(t, name, source) && t.pic != null && !t.pic.isEmpty()) {
                 return t.pic;
             }
@@ -1085,11 +1108,11 @@ public class DownloadFragment extends BaseVbFragment<FragmentDownloadBinding> {
 
     /** 绑定剧集海报:优先本地文件(私有目录,不入相册),缺失显示搜索页同款占位图并懒拉取 */
     private void bindPoster(ImageView iv, String vodName, String pic) {
-        File pf = DownloadManager.getPosterFile(vodName);
+        File pf = DownloadFacade.get().getPosterFile(vodName);
         if (pf != null) {
-            Glide.with(mContext)
+            // 统一图片加载到 Picasso 单例(共享 OkHttp 连接池/缓存),移除 Glide 双依赖
+            com.squareup.picasso.Picasso.get()
                     .load(pf)
-                    .diskCacheStrategy(DiskCacheStrategy.AUTOMATIC)
                     .placeholder(R.drawable.iv_load_fail)
                     .error(R.drawable.iv_load_fail)
                     .centerCrop()
@@ -1097,7 +1120,7 @@ public class DownloadFragment extends BaseVbFragment<FragmentDownloadBinding> {
         } else {
             iv.setImageResource(R.drawable.iv_load_fail);
             if (pic != null && !pic.isEmpty()) {
-                DownloadManager.get().ensurePosterAsync(pic, vodName);
+                DownloadFacade.get().ensurePosterAsync(pic, vodName);
             }
         }
     }
@@ -1221,9 +1244,9 @@ public class DownloadFragment extends BaseVbFragment<FragmentDownloadBinding> {
     /** 点击条目切换播放/暂停:暂停/失败 -> 开始下载;下载中/等待/排队 -> 暂停 */
     private void toggleTaskPlay(DownloadTask t) {
         if (t.state == DownloadTask.STATE_PAUSED || t.state == DownloadTask.STATE_FAILED) {
-            DownloadManager.get().resume(t);
+            DownloadFacade.get().resume(t);
         } else {
-            DownloadManager.get().pause(t);
+            DownloadFacade.get().pause(t);
         }
     }
 

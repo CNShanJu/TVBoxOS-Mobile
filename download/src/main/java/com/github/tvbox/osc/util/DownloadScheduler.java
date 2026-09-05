@@ -1,10 +1,5 @@
 package com.github.tvbox.osc.util;
 
-import android.content.Context;
-import android.net.ConnectivityManager;
-import android.net.Network;
-import android.net.NetworkCapabilities;
-import android.net.NetworkRequest;
 import android.util.Log;
 
 import com.github.catvod.crawler.PlayUrlResolver;
@@ -16,6 +11,9 @@ import com.github.tvbox.osc.download.DownloadSubType;
 import com.github.tvbox.osc.download.task.BaseDownloadTask;
 import com.github.tvbox.osc.download.task.DownloadTaskRegistry;
 import com.github.tvbox.osc.download.task.TaskListener;
+import com.github.tvbox.osc.state.SystemEvent;
+import com.github.tvbox.osc.state.SystemState;
+import com.github.tvbox.osc.state.SystemStateMonitor;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -33,35 +31,6 @@ public class DownloadScheduler {
     private final DownloadManager dm;
     private Thread worker;
 
-    /** 网络状态监听:网络恢复后唤醒调度并自动续传因网络失败的任务 */
-    private final ConnectivityManager.NetworkCallback networkCallback = new ConnectivityManager.NetworkCallback() {
-        @Override
-        public void onAvailable(Network network) {
-            Log.i("TVBox-Download", "网络恢复:自动续传因网络失败的任务");
-            // Bug1: 仅WiFi开启且当前是蜂窝时,网络恢复也不续传(维持 NETWORK_PAUSED 语义)
-            if (dm.policy.isWifiOnly() && DownloadPolicy.isMobileNetwork()) {
-                return;
-            }
-            boolean changed = false;
-            synchronized (dm.tasks) {
-                for (DownloadTask t : dm.tasks) {
-                    if (t.networkFailed && t.state == DownloadTask.STATE_FAILED) {
-                        t.state = DownloadTask.STATE_WAITING;
-                        t.networkFailed = false;
-                        t.needReResolve = true; // 断网期间代理签名可能过期,继续前重新解析
-                        t.message = "";
-                        changed = true;
-                    }
-                }
-            }
-            if (changed) {
-                dm.persist();
-                dm.notifyChanged();
-            }
-            wakeWorker();
-        }
-    };
-
     DownloadScheduler(DownloadManager dm) {
         this.dm = dm;
     }
@@ -73,7 +42,7 @@ public class DownloadScheduler {
     private final TaskListener taskListener = new TaskListener() {
         @Override
         public void onProgress(DownloadTask t) {
-            // 进度持久化由执行器内部 800ms 合并完成
+            // 进度落盘/广播由执行器内部经 DownloadManager.flushProgress 节流合并(600ms 窗口)
         }
 
         @Override
@@ -87,18 +56,66 @@ public class DownloadScheduler {
         }
     };
 
-    /** 注册网络状态监听(断网/切网后网络恢复时自动续传) */
-    void registerNetworkCallback() {
+    /**
+     * 订阅全局网络事件(任务C:网络监听统一)。系统级 ConnectivityManager 回调此前在下载侧
+     * (DownloadScheduler/DownloadPolicy)重复注册,造成同一网络变化多次唤醒调度器;
+     * 现以 SystemStateMonitor 为唯一网络事件源(它在 state 模块内部已注册默认网络回调,
+     * 事件在主线程派发且带 300ms 去抖),此处仅订阅其 TYPE_NETWORK 事件触发原有逻辑:
+     * 网络"可用/类型变化/恢复"时自动续传因网络失败的任务(离线挂起/恢复自动续传策略不变)。
+     * <p>
+     * 语义映射(与原 ConnectivityManager.NetworkCallback.onAvailable 一致):
+     * - 事件值 WIFI        → 网络可用,续传(无论是否仅WiFi);
+     * - 事件值 CELLULAR    → 仅当未开启"仅WiFi"才续传(Bug1: 仅WiFi+蜂窝维持挂起语义);
+     * - 事件值 NONE(断网)  → 不处理,下载中任务由 Policy(仅WiFi挂起)或网络错误重试负责。
+     * 订阅成功后按当前网络自检一次,等价旧注册 registerNetworkCallback 注册即回调 onAvailable。
+     */
+    void subscribeNetworkEvents() {
         try {
-            ConnectivityManager cm = (ConnectivityManager) dm.appContext.getSystemService(Context.CONNECTIVITY_SERVICE);
-            if (cm == null) return;
-            NetworkRequest request = new NetworkRequest.Builder()
-                    .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
-                    .build();
-            cm.registerNetworkCallback(request, networkCallback);
+            SystemStateMonitor monitor = SystemStateMonitor.get();
+            if (monitor == null) return; // 监控未初始化(启动早期):防御策略与 DownloadPolicy 一致
+            monitor.register((SystemEvent e) -> {
+                if (!SystemStateMonitor.TYPE_NETWORK.equals(e.type)) return;
+                if (SystemStateMonitor.VAL_WIFI.equals(e.value)) {
+                    resumeNetworkFailedTasks();
+                } else if (SystemStateMonitor.VAL_CELLULAR.equals(e.value)
+                        && !dm.policy.isWifiOnly()) {
+                    resumeNetworkFailedTasks();
+                }
+                // VAL_NONE(断网): 不在此恢复
+            }, SystemStateMonitor.TYPE_NETWORK);
+            // 订阅时自检:按当前网络态立即执行一次(等价旧的"注册即回调")
+            SystemState current = monitor.getCurrentState();
+            if (current != null && !SystemStateMonitor.VAL_NONE.equals(current.network)) {
+                if (SystemStateMonitor.VAL_WIFI.equals(current.network)
+                        || !dm.policy.isWifiOnly()) {
+                    resumeNetworkFailedTasks();
+                }
+            }
         } catch (Throwable th) {
             th.printStackTrace();
         }
+    }
+
+    /** 网络恢复:因网络错误失败的任务(FAILED+networkFailed)转等待,自动续传并重新解析地址 */
+    private void resumeNetworkFailedTasks() {
+        Log.i("TVBox-Download", "网络恢复:自动续传因网络失败的任务");
+        boolean changed = false;
+        synchronized (dm.tasks) {
+            for (DownloadTask t : dm.tasks) {
+                if (t.networkFailed && t.state == DownloadTask.STATE_FAILED) {
+                    t.state = DownloadTask.STATE_WAITING;
+                    t.networkFailed = false;
+                    t.needReResolve = true; // 断网期间代理签名可能过期,继续前重新解析
+                    t.message = "";
+                    changed = true;
+                }
+            }
+        }
+        if (changed) {
+            dm.persist();
+            dm.notifyChanged();
+        }
+        wakeWorker();
     }
 
     void startWorker() {

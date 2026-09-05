@@ -82,7 +82,14 @@ class HistoryActivity : BaseVbActivity<ActivityHistoryBinding>() {
     private fun initData() {
 
         lifecycleScope.launch(Dispatchers.IO) {
-            val allVodRecord = RoomDataManger.getAllVodRecord(100)
+            // 源是否存在/历史保留上限由 UI 层判定(与旧 RoomDataManger 内聚逻辑等价;storage 不再依赖业务配置)
+            val allVodRecord = RoomDataManger.getAllVodRecord(
+                100,
+                { key -> com.github.tvbox.osc.api.ApiConfig.get().getSource(key) != null },
+                com.github.tvbox.osc.util.HistoryHelper.getHisNum(
+                    com.github.tvbox.osc.util.SystemConfig.getHistoryNum()
+                )
+            )
             val vodInfoList: MutableList<VodInfo> = ArrayList()
             for (vodInfo in allVodRecord) {
                 if (vodInfo.playNote != null && vodInfo.playNote.isNotEmpty()) vodInfo.note =

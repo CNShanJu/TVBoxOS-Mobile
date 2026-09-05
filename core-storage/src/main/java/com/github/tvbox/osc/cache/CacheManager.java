@@ -66,22 +66,29 @@ public class CacheManager {
         return new byte[0];
     }
 
+    // 所有 DAO 调用统一走 AppDataManager.runOnDb(主线程不再执行 SQLite 操作)
     public static <T> void delete(String key, T body) {
-        Cache cache = new Cache();
+        final Cache cache = new Cache();
         cache.key = key;
         cache.data = toByteArray(body);
-        AppDataManager.get().getCacheDao().delete(cache);
+        AppDataManager.runOnDb(() -> {
+            AppDataManager.get().getCacheDao().delete(cache);
+        });
     }
 
     public static <T> void save(String key, T body) {
-        Cache cache = new Cache();
+        final Cache cache = new Cache();
         cache.key = key;
         cache.data = toByteArray(body);
-        AppDataManager.get().getCacheDao().save(cache);
+        AppDataManager.runOnDb(() -> {
+            AppDataManager.get().getCacheDao().save(cache);
+        });
     }
 
-    public static Object getCache(String key) {
-        Cache cache = AppDataManager.get().getCacheDao().getCache(key);
+    public static Object getCache(final String key) {
+        Cache cache = AppDataManager.runOnDb(() -> {
+            return AppDataManager.get().getCacheDao().getCache(key);
+        });
         if (cache != null && cache.data != null) {
             return toObject(cache.data);
         }

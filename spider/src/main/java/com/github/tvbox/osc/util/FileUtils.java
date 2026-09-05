@@ -412,7 +412,42 @@ public class FileUtils {
         return dir.delete();
     }
 
-    //启动app清除
+    /** 目录大小(递归求和,字节);文件/不存在返回 0 */
+    public static long dirSize(File dir) {
+        if (dir == null || !dir.exists()) return 0L;
+        if (dir.isFile()) return dir.length();
+        File[] children = dir.listFiles();
+        if (children == null) return 0L;
+        long total = 0L;
+        for (File child : children) {
+            try {
+                total += dirSize(child);
+            } catch (Throwable ignored) {
+            }
+        }
+        return total;
+    }
+
+    /** 播放器/下载相关缓存目录总大小(ijk 分片缓存、thunder 临时、jpali 下载临时) */
+    public static long playerCacheSize() {
+        long total = 0L;
+        total += dirSize(new File(getCachePath() + "/ijkcaches/"));
+        total += dirSize(new File(getCachePath() + "/thunder/"));
+        total += dirSize(new File(getCachePath() + "/jpali/Downloads/"));
+        return total;
+    }
+
+    /** 仅当播放器缓存超过阈值时才清理(避免每次冷启动递归删大目录拖慢首屏);调用方应在后台线程延迟执行 */
+    public static void cleanPlayerCacheIfOverflow(long thresholdBytes) {
+        try {
+            if (playerCacheSize() < thresholdBytes) return;
+            cleanPlayerCache();
+        } catch (Throwable th) {
+            th.printStackTrace();
+        }
+    }
+
+    //启动app清除(仅当 cleanPlayerCacheIfOverflow 判定超过阈值时触发)
     public static void cleanPlayerCache() {
         String ijkCachePath = getCachePath() + "/ijkcaches/";
         String thunderCachePath = getCachePath() + "/thunder/";

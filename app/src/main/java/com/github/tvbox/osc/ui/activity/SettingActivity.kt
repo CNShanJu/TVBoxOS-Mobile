@@ -75,6 +75,38 @@ class SettingActivity : BaseVbActivity<ActivitySettingBinding>() {
             SystemConfig.setPrivateBrowsing(newConfig)
         }
 
+        // 局域网服务开关(默认关闭):关闭时 HTTP 服务仅监听 127.0.0.1(订阅/本地播放/代理不受影响);
+        // 开启后局域网设备可访问 web 控制台与文件共享,管理型请求需携带进程令牌(见 RemoteServer)。
+        val lanEnabled = Hawk.get(HawkConfig.LAN_SERVER_ENABLE, false)
+        mBinding.switchLanServer.setChecked(lanEnabled)
+        updateLanServerDesc(lanEnabled)
+        mBinding.llLanServer.setOnClickListener { view: View? ->
+            FastClickCheckUtil.check(view)
+            val newVal = !Hawk.get(HawkConfig.LAN_SERVER_ENABLE, false)
+            mBinding.switchLanServer.setChecked(newVal)
+            Hawk.put(HawkConfig.LAN_SERVER_ENABLE, newVal)
+            updateLanServerDesc(newVal)
+            AppBubble.toast(
+                if (newVal) "已开启局域网服务,重启应用后生效" else "已关闭局域网服务(仅本机),重启应用后生效"
+            )
+        }
+
+        // 忽略证书错误(默认关闭,会降低 TLS 安全性):个别自签名/证书异常站点打不开时再开启;
+        // WebView 即时生效,网络请求(OkHttp)在应用重启后按开关重建客户端时生效。
+        val ignoreSsl = Hawk.get(HawkConfig.IGNORE_SSL_ERROR, false)
+        mBinding.switchIgnoreSsl.setChecked(ignoreSsl)
+        updateIgnoreSslDesc(ignoreSsl)
+        mBinding.llIgnoreSsl.setOnClickListener { view: View? ->
+            FastClickCheckUtil.check(view)
+            val newVal = !Hawk.get(HawkConfig.IGNORE_SSL_ERROR, false)
+            mBinding.switchIgnoreSsl.setChecked(newVal)
+            Hawk.put(HawkConfig.IGNORE_SSL_ERROR, newVal)
+            updateIgnoreSslDesc(newVal)
+            AppBubble.toast(
+                if (newVal) "已开启忽略证书错误(仅用于个别自签名站点)" else "已关闭忽略证书错误(恢复证书校验)"
+            )
+        }
+
         mBinding.llLiveApi.setOnClickListener {
             XPopup.Builder(mContext)
                 .autoFocusEditText(false)
@@ -595,5 +627,15 @@ class SettingActivity : BaseVbActivity<ActivitySettingBinding>() {
             1 -> "站点推荐"
             else -> "关闭"
         }
+    }
+
+    /** 局域网服务描述行:开关状态一目了然(开启需重启应用生效) */
+    private fun updateLanServerDesc(enabled: Boolean) {
+        mBinding.tvLanServerDesc.text = if (enabled) "局域网可访问" else "仅本机"
+    }
+
+    /** 忽略证书错误描述行 */
+    private fun updateIgnoreSslDesc(enabled: Boolean) {
+        mBinding.tvIgnoreSslDesc.text = if (enabled) "已忽略(不安全)" else "校验证书"
     }
 }

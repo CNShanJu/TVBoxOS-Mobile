@@ -116,6 +116,68 @@ public final class DownloadFacade {
     }
 
     // ------------------------------------------------------------------
+    // 入队 / 队列控制（改进.txt 第一阶段:UI 只走 Facade,不再直接调 DownloadManager）
+    // ------------------------------------------------------------------
+
+    /** 入队(与详情页原 DownloadManager.enqueue 全参数一致;headers 可为 null) */
+    public boolean enqueue(String url, String sourceKey, String playFlag, String episodeRawUrl,
+                           String episodeId, String pic, java.util.Map<String, String> headers,
+                           String sourceName, String vodName, String episodeName) {
+        return DownloadManager.get().enqueue(url, sourceKey, playFlag, episodeRawUrl,
+                episodeId, pic, headers, sourceName, vodName, episodeName);
+    }
+
+    /** 按任务对象暂停 */
+    public void pause(DownloadTask t) {
+        if (t != null) DownloadManager.get().pause(t);
+    }
+
+    /** 按任务对象恢复 */
+    public void resume(DownloadTask t) {
+        if (t != null) DownloadManager.get().resume(t);
+    }
+
+    /** 暂停全部 */
+    public void pauseAll() {
+        DownloadManager.get().pauseAll();
+    }
+
+    /** 恢复全部 */
+    public void startAll() {
+        DownloadManager.get().startAll();
+    }
+
+    /** 删除任务(不删文件) */
+    public void remove(DownloadTask t) {
+        if (t != null) DownloadManager.get().remove(t);
+    }
+
+    /** 删除任务(deleteFiles=true 连文件一起删) */
+    public void remove(DownloadTask t, boolean deleteFiles) {
+        if (t != null) DownloadManager.get().remove(t, deleteFiles);
+    }
+
+    /** 按本地路径清理下载任务(本地文件删除联动),返回清理条数 */
+    public int removeTasksByPath(String savePath) {
+        return DownloadManager.get().removeTasksByPath(savePath);
+    }
+
+    /** 按本地路径删除档案(与 removeTasksByPath 配套,一次调用完成文件联动) */
+    public boolean removeArchiveByPath(String savePath) {
+        return DownloadArchive.get().removeByPath(savePath);
+    }
+
+    /** 海报本地文件(不存在返回 null) */
+    public java.io.File getPosterFile(String vodName) {
+        return DownloadManager.getPosterFile(vodName);
+    }
+
+    /** 异步拉取并缓存海报文件 */
+    public void ensurePosterAsync(String pic, String vodName) {
+        DownloadManager.get().ensurePosterAsync(pic, vodName);
+    }
+
+    // ------------------------------------------------------------------
     // 排队 / 插队（4.4，按 episodeId 操作）
     // ------------------------------------------------------------------
 

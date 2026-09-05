@@ -35,8 +35,20 @@ public class PlayService extends Service {
     static String videoInfo = "MBox&&第一集";
     private static MyVideoView videoView;
 
+    /** "标题&&集数" 分段读取,越界/缺段返回空串,避免 split 后越界崩溃 */
+    private static String splitPart(String info, int index) {
+        if (info == null) return "";
+        String[] parts = info.split("&&", -1);
+        if (parts.length > index && parts[index] != null) {
+            return parts[index].trim();
+        }
+        return parts.length > 0 && parts[0] != null ? parts[0].trim() : "";
+    }
+
     public static void start(MyVideoView controller,String currentVideoInfo) {
-        videoInfo = currentVideoInfo;
+        if (currentVideoInfo != null) {
+            videoInfo = currentVideoInfo;
+        }
         PlayService.videoView = controller;
         ContextCompat.startForegroundService(App.getInstance(), new Intent(App.getInstance(), PlayService.class));
     }
@@ -63,7 +75,10 @@ public class PlayService extends Service {
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         startForeground(NOTIFICATION_ID, buildNotification());
-        videoView.start();
+        // videoView 可能已被界面销毁(静态引用跨生命周期),判空避免 NPE
+        if (videoView != null) {
+            videoView.start();
+        }
         return START_NOT_STICKY;
     }
 
@@ -79,13 +94,16 @@ public class PlayService extends Service {
 
     private Notification buildNotification(){
 
-        String title = videoInfo.split("&&")[0];
-        String episodes = videoInfo.split("&&")[1];
+        String title = splitPart(videoInfo, 0);
+        String episodes = splitPart(videoInfo, 1);
+        if (title == null || title.trim().isEmpty()) title = "MBox";
+        if (episodes == null) episodes = "";
         // 展开布局
         RemoteViews remoteViews = new RemoteViews(getPackageName(), R.layout.notification_player);
         remoteViews.setTextViewText(R.id.tv_title, title);
         remoteViews.setTextViewText(R.id.tv_subtitle, "正在播放: "+episodes);
-        remoteViews.setImageViewResource(R.id.iv_play_pause,videoView.isPlaying()?R.drawable.ic_notify_pause:R.drawable.ic_notify_play);
+        boolean playing = videoView != null && videoView.isPlaying();
+        remoteViews.setImageViewResource(R.id.iv_play_pause,playing?R.drawable.ic_notify_pause:R.drawable.ic_notify_play);
         // 创建通知栏操作
         remoteViews.setOnClickPendingIntent(R.id.iv_previous, getPendingIntent(IntentKey.BROADCAST_ACTION_PREV));
         remoteViews.setOnClickPendingIntent(R.id.iv_play_pause, getPendingIntent(IntentKey.BROADCAST_ACTION_PLAYPAUSE));

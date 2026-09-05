@@ -16,7 +16,6 @@ import com.github.tvbox.osc.server.ControlManager;
 import com.github.tvbox.osc.state.SystemStateMonitor;
 import com.github.tvbox.osc.ui.activity.MainActivity;
 import com.github.tvbox.osc.util.AppLog;
-import com.github.tvbox.osc.util.EpgUtil;
 import com.github.tvbox.osc.util.FileUtils;
 import com.github.tvbox.osc.util.HawkConfig;
 import com.github.tvbox.osc.util.LOG;
@@ -68,7 +67,7 @@ public class App extends MultiDexApplication {
         OkGoHelper.init(this);
         initExoOkHttpClient();
         initPicasso();
-        EpgUtil.init();
+        // EPG JSON 解析从启动主线程移除:首次直播取 EPG 信息时懒加载(EpgUtil.getEpgInfo 内自触发)
         // 初始化Web服务器
         ControlManager.init(this);
         // ApiConfig(:spider 模块) context + 局域网地址注入(替代直接依赖)
@@ -78,8 +77,8 @@ public class App extends MultiDexApplication {
             com.github.tvbox.osc.api.ApiConfig.setLanBase(ControlManager.get().getAddress(true));
         } catch (Throwable ignored) {
         }
-        //初始化数据库
-        AppDataManager.init();
+        //初始化数据库(context 注入式:不再依赖 App 单例,见 AppDataManager)
+        AppDataManager.init(this);
         LoadSir.beginBuilder()
                 .addCallback(new EmptyCallback())
                 .addCallback(new LoadingCallback())
@@ -93,7 +92,8 @@ public class App extends MultiDexApplication {
                 .setSupportSubunits(Subunits.MM);
         PlayerHelper.init();
         QuickJSLoader.init();
-        FileUtils.cleanPlayerCache();
+        // 播放器缓存清理移出启动主线程:延迟到首屏后再由后台低优先级线程执行,且超过阈值才清(见 schedulePlayerCacheCleanup)
+        schedulePlayerCacheCleanup();
         initCrashConfig();
         Utils.initTheme();
         AppLog.log("运行", "应用启动(Android " + android.os.Build.VERSION.RELEASE + ")");
@@ -107,6 +107,23 @@ public class App extends MultiDexApplication {
         com.github.tvbox.osc.download.DownloadNotifier.init(this);
         // 全局系统状态监控(网络/前后台/横竖屏/电量/磁盘, 基座层)
         SystemStateMonitor.init(this);
+    }
+
+    /** 播放器缓存清理:延迟到首屏后再执行;仅当缓存超阈值才递归删除,低优先级后台线程 */
+    private void schedulePlayerCacheCleanup() {
+        final android.os.Handler handler = new android.os.Handler(android.os.Looper.getMainLooper());
+        handler.postDelayed(() -> {
+            Thread t = new Thread(() -> {
+                try {
+                    FileUtils.cleanPlayerCacheIfOverflow(100L * 1024 * 1024);
+                } catch (Throwable th) {
+                    th.printStackTrace();
+                }
+            }, "player-cache-clean");
+            t.setDaemon(true);
+            t.setPriority(Thread.MIN_PRIORITY);
+            t.start();
+        }, 5000L);
     }
 
     private void initParams() {
@@ -123,6 +140,8 @@ public class App extends MultiDexApplication {
         putDefault(HawkConfig.HISTORY_NUM, 2);                //历史记录数量: 0=30, 1=50, 2=70
         putDefault(HawkConfig.APP_LOG, false);                //运行日志:默认关闭,排查问题时开启
         putDefault(HawkConfig.SUBTITLE_OPEN, false);          //字幕:默认关闭,播放器设置里可开关
+        putDefault(HawkConfig.IGNORE_SSL_ERROR, false);       //忽略证书错误:默认关闭(开启会降低 TLS 安全性)
+        putDefault(HawkConfig.LAN_SERVER_ENABLE, false);      //局域网服务:默认关闭(HTTP 服务仅监听 127.0.0.1)
         putDefault(HawkConfig.LOADING_ANIM, "");               //加载动画:空=默认,或 assets/loading/ 下的文件名
         putDefault(HawkConfig.LIVE_URL, "https://gh-proxy.com/raw.githubusercontent.com/vbskycn/iptv/refs/heads/master/tv/iptv4.txt"); //直播源:默认地址
         putDefaultApi();
@@ -292,26 +311,13 @@ public class App extends MultiDexApplication {
         }
     }
 
-    /** Exo 播放内核使用下载专用 OkHttpClient（原 OkGoHelper.initExoOkHttpClient 拆回 app 侧） */
+    /** Exo 播放内核使用与全局共享同一套根配置的 OkHttpClient(公共基础在 :common OkGoHelper.newBaseBuilder) */
     private void initExoOkHttpClient() {
         try {
-            OkHttpClient.Builder builder = new OkHttpClient.Builder();
-            okhttp3.logging.HttpLoggingInterceptor loggingInterceptor = new okhttp3.logging.HttpLoggingInterceptor();
-            if (Hawk.get(HawkConfig.DEBUG_OPEN, false)) {
-                loggingInterceptor.setLevel(okhttp3.logging.HttpLoggingInterceptor.Level.BODY);
-            } else {
-                loggingInterceptor.setLevel(okhttp3.logging.HttpLoggingInterceptor.Level.NONE);
-            }
-            builder.addInterceptor(loggingInterceptor);
-            builder.connectionSpecs(OkGoHelper.getConnectionSpec());
-            builder.addInterceptor(new com.github.tvbox.osc.util.urlhttp.BrotliInterceptor());
+            OkHttpClient.Builder builder = OkGoHelper.newBaseBuilder();
             builder.retryOnConnectionFailure(true);
             builder.followRedirects(true);
             builder.followSslRedirects(true);
-            setOkHttpSsl(builder);
-            if (OkGoHelper.dnsOverHttps != null) {
-                builder.dns(OkGoHelper.dnsOverHttps);
-            }
             xyz.doikki.videoplayer.exo.ExoMediaSourceHelper.getInstance(this).setOkClient(builder.build());
         } catch (Throwable th) {
             th.printStackTrace();
@@ -333,21 +339,6 @@ public class App extends MultiDexApplication {
             com.squareup.picasso.Picasso.setSingletonInstance(picasso);
         } catch (Throwable th) {
             th.printStackTrace();
-        }
-    }
-
-    private static synchronized void setOkHttpSsl(OkHttpClient.Builder builder) {
-        try {
-            final javax.net.ssl.SSLSocketFactory sslSocketFactory = new com.github.catvod.net.SSLCompat();
-            builder.sslSocketFactory(sslSocketFactory, com.github.catvod.net.SSLCompat.TM);
-            builder.hostnameVerifier(new javax.net.ssl.HostnameVerifier() {
-                @Override
-                public boolean verify(String hostname, javax.net.ssl.SSLSession session) {
-                    return true;
-                }
-            });
-        } catch (Exception e) {
-            throw new RuntimeException(e);
         }
     }
 

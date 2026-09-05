@@ -168,8 +168,8 @@ public class DownloadExecutor {
                     lastSpeedTime = now;
                     lastSpeedBytes = t.downloadedBytes;
                     lastPersist = now;
-                    dm.persist();
-                    dm.notifyChanged();
+                    // 进度:内存已实时更新,落盘/广播交由 flushProgress 节流合并(终态由外层强制落盘)
+                    dm.flushProgress(t);
                 }
             }
             os.flush();
@@ -278,8 +278,9 @@ public class DownloadExecutor {
                 speedWindowStart = now;
                 speedWindowBytes = 0;
             }
-            dm.persist();
-            dm.notifyChanged();
+            // 分片进度:doneSegments/segmentBytes 已实时写内存;落盘与广播节流到 600ms 窗口
+            // (分片多时不再每片序列化写盘/刷屏),任务暂停/失败/完成由各终态点强制落盘,不丢状态
+            dm.flushProgress(t);
         }
         t.speed = 0;
 
@@ -414,8 +415,8 @@ public class DownloadExecutor {
                     if (i % 20 == 0 || i == segments.size() - 1) {
                         int pct = (int) (mergedBytes * 100 / Math.max(1L, mergeSize));
                         t.message = DownloadManager.MSG_MERGING + "(" + pct + "%)";
-                        dm.persist();
-                        dm.notifyChanged();
+                        // 合并进度同样节流:message 已实时更新,落盘/广播合并(终态完成会强制落盘)
+                        dm.flushProgress(t);
                     }
                 }
                 out.flush();

@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
     <!-- 在 Android 11 中，应用程序需要声明它们要使用的其他应用程序的包名 -->
     <queries>
         <package android:name="idm.internet.download.manager.plus" />
@@ -16,10 +17,13 @@
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
     <uses-permission android:name="android.permission.CHANGE_WIFI_MULTICAST_STATE" />
-    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
-    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
-    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
-    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+    <!-- 存储访问以 MANAGE_EXTERNAL_STORAGE(全文件访问)为主;保留旧版读写在 Android 9- 使用 -->
+    <uses-permission
+        android:name="android.permission.READ_EXTERNAL_STORAGE"
+        android:maxSdkVersion="32" />
+    <uses-permission
+        android:name="android.permission.WRITE_EXTERNAL_STORAGE"
+        android:maxSdkVersion="29" />
     <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE" />
     <uses-permission android:name="android.permission.WAKE_LOCK"/>
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
@@ -31,7 +35,8 @@
 
     <application
         android:name=".base.App"
-        android:allowBackup="true"
+        android:allowBackup="false"
+        tools:replace="android:allowBackup"
         android:configChanges="orientation|keyboardHidden|screenSize"
         android:hardwareAccelerated="true"
         android:icon="${appIcon}"
@@ -103,16 +108,19 @@
         <!-- DLNA 投屏服务已停用:依赖 com.github.devin1014.DLNA-Cast 从 JitPack 消失,待找到替代库后恢复 -->
         <!-- <service android:name="com.android.cast.dlna.dmc.DLNACastService"/> -->
 
+        <!-- 两个广播接收器不再对三方 App 开放(exported=false):
+             SearchReceiver 由 ControlManager 以显式组件广播触发, CustomWebReceiver 无外部契约,
+             避免任意应用向本应用注入搜索/刷新指令 -->
         <receiver
             android:name=".receiver.SearchReceiver"
-            android:exported="true">
+            android:exported="false">
             <intent-filter>
                 <action android:name="android.content.movie.search.Action" />
             </intent-filter>
         </receiver>
         <receiver
             android:name=".receiver.CustomWebReceiver"
-            android:exported="true">
+            android:exported="false">
             <intent-filter>
                 <action android:name="android.content.movie.custom.web.Action" />
             </intent-filter>

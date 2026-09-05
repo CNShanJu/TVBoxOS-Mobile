@@ -97,9 +97,12 @@ lint/tmp/
 .idea/
 /app/release/
 /.idea/
-# 正式签名库 TVBoxOSC.jks 已提交入库,供 GitHub Actions 出正式签名包;其余 *.jks 仍忽略
+# Keystore 一律不入库(正式签名密钥曾误入库 TVBoxOSC.jks,已 git rm --cached;
+# 构建时经环境变量/keystore.properties 注入,见 app/build.gradle)
 *.jks
-!TVBoxOSC.jks
+*.keystore
+**/keystore.properties
+/app/keystore.properties
 
 # 默认订阅配置:仅本地打包生效,不入库(GitHub Actions 线上打包时文件不存在,App 自动回退)
 app/src/main/assets/config/default_subscriptions.json

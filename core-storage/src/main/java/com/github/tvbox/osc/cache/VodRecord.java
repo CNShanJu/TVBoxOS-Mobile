@@ -2,12 +2,22 @@ package com.github.tvbox.osc.cache;
 
 import androidx.room.ColumnInfo;
 import androidx.room.Entity;
+import androidx.room.Index;
 import androidx.room.PrimaryKey;
 
 import java.io.Serializable;
 
-@Entity(tableName = "vodCollect")
-public class VodCollect implements Serializable {
+/**
+ * @author pj567
+ * @date :2021/1/7
+ * @description: 历史记录表。索引覆盖高频查询条件:(sourceKey,vodId) 点查、updateTime 倒序分页。
+ */
+@Entity(tableName = "vodRecord",
+        indices = {
+                @Index(value = {"sourceKey", "vodId"}),
+                @Index(value = {"updateTime"})
+        })
+public class VodRecord implements Serializable {
     @PrimaryKey(autoGenerate = true)
     private int id;
     @ColumnInfo(name = "vodId")
@@ -16,10 +26,7 @@ public class VodCollect implements Serializable {
     public long updateTime;
     @ColumnInfo(name = "sourceKey")
     public String sourceKey;
-    @ColumnInfo(name = "name")
-    public String name;
-    @ColumnInfo(name = "pic")
-    public String pic;
+    public String dataJson;
 
     public int getId() {
         return id;

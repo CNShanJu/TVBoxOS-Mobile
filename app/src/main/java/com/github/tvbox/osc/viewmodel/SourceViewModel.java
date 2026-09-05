@@ -33,6 +33,7 @@ import com.google.gson.reflect.TypeToken;
 import com.orhanobut.hawk.Hawk;
 import com.thoughtworks.xstream.XStream;
 import com.thoughtworks.xstream.io.xml.DomDriver;
+import com.thoughtworks.xstream.security.NoTypePermission;
 
 import org.greenrobot.eventbus.EventBus;
 import org.json.JSONObject;
@@ -677,12 +678,39 @@ public class SourceViewModel extends ViewModel {
         }
     }
 
+    /**
+     * XStream 反序列化安全白名单:关闭默认"任意类型许可",仅放行业务 bean 包(及其嵌套类)
+     * 与基础 JDK 类型。订阅/详情 XML 来自第三方数据源,若无白名单,恶意 XML 可让 XStream
+     * 实例化任意类触发 gadget 链(潜在 RCE)。调用时机:processAnnotations 之后、fromXML 之前。
+     */
+    private static void lockDownXStream(XStream xstream, Class<?> rootType) {
+        try {
+            xstream.addPermission(NoTypePermission.NONE);
+            if (rootType != null) {
+                xstream.allowTypeHierarchy(rootType);
+            }
+            xstream.allowTypesByWildcard(new String[]{
+                    "com.github.tvbox.osc.bean.**",   // 业务模型(含嵌套类)
+                    "java.lang.**",
+                    "java.util.**",
+                    "java.time.**",
+                    "java.math.**",
+                    "java.net.**"
+            });
+        } catch (Throwable th) {
+            LOG.e("XStream whitelist apply failed: " + th.getMessage());
+        }
+    }
+
     private AbsSortXml sortXml(MutableLiveData<AbsSortXml> result, String xml) {
         try {
             XStream xstream = new XStream(new DomDriver());//创建Xstram对象
             xstream.autodetectAnnotations(true);
             xstream.processAnnotations(AbsSortXml.class);
             xstream.ignoreUnknownElements();
+            // XStream 反序列化安全白名单:只允许业务 bean 与 JDK 基础类型,
+            // 关闭默认的"任意类型许可",防止恶意订阅 XML 触发 gadget 链(如 RCE)
+            lockDownXStream(xstream, AbsSortXml.class);
             AbsSortXml data = (AbsSortXml) xstream.fromXML(xml);
             for (MovieSort.SortData sort : data.classes.sortList) {
                 if (sort.filters == null) {
@@ -814,6 +842,8 @@ public class SourceViewModel extends ViewModel {
             if (xml.contains("<state></state>")) {
                 xml = xml.replace("<state></state>", "<state>0</state>");
             }
+            // XStream 反序列化安全白名单(见 lockDownXStream)
+            lockDownXStream(xstream, AbsXml.class);
             AbsXml data = (AbsXml) xstream.fromXML(xml);
             absXml(data, sourceKey);
             if (searchResult == result) {

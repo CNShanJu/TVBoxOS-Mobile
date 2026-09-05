@@ -209,6 +209,80 @@
                         android:layout_height="wrap_content"
                         android:clickable="false"/>
                 </LinearLayout>
+
+                <!-- 局域网服务开关:默认关闭(HTTP 服务仅监听 127.0.0.1);开启后局域网可访问文件共享/管理(带令牌鉴权) -->
+                <LinearLayout
+                    android:id="@+id/llLanServer"
+                    android:layout_width="match_parent"
+                    android:layout_height="@dimen/dp_60"
+                    android:layout_weight="1"
+                    android:focusable="true"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal"
+                    android:paddingHorizontal="40dp"
+                    android:foreground="?android:selectableItemBackground">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="局域网服务"
+                        android:textColor="@color/text_foreground"
+                        android:textSize="16sp"
+                        />
+
+                    <TextView
+                        android:id="@+id/tvLanServerDesc"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:gravity="end"
+                        android:textColor="@color/text_sub_foreground"
+                        android:textSize="12sp"/>
+
+                    <com.github.tvbox.osc.ui.widget.AppSwitch
+                        android:id="@+id/switchLanServer"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="10dp"
+                        android:clickable="false"/>
+                </LinearLayout>
+
+                <!-- 忽略证书错误开关:默认关闭(校验证书/主机名);个别自签名站点打不开时再开启(会降低 TLS 安全性) -->
+                <LinearLayout
+                    android:id="@+id/llIgnoreSsl"
+                    android:layout_width="match_parent"
+                    android:layout_height="@dimen/dp_60"
+                    android:layout_weight="1"
+                    android:focusable="true"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal"
+                    android:paddingHorizontal="40dp"
+                    android:foreground="?android:selectableItemBackground">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="忽略证书错误"
+                        android:textColor="@color/text_foreground"
+                        android:textSize="16sp"
+                        />
+
+                    <TextView
+                        android:id="@+id/tvIgnoreSslDesc"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:gravity="end"
+                        android:textColor="@color/text_sub_foreground"
+                        android:textSize="12sp"/>
+
+                    <com.github.tvbox.osc.ui.widget.AppSwitch
+                        android:id="@+id/switchIgnoreSsl"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="10dp"
+                        android:clickable="false"/>
+                </LinearLayout>
             </LinearLayout>
 
             <!-- 下载设置:与下载页标题栏齿轮共用 DownloadConfig,单一事实源 -->

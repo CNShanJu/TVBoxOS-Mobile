@@ -8,8 +8,6 @@ import android.widget.ImageView;
 import android.widget.TextView;
 
 import com.blankj.utilcode.util.LogUtils;
-import com.bumptech.glide.Glide;
-import com.bumptech.glide.load.engine.DiskCacheStrategy;
 import com.chad.library.adapter.base.BaseQuickAdapter;
 import com.chad.library.adapter.base.BaseViewHolder;
 import com.github.tvbox.osc.R;
@@ -19,6 +17,7 @@ import com.github.tvbox.osc.bean.VideoInfo;
 import com.github.tvbox.osc.cache.VodCollect;
 import com.github.tvbox.osc.picasso.RoundTransformation;
 import com.github.tvbox.osc.util.DefaultConfig;
+import com.github.tvbox.osc.util.LocalVideoFrameLoader;
 import com.github.tvbox.osc.util.MD5;
 import com.squareup.picasso.Callback;
 import com.squareup.picasso.LruCache;
@@ -41,11 +40,22 @@ public class FolderAdapter extends BaseQuickAdapter<VideoFolder, BaseViewHolder>
         helper.setText(R.id.tv_name,item.getName());
         helper.setText(R.id.tv_count,videoList.size()+"个视频");
 
-        Glide.with(mContext)
-                .load(videoList.get(0).getPath()) // 第一个视频做封面
-                .diskCacheStrategy(DiskCacheStrategy.AUTOMATIC)
-                .placeholder(R.drawable.iv_load_fail)
-                .centerCrop()
-                .into((ImageView) helper.getView(R.id.iv));
+        // 统一图片加载到 Picasso 单例(共享 OkHttp 连接池/磁盘缓存),移除 Glide 双依赖
+        // 本地视频文件路径交给异步取帧(与本地视频列表一致),远程地址交给 Picasso
+        ImageView iv = helper.getView(R.id.iv);
+        if (videoList != null && !videoList.isEmpty() && videoList.get(0) != null) {
+            String firstPath = videoList.get(0).getPath();
+            if (!TextUtils.isEmpty(firstPath) && new File(firstPath).exists()) {
+                LocalVideoFrameLoader.load(iv, firstPath);
+                return;
+            }
+            Picasso.get()
+                    .load(firstPath == null ? "" : firstPath)
+                    .placeholder(R.drawable.iv_load_fail)
+                    .error(R.drawable.iv_load_fail)
+                    .into(iv);
+        } else {
+            iv.setImageResource(R.drawable.iv_load_fail);
+        }
     }
 }

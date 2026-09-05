@@ -12,6 +12,7 @@ import androidx.annotation.Nullable;
 import androidx.lifecycle.Observer;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.GridLayoutManager;
+import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.blankj.utilcode.util.GsonUtils;
@@ -38,9 +39,9 @@ import com.github.tvbox.osc.util.Utils;
 import com.github.tvbox.osc.viewmodel.SourceViewModel;
 import eightbitlab.com.blurview.BlurView;
 import com.orhanobut.hawk.Hawk;
-import com.owen.tvrecyclerview.widget.TvRecyclerView;
 import com.owen.tvrecyclerview.widget.V7GridLayoutManager;
 import com.owen.tvrecyclerview.widget.V7LinearLayoutManager;
+import java.util.List;
 import java.util.Stack;
 import android.view.ViewGroup;
 import android.widget.Toast;
@@ -69,16 +70,19 @@ public class GridFragment extends BaseLazyFragment {
     private ListSwipeRefreshLayout mSwipeRefresh = null;
     /** 下拉刷新监听只绑定一次(initView 会被多次调用) */
     private boolean swipeRefreshBound = false;
-    private class GridInfo{
+    /** 层级快照:每深入一层只把上一层的轻量状态(数据引用/分页/滚动)入栈;
+     *  全 fragment 只保留一套 RecyclerView + GridAdapter,不再逐层新建/隐藏视图(避免深目录内存累积) */
+    private static class GridInfo{
         public String sortID="";
-        public RecyclerView mGridView;
-        public GridAdapter gridAdapter;
+        public List<Movie.Video> data;    // 该层已加载数据(引用快照;该层不活动时不会被改动)
         public int page = 1;
         public int maxPage = 1;
         public boolean isLoad = false;
-        public View focusedView= null;
+        public boolean loadMoreEnd = false; // 该层是否已到“没有更多”(返回时还原 footer 状态)
+        public int scrollPos = 0;           // 离开该层时列表首个可见条目位置(返回时还原滚动)
+        public int scrollOffset = 0;        // 该条目顶部偏移
     }
-    Stack<GridInfo> mGrids = new Stack<GridInfo>(); //ui栈
+    Stack<GridInfo> mGrids = new Stack<GridInfo>(); //导航快照栈(只存轻量状态,不再持有每层各自的 RecyclerView)
 
     public static GridFragment newInstance(MovieSort.SortData sortData) {
         return new GridFragment().setArguments(sortData);
@@ -122,7 +126,9 @@ public class GridFragment extends BaseLazyFragment {
         }else {
             this.sortData.flag =null; // 修改sortData.flag
         }
-        initView();
+        initView();            // 幂等:确保唯一网格视图/适配器已建立
+        saveCurrentView();     // 进入更深层前:把当前层(数据/分页/滚动)压入快照栈
+        switchToNewLevel();    // 复用同一视图/适配器,清空旧层数据并复位分页
         this.sortData.id =id; // 修改sortData.id为新的ID
         initViewModel();
         initData();
@@ -134,65 +140,84 @@ public class GridFragment extends BaseLazyFragment {
     }
     // 是否允许聚合搜索 sortData.flag的第二个字符为‘1’时允许聚搜
     public boolean enableFastSearch(){  return sortData.flag == null || sortData.flag.length() < 2 || (sortData.flag.charAt(1) == '1'); }
-    // 保存当前页面
+    // 保存当前层级快照(进入更深层前调用):只记录数据引用/分页/滚动等轻量状态
     private void saveCurrentView(){
-        if(this.mGridView == null) return;
+        if(this.mGridView == null || gridAdapter == null || sortData == null) return;
         GridInfo info = new GridInfo();
         info.sortID = this.sortData.id;
-        info.mGridView = this.mGridView;
-        info.gridAdapter = this.gridAdapter;
+        info.data = gridAdapter.getData(); // 引用当前层数据列表(该层不活动时不会被改动)
         info.page = this.page;
         info.maxPage = this.maxPage;
         info.isLoad = this.isLoad;
-        info.focusedView = this.focusedView;
+        info.loadMoreEnd = this.page > this.maxPage; // 与加载回调中 page>maxPage -> loadMoreEnd 的判定一致
+        // 记录离开前的滚动位置,返回时在同一视图上还原,避免回退后列表跳回顶部
+        RecyclerView.LayoutManager lm = mGridView.getLayoutManager();
+        if (lm instanceof GridLayoutManager) {
+            GridLayoutManager glm = (GridLayoutManager) lm;
+            int first = glm.findFirstVisibleItemPosition();
+            if (first != RecyclerView.NO_POSITION) {
+                View v = glm.findViewByPosition(first);
+                info.scrollPos = first;
+                if (v != null) {
+                    info.scrollOffset = Math.max(0, glm.getDecoratedTop(v) - mGridView.getPaddingTop());
+                }
+            }
+        }
         this.mGrids.push(info);
     }
-    // 丢弃当前页面，将页面还原成上一个保存的页面
+    // 返回上一层:弹出快照,把旧层数据重新挂到唯一适配器上(数据还在,秒开且不重新请求网络)
     public boolean restoreView(){
         if(mGrids.empty()) return false;
-        this.showSuccess();
-        ((ViewGroup) mGridView.getParent()).removeView(this.mGridView); // 重父窗口移除当前控件
-        GridInfo info = mGrids.pop();// 还原上次保存的控件
+        GridInfo info = mGrids.pop();
         this.sortData.id = info.sortID;
-        this.mGridView = info.mGridView;
-        this.gridAdapter = info.gridAdapter;
         this.page = info.page;
         this.maxPage = info.maxPage;
         this.isLoad = info.isLoad;
-        this.focusedView = info.focusedView;
-        this.mGridView.setVisibility(View.VISIBLE);
-//        if(this.focusedView != null){ this.focusedView.requestFocus(); }
-        if(mGridView != null) mGridView.requestFocus();
+        if(mGridView != null && gridAdapter != null){
+            this.showSuccess(); // 收起加载/空态占位
+            gridAdapter.setNewData(info.data); // 恢复该层数据(BRVH 会自动复位加载更多开关)
+            if (info.loadMoreEnd) {
+                gridAdapter.loadMoreEnd(); // 还原“没有更多”的 footer 状态
+            }
+            restoreScroll(info.scrollPos, info.scrollOffset);
+            mGridView.requestFocus();
+        }
         return true;
     }
-    // 更改当前页面
-    private void createView(){
-        this.saveCurrentView(); // 保存当前页面
-        if(mGridView == null){ // 从layout中拿view
-            mGridView = findViewById(R.id.mGridView);
-        }else{ // 复制当前view
-            TvRecyclerView v3 = new TvRecyclerView(this.mContext);
-            v3.setSpacingWithMargins(10,10);
-            v3.setLayoutParams(mGridView.getLayoutParams());
-            v3.setPadding(mGridView.getPaddingLeft(), mGridView.getPaddingTop(), mGridView.getPaddingRight(), mGridView.getPaddingBottom());
-            v3.setClipToPadding(mGridView.getClipToPadding());
-            ((ViewGroup) mGridView.getParent()).addView(v3);
-            mGridView.setVisibility(View.GONE);
-            mGridView = v3;
-            mGridView.setVisibility(View.VISIBLE);
+    // 换数据后 RecyclerView 会重置滚动,布局就绪后再滚回原位置(两次调用幂等,保证生效)
+    // 注:scrollToPositionWithOffset 属于 LinearLayoutManager/GridLayoutManager,RecyclerView 本身没有
+    private void restoreScroll(int pos, int offset){
+        if(mGridView == null || mGridView.getLayoutManager() == null || pos <= 0) return;
+        LinearLayoutManager lm = mGridView.getLayoutManager() instanceof LinearLayoutManager
+                ? (LinearLayoutManager) mGridView.getLayoutManager() : null;
+        if (lm == null) return;
+        lm.scrollToPositionWithOffset(pos, offset);
+        mGridView.post(() -> {
+            if(mGridView != null && mGridView.getLayoutManager() instanceof LinearLayoutManager){
+                int itemCount = mGridView.getAdapter() == null ? 0 : mGridView.getAdapter().getItemCount();
+                int target = itemCount <= 0 ? 0 : Math.min(pos, itemCount - 1);
+                ((LinearLayoutManager) mGridView.getLayoutManager()).scrollToPositionWithOffset(target, offset);
+            }
+        });
+    }
+    // 切换到新层级:复用同一套 RecyclerView/Adapter,立即清空视图上的旧层数据并复位分页
+    private void switchToNewLevel(){
+        if(gridAdapter != null){
+            gridAdapter.setNewData(null); // 释放当前视图持有的旧层条目(数据本身已入快照栈)
         }
-        mGridView.setHasFixedSize(true);
-        gridAdapter = new GridAdapter();
-        this.page =1;
-        this.maxPage =1;
+        this.page = 1;
+        this.maxPage = 1;
         this.isLoad = false;
     }
 
     private void initView() {
-        this.createView();
-        mGridView.setAdapter(gridAdapter);
+        if (mGridView != null) return; // 唯一视图/适配器只需初始化一次(initView 会被多次调用)
+        mGridView = findViewById(R.id.mGridView);
+        mGridView.setHasFixedSize(true);
         // 列数自适应:单卡宽度不超过 GRID_CARD_MAX_WIDTH_DP,屏幕越宽列数越多
         mGridView.setLayoutManager(new V7GridLayoutManager(this.mContext, Utils.getAdaptiveGridSpan(Utils.GRID_CARD_MAX_WIDTH_DP)));
+        gridAdapter = new GridAdapter(); // 单适配器:所有层级复用,层级数据通过 setNewData 进出
+        mGridView.setAdapter(gridAdapter);
 
         gridAdapter.setOnLoadMoreListener(new BaseQuickAdapter.RequestLoadMoreListener() {
             @Override
@@ -404,10 +429,8 @@ public class GridFragment extends BaseLazyFragment {
     public void onConfigurationChanged(@NonNull Configuration newConfig) {
         super.onConfigurationChanged(newConfig);
         int span = Utils.getAdaptiveGridSpan(Utils.GRID_CARD_MAX_WIDTH_DP);
+        // 所有层级共用同一个网格视图:只需更新一次跨度;返回旧层时会按新跨度自动重排
         updateGridSpan(mGridView, span);
-        for (GridInfo info : mGrids) {
-            updateGridSpan(info.mGridView, span);
-        }
     }
 
     private void updateGridSpan(RecyclerView recyclerView, int span) {

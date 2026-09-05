@@ -66,7 +66,8 @@ import com.github.tvbox.osc.ui.widget.LinearSpacingItemDecoration;
 import com.github.tvbox.osc.util.BroadcastUtils;
 import com.github.tvbox.osc.util.DownloadConfig;
 import com.github.tvbox.osc.util.DownloadCore;
-import com.github.tvbox.osc.util.DownloadManager;
+import com.github.tvbox.osc.util.DetailQuickSearchHelper;
+import com.github.tvbox.osc.util.EpisodeDownloadBatch;
 import com.github.tvbox.osc.ui.activity.DownloadActivity;
 import com.github.tvbox.osc.util.FastClickCheckUtil;
 import com.github.tvbox.osc.util.HCallBack;
@@ -106,6 +107,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -118,6 +120,8 @@ import java.util.concurrent.Executors;
 public class DetailActivity extends BaseVbActivity<ActivityDetailBinding> {
     private PlayFragment playFragment = null;
     private SourceViewModel sourceViewModel;
+    /** 详情页"快速搜索"请求编排(共享线程池 + epoch 去重/暂停;UI 只负责弹窗展示与广播) */
+    private DetailQuickSearchHelper quickSearchHelper;
     private Movie.Video mVideo;
     private VodInfo vodInfo;
     public SeriesFlagAdapter seriesFlagAdapter;
@@ -129,7 +133,6 @@ public class DetailActivity extends BaseVbActivity<ActivityDetailBinding> {
     private View seriesFlagFocus = null;
     private boolean isReverse;
     private String preFlag = "";
-    private HashMap<String, String> mCheckSources = null;
     BatteryReceiver mBatteryReceiver = new BatteryReceiver();
     //改为view模式无法自动响应返回键操作,onBackPress时手动dismiss
     private BasePopupView mAllSeriesRightDialog;
@@ -384,32 +387,18 @@ public class DetailActivity extends BaseVbActivity<ActivityDetailBinding> {
         });
 
         mBinding.tvSite.setOnClickListener(view -> {
-            startQuickSearch();
+            // 快速搜索编排已收敛到 DetailQuickSearchHelper(共享线程池+epoch 去重/暂停语义)
+            quickSearchHelper.startQuickSearch(mVideo.name);
             QuickSearchDialog quickSearchDialog = new QuickSearchDialog(DetailActivity.this);
-            EventBus.getDefault().post(new RefreshEvent(RefreshEvent.TYPE_QUICK_SEARCH, quickSearchData));
-            EventBus.getDefault().post(new RefreshEvent(RefreshEvent.TYPE_QUICK_SEARCH_WORD, quickSearchWord));
-            quickSearchDialog.show();
-            if (pauseRunnable != null && pauseRunnable.size() > 0) {
-                searchExecutorService = Executors.newFixedThreadPool(5);
-                for (Runnable runnable : pauseRunnable) {
-                    searchExecutorService.execute(runnable);
-                }
-                pauseRunnable.clear();
-                pauseRunnable = null;
-            }
-            quickSearchDialog.setOnDismissListener(new DialogInterface.OnDismissListener() {
-                @Override
-                public void onDismiss(DialogInterface dialog) {
-                    try {
-                        if (searchExecutorService != null) {
-                            pauseRunnable = searchExecutorService.shutdownNow();
-                            searchExecutorService = null;
-                        }
-                    } catch (Throwable th) {
-                        th.printStackTrace();
-                    }
-                }
+            EventBus.getDefault().post(new RefreshEvent(RefreshEvent.TYPE_QUICK_SEARCH, quickSearchHelper.getQuickSearchData()));
+            EventBus.getDefault().post(new RefreshEvent(RefreshEvent.TYPE_QUICK_SEARCH_WORD, quickSearchHelper.getQuickSearchWords()));
+            // 弹窗打开:放行被暂停/暂存的源搜索(等价旧 pauseRunnable 续跑)
+            quickSearchHelper.onQuickSearchDialogOpened();
+            quickSearchDialog.setOnDismissListener(dialog -> {
+                // 弹窗关闭:暂停后续排队任务(等价旧 shutdownNow 收集 pauseRunnable)
+                quickSearchHelper.onQuickSearchDialogClosed();
             });
+            quickSearchDialog.show();
         });
         mBinding.tvChangeLine.setOnClickListener(v -> {
             FastClickCheckUtil.check(v);
@@ -586,12 +575,6 @@ public class DetailActivity extends BaseVbActivity<ActivityDetailBinding> {
         }
     }
 
-    private void initCheckedSourcesForSearch() {
-        mCheckSources = SearchHelper.getSourcesForSearch();
-    }
-
-    private List<Runnable> pauseRunnable = null;
-
     private void jumpToPlay() {
         if (vodInfo != null && vodInfo.seriesMap.get(vodInfo.playFlag).size() > 0) {
             preFlag = vodInfo.playFlag;
@@ -654,6 +637,7 @@ public class DetailActivity extends BaseVbActivity<ActivityDetailBinding> {
 
     private void initViewModel() {
         sourceViewModel = new ViewModelProvider(this).get(SourceViewModel.class);
+        quickSearchHelper = new DetailQuickSearchHelper(sourceViewModel);
         sourceViewModel.detailResult.observe(this, new Observer<AbsXml>() {
             @Override
             public void onChanged(AbsXml absXml) {
@@ -794,110 +778,14 @@ public class DetailActivity extends BaseVbActivity<ActivityDetailBinding> {
         } else if (event.type == RefreshEvent.TYPE_QUICK_SEARCH_WORD_CHANGE) {
             if (event.obj != null) {
                 String word = (String) event.obj;
-                switchSearchWord(word);
+                quickSearchHelper.switchSearchWord(word);
             }
         } else if (event.type == RefreshEvent.TYPE_QUICK_SEARCH_RESULT) {
             try {
-                searchData(event.obj == null ? null : (AbsXml) event.obj);
+                quickSearchHelper.handleQuickSearchResult(event.obj == null ? null : (AbsXml) event.obj);
             } catch (Exception e) {
-                searchData(null);
+                quickSearchHelper.handleQuickSearchResult(null);
             }
-        }
-    }
-
-    private String searchTitle = "";
-    private boolean hadQuickStart = false;
-    private final List<Movie.Video> quickSearchData = new ArrayList<>();
-    private final List<String> quickSearchWord = new ArrayList<>();
-    private ExecutorService searchExecutorService = null;
-
-    private void switchSearchWord(String word) {
-        HttpClient.cancel("quick_search");
-        quickSearchData.clear();
-        searchTitle = word;
-        searchResult();
-    }
-
-    private void startQuickSearch() {
-        initCheckedSourcesForSearch();
-        if (hadQuickStart)
-            return;
-        hadQuickStart = true;
-        HttpClient.cancel("quick_search");
-        quickSearchWord.clear();
-        searchTitle = mVideo.name;
-        quickSearchData.clear();
-        quickSearchWord.addAll(SearchHelper.splitWords(searchTitle));
-        // 分词
-        HttpClient.get("http://api.pullword.com/get.php?source=" + URLEncoder.encode(searchTitle) + "&param1=0&param2=0&json=1", "fenci", new HCallBack() {
-                    @Override
-                    public void onSuccess(String json) {
-                        try {
-                            for (JsonElement je : new Gson().fromJson(json, JsonArray.class)) {
-                                quickSearchWord.add(je.getAsJsonObject().get("t").getAsString());
-                            }
-                        } catch (Throwable th) {
-                            th.printStackTrace();
-                        }
-                        List<String> words = new ArrayList<>(new HashSet<>(quickSearchWord));
-                        EventBus.getDefault().post(new RefreshEvent(RefreshEvent.TYPE_QUICK_SEARCH_WORD, words));
-                    }
-
-                    @Override
-                    public void onError(Throwable e) {
-                    }
-                });
-
-        searchResult();
-    }
-
-    private void searchResult() {
-        try {
-            if (searchExecutorService != null) {
-                searchExecutorService.shutdownNow();
-                searchExecutorService = null;
-            }
-        } catch (Throwable th) {
-            th.printStackTrace();
-        }
-        searchExecutorService = Executors.newFixedThreadPool(5);
-        List<SourceBean> searchRequestList = new ArrayList<>();
-        searchRequestList.addAll(ApiConfig.get().getSourceBeanList());
-        SourceBean home = ApiConfig.get().getHomeSourceBean();
-        searchRequestList.remove(home);
-        searchRequestList.add(0, home);
-
-        ArrayList<String> siteKey = new ArrayList<>();
-        for (SourceBean bean : searchRequestList) {
-            if (!bean.isSearchable() || !bean.isQuickSearch()) {
-                continue;
-            }
-            if (mCheckSources != null && !mCheckSources.containsKey(bean.getKey())) {
-                continue;
-            }
-            siteKey.add(bean.getKey());
-        }
-        for (String key : siteKey) {
-            searchExecutorService.execute(new Runnable() {
-                @Override
-                public void run() {
-                    sourceViewModel.getQuickSearch(key, searchTitle);
-                }
-            });
-        }
-    }
-
-    private void searchData(AbsXml absXml) {
-        if (absXml != null && absXml.movie != null && absXml.movie.videoList != null && absXml.movie.videoList.size() > 0) {
-            List<Movie.Video> data = new ArrayList<>();
-            for (Movie.Video video : absXml.movie.videoList) {
-                // 去除当前相同的影片
-                if (video.sourceKey.equals(sourceKey) && video.id.equals(vodId))
-                    continue;
-                data.add(video);
-            }
-            quickSearchData.addAll(data);
-            EventBus.getDefault().post(new RefreshEvent(RefreshEvent.TYPE_QUICK_SEARCH, data));
         }
     }
 
@@ -925,10 +813,10 @@ public class DetailActivity extends BaseVbActivity<ActivityDetailBinding> {
             mHomeKeyReceiver = null;
         }
 
+        // 作废未启动的快速搜索任务、清空暂停队列(共享线程池不可关闭)
         try {
-            if (searchExecutorService != null) {
-                searchExecutorService.shutdownNow();
-                searchExecutorService = null;
+            if (quickSearchHelper != null) {
+                quickSearchHelper.release();
             }
         } catch (Throwable th) {
             th.printStackTrace();
@@ -1279,7 +1167,8 @@ public class DetailActivity extends BaseVbActivity<ActivityDetailBinding> {
     }
 
     private void doStartDownloads(List<VodInfo.VodSeries> selected) {
-        List<VodInfo.VodSeries> seriesList = vodInfo.seriesMap.get(vodInfo.playFlag);
+        List<VodInfo.VodSeries> seriesList = vodInfo.seriesMap == null
+                ? null : vodInfo.seriesMap.get(vodInfo.playFlag);
         if (seriesList == null || seriesList.isEmpty()) {
             AppBubble.toast("资源异常,请稍后重试");
             return;
@@ -1290,81 +1179,40 @@ public class DetailActivity extends BaseVbActivity<ActivityDetailBinding> {
         final String playFlag = vodInfo.playFlag;
         final String vodId = vodInfo.id;
         final int playIndex = vodInfo.playIndex;
-        final String currentName = seriesList.get(vodInfo.playIndex).name;
-        // 当前播放视频的分辨率标签:取宽高中的高(如 1280x720→720P;1080→1080P;1440→2K;2160+→4K)
+        final String currentName = playIndex >= 0 && playIndex < seriesList.size()
+                ? seriesList.get(playIndex).name : null;
+        // 当前播放视频的分辨率标签(由播放器画面尺寸归类),不可用则不拼分辨率
         final String resLabel = (playFragment != null && playFragment.getPlayer() != null)
-                ? getResolutionLabel(playFragment.getPlayer().getVideoSize()) : null;
+                ? EpisodeDownloadBatch.resolutionLabel(playFragment.getPlayer().getVideoSize()) : null;
         Log.i("TVBox-Download", "startDownloads: 已选 " + selected.size() + " 集, 来源=" + sourceName
                 + ", 剧名=" + vodName + ", 当前集=" + currentName + ", 分辨率=" + resLabel);
         AppBubble.toast("正在解析下载地址,请稍候...");
-        // 用与播放一致的爬虫单线程池解析地址,避免 quickjs 并发
+        // 用与播放一致的爬虫单线程池解析地址,避免 quickjs 并发;解析/入队/计数收敛到 EpisodeDownloadBatch
         SourceViewModel.spThreadPool.execute(() -> {
-            int added = 0;
-            int duplicated = 0;
-            int failed = 0;
-            int downloadedExisted = 0;
-            int existedInQueue = 0;
-            for (VodInfo.VodSeries s : selected) {
-                // 解析真实地址 + 源要求的请求头(防盗链源下载必须携带,否则"能播不能下")
-                PlayUrlResolver.ResolveResult rr = null;
-                if (s.name != null && s.name.equals(currentName) && playFragment != null) {
-                    String finalUrl = playFragment.getFinalUrl();
-                    if (!TextUtils.isEmpty(finalUrl)) {
-                        // 当前集: 独立方法处理——解析失败回退播放地址, 解析结果无头时补播放器
-                        // UA/Referer(防盗链代理 m3u8 特例, 见 PlayUrlResolver.resolveCurrentWithPlaybackHeaders)
-                        rr = PlayUrlResolver.resolveCurrentWithPlaybackHeaders(
-                                sourceKey, playFlag, s.url, playFragment.getPlayHeaders(), finalUrl);
-                    }
-                }
-                if (rr == null) {
-                    rr = PlayUrlResolver.resolveWithHeader(sourceKey, playFlag, s.url);
-                }
-                String url = rr == null ? null : rr.url;
-                if (TextUtils.isEmpty(url) || !(url.startsWith("http://") || url.startsWith("https://"))) {
-                    Log.i("TVBox-Download", "  - " + s.name + " 解析失败/无有效地址,跳过");
-                    failed++;
-                    continue;
-                }
-                // 文件名拼接分辨率:剧名_集名_720P.mp4;集名已含分辨率字样则不多拼;单集(名=剧名)不拼
-                String epName = s.name;
-                if (resLabel != null && s.name != null && !s.name.isEmpty()
-                        && !s.name.equals(vodName) && !containsResolution(s.name)) {
-                    epName = s.name + "_" + resLabel;
-                }
-                // 统一剧集标识(与详情页选集一一对应,精确去重):优先用选集携带的 episodeId,旧数据回退按集名定位索引
-                String episodeId = s.episodeId;
-                int idx = 0;
-                if (episodeId == null || episodeId.isEmpty()) {
-                    for (int i = 0; i < seriesList.size(); i++) {
-                        if (seriesList.get(i).name != null && seriesList.get(i).name.equals(s.name)) {
-                            idx = i;
-                            break;
+            EpisodeDownloadBatch.Outcome r = EpisodeDownloadBatch.enqueue(selected, vodInfo, sourceName,
+                    vodName, currentName, resLabel, playFragment == null ? null : new EpisodeDownloadBatch.CurrentEpisode() {
+                        @Override
+                        public String finalUrl() {
+                            return playFragment.getFinalUrl();
                         }
-                    }
-                    episodeId = DownloadCore.buildEpisodeId(sourceKey, vodId, playFlag, idx);
-                }
-                boolean ok = DownloadManager.get().enqueue(url, sourceKey, playFlag, s.url, episodeId, vodInfo.pic, rr == null ? null : rr.headers, sourceName, vodName, epName);
-                Log.i("TVBox-Download", "  - " + s.name + " enqueue=" + ok + " 文件名=" + epName + " url=" + url);
-                if (ok) {
-                    added++;
-                } else {
-                    // 已存在:区分"已下载完成"与"已在任务中",提示更精确(方案4.1排队层)
-                    int st = DownloadCore.getEpisodeState(episodeId, sourceName, vodName, s.name);
-                    if (st == 1) downloadedExisted++;
-                    else existedInQueue++;
-                }
-            }
-            final int fAdded = added;
-            final int fDup = duplicated;
-            final int fDownloaded = downloadedExisted;
-            final int fInQueue = existedInQueue;
-            final int fFailed = failed;
+
+                        @Override
+                        public Map<String, String> playHeaders() {
+                            return playFragment.getPlayHeaders();
+                        }
+                    });
+            final int fAdded = r.added;
+            final int fDownloaded = r.downloadedExisted;
+            final int fInQueue = r.existedInQueue;
+            final int fFailed = r.failed;
             runOnUiThread(() -> {
                 if (fAdded > 0) {
-                    AppBubble.toast(fDup > 0
-                            ? "已加入 " + fAdded + " 个下载任务," + fDup + " 个已存在"
+                    int dups = fDownloaded + fInQueue;
+                    AppBubble.toast(dups > 0
+                            ? "已加入 " + fAdded + " 个下载任务," + dups + " 个已存在"
                             : "已加入 " + fAdded + " 个下载任务,可在\"我的-下载\"查看");
-                } else if (fDup > 0) {
+                } else if (fDownloaded > 0 || fInQueue > 0) {
+                    // 修正:原实现 duplicated 计数从未累加,导致"均已下载/已在任务中"分支不可达
                     if (fDownloaded > 0 && fInQueue > 0) {
                         AppBubble.toast(fDownloaded + " 集已下载," + fInQueue + " 集已在任务中");
                     } else if (fDownloaded > 0) {
@@ -1382,27 +1230,6 @@ public class DetailActivity extends BaseVbActivity<ActivityDetailBinding> {
                 }
             });
         });
-    }
-
-    /** 由视频宽高生成分辨率标签:取高度归类(1280x720→720P;1080→1080P;1440→2K;2160+→4K);无法识别返回 null */
-    private String getResolutionLabel(int[] size) {
-        if (size == null || size.length < 2) return null;
-        int h = size[1];
-        if (h <= 0) return null;
-        if (h >= 2000) return "4K";
-        if (h >= 1400) return "2K";
-        if (h >= 1000) return "1080P";
-        if (h >= 700) return "720P";
-        if (h >= 500) return "480P";
-        return null;
-    }
-
-    /** 集名是否已含分辨率字样(4K/2K/1080P/720P 等),含则不再拼接 */
-    private boolean containsResolution(String name) {
-        if (name == null) return false;
-        String n = name.toUpperCase(Locale.ROOT);
-        return n.contains("4K") || n.contains("2K") || n.contains("2160P") || n.contains("1440P")
-                || n.contains("1080P") || n.contains("720P") || n.contains("480P") || n.contains("360P");
     }
 
     /** 来源名(一级目录,如 饭太硬) */

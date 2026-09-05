@@ -1,14 +1,12 @@
 package com.github.tvbox.osc.bean;
 
-import com.github.tvbox.osc.util.HawkConfig;
-import com.orhanobut.hawk.Hawk;
-
 import java.util.LinkedHashMap;
 
 /**
  * @author pj567
  * @date :2021/3/8
- * @description:
+ * @description: 纯模型(迁入 :core-model):不再持有 Hawk 副作用;
+ * 用户主动选择解码器时由设置层(PlayConfig)负责持久化 HawkConfig.IJK_CODEC。
  */
 public class IJKCode {
     private String name;
@@ -17,9 +15,6 @@ public class IJKCode {
 
     public void selected(boolean selected) {
         this.selected = selected;
-        if (selected) {
-            Hawk.put(HawkConfig.IJK_CODEC, name);
-        }
     }
 
     public boolean isSelected() {

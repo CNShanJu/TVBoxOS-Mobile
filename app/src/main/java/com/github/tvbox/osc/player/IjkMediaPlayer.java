@@ -33,7 +33,8 @@ public class IjkMediaPlayer extends IjkPlayer {
     public void setOptions() {
         super.setOptions();
         IJKCode codecTmp = this.codec == null ? ApiConfig.get().getCurrentIJKCode() : this.codec;
-        LinkedHashMap<String, String> options = codecTmp.getOption();
+        // codec 列表理论上不会为空,仍做防御:避免 codecTmp.getOption() 空指针
+        LinkedHashMap<String, String> options = codecTmp == null ? null : codecTmp.getOption();
         if (options != null) {
             for (String key : options.keySet()) {
                 String value = options.get(key);

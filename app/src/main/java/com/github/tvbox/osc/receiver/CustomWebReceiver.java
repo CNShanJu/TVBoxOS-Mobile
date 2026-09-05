@@ -27,23 +27,25 @@ public class CustomWebReceiver extends BroadcastReceiver {
 
     @Override
     public void onReceive(Context context, Intent intent) {
-        if (action.equals(intent.getAction()) && intent.getExtras() != null) {
-            Object refreshObj = null;
-            String action = intent.getExtras().getString("action");
-            if (action.equals(REFRESH_PARSE)) {
-                /*String name = intent.getExtras().getString("name");
-                String url = intent.getExtras().getString("url");*/
-                return;
-            } else if (action.equals(REFRESH_LIVE)) {
-                return;
-            } else {
-                return;
-            }
-            /*if (callback != null) {
-                for (Callback call : callback) {
-                    call.onChange(action, refreshObj);
-                }
-            }*/
+        // intent/extras/action extra 缺失时直接返回,避免 NPE(exported=false 后仅本进程显式广播可达)
+        if (intent == null || intent.getAction() == null) return;
+        if (!action.equals(intent.getAction())) return;
+        if (intent.getExtras() == null) return;
+        String refreshAction = intent.getExtras().getString("action");
+        if (refreshAction == null) return;
+        if (refreshAction.equals(REFRESH_PARSE)) {
+            /*String name = intent.getExtras().getString("name");
+            String url = intent.getExtras().getString("url");*/
+            return;
+        } else if (refreshAction.equals(REFRESH_LIVE)) {
+            return;
+        } else {
+            return;
         }
+        /*if (callback != null) {
+            for (Callback call : callback) {
+                call.onChange(action, refreshObj);
+            }
+        }*/
     }
 }

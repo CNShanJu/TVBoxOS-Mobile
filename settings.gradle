@@ -11,6 +11,8 @@ pluginManagement {
 
 rootProject.name = "TVBoxMobile"
 include ':app'
+include ':core-model'
+include ':core-storage'
 include ':player'
 include ':quickjs'
 include ':TabLayout'

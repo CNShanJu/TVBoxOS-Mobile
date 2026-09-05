@@ -38,8 +38,8 @@ class VideoListActivity : BaseVbActivity<ActivityMovieFoldersBinding>() {
             BaseQuickAdapter.OnItemClickListener { adapter: BaseQuickAdapter<*, *>, view: View?, position: Int ->
                 val videoInfo = adapter.getItem(position) as VideoInfo?
                 if (mLocalVideoAdapter.isSelectMode) {
-                    videoInfo!!.isChecked = !videoInfo.isChecked
-                    mLocalVideoAdapter.notifyDataSetChanged()
+                    // 走适配器勾选入口:计数增量维护 + 只刷新该行
+                    mLocalVideoAdapter.setItemChecked(videoInfo!!, !videoInfo.isChecked)
                 } else {
                     val bundle = Bundle()
                     //                    bundle.putString("path",videoInfo.getPath());
@@ -52,17 +52,13 @@ class VideoListActivity : BaseVbActivity<ActivityMovieFoldersBinding>() {
             BaseQuickAdapter.OnItemLongClickListener { adapter: BaseQuickAdapter<*, *>, view: View?, position: Int ->
                 toggleListSelectMode(true)
                 val videoInfo = adapter.getItem(position) as VideoInfo?
-                videoInfo!!.isChecked = true
-                mLocalVideoAdapter!!.notifyDataSetChanged()
+                mLocalVideoAdapter.setItemChecked(videoInfo!!, true)
                 true
             }
 
         mBinding.tvAllCheck.setOnClickListener { view: View? ->  //全选
             FastClickCheckUtil.check(view)
-            for (item in mLocalVideoAdapter.data) {
-                item.isChecked = true
-            }
-            mLocalVideoAdapter!!.notifyDataSetChanged()
+            mLocalVideoAdapter.selectAll()
         }
 
         mBinding.tvCancelAllChecked.setOnClickListener { view: View? ->  //取消全选
@@ -98,8 +94,9 @@ class VideoListActivity : BaseVbActivity<ActivityMovieFoldersBinding>() {
                                 SPUtils.getInstance(CacheConst.VIDEO_PROGRESS_SP).remove(item.path)
                                 // 联动清理已下载档案 + 下载任务: 否则详情页仍显示"已下载",
                                 // 且残留任务会在网络恢复时自动续传把已删文件又下回来
-                                com.github.tvbox.osc.download.DownloadArchive.get().removeByPath(item.path)
-                                com.github.tvbox.osc.util.DownloadManager.get().removeTasksByPath(item.path)
+                                // UI 只通过门面操作档案/任务(改进.txt 第一阶段边界)
+                                com.github.tvbox.osc.download.DownloadFacade.get().removeArchiveByPath(item.path)
+                                com.github.tvbox.osc.download.DownloadFacade.get().removeTasksByPath(item.path)
                                 // 文件增删需要通知系统扫描,否则删除文件后还能查出来
                                 // 这个工具类直接传文件路径不知道为啥通知失败,手动获取一下
                                 FileUtils.notifySystemToScan(FileUtils.getDirName(item.path))
@@ -127,10 +124,7 @@ class VideoListActivity : BaseVbActivity<ActivityMovieFoldersBinding>() {
     }
 
     private fun cancelAll() {
-        for (item in mLocalVideoAdapter.data) {
-            item.isChecked = false
-        }
-        mLocalVideoAdapter.notifyDataSetChanged()
+        mLocalVideoAdapter.cancelAllSelection()
     }
 
     override fun refresh(event: RefreshEvent) {
@@ -151,6 +145,8 @@ class VideoListActivity : BaseVbActivity<ActivityMovieFoldersBinding>() {
             .filter { videoInfo: VideoInfo -> videoInfo.bucketDisplayName == mBucketDisplayName }
             .collect(Collectors.toList())
         mLocalVideoAdapter.setNewData(collect)
+        // 新数据就位后同步一次选中计数(列表结构变化后 BRVAH 的 notifyDataSetChanged 为 final,无法拦截)
+        mLocalVideoAdapter.syncSelection()
     }
 
     override fun onBackPressed() {

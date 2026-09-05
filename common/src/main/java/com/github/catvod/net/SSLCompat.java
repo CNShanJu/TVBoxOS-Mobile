@@ -11,7 +11,6 @@ import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 
-import javax.net.ssl.HostnameVerifier;
 import javax.net.ssl.HttpsURLConnection;
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLSocket;
@@ -20,7 +19,6 @@ import javax.net.ssl.X509TrustManager;
 
 public class SSLCompat extends SSLSocketFactory {
 
-    public static final HostnameVerifier VERIFIER = (hostname, session) -> true;
     private static String[] cipherSuites;
     private static String[] protocols;
     private SSLSocketFactory factory;

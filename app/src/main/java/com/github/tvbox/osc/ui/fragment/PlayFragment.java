@@ -665,78 +665,6 @@ public class PlayFragment extends BaseLazyFragment {
         }
     }
 
-    private String removeMinorityUrl(String tsUrlPre, String m3u8content) {
-        if (!m3u8content.startsWith("#EXTM3U")) return null;
-        String linesplit = "\n";
-        if (m3u8content.contains("\r\n"))
-            linesplit = "\r\n";
-        String[] lines = m3u8content.split(linesplit);
-
-        HashMap<String, Integer> preUrlMap = new HashMap<>();
-        for (String line : lines) {
-            if (line.length() == 0 || line.charAt(0) == '#') {
-                continue;
-            }
-            int ilast = line.lastIndexOf('.');
-            if (ilast <= 4) {
-                continue;
-            }
-            String preUrl = line.substring(0, ilast - 4);
-            Integer cnt = preUrlMap.get(preUrl);
-            if (cnt != null) {
-                preUrlMap.put(preUrl, cnt + 1);
-            } else {
-                preUrlMap.put(preUrl, 1);
-            }
-        }
-        if (preUrlMap.size() <= 1) return null;
-        if (preUrlMap.size() > 5) return null;//too many different url, can not identify ads url
-        int maxTimes = 0;
-        String maxTimesPreUrl = "";
-        for (Map.Entry<String, Integer> entry : preUrlMap.entrySet()) {
-            if (entry.getValue() > maxTimes) {
-                maxTimesPreUrl = entry.getKey();
-                maxTimes = entry.getValue();
-            }
-        }
-        if (maxTimes == 0) return null;
-
-        boolean dealedExtXKey = false;
-        for (int i = 0; i < lines.length; ++i) {
-            if (!dealedExtXKey && lines[i].startsWith("#EXT-X-KEY")) {
-                String keyUrl = StringUtils.substringBetween(lines[i], "URI=\"", "\"");
-                if (keyUrl != null && !keyUrl.startsWith("http://") && !keyUrl.startsWith("https://")) {
-                    String newKeyUrl;
-                    if (keyUrl.charAt(0) == '/') {
-                        int ifirst = tsUrlPre.indexOf('/', 9);//skip https://, http://
-                        newKeyUrl = tsUrlPre.substring(0, ifirst) + keyUrl;
-                    } else
-                        newKeyUrl = tsUrlPre + keyUrl;
-                    lines[i] = lines[i].replace("URI=\"" + keyUrl + "\"", "URI=\"" + newKeyUrl + "\"");
-                }
-                dealedExtXKey = true;
-            }
-            if (lines[i].length() == 0 || lines[i].charAt(0) == '#') {
-                continue;
-            }
-            if (lines[i].startsWith(maxTimesPreUrl)) {
-                if (!lines[i].startsWith("http://") && !lines[i].startsWith("https://")) {
-                    if (lines[i].charAt(0) == '/') {
-                        int ifirst = tsUrlPre.indexOf('/', 9);//skip https://, http://
-                        lines[i] = tsUrlPre.substring(0, ifirst) + lines[i];
-                    } else
-                        lines[i] = tsUrlPre + lines[i];
-                }
-            } else {
-                if (i > 0 && lines[i - 1].length() > 0 && lines[i - 1].charAt(0) == '#') {
-                    lines[i - 1] = "";
-                }
-                lines[i] = "";
-            }
-        }
-        return StringUtils.join(lines, linesplit);
-    }
-
     void playUrl(String url, HashMap<String, String> headers) {
         mCurrentUrl = url;
         if (!PlayConfig.isVideoPurify()) {
@@ -796,7 +724,7 @@ public class PlayFragment extends BaseLazyFragment {
                         if ("".equals(forwardurl)) {
                             int ilast = url.lastIndexOf('/');
 
-                            RemoteServer.m3u8Content = removeMinorityUrl(url.substring(0, ilast + 1), content);
+                            RemoteServer.m3u8Content = com.github.tvbox.osc.util.player.M3u8Cleaner.removeMinorityUrl(url.substring(0, ilast + 1), content);
                             if (RemoteServer.m3u8Content == null)
                                 startPlayUrl(url, headers);
                             else {
@@ -810,7 +738,7 @@ public class PlayFragment extends BaseLazyFragment {
                                     @Override
                                     public void onSuccess(String content) {
                                         int ilast = finalforwardurl.lastIndexOf('/');
-                                        RemoteServer.m3u8Content = removeMinorityUrl(finalforwardurl.substring(0, ilast + 1), content);
+                                        RemoteServer.m3u8Content = com.github.tvbox.osc.util.player.M3u8Cleaner.removeMinorityUrl(finalforwardurl.substring(0, ilast + 1), content);
 
                                         if (RemoteServer.m3u8Content == null)
                                             startPlayUrl(finalforwardurl, headers);
@@ -1725,7 +1653,12 @@ public class PlayFragment extends BaseLazyFragment {
         @SuppressLint("WebViewClientOnReceivedSslError")
         @Override
         public void onReceivedSslError(WebView webView, SslErrorHandler sslErrorHandler, SslError sslError) {
-            sslErrorHandler.proceed();
+            // 默认拒绝:只有用户显式开启"忽略证书错误"才放行,防止中间人篡改(同 WebSniffResolver 策略)
+            if (Hawk.get(HawkConfig.IGNORE_SSL_ERROR, false)) {
+                sslErrorHandler.proceed();
+            } else {
+                sslErrorHandler.cancel();
+            }
         }
 
         @Override
@@ -1746,10 +1679,11 @@ public class PlayFragment extends BaseLazyFragment {
         @Override
         public void onPageFinished(WebView view, String url) {
             super.onPageFinished(view, url);
-            String click = sourceBean.getClickSelector();
+            // 防御:sourceBean 可能为空(源切换/重试期间),避免取点击选择器 NPE
+            String click = sourceBean == null ? null : sourceBean.getClickSelector();
             LOG.i("onPageFinished url:" + url);
 
-            if (!click.isEmpty()) {
+            if (click != null && !click.isEmpty()) {
                 String selector;
                 if (click.contains(";")) {
                     if (!url.contains(click.split(";")[0])) return;

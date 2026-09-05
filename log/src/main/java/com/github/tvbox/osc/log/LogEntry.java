@@ -1,6 +1,7 @@
 package com.github.tvbox.osc.log;
 
 import androidx.room.Entity;
+import androidx.room.Index;
 import androidx.room.PrimaryKey;
 
 /**
@@ -14,7 +15,11 @@ import androidx.room.PrimaryKey;
  *   <li>taskKey     冗余列：episodeId（extras 中同名字段的冗余，便于按任务查询）</li>
  * </ul>
  */
-@Entity(tableName = "log_entry")
+@Entity(tableName = "log_entry",
+        indices = {
+                @Index(value = {"taskKey", "timestamp"}),
+                @Index(value = {"category", "timestamp"})
+        })
 public class LogEntry {
 
     @PrimaryKey(autoGenerate = true)

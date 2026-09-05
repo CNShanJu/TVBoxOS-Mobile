@@ -22,6 +22,16 @@ public class HawkConfig {
     public static final String HOME_API = "home_api";
     public static final String DEFAULT_PARSE = "parse_default";
     public static final String DEBUG_OPEN = "debug_open";
+    /**
+     * 局域网服务开关(默认关闭):关闭时内置 HTTP 服务仅绑定 127.0.0.1(订阅/本地播放/代理不受影响);
+     * 开启后绑定所有网卡,局域网设备可访问 web 控制台与文件共享(需进程令牌才可管理/删除)。
+     */
+    public static final String LAN_SERVER_ENABLE = "lan_server_enable";
+    /**
+     * 忽略 HTTPS 证书错误(默认关闭)。关闭时 WebView/OkHttp 均做证书与主机名校验,
+     * 防止中间人篡改;个别自签名站点打不开时可手动开启。
+     */
+    public static final String IGNORE_SSL_ERROR = "ignore_ssl_error";
     public static final String IJK_CODEC = "ijk_codec";
     public static final String PLAY_TYPE = "play_type";//0 系统 1 ijk 2 exo 10 MXPlayer
     public static final String PLAY_RENDER = "play_render"; //0 texture 2
