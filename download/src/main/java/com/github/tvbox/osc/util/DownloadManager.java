@@ -90,11 +90,11 @@ public class DownloadManager {
 
     /** 分段信息 TXT 文件名 */
     public static final String SEGMENTS_INFO = "segments.txt";
-    /** 合并阶段状态文案(下载中任务的 message 标记) */
-    public static final String MSG_VERIFYING = "文件校验中";
-    public static final String MSG_MERGING = "文件合并中";
-    public static final String MSG_REMUX = "文件封装中";
-    public static final String MSG_REPAIRING = "补片中";
+    // ── 任务阶段文案：唯一权威在 DownloadFacade(对外门面)，内部仅作兼容转发 ──
+    public static final String MSG_VERIFYING = com.github.tvbox.osc.download.DownloadFacade.MSG_VERIFYING;
+    public static final String MSG_MERGING = com.github.tvbox.osc.download.DownloadFacade.MSG_MERGING;
+    public static final String MSG_REMUX = com.github.tvbox.osc.download.DownloadFacade.MSG_REMUX;
+    public static final String MSG_REPAIRING = com.github.tvbox.osc.download.DownloadFacade.MSG_REPAIRING;
 
     /** 结构性变更事件去抖:合并为至多每 500ms 广播一次 DownloadEvent(全量刷新信号);
      *  高频"进度"变更不再走这里(见 flushProgress -> DownloadProgressEvent,带任务id,UI 局部刷新) */

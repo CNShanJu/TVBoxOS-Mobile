@@ -8,6 +8,7 @@ import com.github.tvbox.osc.bean.ParseBean;
 import com.github.tvbox.osc.bean.SourceBean;
 import com.github.tvbox.osc.util.DefaultConfig;
 import com.github.tvbox.osc.util.HttpClient;
+import com.github.tvbox.osc.util.ParseBeanUrls;
 
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -181,7 +182,7 @@ public class PlayUrlResolver {
                     }
                 } catch (Throwable ignored) {
                 }
-                String json = HttpClient.getSync(pb.getUrl() + encode(input), reqHeaders);
+                String json = HttpClient.getSync(ParseBeanUrls.url(pb) + encode(input), reqHeaders);
                 Log.i(TAG, "jx解析(json): resp=" + (json == null ? "null"
                         : json.substring(0, Math.min(200, json.length()))));
                 JSONObject rs = parseJsonResult(input, json);
@@ -193,9 +194,9 @@ public class PlayUrlResolver {
                 // json 扩展(同播放端 type2: 收集 type1 解析器)
                 java.util.LinkedHashMap<String, String> jxs = new java.util.LinkedHashMap<>();
                 for (com.github.tvbox.osc.bean.ParseBean p : ApiConfig.get().getParseBeanList()) {
-                    if (p.getType() == 1) jxs.put(p.getName(), p.mixUrl());
+                    if (p.getType() == 1) jxs.put(p.getName(), ParseBeanUrls.mixUrl(p));
                 }
-                JSONObject rs = ApiConfig.get().jsonExt(pb.getUrl(), jxs, input);
+                JSONObject rs = ApiConfig.get().jsonExt(ParseBeanUrls.url(pb), jxs, input);
                 if (rs == null || !rs.has("url") || TextUtils.isEmpty(rs.optString("url"))) return null;
                 if (rs.optInt("parse", 0) == 1) return null; // 需二次嗅探, 不支持
                 return new ResolveResult(rs.optString("url"), extractHeaders(rs));
@@ -206,13 +207,13 @@ public class PlayUrlResolver {
                 String extendName = "";
                 for (com.github.tvbox.osc.bean.ParseBean p : ApiConfig.get().getParseBeanList()) {
                     HashMap<String, String> data = new HashMap<>();
-                    data.put("url", p.getUrl());
-                    if (p.getUrl().equals(pb.getUrl())) extendName = p.getName();
+                    data.put("url", ParseBeanUrls.url(p));
+                    if (ParseBeanUrls.url(p).equals(ParseBeanUrls.url(pb))) extendName = p.getName();
                     data.put("type", p.getType() + "");
                     data.put("ext", p.getExt());
                     jxs.put(p.getName(), data);
                 }
-                JSONObject rs = ApiConfig.get().jsonExtMix(flag + "111", pb.getUrl(), extendName, jxs, input);
+                JSONObject rs = ApiConfig.get().jsonExtMix(flag + "111", ParseBeanUrls.url(pb), extendName, jxs, input);
                 if (rs == null || !rs.has("url") || TextUtils.isEmpty(rs.optString("url"))) return null;
                 if (rs.has("parse") && rs.optInt("parse", 0) == 1) return null; // 需二次嗅探, 不支持
                 return new ResolveResult(rs.optString("url"), extractHeaders(rs));
@@ -235,7 +236,7 @@ public class PlayUrlResolver {
                 boolean found = false;
                 for (ParseBean pb : ApiConfig.get().getParseBeanList()) {
                     if (pb.getName().equals(name) && pb.getType() == 1) {
-                        playUrl = pb.mixUrl();
+                        playUrl = ParseBeanUrls.mixUrl(pb);
                         found = true;
                         break;
                     }

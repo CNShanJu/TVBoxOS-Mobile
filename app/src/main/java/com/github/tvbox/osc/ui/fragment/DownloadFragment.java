@@ -37,7 +37,6 @@ import com.github.tvbox.osc.ui.dialog.ConfirmDialog;
 import com.github.tvbox.osc.ui.dialog.DeleteDownloadDialog;
 import com.github.tvbox.osc.util.DownloadConfig;
 import com.github.tvbox.osc.util.DownloadCore;
-import com.github.tvbox.osc.util.DownloadManager;
 import com.github.tvbox.osc.util.Utils;
 import com.lxj.xpopup.XPopup;
 
@@ -237,13 +236,13 @@ public class DownloadFragment extends BaseVbFragment<FragmentDownloadBinding> {
                     statusColor = ContextCompat.getColor(mContext, R.color.text_sub_foreground);
                 } else {
                     // 收尾阶段(message 带阶段+进度,如 "文件合并中(45%)"/"补片中(剩3片)"/"文件封装中"),前缀匹配
-                    if (task.message != null && task.message.startsWith(DownloadManager.MSG_REPAIRING)) {
+                    if (task.message != null && task.message.startsWith(DownloadFacade.MSG_REPAIRING)) {
                         status = task.message;
-                    } else if (task.message != null && task.message.startsWith(DownloadManager.MSG_VERIFYING)) {
+                    } else if (task.message != null && task.message.startsWith(DownloadFacade.MSG_VERIFYING)) {
                         status = task.message;
-                    } else if (task.message != null && task.message.startsWith(DownloadManager.MSG_MERGING)) {
+                    } else if (task.message != null && task.message.startsWith(DownloadFacade.MSG_MERGING)) {
                         status = task.message;
-                    } else if (task.message != null && task.message.startsWith(DownloadManager.MSG_REMUX)) {
+                    } else if (task.message != null && task.message.startsWith(DownloadFacade.MSG_REMUX)) {
                         status = task.message;
                     } else {
                         status = "下载中";
@@ -253,18 +252,18 @@ public class DownloadFragment extends BaseVbFragment<FragmentDownloadBinding> {
                 TextView tvStatus = helper.getView(R.id.tv_status);
                 // 收尾阶段 message 自带进度(合并x%/剩K片),不再追加整体百分比(此时进度恒为100%)
                 boolean stageHasProgress = task.message != null
-                        && (task.message.startsWith(DownloadManager.MSG_MERGING)
-                        || task.message.startsWith(DownloadManager.MSG_REPAIRING));
+                        && (task.message.startsWith(DownloadFacade.MSG_MERGING)
+                        || task.message.startsWith(DownloadFacade.MSG_REPAIRING));
                 String statusText = stageHasProgress
                         ? status
                         : status + " · " + task.getProgressPercent() + "%";
                 // 实时网速:仅真正下载中显示,放在"下载中 xx%"后面(大小行不显示,避免被挤压)
                 if (task.state == DownloadTask.STATE_DOWNLOADING
                         && task.message != null
-                        && !task.message.startsWith(DownloadManager.MSG_VERIFYING)
-                        && !task.message.startsWith(DownloadManager.MSG_MERGING)
-                        && !task.message.startsWith(DownloadManager.MSG_REMUX)
-                        && !task.message.startsWith(DownloadManager.MSG_REPAIRING)
+                        && !task.message.startsWith(DownloadFacade.MSG_VERIFYING)
+                        && !task.message.startsWith(DownloadFacade.MSG_MERGING)
+                        && !task.message.startsWith(DownloadFacade.MSG_REMUX)
+                        && !task.message.startsWith(DownloadFacade.MSG_REPAIRING)
                         && task.speed > 0) {
                     statusText += " · " + formatSpeed(task.speed);
                 }

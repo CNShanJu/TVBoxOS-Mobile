@@ -79,6 +79,7 @@ import com.github.tvbox.osc.util.LOG;
 import com.github.tvbox.osc.util.LoadingAnim;
 import com.github.tvbox.osc.util.MD5;
 import com.github.tvbox.osc.util.PlayerHelper;
+import com.github.tvbox.osc.util.ParseBeanUrls;
 import com.github.tvbox.osc.util.VideoParseRuler;
 import com.github.tvbox.osc.util.thunder.Jianpian;
 import com.github.tvbox.osc.util.thunder.Thunder;
@@ -1362,7 +1363,7 @@ public class PlayFragment extends BaseLazyFragment {
                     e.printStackTrace();
                 }
             }
-            loadWebView(pb.getUrl() + webUrl);
+            loadWebView(ParseBeanUrls.url(pb) + webUrl);
 
         } else if (pb.getType() == 1) { // json 解析
             setTip("正在解析播放地址", true, false);
@@ -1381,7 +1382,7 @@ public class PlayFragment extends BaseLazyFragment {
             } catch (Throwable e) {
                 e.printStackTrace();
             }
-            HttpClient.get(pb.getUrl() + encodeUrl(webUrl), reqHeaders, "json_jx", new HCallBack() {
+            HttpClient.get(ParseBeanUrls.url(pb) + encodeUrl(webUrl), reqHeaders, "json_jx", new HCallBack() {
                         @Override
                         public void onSuccess(String json) {
                             try {
@@ -1422,13 +1423,13 @@ public class PlayFragment extends BaseLazyFragment {
             LinkedHashMap<String, String> jxs = new LinkedHashMap<>();
             for (ParseBean p : ApiConfig.get().getParseBeanList()) {
                 if (p.getType() == 1) {
-                    jxs.put(p.getName(), p.mixUrl());
+                    jxs.put(p.getName(), ParseBeanUrls.mixUrl(p));
                 }
             }
             parseThreadPool.execute(new Runnable() {
                 @Override
                 public void run() {
-                    JSONObject rs = ApiConfig.get().jsonExt(pb.getUrl(), jxs, webUrl);
+                    JSONObject rs = ApiConfig.get().jsonExt(ParseBeanUrls.url(pb), jxs, webUrl);
                     if (rs == null || !rs.has("url") || rs.optString("url").isEmpty()) {
 //                        errorWithRetry("解析错误", false);
                         setTip("解析错误", false, true);
@@ -1469,8 +1470,8 @@ public class PlayFragment extends BaseLazyFragment {
             String extendName = "";
             for (ParseBean p : ApiConfig.get().getParseBeanList()) {
                 HashMap data = new HashMap<String, String>();
-                data.put("url", p.getUrl());
-                if (p.getUrl().equals(pb.getUrl())) {
+                data.put("url", ParseBeanUrls.url(p));
+                if (ParseBeanUrls.url(p).equals(ParseBeanUrls.url(pb))) {
                     extendName = p.getName();
                 }
                 data.put("type", p.getType() + "");
@@ -1481,7 +1482,7 @@ public class PlayFragment extends BaseLazyFragment {
             parseThreadPool.execute(new Runnable() {
                 @Override
                 public void run() {
-                    JSONObject rs = ApiConfig.get().jsonExtMix(parseFlag + "111", pb.getUrl(), finalExtendName, jxs, webUrl);
+                    JSONObject rs = ApiConfig.get().jsonExtMix(parseFlag + "111", ParseBeanUrls.url(pb), finalExtendName, jxs, webUrl);
                     if (rs == null || !rs.has("url") || rs.optString("url").isEmpty()) {
 //                        errorWithRetry("解析错误", false);
                         setTip("解析错误", false, true);

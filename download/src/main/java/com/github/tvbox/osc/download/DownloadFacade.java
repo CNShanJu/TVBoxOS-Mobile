@@ -34,6 +34,13 @@ public final class DownloadFacade {
     public static final int ST_PAUSED = 3;
     public static final int ST_FAILED = 4;
 
+    // ── 任务阶段文案（唯一权威来源；DownloadManager 内部任务以这些前缀写 message，
+    //    UI 用它判断“校验/合并/补片/封装”等阶段）──
+    public static final String MSG_VERIFYING = "文件校验中";
+    public static final String MSG_MERGING = "文件合并中";
+    public static final String MSG_REMUX = "文件封装中";
+    public static final String MSG_REPAIRING = "补片中";
+
     public interface DownloadStatusListener {
         /** 下载状态/进度变化（去抖 500ms 合并后回调，主线程） */
         void onChanged();

@@ -1,13 +1,14 @@
 package com.github.tvbox.osc.bean;
 
-import android.util.Base64;
-
-import com.github.tvbox.osc.util.DefaultConfig;
-
 /**
- * @author pj567
- * @date :2021/3/8
- * @description:
+ * 解析器配置(纯模型,跨模块共享)。
+ * <p>
+ * 从 :spider 迁入 :core-model 时按改进.txt 规则纯化:
+ * <ul>
+ *   <li>只承载数据(name/url/ext/type/isDefault),无 Android 依赖;</li>
+ *   <li>proxy:// 前缀替换、ext 的 Base64 拼接等"基础设施行为"移出到调用侧
+ *       (spider 内 ParseBeanUrls 工具,见 com.github.tvbox.osc.util.ParseBeanUrls)。</li>
+ * </ul>
  */
 public class ParseBean {
 
@@ -26,8 +27,9 @@ public class ParseBean {
         this.name = name;
     }
 
+    /** 原始解析地址(proxy:// 等前缀不做处理;需要时用 spider 侧 ParseBeanUrls.url(...)) */
     public String getUrl() {
-        return DefaultConfig.checkReplaceProxy(url);
+        return url;
     }
 
     public void setUrl(String url) {
@@ -56,15 +58,5 @@ public class ParseBean {
 
     public void setExt(String ext) {
         this.ext = ext;
-    }
-
-    public String mixUrl() {
-        if (!ext.isEmpty()) {
-            int idx = url.indexOf("?");
-            if (idx > 0) {
-                return url.substring(0, idx + 1) + "cat_ext=" + Base64.encodeToString(ext.getBytes(), Base64.DEFAULT | Base64.URL_SAFE | Base64.NO_WRAP) + "&" + url.substring(idx + 1);
-            }
-        }
-        return url;
     }
 }
