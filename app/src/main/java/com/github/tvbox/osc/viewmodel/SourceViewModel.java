@@ -24,9 +24,6 @@ import com.github.tvbox.osc.util.thunder.Thunder;
 import com.github.tvbox.osc.spiderapi.SourceConfigApi;
 import com.github.tvbox.osc.spiderapi.SourceConfigProviders;
 import com.google.gson.Gson;
-import com.google.gson.JsonArray;
-import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.google.gson.reflect.TypeToken;
 import com.thoughtworks.xstream.XStream;
@@ -39,7 +36,6 @@ import org.json.JSONObject;
 import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Callable;
@@ -141,7 +137,7 @@ public class SourceViewModel extends ViewModel {
                                 e.printStackTrace();
                             }
                             if (sortJson != null) {
-                                sortXml = sortJson(sortResult, sortJson);
+                                sortXml = sortJson(sortJson);
                                 // 旧 json() 语义:同响应可能内嵌首页视频(list)
                                 if (sortXml != null && sortXml.list != null && sortXml.list.videoList != null
                                         && !sortXml.list.videoList.isEmpty()) {
@@ -172,10 +168,10 @@ public class SourceViewModel extends ViewModel {
                             AbsSortXml sortXml = null;
                             if (type == 0) {
                                 String xml = content;
-                                sortXml = sortXml(sortResult, xml);
+                                sortXml = sortXml(xml);
                             } else if (type == 1) {
                                 String json = content;
-                                sortXml = sortJson(sortResult, json);
+                                sortXml = sortJson(json);
                             }
                             if (sortXml != null && SystemConfig.getHomeRec() == 1 && sortXml.list != null && sortXml.list.videoList != null && sortXml.list.videoList.size() > 0) {
                                 ArrayList<String> ids = new ArrayList<>();
@@ -207,7 +203,7 @@ public class SourceViewModel extends ViewModel {
                     @Override
                     public void onSuccess(String sortJson) {
                         if (sortJson != null) {
-                            AbsSortXml sortXml = sortJson(sortResult, sortJson);
+                            AbsSortXml sortXml = sortJson(sortJson);
                             if (sortXml != null && SystemConfig.getHomeRec() == 1) {
                                 AbsXml absXml = json(null, sortJson, sourceBean.getKey());
                                 if (absXml != null && absXml.movie != null && absXml.movie.videoList != null && absXml.movie.videoList.size() > 0) {
@@ -720,26 +716,8 @@ public class SourceViewModel extends ViewModel {
         }
     }
 
-    private MovieSort.SortFilter getSortFilter(JsonObject obj) {
-        String key = obj.get("key").getAsString();
-        String name = obj.get("name").getAsString();
-        JsonArray kv = obj.getAsJsonArray("value");
-        LinkedHashMap<String, String> values = new LinkedHashMap<>();
-        for (JsonElement ele : kv) {
-            JsonObject ele_obj = ele.getAsJsonObject();
-            String values_key=ele_obj.has("n")?ele_obj.get("n").getAsString():"";
-            String values_value=ele_obj.has("v")?ele_obj.get("v").getAsString():"";
-            values.put(values_key, values_value);
-        }
-        MovieSort.SortFilter filter = new MovieSort.SortFilter();
-        filter.key = key;
-        filter.name = name;
-        filter.values = values;
-        return filter;
-    }
-
-    private AbsSortXml sortJson(MutableLiveData<AbsSortXml> result, String json) {
-        // 解析已抽到 SortParser(纯静态、可单测);result 由调用方发布
+    private AbsSortXml sortJson(String json) {
+        // 解析已抽到 SortParser(纯静态、可单测);发布由调用方完成
         return com.github.tvbox.osc.spiderapi.SortParser.parseSortJson(json);
     }
 
@@ -748,7 +726,7 @@ public class SourceViewModel extends ViewModel {
      * 与基础 JDK 类型。订阅/详情 XML 来自第三方数据源,若无白名单,恶意 XML 可让 XStream
      * 实例化任意类触发 gadget 链(潜在 RCE)。调用时机:processAnnotations 之后、fromXML 之前。
      */
-    private AbsSortXml sortXml(MutableLiveData<AbsSortXml> result, String xml) {
+    private AbsSortXml sortXml(String xml) {
         // 解析已抽到 SortParser(纯静态、可单测)
         return com.github.tvbox.osc.spiderapi.SortParser.parseSortXml(xml);
     }
