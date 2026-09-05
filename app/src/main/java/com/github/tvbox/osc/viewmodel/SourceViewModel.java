@@ -682,40 +682,8 @@ public class SourceViewModel extends ViewModel {
     }
 
     private AbsSortXml sortJson(MutableLiveData<AbsSortXml> result, String json) {
-        try {
-            JsonObject obj = JsonParser.parseString(json).getAsJsonObject();
-            AbsSortJson sortJson = new Gson().fromJson(obj, new TypeToken<AbsSortJson>() {
-            }.getType());
-            AbsSortXml data = sortJson.toAbsSortXml();
-            try {
-                if (obj.has("filters")) {
-                    LinkedHashMap<String, ArrayList<MovieSort.SortFilter>> sortFilters = new LinkedHashMap<>();
-                    JsonObject filters = obj.getAsJsonObject("filters");
-                    for (String key : filters.keySet()) {
-                        ArrayList<MovieSort.SortFilter> sortFilter = new ArrayList<>();
-                        JsonElement one = filters.get(key);
-                        if (one.isJsonObject()) {
-                            sortFilter.add(getSortFilter(one.getAsJsonObject()));
-                        } else {
-                            for (JsonElement ele : one.getAsJsonArray()) {
-                                sortFilter.add(getSortFilter(ele.getAsJsonObject()));
-                            }
-                        }
-                        sortFilters.put(key, sortFilter);
-                    }
-                    for (MovieSort.SortData sort : data.classes.sortList) {
-                        if (sortFilters.containsKey(sort.id) && sortFilters.get(sort.id) != null) {
-                            sort.filters = sortFilters.get(sort.id);
-                        }
-                    }
-                }
-            } catch (Throwable th) {
-
-            }
-            return data;
-        } catch (Exception e) {
-            return null;
-        }
+        // 解析已抽到 SortParser(纯静态、可单测);result 由调用方发布
+        return com.github.tvbox.osc.util.SortParser.parseSortJson(json);
     }
 
     /**
@@ -743,24 +711,8 @@ public class SourceViewModel extends ViewModel {
     }
 
     private AbsSortXml sortXml(MutableLiveData<AbsSortXml> result, String xml) {
-        try {
-            XStream xstream = new XStream(new DomDriver());//创建Xstram对象
-            xstream.autodetectAnnotations(true);
-            xstream.processAnnotations(AbsSortXml.class);
-            xstream.ignoreUnknownElements();
-            // XStream 反序列化安全白名单:只允许业务 bean 与 JDK 基础类型,
-            // 关闭默认的"任意类型许可",防止恶意订阅 XML 触发 gadget 链(如 RCE)
-            lockDownXStream(xstream, AbsSortXml.class);
-            AbsSortXml data = (AbsSortXml) xstream.fromXML(xml);
-            for (MovieSort.SortData sort : data.classes.sortList) {
-                if (sort.filters == null) {
-                    sort.filters = new ArrayList<>();
-                }
-            }
-            return data;
-        } catch (Exception e) {
-            return null;
-        }
+        // 解析已抽到 SortParser(纯静态、可单测)
+        return com.github.tvbox.osc.util.SortParser.parseSortXml(xml);
     }
 
     private void absXml(AbsXml data, String sourceKey) {
