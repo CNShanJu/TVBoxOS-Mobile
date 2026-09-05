@@ -6,6 +6,8 @@
 > ✅ 0.1 下载 UI 已全走 DownloadFacade + DownloadRequest 入队入口；✅ 1.1 NetworkProvider(general/noRedirect/playback)+组合根注入；
 > ✅ 1.2 HistoryRepository/CollectRepository 已出、UI 改走仓储接口；✅ 1.4 下载 Facade 补全且 UI 零 DownloadManager 直调；
 > ✅ :core-model/:core-storage/:core-network/:spider-api 模块齐位；SourceViewModel/嗅探/播放解析均走 spider-api 契约(app getCSP=0)。
+> ✅ 1.3 强类型试点:detail/search(quick/聚合)/category/homeContent/homeVideoContent(type3)均已 typed 优先+字符串回退;
+> SortParser 迁入 :spider-api 供 VM/契约层共用,排序/筛选解析链路有 JVM 单测。
 
 ## P0 收尾易做项（先清低风险尾巴）
 | # | 事项 | 现状 | 做法 | 验收 |
@@ -20,7 +22,7 @@
 |---|---|---|---|---|
 | 1.1 | core-network 收敛 + `NetworkProvider` | ⚠️ 更名完成、业务侧不再 new 客户端 | 建 `NetworkProvider {general/spider/download/playback}`；spider `catvod.net.OkHttp`、Exo/Picasso 客户端创建归拢；共享池/DNS/TLS/UA 统一 | 业务模块零裸建客户端；Provider 单一实现注入 |
 | 1.2 | core-storage 出 Repository 层 | ⚠️ 数据层已迁 | HistoryRepository/CollectRepository + HistorySnapshot/Summary；DAO 不外泄 | UI 只依赖 Repository/Facade，不再 import DAO |
-| 1.3 | spider-api 强类型化 | ⚠️ 字符串级已拆 | `SpiderService` 返回 SourcePage/VodDetail/SearchResult 等 DTO，实现留在 :spider | app 无蜘蛛字符串协议细节；可 Fake 单测 |
+| 1.3 | spider-api 强类型化 | ⚠️ 试点完成 | detail/search/category/home 已 typed 优先+字符串回退;剩余:SpiderService 完整化/SortPage 容器、删字符串通道 | app 无蜘蛛字符串协议细节;可 Fake 单测 |
 | 1.4 | download → DownloadRequest | ⚠️ 门面已用 | enqueue(request) 化（含已解析业务数据） | UI 不传散参、不读 Activity/VM/Hawk |
 
 ## P2 播放器与页面（需真机回归，专项立项）

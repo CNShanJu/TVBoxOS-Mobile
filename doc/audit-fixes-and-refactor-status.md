@@ -96,14 +96,24 @@
 - 原 `:common` 已更名挂接为 `:core-network`（projectDir=common，FQN 不变）；裁剪计划见
   `doc/phase2-core-modules-plan.md`。
 
+### 1.10 强类型蜘蛛契约(type3 试点,改进.txt §1/§4.3)
+- `:spider-api` 提供领域契约:`SpiderDetailApi`/`SpiderSearchApi`/`SpiderHomeApi`/`SpiderManualCheckApi`/
+  `PlayUrlResolverApi`(含 ResolveResult)/`MediaUrlUtil`/`SortParser`(首页/分类 JSON+XML 解析,XStream 白名单,纯静态)。
+- `:spider` 侧实现 `SpiderDetailImpl`/`SpiderSearchImpl`/`SpiderHomeImpl`/`SpiderManualCheckImpl`/`SpiderUrlResolverImpl`,
+  解析下沉(spider 内拉串→Gson→Abs*/SortParser→返回类型化对象),链路日志 tag=`SpiderBridge`。
+- `SourceViewModel` 全部 `ApiConfig.getCSP` 直调已替换为契约 Providers;detail/search(quick/聚合)/category/
+  homeContent/homeVideoContent(type3)均为 **typed 优先 + 失败回退字符串通道**,15s 超时保护与旧链路一致。
+- App 组合根 `AppCompositionRoot.init()` 注入全部服务;`SortParser` 由 app 迁入 :spider-api 后单测随迁
+  (`SortParserTest`),排序/筛选解析可 JVM 验证。
+
 ## 2. 待后续（需真机回归或架构决策）
 
 | 项 | 说明 |
 |---|---|
 | PlayFragment(~1.8k) 进一步拆分 | 字幕/播放器控制器与宿主深度耦合，无回归环境不强行搬移 |
 | `util/player/PlayParseHelper.java`（未引用） | 疑似拆分遗留件，未接入任何调用方；可选择接线或删除 |
-| 改进.txt 第二阶段：`:spider-api`/`:core-model`/`:core-network`/`:core-storage` | 需架构拍板；完成后 SourceViewModel 等 `ApiConfig.getCSP` 改走 SpiderService 门面 |
 | player-api PlayerFactory 适配器注册 | 已有 PlayerFactory/PlayerApi/PlayOptions 契约，尚未注册 EXO/IJK adapter |
+| 强类型收尾 | 字符串通道(SpiderContentApi)仍为过渡兼容层,待 FakeSpiderService 单测覆盖后可删 |
 | 局域网服务热切换 | 有意不做：重启应用生效即可（热重启会打断回环播放代理流） |
 | web 控制台静态资源(~260KB)精简 | 视觉设计类工作，另行处理 |
 

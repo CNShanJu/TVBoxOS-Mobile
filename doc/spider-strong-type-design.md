@@ -39,6 +39,9 @@ public interface SpiderService {
 - `SourceViewModel(SpiderService spiderService)`：类型安全、可用 FakeSpiderService；
 - 字符串协议(JSON 拼接/正则嗅探等)只存在于 :spider 实现内部；
 - `SpiderContentApi`(字符串版) 作过渡兼容层，迁移完成后删除。
+- 已完成落地（2025 增量）：`:spider-api` 拆出 `SpiderDetailApi/SearchApi/HomeApi/ManualCheckApi/PlayUrlResolverApi/SortParser`；
+  detail/search(quick/聚合)/category/homeContent/homeVideoContent(type3)在 `SourceViewModel` 均 **typed 优先 + 字符串回退**，
+  各 impl 内置 `SpiderBridge` 链路日志；SortParser(纯静态,带 XStream 白名单)供 VM 与 :spider 共用并有单测。
 
 ## 5. 假件与门禁
 - 测试模块 `:app:test`（或后续 core 模块 test）：`FakeSpiderService` 返回固定 Abs*/DetailResult，

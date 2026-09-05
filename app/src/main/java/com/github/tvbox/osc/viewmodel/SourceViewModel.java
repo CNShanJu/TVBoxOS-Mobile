@@ -92,47 +92,66 @@ public class SourceViewModel extends ViewModel {
                 @Override
                 public void run() {
                     ExecutorService executor = Executors.newSingleThreadExecutor();
-                    Future<String> future = executor.submit(new Callable<String>() {
-                        @Override
-                        public String call() throws Exception {
-                            return com.github.tvbox.osc.spiderapi.SpiderContentProviders.get()
-                                    .homeContent(sourceBean.getKey(), true);
-                        }
-                    });
-                    String sortJson = null;
+                    boolean typedHit = false;
                     try {
-                        sortJson = future.get(15, TimeUnit.SECONDS);
-                    } catch (TimeoutException e) {
-                        e.printStackTrace();
-                        future.cancel(true);
-                    } catch (InterruptedException | ExecutionException e) {
-                        e.printStackTrace();
+                        AbsSortXml sortXml = null;
+                        List<Movie.Video> embedded = null; // 同响应内嵌首页视频(若有)
+                        // 强类型试点:homeContent 解析下沉 :spider(15s 超时保护,与旧字符串链路一致)
+                        Future<AbsSortXml> typedFuture = executor.submit(new Callable<AbsSortXml>() {
+                            @Override
+                            public AbsSortXml call() {
+                                return com.github.tvbox.osc.spiderapi.SpiderHomeProviders.get()
+                                        .homeContent(sourceBean.getKey(), true);
+                            }
+                        });
+                        try {
+                            sortXml = typedFuture.get(15, TimeUnit.SECONDS);
+                        } catch (TimeoutException e) {
+                            e.printStackTrace();
+                            typedFuture.cancel(true);
+                        } catch (InterruptedException | ExecutionException e) {
+                            e.printStackTrace();
+                        }
+                        typedHit = sortXml != null;
+                        if (typedHit) {
+                            // impl 已把响应内嵌 list(首页视频)解析到 sortXml.videoList
+                            embedded = sortXml.videoList;
+                        } else {
+                            android.util.Log.w("SpiderBridge", "home(typed) 无结果/超时,回退字符串通道: key="
+                                    + sourceBean.getKey());
+                            // 字符串通道回退:旧链路语义(拉串后按 sortJson 解析)
+                            Future<String> stringFuture = executor.submit(new Callable<String>() {
+                                @Override
+                                public String call() throws Exception {
+                                    return com.github.tvbox.osc.spiderapi.SpiderContentProviders.get()
+                                            .homeContent(sourceBean.getKey(), true);
+                                }
+                            });
+                            String sortJson = null;
+                            try {
+                                sortJson = stringFuture.get(15, TimeUnit.SECONDS);
+                            } catch (TimeoutException e) {
+                                e.printStackTrace();
+                                stringFuture.cancel(true);
+                            } catch (InterruptedException | ExecutionException e) {
+                                e.printStackTrace();
+                            }
+                            if (sortJson != null) {
+                                sortXml = sortJson(sortResult, sortJson);
+                                // 旧 json() 语义:同响应可能内嵌首页视频(list)
+                                if (sortXml != null && sortXml.list != null && sortXml.list.videoList != null
+                                        && !sortXml.list.videoList.isEmpty()) {
+                                    embedded = sortXml.list.videoList;
+                                }
+                            }
+                        }
+                        publishHomeSort(sourceBean, sortXml, embedded);
+                    } catch (Throwable th) {
+                        th.printStackTrace();
                     } finally {
                         android.util.Log.i("SpiderTrace", "[首页] " + sourceBean.getName()
                                 + " homeContent 结束 耗时=" + (System.currentTimeMillis() - traceStart)
-                                + "ms result=" + (sortJson == null ? "null" : sortJson.length() + "字符"));
-                        if (sortJson != null) {
-                            AbsSortXml sortXml = sortJson(sortResult, sortJson);
-                            if (sortXml != null && SystemConfig.getHomeRec() == 1) {
-                                AbsXml absXml = json(null, sortJson, sourceBean.getKey());
-                                if (absXml != null && absXml.movie != null && absXml.movie.videoList != null && absXml.movie.videoList.size() > 0) {
-                                    sortXml.videoList = absXml.movie.videoList;
-                                    sortResult.postValue(sortXml);
-                                } else {
-                                    getHomeRecList(sourceBean, null, new HomeRecCallback() {
-                                        @Override
-                                        public void done(List<Movie.Video> videos) {
-                                            sortXml.videoList = videos;
-                                            sortResult.postValue(sortXml);
-                                        }
-                                    });
-                                }
-                            } else {
-                                sortResult.postValue(sortXml);
-                            }
-                        } else {
-                            sortResult.postValue(null);
-                        }
+                                + "ms typed=" + typedHit);
                         try {
                             executor.shutdown();
                         } catch (Throwable th) {
@@ -311,6 +330,40 @@ public class SourceViewModel extends ViewModel {
 
     interface HomeRecCallback {
         void done(List<Movie.Video> videos);
+    }
+
+    /**
+     * 发布 type=3 首页结果(typed 命中或字符串回退共用):
+     * homeRec=1 且有内嵌首页视频 → 富化后直接发布;无内嵌 → 走 homeVideoContent(typed)补推荐;
+     * homeRec=0 → 仅发布分类。
+     */
+    private void publishHomeSort(final SourceBean sourceBean, AbsSortXml sortXml, List<Movie.Video> embedded) {
+        if (sortXml == null) {
+            sortResult.postValue(null);
+            return;
+        }
+        if (SystemConfig.getHomeRec() == 1) {
+            if (embedded != null && !embedded.isEmpty()) {
+                // 同响应内嵌首页视频:与旧 json() 语义一致做富化(sourceKey 归属/urlBean 拆分)
+                AbsXml wrap = new AbsXml();
+                Movie movie = new Movie();
+                movie.videoList = embedded;
+                wrap.movie = movie;
+                absXml(wrap, sourceBean.getKey());
+                sortXml.videoList = embedded;
+                sortResult.postValue(sortXml);
+            } else {
+                getHomeRecList(sourceBean, null, new HomeRecCallback() {
+                    @Override
+                    public void done(List<Movie.Video> videos) {
+                        sortXml.videoList = videos;
+                        sortResult.postValue(sortXml);
+                    }
+                });
+            }
+        } else {
+            sortResult.postValue(sortXml);
+        }
     }
 //    homeVideoContent
     void getHomeRecList(SourceBean sourceBean, ArrayList<String> ids, HomeRecCallback callback) {
