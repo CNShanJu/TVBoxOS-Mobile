@@ -25,7 +25,6 @@ import com.blankj.utilcode.util.LogUtils;
 import com.blankj.utilcode.util.SPUtils;
 import com.chad.library.adapter.base.BaseQuickAdapter;
 import com.github.tvbox.osc.R;
-import com.github.tvbox.osc.api.ApiConfig;
 import com.github.tvbox.osc.bean.IJKCode;
 import com.github.tvbox.osc.bean.ParseBean;
 import com.github.tvbox.osc.constant.CacheConst;
@@ -538,7 +537,7 @@ public class LocalVideoController extends BaseController implements PlaybackSett
                 myHandle.postDelayed(myRunnable, myHandleSeconds);
                 try {
                     String ijk = mPlayerConfig.getString("ijk");
-                    List<IJKCode> codecs = ApiConfig.get().getIjkCodes();
+                    List<IJKCode> codecs = com.github.tvbox.osc.player.api.IjkCodecConfigProviders.get().getIjkCodes();
                     for (int i = 0; i < codecs.size(); i++) {
                         if (ijk.equals(codecs.get(i).getName())) {
                             if (i >= codecs.size() - 1)

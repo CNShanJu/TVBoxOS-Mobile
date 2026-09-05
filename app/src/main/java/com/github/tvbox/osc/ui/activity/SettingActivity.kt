@@ -6,10 +6,10 @@ import android.os.Bundle
 import android.view.View
 import androidx.recyclerview.widget.DiffUtil
 import com.github.tvbox.osc.log.LogConfig
+import com.github.tvbox.osc.player.api.IjkCodecConfigProviders
 import com.github.tvbox.osc.player.api.PlayConfig
 import com.github.tvbox.osc.util.AppBubble
 import com.github.tvbox.osc.R
-import com.github.tvbox.osc.api.ApiConfig
 import com.github.tvbox.osc.base.BaseVbActivity
 import com.github.tvbox.osc.bean.IJKCode
 import com.github.tvbox.osc.constant.IntentKey
@@ -231,7 +231,7 @@ class SettingActivity : BaseVbActivity<ActivitySettingBinding>() {
         }
 
         mBinding.llMediaCodec.setOnClickListener { v: View? ->
-            val ijkCodes = ApiConfig.get().ijkCodes
+            val ijkCodes = IjkCodecConfigProviders.get().ijkCodes
             if (ijkCodes == null || ijkCodes.size == 0) return@setOnClickListener
             FastClickCheckUtil.check(v)
             var defaultPos = 0

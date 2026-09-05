@@ -509,7 +509,7 @@ public class VodController extends BaseController implements PlaybackSettingsCon
             myHandle.postDelayed(myRunnable, dismissTimeOperationBar);
             try {
                 String ijk = mPlayerConfig.getString("ijk");
-                List<IJKCode> codecs = ApiConfig.get().getIjkCodes();
+                List<IJKCode> codecs = com.github.tvbox.osc.player.api.IjkCodecConfigProviders.get().getIjkCodes();
                 for (int i = 0; i < codecs.size(); i++) {
                     if (ijk.equals(codecs.get(i).getName())) {
                         if (i >= codecs.size() - 1)

@@ -3,10 +3,10 @@ package com.github.tvbox.osc.util;
 import android.app.Activity;
 import android.content.Context;
 
-import com.github.tvbox.osc.api.ApiConfig;
 import com.github.tvbox.osc.bean.IJKCode;
 import com.github.tvbox.osc.player.EXOmPlayer;
 import com.github.tvbox.osc.player.IjkMediaPlayer;
+import com.github.tvbox.osc.player.api.IjkCodecConfigProviders;
 import com.github.tvbox.osc.player.render.SurfaceRenderViewFactory;
 import com.github.tvbox.osc.player.thirdparty.Kodi;
 import com.github.tvbox.osc.player.thirdparty.MXPlayer;
@@ -46,7 +46,7 @@ public class PlayerHelper {
         } catch (JSONException e) {
             e.printStackTrace();
         }
-        IJKCode codec = ApiConfig.get().getIJKCodec(ijkCode);
+        IJKCode codec = IjkCodecConfigProviders.get().getIJKCodec(ijkCode);
         PlayerFactory playerFactory;
         if (playerType == 1) {
             playerFactory = new PlayerFactory<IjkMediaPlayer>() {

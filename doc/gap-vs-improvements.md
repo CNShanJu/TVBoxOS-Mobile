@@ -109,6 +109,11 @@ Exo→Media3、EventBus→Flow/接口、Hawk→DataStore、Java→Kotlin 渐进�
   PlayFragment(getSource/getVipParseFlags)、SearchHelper/DetailQuickSearchHelper/WebSniffResolver 等
   18 处文件改走 `SourceConfigProviders`;app 内"源元信息(源注册表/首页源/源列表/vip 旗标)"经 ApiConfig
   直读清零(HomeFragment 等保留 ApiConfig 仅做 loadConfig/loadJar/setSourceBean 等源管理调用)。
+- ✅ IJK 解码配置收口到播放契约:新增 `player-api.IjkCodecConfigApi`(getIjkCodes/getCurrentIJKCode/
+  getIJKCodec,返回值 core-model IJKCode)+ `IjkCodecConfigProviders` 持有者;AppCompositionRoot 以适配器
+  桥接 :spider ApiConfig 现有实现(避免 spider 反向依赖播放契约)。app 内 5 个解码配置读取点
+  (IjkMediaPlayer/VodController/LocalVideoController/PlayerHelper/SettingActivity)改走契约,
+  :spider ApiConfig 的 import 从播放侧清零。
 - ⚠️ common/event 收口：已删 HistoryStateEvent/TopStateEvent(零引用孤儿)、DownloadEvent/RefreshEvent/ServerEvent
   各自归位业务/app 模块；common 仅剩 LogEvent(common 内 LOG.java 自用,EventBus 空投遗留——无人订阅,待日志页改造后清理)。
 - ⚠️ DownloadFragment 已完成 Facade 订阅去 EventBus;app 其余 EventBus 点(搜索/快速搜索/历史/直播等
