@@ -30,6 +30,7 @@ import com.github.tvbox.osc.bean.CastVideo;
 import com.github.tvbox.osc.bean.LiveChannelGroup;
 import com.github.tvbox.osc.bean.LiveChannelItem;
 import com.github.tvbox.osc.player.controller.LiveNewController;
+import com.github.tvbox.osc.util.LiveChannelAuth;
 import com.github.tvbox.osc.util.LivePlayerManager;
 import com.github.tvbox.osc.ui.adapter.LiveChannelGroupNewAdapter;
 import com.github.tvbox.osc.ui.adapter.LiveChannelItemNewAdapter;
@@ -717,24 +718,18 @@ public class LiveActivity extends BaseActivity {
     }
 
     private boolean isNeedInputPassword(int groupIndex) {
-        return !liveChannelGroupList.get(groupIndex).getGroupPassword().isEmpty()
-                && !isPasswordConfirmed(groupIndex);
+        return LiveChannelAuth.needInputPassword(liveChannelGroupList, channelGroupPasswordConfirmed, groupIndex);
     }
 
     private boolean isPasswordConfirmed(int groupIndex) {
-        for (Integer confirmedNum : channelGroupPasswordConfirmed) {
-            if (confirmedNum == groupIndex)
-                return true;
-        }
-        return false;
+        return LiveChannelAuth.isPasswordConfirmed(channelGroupPasswordConfirmed, groupIndex);
     }
 
     private ArrayList<LiveChannelItem> getLiveChannels(int groupIndex) {
-        if (!isNeedInputPassword(groupIndex)) {
-            return liveChannelGroupList.get(groupIndex).getLiveChannels();
-        } else {
+        if (LiveChannelAuth.needInputPassword(liveChannelGroupList, channelGroupPasswordConfirmed, groupIndex)) {
             return new ArrayList<>();
         }
+        return liveChannelGroupList.get(groupIndex).getLiveChannels();
     }
 
     private Integer[] getNextChannel(int direction) {
