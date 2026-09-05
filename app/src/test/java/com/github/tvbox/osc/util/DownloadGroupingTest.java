@@ -79,6 +79,23 @@ public class DownloadGroupingTest {
     }
 
     @Test
+    public void aggregateNote_countsRunningAndDone() throws Exception {
+        File f = java.nio.file.Files.createTempFile("note-test", ".mp4").toFile();
+        List<DownloadTask> tasks = new ArrayList<>();
+        tasks.add(task("剧A", "源1", DownloadTask.STATE_DOWNLOADING, 1));
+        tasks.add(task("剧A", "源1", DownloadTask.STATE_COMPLETED, 2)); // 不计
+        List<ArchiveItem> done = new ArrayList<>();
+        done.add(done("剧A", "源1", f.getAbsolutePath()));
+        done.add(done("剧A", "源1", null)); // savePath 空不计
+        done.add(done("剧A", "源1", "/no/such/file.mp4")); // 文件不存在不计
+        assertEquals("1 个任务 · 已完成 1 集", DownloadGrouping.aggregateNote(tasks, done));
+        f.delete();
+        // 仅任务 / 空档案
+        assertEquals("1 个任务", DownloadGrouping.aggregateNote(tasks, null));
+        assertEquals("", DownloadGrouping.aggregateNote(null, null));
+    }
+
+    @Test
     public void inGroup_and_vodNameOf_matchLegacyGroupName() {
         DownloadTask t = new DownloadTask();
         t.vodName = null;

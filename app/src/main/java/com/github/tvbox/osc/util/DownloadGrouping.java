@@ -124,4 +124,25 @@ public final class DownloadGrouping {
         list.sort(Comparator.comparingLong(t -> t.createTime));
         return list;
     }
+
+    /** 聚合卡副标题:未完成任务数 + 已完成且文件存在的集数(如 "3 个任务 · 已完成 5 集") */
+    public static String aggregateNote(List<DownloadTask> tasks, List<ArchiveItem> doneItems) {
+        int running = 0;
+        if (tasks != null) {
+            for (DownloadTask t : tasks) {
+                if (t.state != DownloadTask.STATE_COMPLETED) running++;
+            }
+        }
+        int done = 0;
+        if (doneItems != null) {
+            for (ArchiveItem it : doneItems) {
+                if (it.savePath != null && new File(it.savePath).exists()) done++;
+            }
+        }
+        String note = running > 0 ? running + " 个任务" : "";
+        if (done > 0) {
+            note = (note.isEmpty() ? "" : note + " · ") + "已完成 " + done + " 集";
+        }
+        return note;
+    }
 }

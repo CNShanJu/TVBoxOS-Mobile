@@ -145,20 +145,9 @@ public class DownloadFragment extends BaseVbFragment<FragmentDownloadBinding> {
                     helper.setText(R.id.tv_source, src);
                 }
                 helper.setText(R.id.tv_name, group.name);
-                // 聚合状态:任务数(未完成) + 已完成集数(档案表)
-                int tasks = 0;
-                int done = 0;
-                for (DownloadTask t : group.tasks) {
-                    if (t.state != DownloadTask.STATE_COMPLETED) tasks++;
-                }
-                for (com.github.tvbox.osc.download.ArchiveItem it : group.doneItems) {
-                    if (it.savePath != null && new File(it.savePath).exists()) done++;
-                }
-                String note = tasks > 0 ? tasks + " 个任务" : "";
-                if (done > 0) {
-                    note = (note.isEmpty() ? "" : note + " · ") + "已完成 " + done + " 集";
-                }
-                helper.setText(R.id.tv_note, note);
+                // 聚合状态:任务数(未完成) + 已完成集数(档案表,文件存在才计)
+                helper.setText(R.id.tv_note,
+                        DownloadGrouping.aggregateNote(group.tasks, group.doneItems));
             }
         };
         aggregateAdapter.setOnItemClickListener((adapter, view, position) -> {
