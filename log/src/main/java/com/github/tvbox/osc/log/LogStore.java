@@ -94,7 +94,7 @@ public final class LogStore {
         return noopInstance;
     }
 
-    /** App 启动时调用一次；内部按 LogConfig 同步开关并启动 logcat 捕获（如已开启） */
+    /** App 启动时调用一次；错误日志(logcat)常驻记录,不随开关;开关只控业务日志(Room) */
     public static void init(Context context) {
         if (instance == null) {
             synchronized (LogStore.class) {
@@ -104,12 +104,11 @@ public final class LogStore {
             }
         }
         LogcatCapture.setAppContext(context); // 独立模块: context 注入,不依赖 app 类
-        instance.enabled = LogConfig.isEnabled();
+        // 错误日志常驻:App 启动即捕获本应用 logcat ERROR 级(独立于"运行日志"开关,排障随时可查)
+        LogcatCapture.start();
+        instance.enabled = LogConfig.isEnabled(); // 业务日志开关
         instance.minLevel = LogConfig.getLevel();
-        if (instance.enabled) {
-            LogcatCapture.start();
-        }
-        // 日志开启期间每天按保留天数清理一次旧业务日志(防止 DB 长期只增不减占用存储)
+        // 业务日志开启期间每天按保留天数清理一次旧业务日志(防止 DB 长期只增不减占用存储)
         instance.repository.scheduleDailyCleanup();
     }
 
@@ -186,8 +185,16 @@ public final class LogStore {
 
     void log(String categoryName, int level, String subTypeCode, String subTypeLabel,
              String detail, String result, String reason, JSONObject extras, String taskKey) {
-        if (!enabled) return;
-        if (level < minLevel) return;
+        log(categoryName, level, subTypeCode, subTypeLabel, detail, result, reason, extras, taskKey, false);
+    }
+
+    /** force=true 绕过业务日志开关(enabled)门控——崩溃等关键排障信息始终落库 */
+    void log(String categoryName, int level, String subTypeCode, String subTypeLabel,
+             String detail, String result, String reason, JSONObject extras, String taskKey, boolean force) {
+        if (!force) {
+            if (!enabled) return;
+            if (level < minLevel) return;
+        }
         if (disabledCategories.contains(categoryName)) return;
         LogEntry e = new LogEntry();
         e.timestamp = System.currentTimeMillis();
@@ -231,14 +238,14 @@ public final class LogStore {
         return enabled;
     }
 
-    /** 总开关（由 LogConfig 驱动；开启时联动 logcat 捕获） */
+    /**
+     * 业务日志开关（由 LogConfig 驱动；只控 Room 结构化业务日志）。
+     * 错误日志(logcat)不受此开关影响:init 时已常驻启动。
+     */
     public void setEnabled(boolean on) {
         enabled = on;
         if (on) {
-            LogcatCapture.start();
             repository.scheduleDailyCleanup();
-        } else {
-            LogcatCapture.stop();
         }
     }
 
@@ -296,12 +303,13 @@ public final class LogStore {
         }
     }
 
-    /** 崩溃捕获：委托 CrashReporter（过滤无害系统异常 → 结构化落库 + 立即 flush → 转交原 handler） */
+    /** 崩溃捕获：委托 CrashReporter（过滤无害系统异常 → 结构化落库 + 立即 flush → 转交原 handler）。
+     *  崩溃始终落库(force),不受业务日志开关影响——排障关键信息不丢 */
     public void installCrashHandler() {
         CrashReporter.install((detail, reason) -> {
             try {
                 log(Category.SYSTEM.name(), LEVEL_ERROR, "crash", "崩溃",
-                        detail, "FAILURE", reason, null, null);
+                        detail, "FAILURE", reason, null, null, true);
                 collector.flushNow();
             } catch (Throwable ignored) {
             }

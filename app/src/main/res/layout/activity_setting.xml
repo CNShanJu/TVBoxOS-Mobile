@@ -477,7 +477,7 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="运行日志"
+                        android:text="业务日志"
                         android:textColor="@color/text_foreground"
                         android:textSize="16sp"/>
 
@@ -501,13 +501,12 @@
                     android:gravity="center_vertical"
                     android:orientation="horizontal"
                     android:paddingHorizontal="40dp"
-                    android:foreground="?android:selectableItemBackground"
-                    android:visibility="gone">
+                    android:foreground="?android:selectableItemBackground">
 
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="查看运行日志"
+                        android:text="查看日志"
                         android:textColor="@color/text_foreground"
                         android:textSize="16sp"/>
 

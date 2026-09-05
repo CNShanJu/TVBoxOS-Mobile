@@ -126,7 +126,7 @@ class LogActivity : BaseVbActivity<ActivityLogBinding>() {
                 null
             }
             runOnUiThread {
-                mBinding.tvContent.text = text ?: "暂无日志（先到 设置→运行日志 开启采集）"
+                mBinding.tvContent.text = text ?: "暂无业务日志（设置→业务日志 开启后记录）"
                 mBinding.scrollLog.post { mBinding.scrollLog.fullScroll(View.FOCUS_UP) }
             }
         }.start()

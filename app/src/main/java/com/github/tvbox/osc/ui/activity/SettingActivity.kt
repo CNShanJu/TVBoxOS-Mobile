@@ -484,18 +484,16 @@ class SettingActivity : BaseVbActivity<ActivitySettingBinding>() {
             mBinding.switchIjkCachePlay.setChecked(newConfig)
             PlayConfig.setIjkCachePlay(newConfig)
         }
-        // 运行日志开关(默认关闭,排查问题时开启):走 LogConfig 配置门面(查询+发通知+订阅) ----
+        // 业务日志开关(默认关闭):走 LogConfig 配置门面(查询+发通知+订阅)。
+        // 只控 Room 结构化业务日志;错误日志(logcat)常驻记录,不随此开关。
         mBinding.switchSubscriptionLog.setChecked(LogConfig.isEnabled())
         mBinding.llSubscriptionLog.setOnClickListener { v: View? ->
             FastClickCheckUtil.check(v)
             val newConfig = !LogConfig.isEnabled()
             mBinding.switchSubscriptionLog.setChecked(newConfig)
-            LogConfig.setEnabled(newConfig) // 内部持久化 + 联动 logcat 捕获 + 广播变更
-            mBinding.llSubscriptionLogView.visibility =
-                if (newConfig) View.VISIBLE else View.GONE
+            LogConfig.setEnabled(newConfig) // 内部持久化 + 广播变更
         }
-        mBinding.llSubscriptionLogView.visibility =
-            if (LogConfig.isEnabled()) View.VISIBLE else View.GONE
+        // 查看日志入口常显:错误日志常驻,开关关闭也能看
         mBinding.llSubscriptionLogView.setOnClickListener { v: View? ->
             FastClickCheckUtil.check(v)
             jumpActivity(LogActivity::class.java)

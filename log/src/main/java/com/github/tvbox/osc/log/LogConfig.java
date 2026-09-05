@@ -11,8 +11,8 @@ import java.util.concurrent.CopyOnWriteArrayList;
  * 数据维护在 log 模块内部（Hawk 键），对外只暴露 查询 / 操作 / 订阅：
  * <ul>
  *   <li>查询：{@link #isEnabled()} / {@link #getLevel()} / {@link #getRetentionDays()}</li>
- *   <li>操作：{@link #setEnabled(boolean)}（联动 LogStore + logcat 捕获）/ {@link #setLevel(int)} /
- *       {@link #setRetentionDays(int)}</li>
+ *   <li>操作：{@link #setEnabled(boolean)}（业务日志开关；错误日志 logcat 常驻不受此开关影响）/
+ *       {@link #setLevel(int)} / {@link #setRetentionDays(int)}</li>
  *   <li>订阅：{@link #subscribe(Listener)}——设置页等关注方刷新 UI</li>
  * </ul>
  * 持久化 key：开关沿用旧应用 key "app_log"（与历史设置兼容，独立模块不依赖 app 的 HawkConfig），
