@@ -822,13 +822,17 @@ public class DetailActivity extends BaseVbActivity<ActivityDetailBinding> {
             mHomeKeyReceiver = null;
         }
 
-        // 作废未启动的快速搜索任务、清空暂停队列(共享线程池不可关闭)
+        // 作废未启动的快速搜索任务、清空暂停队列(共享线程池不可关闭);断开弹窗与输出桥
         try {
             if (quickSearchHelper != null) {
                 quickSearchHelper.release();
+                quickSearchHelper.setQuickSearchOutput(null);
             }
         } catch (Throwable th) {
             th.printStackTrace();
+        }
+        if (mQuickSearchDialog != null) {
+            mQuickSearchDialog = null;
         }
         HttpClient.cancel("fenci");
         HttpClient.cancel("detail");
