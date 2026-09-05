@@ -247,6 +247,9 @@ Exo→Media3、EventBus→Flow/接口、Hawk→DataStore、Java→Kotlin 渐进�
   DownloadDisplayTest 累计 12 例。(aef13cfd)
 - ✅ 聚合卡副标题 aggregateNote(任务数+已完成且文件存在集数)下沉 DownloadGrouping;单测 7 例。
   DownloadFragment 1306→1038 行。(1f876086)
+- ✅ 任务行文本拼装下沉 DownloadDisplay:titleText(剧名·集名判重)/statusLine(状态+百分比+网速,
+  收尾省略整体百分比)/sourceText(未知来源)/swipeActionText(继续/重试/暂停);convert 仅剩 setText
+  与色调取色。DownloadDisplayTest 累计 15 例。DownloadFragment →1016 行。(0d929aeb)
 - ✅ 直播分组密码门禁抽离 `util/LiveChannelAuth`:isPasswordConfirmed/needInputPassword/
   visibleChannels 纯逻辑(组数据+确认集合传参),LiveActivity 三方法改委托;单测 4 例。
   (9bdcc169)
