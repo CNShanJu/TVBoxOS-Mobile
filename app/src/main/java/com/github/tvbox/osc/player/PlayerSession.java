@@ -55,4 +55,42 @@ public final class PlayerSession {
     public void release() {
         if (video != null) video.release();
     }
+
+    // ── 查询/交互(供 UI 层;底层仍是共享 VideoView,行为与原直用一致)──
+
+    /** 视频尺寸(width,height);未出画面为 (0,0) */
+    public int[] videoSize() {
+        return video == null ? new int[]{0, 0} : video.getVideoSize();
+    }
+
+    public long currentPosition() {
+        return video == null ? 0 : video.getCurrentPosition();
+    }
+
+    public long duration() {
+        return video == null ? 0 : video.getDuration();
+    }
+
+    public boolean isPlaying() {
+        return video != null && video.isPlaying();
+    }
+
+    public void seekTo(long positionMs) {
+        if (video != null) video.seekTo(positionMs);
+    }
+
+    /** 倍速(如 2.0f) */
+    public void setSpeed(float speed) {
+        if (video != null) video.setSpeed(speed);
+    }
+
+    /** 画面缩放(doikki scale 常量) */
+    public void setScreenScaleType(int scaleType) {
+        if (video != null) video.setScreenScaleType(scaleType);
+    }
+
+    /** 把当前共享视图包成 PlayerApi(ownsVideoView=false)供会话观察/审计 */
+    public com.github.tvbox.osc.player.VideoViewPlayerApi playerApi() {
+        return video == null ? null : new com.github.tvbox.osc.player.VideoViewPlayerApi(video, false);
+    }
 }

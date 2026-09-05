@@ -354,7 +354,7 @@ public class PlayFragment extends BaseLazyFragment {
     public void changedLandscape(boolean fullWindows) {
         mFullWindows = fullWindows;
         if (fullWindows){
-            int[] size = mVideoView.getVideoSize();
+            int[] size = mPlaySession != null ? mPlaySession.videoSize() : mVideoView.getVideoSize();
             int width = size[0];
             int height = size[1];
             if (width>height){//根据视频尺寸判断是否横屏,小视频则只在activity改了预览尺寸(全屏预览)
@@ -632,7 +632,11 @@ public class PlayFragment extends BaseLazyFragment {
             playbackSessionKey = "vod|" + sourceKey + "|" + mVodInfo.id + "|" + mVodInfo.playFlag
                     + "|" + mVodInfo.playIndex;
             com.github.tvbox.osc.player.VideoViewPlayerApi api =
-                    new com.github.tvbox.osc.player.VideoViewPlayerApi(mVideoView, false);
+                    mPlaySession != null ? mPlaySession.playerApi() : null;
+            if (api == null) {
+                playbackSessionKey = null;
+                return;
+            }
             com.github.tvbox.osc.player.api.PlaybackSessions.Session session =
                     com.github.tvbox.osc.player.api.PlaybackSessions.bind(playbackSessionKey, api, true);
             if (session == null) {
