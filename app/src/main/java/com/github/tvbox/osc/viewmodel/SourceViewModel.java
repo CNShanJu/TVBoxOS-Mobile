@@ -748,67 +748,9 @@ public class SourceViewModel extends ViewModel {
      * 与基础 JDK 类型。订阅/详情 XML 来自第三方数据源,若无白名单,恶意 XML 可让 XStream
      * 实例化任意类触发 gadget 链(潜在 RCE)。调用时机:processAnnotations 之后、fromXML 之前。
      */
-    private static void lockDownXStream(XStream xstream, Class<?> rootType) {
-        try {
-            xstream.addPermission(NoTypePermission.NONE);
-            if (rootType != null) {
-                xstream.allowTypeHierarchy(rootType);
-            }
-            xstream.allowTypesByWildcard(new String[]{
-                    "com.github.tvbox.osc.bean.**",   // 业务模型(含嵌套类)
-                    "java.lang.**",
-                    "java.util.**",
-                    "java.time.**",
-                    "java.math.**",
-                    "java.net.**"
-            });
-        } catch (Throwable th) {
-            LOG.e("XStream whitelist apply failed: " + th.getMessage());
-        }
-    }
-
     private AbsSortXml sortXml(MutableLiveData<AbsSortXml> result, String xml) {
         // 解析已抽到 SortParser(纯静态、可单测)
         return com.github.tvbox.osc.spiderapi.SortParser.parseSortXml(xml);
-    }
-
-    private void absXml(AbsXml data, String sourceKey) {
-        if (data.movie != null && data.movie.videoList != null) {
-            for (Movie.Video video : data.movie.videoList) {
-                if (video.urlBean != null && video.urlBean.infoList != null) {
-                    for (Movie.Video.UrlBean.UrlInfo urlInfo : video.urlBean.infoList) {
-                        String[] str = null;
-                        if (urlInfo.urls.contains("#")) {
-                            str = urlInfo.urls.split("#");
-                        } else {
-                            str = new String[]{urlInfo.urls};
-                        }
-                        List<Movie.Video.UrlBean.UrlInfo.InfoBean> infoBeanList = new ArrayList<>();
-//                        for (String s : str) {
-//                            if (s.contains("$")) {
-//                                String[] ss = s.split("\\$");
-//                                if (ss.length >= 2) {
-//                                    infoBeanList.add(new Movie.Video.UrlBean.UrlInfo.InfoBean(ss[0], ss[1]));
-//                                }
-//                                //infoBeanList.add(new Movie.Video.UrlBean.UrlInfo.InfoBean(s.substring(0, s.indexOf("$")), s.substring(s.indexOf("$") + 1)));
-//                            }
-//                        }
-                        for (String s : str) {
-                            String[] ss = s.split("\\$");
-                            if (ss.length > 0) {
-                                if (ss.length >= 2) {
-                                    infoBeanList.add(new Movie.Video.UrlBean.UrlInfo.InfoBean(ss[0], ss[1]));
-                                } else {
-                                    infoBeanList.add(new Movie.Video.UrlBean.UrlInfo.InfoBean((infoBeanList.size() + 1) + "", ss[0]));
-                                }
-                            }
-                        }
-                        urlInfo.beanList = infoBeanList;
-                    }
-                }
-                video.sourceKey = sourceKey;
-            }
-        }
     }
 
     public void checkThunder(AbsXml data, int index) {
@@ -879,93 +821,58 @@ public class SourceViewModel extends ViewModel {
     }
 
 
-    private AbsXml xml(MutableLiveData<AbsXml> result, String xml, String sourceKey) {
-        try {
-            XStream xstream = new XStream(new DomDriver());//创建Xstram对象
-            xstream.autodetectAnnotations(true);
-            xstream.processAnnotations(AbsXml.class);
-            xstream.ignoreUnknownElements();
-            if (xml.contains("<year></year>")) {
-                xml = xml.replace("<year></year>", "<year>0</year>");
-            }
-            if (xml.contains("<state></state>")) {
-                xml = xml.replace("<state></state>", "<state>0</state>");
-            }
-            // XStream 反序列化安全白名单(见 lockDownXStream)
-            lockDownXStream(xstream, AbsXml.class);
-            AbsXml data = (AbsXml) xstream.fromXML(xml);
-            absXml(data, sourceKey);
-            if (searchResult == result) {
-                EventBus.getDefault().post(new RefreshEvent(RefreshEvent.TYPE_SEARCH_RESULT, data));
-            } else if (quickSearchResult == result) {
-                EventBus.getDefault().post(new RefreshEvent(RefreshEvent.TYPE_QUICK_SEARCH_RESULT, data));
-            } else if (result != null) {
-                if (result == detailResult) {
-                    checkThunder(data,0);
-                } else {
-                    result.postValue(data);
-                }
-            }
-            return data;
-        } catch (Exception e) {
-            if (searchResult == result) {
-                EventBus.getDefault().post(new RefreshEvent(RefreshEvent.TYPE_SEARCH_RESULT, null));
-            } else if (quickSearchResult == result) {
-                EventBus.getDefault().post(new RefreshEvent(RefreshEvent.TYPE_QUICK_SEARCH_RESULT, null));
-            } else if (result != null) {
-                result.postValue(null);
-            }
-            return null;
+    /**
+     * typed(强类型)结果预处理:回填 sourceKey 归属,与字符串通道 parse 之后的数据一致;
+     * typed 通道的线路/剧集结构由 :spider 强类型实现直接给出,不再重复拆分。
+     * 发布副作用(postValue/EventBus)仍由调用方各自完成。
+     */
+    private void absXml(com.github.tvbox.osc.bean.AbsXml typed, String sourceKey) {
+        if (typed == null || typed.movie == null || typed.movie.videoList == null) return;
+        for (Movie.Video video : typed.movie.videoList) {
+            video.sourceKey = sourceKey;
         }
+    }
+
+    /** 解析结果发布(原 xml/json 尾部副作用统一;data=null 表示解析失败,按原语义发布 null) */
+    private void publishDetailPayload(MutableLiveData<AbsXml> result, AbsXml data) {
+        if (searchResult == result) {
+            EventBus.getDefault().post(new RefreshEvent(RefreshEvent.TYPE_SEARCH_RESULT, data));
+        } else if (quickSearchResult == result) {
+            EventBus.getDefault().post(new RefreshEvent(RefreshEvent.TYPE_QUICK_SEARCH_RESULT, data));
+        } else if (result != null) {
+            if (result == detailResult) {
+                if (data != null) {
+                    checkThunder(data, 0);
+                } else {
+                    result.postValue(null);
+                }
+            } else {
+                result.postValue(data);
+            }
+        }
+    }
+
+    private AbsXml xml(MutableLiveData<AbsXml> result, String xml, String sourceKey) {
+        AbsXml data;
+        try {
+            data = com.github.tvbox.osc.spiderapi.AbsXmlParser.parseXml(xml, sourceKey);
+        } catch (Exception e) {
+            data = null;
+        }
+        publishDetailPayload(result, data);
+        return data;
     }
 
     private AbsXml json(MutableLiveData<AbsXml> result, String json, String sourceKey) {
+        AbsXml data;
         try {
-            // 测试数据
-            /*json = "{\n" +
-                    "\t\"list\": [{\n" +
-                    "\t\t\"vod_id\": \"137133\",\n" +
-                    "\t\t\"vod_name\": \"磁力测试\",\n" +
-                    "\t\t\"vod_pic\": \"https:/img9.doubanio.com/view/photo/s_ratio_poster/public/p2656327176.webp\",\n" +
-                    "\t\t\"type_name\": \"剧情 / 爱情 / 古装\",\n" +
-                    "\t\t\"vod_year\": \"2022\",\n" +
-                    "\t\t\"vod_area\": \"中国大陆\",\n" +
-                    "\t\t\"vod_remarks\": \"40集全\",\n" +
-                    "\t\t\"vod_actor\": \"刘亦菲\",\n" +
-                    "\t\t\"vod_director\": \"杨阳\",\n" +
-                    "\t\t\"vod_content\": \"　　在钱塘开茶铺的赵盼儿（刘亦菲 饰）惊闻未婚夫、新科探花欧阳旭（徐海乔 饰）要另娶当朝高官之女，不甘命运的她誓要上京讨个公道。在途中她遇到了出自权门但生性正直的皇城司指挥顾千帆（陈晓 饰），并卷入江南一场大案，两人不打不相识从而结缘。赵盼儿凭借智慧解救了被骗婚而惨遭虐待的“江南第一琵琶高手”宋引章（林允 饰）与被苛刻家人逼得离家出走的豪爽厨娘孙三娘（柳岩 饰），三位姐妹从此结伴同行，终抵汴京，见识世间繁华。为了不被另攀高枝的欧阳旭从东京赶走，赵盼儿与宋引章、孙三娘一起历经艰辛，将小小茶坊一步步发展为汴京最大的酒楼，揭露了负心人的真面目，收获了各自的真挚感情和人生感悟，也为无数平凡女子推开了一扇平等救赎之门。\",\n" +
-                    "\t\t\"vod_play_from\": \"磁力测试\",\n" +
-                    "\t\t\"vod_play_url\": \"0$magnet:?xt=urn:btih:9e9358b946c427962533472efdd2efd9e9e38c67&dn=%e9%98%b3%e5%85%89%e7%94%b5%e5%bd%b1www.ygdy8.com.%e7%83%ad%e8%a1%80.2022.BD.1080P.%e9%9f%a9%e8%af%ad%e4%b8%ad%e8%8b%b1%e5%8f%8c%e5%ad%97.mkv&tr=udp%3a%2f%2ftracker.opentrackr.org%3a1337%2fannounce&tr=udp%3a%2f%2fexodus.desync.com%3a6969%2fannounce\"\n" +
-                    "\t}]\n" +
-                    "}";*/
-            AbsJson absJson = new Gson().fromJson(json, new TypeToken<AbsJson>() {
-            }.getType());
-            AbsXml data = absJson.toAbsXml();
-            absXml(data, sourceKey);
-            if (searchResult == result) {
-                EventBus.getDefault().post(new RefreshEvent(RefreshEvent.TYPE_SEARCH_RESULT, data));
-            } else if (quickSearchResult == result) {
-                EventBus.getDefault().post(new RefreshEvent(RefreshEvent.TYPE_QUICK_SEARCH_RESULT, data));
-            } else if (result != null) {
-                if (result == detailResult) {
-                    checkThunder(data,0);
-                } else {
-                    result.postValue(data);
-                }
-            }
-            return data;
+            data = com.github.tvbox.osc.spiderapi.AbsXmlParser.parseJson(json, sourceKey);
         } catch (Exception e) {
-            if (searchResult == result) {
-                EventBus.getDefault().post(new RefreshEvent(RefreshEvent.TYPE_SEARCH_RESULT, null));
-            } else if (quickSearchResult == result) {
-                EventBus.getDefault().post(new RefreshEvent(RefreshEvent.TYPE_QUICK_SEARCH_RESULT, null));
-            } else if (result != null) {
-                result.postValue(null);
-            }
-            return null;
+            data = null;
         }
+        publishDetailPayload(result, data);
+        return data;
     }
-
     @Override
     protected void onCleared() {
         super.onCleared();
