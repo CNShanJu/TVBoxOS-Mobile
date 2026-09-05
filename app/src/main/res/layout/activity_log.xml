@@ -32,7 +32,7 @@
         android:textColor="@color/text_sub_foreground"
         android:textSize="12sp" />
 
-    <!-- Tab 切换:业务日志(结构化可筛选) / 全部日志(logcat 原始流) -->
+    <!-- Tab 切换:业务日志(结构化可筛选) / 错误日志(logcat 本应用 E 级错误流) -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -59,12 +59,12 @@
             android:background="@drawable/selector_filter_chip"
             android:paddingHorizontal="16dp"
             android:paddingVertical="6dp"
-            android:text="全部日志"
+            android:text="错误日志"
             android:textColor="@color/text_sub_foreground"
             android:textSize="13sp" />
     </LinearLayout>
 
-    <!-- 业务日志模块筛选:大类型 + 仅错误(横向可滚动,窄屏不换行挤压) -->
+    <!-- 业务日志模块筛选:大类型 + 仅失败(fail/异常打点;横向可滚动,窄屏不换行挤压) -->
     <HorizontalScrollView
         android:id="@+id/ll_filter"
         android:layout_width="match_parent"
@@ -142,7 +142,7 @@
                 android:background="@drawable/selector_filter_chip"
                 android:paddingHorizontal="14dp"
                 android:paddingVertical="6dp"
-                android:text="仅错误"
+                android:text="仅失败"
                 android:textColor="@color/text_sub_foreground"
                 android:textSize="12sp" />
         </LinearLayout>

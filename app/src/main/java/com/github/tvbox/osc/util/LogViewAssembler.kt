@@ -8,8 +8,8 @@ import java.io.File
  * 日志页数据组装（helper）：把 LogActivity 里的查询/格式化/文件读取/导出/清空
  * 下沉到这里，页面只负责交互与展示。
  * <ul>
- *   <li>Tab1 业务日志：经 LogStore(Room) 结构化查询 + formatEntry 组装文本；</li>
- *   <li>Tab2 全部日志：经 LogStore 门面读取 logcat 原始流文件（过渡期含旧 AppLog 同目录文件），
+ *   <li>Tab1 业务日志：经 LogStore(Room) 结构化查询 + formatEntry 组装文本（分类 + 仅失败筛选）；</li>
+ *   <li>Tab2 错误日志：经 LogStore 门面读取 logcat 本应用 ERROR 级文件（过渡期含旧 AppLog 同目录文件），
  *       日期标签、尾部读取、清空、导出。</li>
  * </ul>
  * 阻塞方法（bizText/rawText/export*）需在后台线程调用（Room 禁止主线程查询）。
@@ -71,7 +71,7 @@ object LogViewAssembler {
         return store.export(filter)
     }
 
-    /** Tab2 导出：导出全部原始日志文件 txt（cacheDir）。无文件返回 null。 */
+    /** Tab2 导出：导出错误日志文件 txt（cacheDir）。无文件返回 null。 */
     fun exportRaw(store: LogStore): File? = store.exportRawLogFiles()
 
     fun clearBiz(store: LogStore) = store.clearAll()

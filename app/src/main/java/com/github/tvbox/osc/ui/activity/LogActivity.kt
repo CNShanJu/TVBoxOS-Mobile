@@ -16,8 +16,8 @@ import java.io.File
 /**
  * 运行日志页（双 Tab，数据组装下沉到 [LogViewAssembler]，页面只做交互与展示）
  * <ul>
- *   <li>Tab1 业务日志：LogStore(Room) 结构化日志，模块筛选（全部/下载/播放/订阅/系统/仅错误）；</li>
- *   <li>Tab2 全部日志：logcat 原始流（package:mine 按天文件），日期选择、复制、清空、导出——
+ *   <li>Tab1 业务日志：LogStore(Room) 结构化日志，模块筛选（全部/下载/播放/订阅/系统/仅失败）；</li>
+ *   <li>Tab2 错误日志：本应用 logcat ERROR 级（按天文件），日期选择、复制、清空、导出——
  *       文件读取全部走 LogStore 门面，不再直接依赖 common.AppLog。</li>
  * </ul>
  */
@@ -25,11 +25,11 @@ class LogActivity : BaseVbActivity<ActivityLogBinding>() {
 
     private val dayFiles = ArrayList<File>()
     private var selectedFile: File? = null
-    /** 0=业务日志 1=全部日志 */
+    /** 0=业务日志 1=错误日志 */
     private var currentTab = 0
     /** 业务日志筛选：大类型（Category.name()），null=全部 */
     private var filterCategory: String? = null
-    /** 业务日志筛选：仅错误 */
+    /** 业务日志筛选：仅失败（fail/异常打点） */
     private var filterErrorOnly = false
 
     override fun init() {
@@ -132,7 +132,7 @@ class LogActivity : BaseVbActivity<ActivityLogBinding>() {
         }.start()
     }
 
-    /** Tab2 全部日志：文件列表/读尾也走 LogStore 门面，后台线程读取,避免大文件卡主线程 */
+    /** Tab2 错误日志：文件列表/读尾也走 LogStore 门面，后台线程读取,避免大文件卡主线程 */
     private fun loadAllLogs() {
         dayFiles.clear()
         dayFiles.addAll(LogViewAssembler.rawFiles(LogStore.get()))
@@ -196,7 +196,7 @@ class LogActivity : BaseVbActivity<ActivityLogBinding>() {
 
     private fun confirmClear() {
         com.github.tvbox.osc.ui.dialog.ConfirmDialog.show(this, "清空日志",
-            "确定清空${if (currentTab == 0) "业务日志" else "全部日志"}吗？", "清空", {
+            "确定清空${if (currentTab == 0) "业务日志" else "错误日志"}吗？", "清空", {
                 if (currentTab == 0) {
                     LogViewAssembler.clearBiz(LogStore.get())
                     mBinding.tvContent.text = "暂无日志"

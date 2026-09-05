@@ -309,11 +309,11 @@ public final class LogStore {
     }
 
     // ------------------------------------------------------------------
-    // 原始日志文件（Tab2 全部日志: logcat 流文件; 过渡期含旧 AppLog 同目录文件）
+    // 错误日志文件（Tab2 错误日志: logcat 本应用 E 级错误流; 只含 logcat-* 文件）
     // 门面委托 LogcatCapture, 页面只依赖本门面, 不再直接碰 common.AppLog
     // ------------------------------------------------------------------
 
-    /** 列出日志文件目录全部按天/分段文件（新在前）；未 init/降级返回空表 */
+    /** 列出 logcat 错误日志按天/分段文件（新在前）；未 init/降级返回空表 */
     public List<File> listRawLogFiles() {
         return LogcatCapture.listLogFiles();
     }

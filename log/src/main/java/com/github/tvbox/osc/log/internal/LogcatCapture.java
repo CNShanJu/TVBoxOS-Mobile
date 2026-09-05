@@ -23,15 +23,15 @@ import java.util.List;
 import java.util.Locale;
 
 /**
- * logcat 原始流捕获（internal：仅供 log 模块内部使用，勿被外部模块引用，只含本应用日志）：
+ * logcat 错误流捕获（internal：仅供 log 模块内部使用，勿被外部模块引用，只含本应用日志）：
  * `logcat --uid=<本应用uid>`(老系统退回 --pid=<本进程>) 只抓当前应用，
- * 绝不抓其他应用/系统日志；默认只保留 INFO 及以上级别(避免本应用自身的 V/D 刷屏全量落盘)，
- * 日志级别调为 DEBUG 时才会保留 V/D 全量。
+ * 绝不抓其他应用/系统日志；默认只保留 ERROR(本应用 E 级,即"错误日志")，
+ * 日志级别调为 DEBUG 时才全量保留 V/D/I/W/E 便于深挖(显式逃生口)。
  * <p>
  * 按天写入 filesDir/app_logs/logcat-yyyy-MM-dd.log（与旧 AppLog 共用目录），
  * 单文件超 8MB 滚动分段、目录总大小上限 48MB 自动清理、保留天数跟随 {@link LogConfig#getRetentionDays()}。
  * <p>
- * 与业务日志（Room）互补：业务日志结构化可筛选，这里保留原始 logcat 流（"全部日志"）。
+ * 与业务日志（Room）互补：业务日志结构化可筛选("业务日志"Tab)，这里保留本应用错误流("错误日志"Tab)。
  * 开关由 {@link LogStore#setEnabled(boolean)} 联动（默认关）。
  * Context 由 {@link LogStore#init(Context)} 注入（独立模块，不依赖 app 类）。
  */
@@ -110,8 +110,9 @@ public final class LogcatCapture {
      * 组装 logcat 命令:
      * ① --uid=本应用uid(Android 8+);老系统不支持时退回 --pid=本进程pid——两者都只会拿到本应用日志,
      *    绝不用无过滤的全量 logcat(那会把整机日志写进应用目录导致存储激增)。
-     * ② 记录级别(默认 INFO → 只落 WARN/ERROR):框架/库的大量 INFO 刷屏(AssetManager/Choreographer/
-     *    MediaCodec/Adreno 等)不再进文件; 只有把日志级别设为 DEBUG(log_level=0)时才全量保留 V/D 便于深挖。
+     * ② 记录级别:默认只保留 ERROR(本应用 E 级)——"错误日志"Tab 定位就是排障看错误;
+     *    框架/库的大量 INFO/WARN 刷屏(AssetManager/Choreographer/MediaCodec/Adreno 等)不进文件;
+     *    只有把日志级别调为 DEBUG(log_level=0)时才全量保留 V/D/I/W/E 便于深挖(显式逃生口)。
      *    业务上有意义的事件(搜索/播放/下载等)走 Room 结构化日志, 不依赖这里的原始流。
      */
     private static String[] buildCommand(boolean useUid) {
@@ -129,10 +130,8 @@ public final class LogcatCapture {
         int level = LogConfig.getLevel();
         if (level == LogStore.LEVEL_DEBUG) {
             // DEBUG: 全量(V/D/I/W/E), 深挖问题用
-        } else if (level >= LogStore.LEVEL_ERROR) {
-            cmd.add("*:E");
         } else {
-            cmd.add("*:W"); // 默认/INFO: 只记警告与错误, 丢弃无意义的 INFO 刷屏
+            cmd.add("*:E"); // 默认:只记本应用 ERROR(错误日志)
         }
         return cmd.toArray(new String[0]);
     }
@@ -218,13 +217,12 @@ public final class LogcatCapture {
     }
 
     // ------------------------------------------------------------------
-    // 读侧（供 LogStore 门面暴露给日志页：全部日志 Tab 的文件级操作）
-    // 过渡期:app_logs 目录里 logcat-*.log 与旧 AppLog 的 app-*.log 并存,
-    // 列目录/清空/导出统一覆盖全部 *.log(与旧 UI 行为一致,避免旧文件只写不清);
-    // 旧 AppLog 写通道退役后收窄为 logcat-* 前缀。
+    // 读侧（供 LogStore 门面暴露给日志页：错误日志 Tab 的文件级操作）
+    // 只列/读/清/导本模块的 logcat-*.log(本应用 E 级错误流);
+    // 旧 AppLog 的 app-*.log 是已退役写通道的残留,不混入"错误日志"展示。
     // ------------------------------------------------------------------
 
-    /** 列出 app_logs 目录全部日志文件（名称倒序=新的在前）；未注入 context/无文件返回空表 */
+    /** 列出本模块 logcat 错误日志文件（名称倒序=新的在前）；未注入 context/无文件返回空表 */
     public static List<File> listLogFiles() {
         List<File> files = new ArrayList<>();
         try {
@@ -233,7 +231,7 @@ public final class LogcatCapture {
             File[] fs = dir.listFiles();
             if (fs == null) return files;
             for (File f : fs) {
-                if (f.isFile() && f.getName().endsWith(SUFFIX)) {
+                if (f.isFile() && f.getName().startsWith(PREFIX) && f.getName().endsWith(SUFFIX)) {
                     files.add(f);
                 }
             }
