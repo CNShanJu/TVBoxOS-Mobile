@@ -84,9 +84,12 @@ Exo→Media3、EventBus→Flow/接口、Hawk→DataStore、Java→Kotlin 渐进�
 
 ## 8. 边界规则抽查结果（§六逐条）
 - ✅ app 无 getCSP / UI 无裸建 OkHttpClient / core-model 无 android 依赖 / download 无 :spider 依赖。
-- ⚠️ UI 直读 Hawk、`PlayerTrackHelper` instanceof 内核、app 仍直用内核类型(MyVideoView/IKJ/Exo,
-  集中在播放链路:PlayFragment/PlayerHelper/PlayService/LocalPlayActivity + App 组合根装配)——属播放器
-  全驱动重构,需真机回归后再收口。
+- ⚠️ 播放器收口第一步:新增 `player/KernelTrackSupport` 能力接口,IJK/Exo 各自实现,
+  `PlayerTrackHelper` 不再 instanceof 具体内核(app 内 UI 已无内核强转);轨道切换/内置字幕回调/
+  进度恢复语义收敛到接口。
+  剩余(需真机回归):PlayFragment 由 mVideoView 直控切到 PlayerApi/PlaybackSessions 全驱动、
+  SubtitleCoordinator/PlayViewModel 抽取、app 内 MyVideoView/IKJ/Exo 引用清零、PlayerHelper 工厂
+  收口 AppCompositionRoot。
 - ⚠️ common/event 收口：已删 HistoryStateEvent/TopStateEvent(零引用孤儿)、DownloadEvent/RefreshEvent/ServerEvent
   各自归位业务/app 模块；common 仅剩 LogEvent(common 内 LOG.java 自用,EventBus 空投遗留——无人订阅,待日志页改造后清理)。
 - ⚠️ DownloadFragment 已完成 Facade 订阅去 EventBus;app 其余 EventBus 点(搜索/快速搜索/历史/直播等
