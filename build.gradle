@@ -49,7 +49,7 @@ def forbiddenModuleDeps = [
 ]
 def moduleDir = [
         ':core-model'  : 'core-model', ':spider-api'   : 'spider-api', ':core-storage': 'core-storage',
-        ':core-network': 'common',    ':spider'       : 'spider',      ':download'    : 'download',
+        ':core-network': 'core-network', ':spider'     : 'spider',      ':download'    : 'download',
         ':player'      : 'player',    ':player-api'   : 'player-api',  ':state'       : 'state',
         ':log'         : 'log',       ':ui-common'    : 'ui-common',   ':quickjs'     : 'quickjs',
         ':crash'       : 'crash',
@@ -73,9 +73,9 @@ tasks.register('checkModuleDependencies') {
             if (!file.exists()) return
             def text = file.getText('UTF-8')
             forbidden.each { dep ->
-                // 仅匹配项目依赖行(忽略注释);common 由 settings 映射为 :core-network
+                // 仅匹配项目依赖行(忽略注释)
                 def linePattern = ~/(?m)^[^#\/]*project\((['"])${dep.replace(':','\\:')}\1\)/
-                if (linePattern.matcher(text).find() || (dep == ':core-network' && text.contains("project(':common')"))) {
+                if (linePattern.matcher(text).find()) {
                     violations << "${mod} 禁止依赖 ${dep}"
                 }
             }

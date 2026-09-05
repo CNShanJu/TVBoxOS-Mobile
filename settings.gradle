@@ -22,7 +22,6 @@ include ':log'
 include ':state'
 include ':player-api'
 include ':core-network'
-project(':core-network').projectDir = file('common')
 include ':ui-common'
 include ':spider'
 include ':spider-api'

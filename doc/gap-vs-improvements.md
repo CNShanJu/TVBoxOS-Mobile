@@ -21,7 +21,7 @@
 | 模块 | 状态 | 残留 |
 |---|---|---|
 | `:core-model` | ✅ | `ParseBean` 仍在 `:spider`（本轮迁移）+ 含行为(getUrl proxy 替换 / mixUrl Base64) → 迁移时纯化 |
-| `:core-network`(common) | ⚠️ | 更名完成但内部仍是"公共垃圾桶"：`util/{HawkConfig,SystemConfig,HttpClient,OkGoHelper,AES,MD5,AdBlocker,AppLog,LOG,urlhttp/*}`、`event/*`(EventBus 事件)。改进.txt §2.8 期望逐步拆并 |
+| `:core-network` | ⚠️ | 目录/模块名已对齐(:core-network,原 common);内部仍是"公共垃圾桶"：`util/{HawkConfig,SystemConfig,HttpClient,OkGoHelper,AES,MD5,AdBlocker,AppLog,LOG,urlhttp/*}`、`event/*`(EventBus 事件)。改进.txt §2.8 期望逐步拆并 |
 | `:core-storage` | ⚠️ | data/cache/Repository 已出；DAO 仍外泄(app `RoomDataManger` 3 处)；Hawk 类型安全封装未做 |
 | `:spider-api` / `:spider` | ✅ 试点 | 字符串通道(SpiderContentApi)仍在(过渡兼容)；`ApiConfig` 仍暴露具体 Spider(内部实现需留) |
 | `:download` | ⚠️ | Facade 已接入；`DownloadManager/Scheduler/Executor/Archive/Core/Store/Config` 仍 public(改进.txt §六要求 internal 化) |
@@ -78,7 +78,7 @@ Exo→Media3、EventBus→Flow/接口、Hawk→DataStore、Java→Kotlin 渐进�
    app 对 `util.Download*` import 清零，`checkModuleDependencies` 新增源码级门禁防回归。
 3. ✅ app 内 `RoomDataManger` 直读已清零：UI 改走 `HistoryRepositories.history().get(...)`
    （接口新增 get(sourceKey,vodId)，Fake/单测同步）。
-4. 🔜 `common/util/HawkConfig/SystemConfig/HttpClient` 分模块收口（网络→core-network，配置→core-storage/新 config）。
+4. 🔜 `:core-network`(原 common)`util/{HawkConfig,SystemConfig,HttpClient}` 分模块收口（网络留下，配置→core-storage/新 config）。
 5. ⚠️ UI 摘 Hawk：直播偏好已收口 `LiveConfig`(键沿用 HawkConfig);系统级偏好已收口 `SystemConfig`
    (showPreview/fastSearchMode/debugOpen/ignoreSslError/lanServerEnable → DetailActivity/GridFragment/
    PlayFragment/SettingActivity/WebSniffResolver/ControlManager/OkGoHelper/FileUtils 去 Hawk 直读);
