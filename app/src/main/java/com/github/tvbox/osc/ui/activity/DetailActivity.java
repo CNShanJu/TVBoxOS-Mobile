@@ -76,7 +76,7 @@ import com.github.catvod.crawler.PlayUrlResolver;
 import com.github.tvbox.osc.util.ScreenShotListenManager;
 import com.github.tvbox.osc.util.SearchHelper;
 import com.github.tvbox.osc.util.SubtitleHelper;
-import com.github.tvbox.osc.util.SystemConfig;
+import com.github.tvbox.osc.config.SystemConfig;
 import com.github.tvbox.osc.util.Utils;
 import com.github.tvbox.osc.viewmodel.SourceViewModel;
 import com.google.gson.Gson;

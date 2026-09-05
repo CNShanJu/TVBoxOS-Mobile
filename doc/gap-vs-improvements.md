@@ -22,7 +22,7 @@
 |---|---|---|
 | `:core-model` | ✅ | `ParseBean` 仍在 `:spider`（本轮迁移）+ 含行为(getUrl proxy 替换 / mixUrl Base64) → 迁移时纯化 |
 | `:core-network` | ⚠️ | 目录/模块名已对齐(:core-network,原 common);内部仍是"公共垃圾桶"：`util/{HawkConfig,SystemConfig,HttpClient,OkGoHelper,AES,MD5,AdBlocker,AppLog,LOG,urlhttp/*}`、`event/*`(EventBus 事件)。改进.txt §2.8 期望逐步拆并 |
-| `:core-storage` | ⚠️ | data/cache/Repository 已出；app 无 DAO 直读(RoomDataManger 死 import 已清);Hawk 类型安全封装未做 |
+| `:core-storage` | ✅ | data/cache/Repository + **配置归位**：`SystemConfig/HawkConfig` 迁入 `com.github.tvbox.osc.config`，新增 `KeyValueStore`(Hawk 类型安全封装,App 侧业务 Config 均走它);app 无 DAO 直读、UI 经门面读写配置 |
 | `:spider-api` / `:spider` | ✅ 试点 | 字符串通道(SpiderContentApi)仍在(过渡兼容)；`ApiConfig` 仍暴露具体 Spider(内部实现需留) |
 | `:download` | ✅ | 内部实现已收 `...download.internal` 包(Manager/Scheduler/Executor/Core/Store/Config/Policy/Archive/Notifier/Log/task 全族),公开包仅 Facade+模型/接口;app 零内部实现引用(门禁 java+kt 全查) |
 | `:player-api` / `:player` | ⚠️ | 契约 + 原型已接；app 仍直用 `MyVideoView`/IJK/Exo、`PlayerTrackHelper` 按内核 instanceof 分发 |
@@ -135,6 +135,11 @@ Exo→Media3、EventBus→Flow/接口、Hawk→DataStore、Java→Kotlin 渐进�
   (App/DetailActivity/DownloadFragment 归档调用、SettingActivity 下载设置原直读 util.DownloadConfig 改 Facade);
   checkModuleDependencies 源码门禁扩展覆盖 .kt 与 download.internal 包,防回归。
 - ✅ app 内 3 处 `RoomDataManger` 死 import 已删(CollectActivity/HomeFragment/HistoryActivity,无实际调用)。
+- ✅ 配置归位 core-storage(改进.txt §2.3):`SystemConfig/HawkConfig` 由 :core-network(原 common)迁入
+  core-storage `com.github.tvbox.osc.config` 包;新增 `KeyValueStore`(Hawk 类型安全封装:getString/getBoolean/
+  getInt/泛型 get/put/delete/contains),SystemConfig 内部改走 KeyValueStore;App 侧 LiveConfig/SubscriptionConfig/
+  HomeHotCache 亦改走 KeyValueStore(仅剩 App 启动装配直触 Hawk)。依赖补齐:core-storage→:log/:core-model/hawk,
+  core-network→core-storage,spider→core-storage(无环、通过 checkModuleDependencies)。
 - ⚠️ common/event 收口:已删 HistoryStateEvent/TopStateEvent(零引用孤儿)、DownloadEvent/RefreshEvent/ServerEvent
   各自归位业务/app 模块；common 仅剩 LogEvent(common 内 LOG.java 自用,EventBus 空投遗留——无人订阅,待日志页改造后清理)。
 - ⚠️ DownloadFragment 已完成 Facade 订阅去 EventBus;app 其余 EventBus 点(搜索/快速搜索/历史/直播等

@@ -17,7 +17,7 @@ import com.github.tvbox.osc.state.SystemStateMonitor;
 import com.github.tvbox.osc.ui.activity.MainActivity;
 import com.github.tvbox.osc.util.AppLog;
 import com.github.tvbox.osc.util.FileUtils;
-import com.github.tvbox.osc.util.HawkConfig;
+import com.github.tvbox.osc.config.HawkConfig;
 import com.github.tvbox.osc.util.LOG;
 import com.github.tvbox.osc.util.OkGoHelper;
 import com.github.tvbox.osc.util.PlayerHelper;

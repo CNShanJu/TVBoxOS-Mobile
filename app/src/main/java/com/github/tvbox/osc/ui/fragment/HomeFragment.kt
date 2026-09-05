@@ -40,7 +40,7 @@ import com.github.tvbox.osc.ui.dialog.SelectDialog
 import com.github.tvbox.osc.ui.dialog.TipDialog
 import com.github.tvbox.osc.util.DefaultConfig
 import com.github.tvbox.osc.util.SubscriptionConfig
-import com.github.tvbox.osc.util.SystemConfig
+import com.github.tvbox.osc.config.SystemConfig
 import com.github.tvbox.osc.viewmodel.SourceViewModel
 import com.lxj.xpopup.XPopup
 import com.owen.tvrecyclerview.widget.TvRecyclerView
@@ -415,7 +415,7 @@ class HomeFragment : BaseVbFragment<FragmentHomeBinding>() {
                     100,
                     { key -> SourceConfigProviders.get().getSource(key) != null },
                     com.github.tvbox.osc.util.HistoryHelper.getHisNum(
-                        com.github.tvbox.osc.util.SystemConfig.getHistoryNum()
+                        com.github.tvbox.osc.config.SystemConfig.getHistoryNum()
                     )
                 )
                 val vodInfoList: MutableList<VodInfo?> = ArrayList()

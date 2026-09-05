@@ -1,4 +1,6 @@
 package com.github.tvbox.osc.util;
+import com.github.tvbox.osc.config.SystemConfig;
+import com.github.tvbox.osc.config.HawkConfig;
 
 import android.content.Context;
 import android.view.View;

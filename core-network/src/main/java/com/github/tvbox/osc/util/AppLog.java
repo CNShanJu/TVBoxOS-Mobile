@@ -1,6 +1,7 @@
 package com.github.tvbox.osc.util;
 
 import android.content.Context;
+import com.github.tvbox.osc.config.HawkConfig;
 
 import com.orhanobut.hawk.Hawk;
 

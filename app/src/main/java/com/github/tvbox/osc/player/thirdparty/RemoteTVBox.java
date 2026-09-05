@@ -6,7 +6,7 @@ import android.text.TextUtils;
 import com.github.tvbox.osc.base.App;
 import com.github.tvbox.osc.bean.IpScanningVo;
 import com.github.tvbox.osc.server.RemoteServer;
-import com.github.tvbox.osc.util.HawkConfig;
+import com.github.tvbox.osc.config.HawkConfig;
 import com.github.tvbox.osc.util.IpScanning;
 import com.orhanobut.hawk.Hawk;
 

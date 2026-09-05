@@ -1,4 +1,5 @@
 package com.github.tvbox.osc.util;
+import com.github.tvbox.osc.config.HawkConfig;
 
 import static okhttp3.ConnectionSpec.CLEARTEXT;
 import static okhttp3.ConnectionSpec.COMPATIBLE_TLS;
@@ -8,6 +9,7 @@ import static okhttp3.ConnectionSpec.RESTRICTED_TLS;
 import android.content.Context;
 
 import com.github.catvod.net.SSLCompat;
+import com.github.tvbox.osc.config.SystemConfig;
 import com.github.tvbox.osc.util.urlhttp.BrotliInterceptor;
 
 import java.io.File;

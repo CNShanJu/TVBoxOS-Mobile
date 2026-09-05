@@ -87,7 +87,7 @@ class HistoryActivity : BaseVbActivity<ActivityHistoryBinding>() {
                 100,
                 { key -> com.github.tvbox.osc.spiderapi.SourceConfigProviders.get().getSource(key) != null },
                 com.github.tvbox.osc.util.HistoryHelper.getHisNum(
-                    com.github.tvbox.osc.util.SystemConfig.getHistoryNum()
+                    com.github.tvbox.osc.config.SystemConfig.getHistoryNum()
                 )
             )
             val vodInfoList: MutableList<VodInfo> = ArrayList()

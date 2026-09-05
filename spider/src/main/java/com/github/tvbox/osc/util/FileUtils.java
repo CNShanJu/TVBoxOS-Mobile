@@ -8,6 +8,7 @@ import android.util.Base64;
 import android.content.Context;
 
 import com.github.tvbox.osc.util.StringUtils;
+import com.github.tvbox.osc.config.SystemConfig;
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 

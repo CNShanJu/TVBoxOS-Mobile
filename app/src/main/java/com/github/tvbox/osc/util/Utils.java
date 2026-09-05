@@ -1,4 +1,5 @@
 package com.github.tvbox.osc.util;
+import com.github.tvbox.osc.config.SystemConfig;
 
 import android.content.res.Configuration;
 import android.database.Cursor;

@@ -1,6 +1,7 @@
 package com.github.tvbox.osc.util;
+import com.github.tvbox.osc.config.HawkConfig;
 
-import com.orhanobut.hawk.Hawk;
+import com.github.tvbox.osc.config.KeyValueStore;
 
 import org.json.JSONObject;
 
@@ -25,13 +26,13 @@ public final class LiveConfig {
 
     /** 超时换源档位索引(0-5)，默认 1 */
     public static int connectTimeout() {
-        return Hawk.get(HawkConfig.LIVE_CONNECT_TIMEOUT, 1);
+        return KeyValueStore.get(HawkConfig.LIVE_CONNECT_TIMEOUT, 1);
     }
 
     public static void setConnectTimeout(int index) {
         int v = Math.max(0, Math.min(5, index));
         if (v == connectTimeout()) return;
-        Hawk.put(HawkConfig.LIVE_CONNECT_TIMEOUT, v);
+        KeyValueStore.put(HawkConfig.LIVE_CONNECT_TIMEOUT, v);
         com.github.tvbox.osc.log.LogStore.log(com.github.tvbox.osc.log.Category.SYSTEM, "直播设置: 超时换源=" + v);
     }
 
@@ -39,45 +40,45 @@ public final class LiveConfig {
 
     /** 显示时间(默认关) */
     public static boolean showTime() {
-        return Hawk.get(HawkConfig.LIVE_SHOW_TIME, false);
+        return KeyValueStore.get(HawkConfig.LIVE_SHOW_TIME, false);
     }
 
     public static void setShowTime(boolean on) {
         if (showTime() == on) return;
-        Hawk.put(HawkConfig.LIVE_SHOW_TIME, on);
+        KeyValueStore.put(HawkConfig.LIVE_SHOW_TIME, on);
         com.github.tvbox.osc.log.LogStore.log(com.github.tvbox.osc.log.Category.SYSTEM, "直播设置: 显示时间=" + on);
     }
 
     /** 显示网速(默认关) */
     public static boolean showNetSpeed() {
-        return Hawk.get(HawkConfig.LIVE_SHOW_NET_SPEED, false);
+        return KeyValueStore.get(HawkConfig.LIVE_SHOW_NET_SPEED, false);
     }
 
     public static void setShowNetSpeed(boolean on) {
         if (showNetSpeed() == on) return;
-        Hawk.put(HawkConfig.LIVE_SHOW_NET_SPEED, on);
+        KeyValueStore.put(HawkConfig.LIVE_SHOW_NET_SPEED, on);
         com.github.tvbox.osc.log.LogStore.log(com.github.tvbox.osc.log.Category.SYSTEM, "直播设置: 显示网速=" + on);
     }
 
     /** 换台方向反转(默认关:上=上一台) */
     public static boolean channelReverse() {
-        return Hawk.get(HawkConfig.LIVE_CHANNEL_REVERSE, false);
+        return KeyValueStore.get(HawkConfig.LIVE_CHANNEL_REVERSE, false);
     }
 
     public static void setChannelReverse(boolean on) {
         if (channelReverse() == on) return;
-        Hawk.put(HawkConfig.LIVE_CHANNEL_REVERSE, on);
+        KeyValueStore.put(HawkConfig.LIVE_CHANNEL_REVERSE, on);
         com.github.tvbox.osc.log.LogStore.log(com.github.tvbox.osc.log.Category.SYSTEM, "直播设置: 换台反转=" + on);
     }
 
     /** 上下键换台跨分组(默认关) */
     public static boolean crossGroup() {
-        return Hawk.get(HawkConfig.LIVE_CROSS_GROUP, false);
+        return KeyValueStore.get(HawkConfig.LIVE_CROSS_GROUP, false);
     }
 
     public static void setCrossGroup(boolean on) {
         if (crossGroup() == on) return;
-        Hawk.put(HawkConfig.LIVE_CROSS_GROUP, on);
+        KeyValueStore.put(HawkConfig.LIVE_CROSS_GROUP, on);
         com.github.tvbox.osc.log.LogStore.log(com.github.tvbox.osc.log.Category.SYSTEM, "直播设置: 跨选分组=" + on);
     }
 
@@ -85,48 +86,48 @@ public final class LiveConfig {
 
     /** 最后播放频道名(默认空串) */
     public static String lastChannel() {
-        return Hawk.get(HawkConfig.LIVE_CHANNEL, "");
+        return KeyValueStore.get(HawkConfig.LIVE_CHANNEL, "");
     }
 
     public static void setLastChannel(String name) {
         if (name == null) return;
-        Hawk.put(HawkConfig.LIVE_CHANNEL, name);
+        KeyValueStore.put(HawkConfig.LIVE_CHANNEL, name);
     }
 
     /** 历史直播源列表(默认空;最多 20 条在调用方维护) */
     public static ArrayList<String> liveHistory() {
-        ArrayList<String> list = Hawk.get(HawkConfig.LIVE_HISTORY, new ArrayList<String>());
+        ArrayList<String> list = KeyValueStore.get(HawkConfig.LIVE_HISTORY, new ArrayList<String>());
         return list == null ? new ArrayList<String>() : list;
     }
 
     /** 整体写回历史源列表 */
     public static void setLiveHistory(ArrayList<String> history) {
-        Hawk.put(HawkConfig.LIVE_HISTORY, history == null ? new ArrayList<String>() : history);
+        KeyValueStore.put(HawkConfig.LIVE_HISTORY, history == null ? new ArrayList<String>() : history);
     }
 
     // ── EPG / 频道播放配置 ──
 
     /** EPG 地址(由 :spider ApiConfig 加载订阅时写入,此处只读;未配置返回空串,调用方给默认值) */
     public static String epgUrl() {
-        return Hawk.get(HawkConfig.EPG_URL, "");
+        return KeyValueStore.get(HawkConfig.EPG_URL, "");
     }
 
     /** 某频道的播放配置覆写(未覆写返回 null,走默认配置) */
     public static JSONObject channelPlayerConfig(String channelName) {
         if (channelName == null || channelName.isEmpty()) return null;
-        Object v = Hawk.get(channelName, null);
+        Object v = KeyValueStore.get(channelName, null);
         return v instanceof JSONObject ? (JSONObject) v : null;
     }
 
     /** 覆写/更新某频道播放配置 */
     public static void setChannelPlayerConfig(String channelName, JSONObject cfg) {
         if (channelName == null || channelName.isEmpty()) return;
-        Hawk.put(channelName, cfg);
+        KeyValueStore.put(channelName, cfg);
     }
 
     /** 清除某频道覆写(回到默认配置) */
     public static void deleteChannelPlayerConfig(String channelName) {
         if (channelName == null || channelName.isEmpty()) return;
-        Hawk.delete(channelName);
+        KeyValueStore.delete(channelName);
     }
 }

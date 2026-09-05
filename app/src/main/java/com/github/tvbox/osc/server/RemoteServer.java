@@ -1,4 +1,5 @@
 package com.github.tvbox.osc.server;
+import com.github.tvbox.osc.config.HawkConfig;
 
 import android.annotation.SuppressLint;
 import android.content.Context;

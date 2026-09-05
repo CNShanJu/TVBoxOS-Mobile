@@ -1,6 +1,6 @@
-package com.github.tvbox.osc.util;
+package com.github.tvbox.osc.config;
 
-import com.orhanobut.hawk.Hawk;
+
 
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -51,67 +51,67 @@ public final class SystemConfig {
 
     /** 安全 DNS 选项索引（0 关闭），默认 0 */
     public static int getDohUrl() {
-        return Hawk.get(KEY_DOH_URL, 0);
+        return KeyValueStore.get(KEY_DOH_URL, 0);
     }
 
     /** 主题：0 跟随系统 1 浅色 2 深色，默认 0 */
     public static int getTheme() {
-        return Hawk.get(KEY_THEME, 0);
+        return KeyValueStore.get(KEY_THEME, 0);
     }
 
     /** 加载动画文件夹名（空串=默认），默认空 */
     public static String getLoadingAnim() {
-        return Hawk.get(KEY_LOADING_ANIM, "");
+        return KeyValueStore.get(KEY_LOADING_ANIM, "");
     }
 
     /** 加载动画原始存储值（兼容旧数字 0/1 等历史值，供 LoadingAnim 兼容解析；新代码用 {@link #getLoadingAnim()}） */
     public static Object getLoadingAnimRaw() {
-        return Hawk.get(KEY_LOADING_ANIM, null);
+        return KeyValueStore.get(KEY_LOADING_ANIM, null);
     }
 
     /** 主页内容显示：0 豆瓣热播 1 站点推荐 2 关闭，默认 0 */
     public static int getHomeRec() {
-        return Hawk.get(KEY_HOME_REC, 0);
+        return KeyValueStore.get(KEY_HOME_REC, 0);
     }
 
     /** 保留历史记录数量选项，默认 0 */
     public static int getHistoryNum() {
-        return Hawk.get(KEY_HISTORY_NUM, 0);
+        return KeyValueStore.get(KEY_HISTORY_NUM, 0);
     }
 
     /** 直播源地址，默认空 */
     public static String getLiveUrl() {
-        return Hawk.get(KEY_LIVE_URL, "");
+        return KeyValueStore.get(KEY_LIVE_URL, "");
     }
 
     /** 无痕浏览（不存搜索/观看历史），默认关 */
     public static boolean isPrivateBrowsing() {
-        return Hawk.get(KEY_PRIVATE_BROWSING, false);
+        return KeyValueStore.get(KEY_PRIVATE_BROWSING, false);
     }
 
     /** 详情页缩略预览，默认开 */
     public static boolean isShowPreview() {
-        return Hawk.get(KEY_SHOW_PREVIEW, true);
+        return KeyValueStore.get(KEY_SHOW_PREVIEW, true);
     }
 
     /** 快速搜索模式（列表页点击结果直接起快速搜索），默认关 */
     public static boolean isFastSearchMode() {
-        return Hawk.get(KEY_FAST_SEARCH_MODE, false);
+        return KeyValueStore.get(KEY_FAST_SEARCH_MODE, false);
     }
 
     /** 调试叠加层/调试日志（播放页 debug 视图、网络日志等），默认关 */
     public static boolean isDebugOpen() {
-        return Hawk.get(KEY_DEBUG_OPEN, false);
+        return KeyValueStore.get(KEY_DEBUG_OPEN, false);
     }
 
     /** 忽略 HTTPS 证书错误（默认关：开启会降低 TLS 安全性，仅个别自签名站点用） */
     public static boolean isIgnoreSslError() {
-        return Hawk.get(KEY_IGNORE_SSL_ERROR, false);
+        return KeyValueStore.get(KEY_IGNORE_SSL_ERROR, false);
     }
 
     /** 局域网服务开关（默认关：关闭时 HTTP 服务仅监听 127.0.0.1） */
     public static boolean isLanServerEnabled() {
-        return Hawk.get(KEY_LAN_SERVER_ENABLE, false);
+        return KeyValueStore.get(KEY_LAN_SERVER_ENABLE, false);
     }
 
     // ── 操作（内部校验 + 持久化 + 广播变更）──
@@ -119,7 +119,7 @@ public final class SystemConfig {
     public static void setDohUrl(int pos) {
         int v = Math.max(0, pos);
         if (getDohUrl() == v) return;
-        Hawk.put(KEY_DOH_URL, v);
+        KeyValueStore.put(KEY_DOH_URL, v);
         com.github.tvbox.osc.log.LogStore.log(com.github.tvbox.osc.log.Category.SYSTEM, "系统设置: 安全DNS=" + v);
         fireChanged();
     }
@@ -127,7 +127,7 @@ public final class SystemConfig {
     public static void setTheme(int tag) {
         int v = Math.max(0, Math.min(2, tag));
         if (getTheme() == v) return;
-        Hawk.put(KEY_THEME, v);
+        KeyValueStore.put(KEY_THEME, v);
         com.github.tvbox.osc.log.LogStore.log(com.github.tvbox.osc.log.Category.SYSTEM, "系统设置: 主题=" + v);
         fireChanged();
     }
@@ -135,7 +135,7 @@ public final class SystemConfig {
     public static void setLoadingAnim(String name) {
         String v = name == null ? "" : name;
         if (v.equals(getLoadingAnim())) return;
-        Hawk.put(KEY_LOADING_ANIM, v);
+        KeyValueStore.put(KEY_LOADING_ANIM, v);
         com.github.tvbox.osc.log.LogStore.log(com.github.tvbox.osc.log.Category.SYSTEM, "系统设置: 加载动画=" + v);
         fireChanged();
     }
@@ -143,7 +143,7 @@ public final class SystemConfig {
     public static void setHomeRec(int type) {
         int v = Math.max(0, Math.min(2, type));
         if (getHomeRec() == v) return;
-        Hawk.put(KEY_HOME_REC, v);
+        KeyValueStore.put(KEY_HOME_REC, v);
         com.github.tvbox.osc.log.LogStore.log(com.github.tvbox.osc.log.Category.SYSTEM, "系统设置: 首页内容=" + v);
         fireChanged();
     }
@@ -151,7 +151,7 @@ public final class SystemConfig {
     public static void setHistoryNum(int num) {
         int v = Math.max(0, num);
         if (getHistoryNum() == v) return;
-        Hawk.put(KEY_HISTORY_NUM, v);
+        KeyValueStore.put(KEY_HISTORY_NUM, v);
         com.github.tvbox.osc.log.LogStore.log(com.github.tvbox.osc.log.Category.SYSTEM, "系统设置: 历史记录数=" + v);
         fireChanged();
     }
@@ -159,46 +159,46 @@ public final class SystemConfig {
     public static void setLiveUrl(String url) {
         String v = url == null ? "" : url;
         if (v.equals(getLiveUrl())) return;
-        Hawk.put(KEY_LIVE_URL, v);
+        KeyValueStore.put(KEY_LIVE_URL, v);
         com.github.tvbox.osc.log.LogStore.log(com.github.tvbox.osc.log.Category.SYSTEM, "系统设置: 直播源=" + v);
         fireChanged();
     }
 
     public static void setPrivateBrowsing(boolean on) {
         if (isPrivateBrowsing() == on) return;
-        Hawk.put(KEY_PRIVATE_BROWSING, on);
+        KeyValueStore.put(KEY_PRIVATE_BROWSING, on);
         com.github.tvbox.osc.log.LogStore.log(com.github.tvbox.osc.log.Category.SYSTEM, "系统设置: 无痕浏览=" + on);
         fireChanged();
     }
 
     public static void setShowPreview(boolean on) {
         if (isShowPreview() == on) return;
-        Hawk.put(KEY_SHOW_PREVIEW, on);
+        KeyValueStore.put(KEY_SHOW_PREVIEW, on);
         fireChanged();
     }
 
     public static void setFastSearchMode(boolean on) {
         if (isFastSearchMode() == on) return;
-        Hawk.put(KEY_FAST_SEARCH_MODE, on);
+        KeyValueStore.put(KEY_FAST_SEARCH_MODE, on);
         fireChanged();
     }
 
     public static void setDebugOpen(boolean on) {
         if (isDebugOpen() == on) return;
-        Hawk.put(KEY_DEBUG_OPEN, on);
+        KeyValueStore.put(KEY_DEBUG_OPEN, on);
         fireChanged();
     }
 
     public static void setIgnoreSslError(boolean on) {
         if (isIgnoreSslError() == on) return;
-        Hawk.put(KEY_IGNORE_SSL_ERROR, on);
+        KeyValueStore.put(KEY_IGNORE_SSL_ERROR, on);
         com.github.tvbox.osc.log.LogStore.log(com.github.tvbox.osc.log.Category.SYSTEM, "系统设置: 忽略证书错误=" + on);
         fireChanged();
     }
 
     public static void setLanServerEnabled(boolean on) {
         if (isLanServerEnabled() == on) return;
-        Hawk.put(KEY_LAN_SERVER_ENABLE, on);
+        KeyValueStore.put(KEY_LAN_SERVER_ENABLE, on);
         com.github.tvbox.osc.log.LogStore.log(com.github.tvbox.osc.log.Category.SYSTEM, "系统设置: 局域网服务=" + on);
         fireChanged();
     }

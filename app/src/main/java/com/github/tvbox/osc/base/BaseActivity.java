@@ -23,7 +23,7 @@ import com.github.tvbox.osc.event.RefreshEvent;
 import com.github.tvbox.osc.player.api.PlayConfig;
 import com.github.tvbox.osc.ui.activity.DetailActivity;
 import com.github.tvbox.osc.util.AppManager;
-import com.github.tvbox.osc.util.HawkConfig;
+import com.github.tvbox.osc.config.HawkConfig;
 import com.github.tvbox.osc.util.Utils;
 import com.gyf.immersionbar.ImmersionBar;
 import com.hjq.bar.OnTitleBarListener;

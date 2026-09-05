@@ -71,7 +71,7 @@ import com.github.tvbox.osc.util.LOG;
 import com.github.tvbox.osc.util.LoadingAnim;
 import com.github.tvbox.osc.util.PlayerHelper;
 import com.github.tvbox.osc.util.ParseBeanUrls;
-import com.github.tvbox.osc.util.SystemConfig;
+import com.github.tvbox.osc.config.SystemConfig;
 import com.github.tvbox.osc.util.VideoParseRuler;
 import com.github.tvbox.osc.util.player.PlayHistoryRepository;
 import com.github.tvbox.osc.util.thunder.Jianpian;

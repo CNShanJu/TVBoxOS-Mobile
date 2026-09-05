@@ -1,4 +1,5 @@
 package com.github.tvbox.osc.server;
+import com.github.tvbox.osc.config.HawkConfig;
 
 import android.content.ComponentName;
 import android.content.Context;
@@ -8,7 +9,7 @@ import android.text.TextUtils;
 
 import com.github.tvbox.osc.event.RefreshEvent;
 import com.github.tvbox.osc.receiver.SearchReceiver;
-import com.github.tvbox.osc.util.SystemConfig;
+import com.github.tvbox.osc.config.SystemConfig;
 
 import org.greenrobot.eventbus.EventBus;
 

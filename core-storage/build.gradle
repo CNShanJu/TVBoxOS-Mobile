@@ -32,8 +32,10 @@ android {
 
 dependencies {
     implementation project(':core-model')
+    implementation project(':log') // SystemConfig 配置变更业务日志(LogStore)
     implementation 'androidx.annotation:annotation:1.3.0'
     implementation 'com.google.code.gson:gson:2.10.1'
+    implementation 'com.orhanobut:hawk:2.0.1' // 配置键值存储(KeyValueStore/SystemConfig)
     annotationProcessor 'androidx.room:room-compiler:2.5.2'
     implementation 'androidx.room:room-runtime:2.5.2'
 }

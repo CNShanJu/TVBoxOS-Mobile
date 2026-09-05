@@ -9,9 +9,7 @@ import com.github.tvbox.osc.R;
 import com.github.tvbox.osc.bean.Movie;
 import com.github.tvbox.osc.picasso.RoundTransformation;
 import com.github.tvbox.osc.spiderapi.SourceConfigProviders;
-import com.github.tvbox.osc.util.HawkConfig;
 import com.github.tvbox.osc.util.MD5;
-import com.orhanobut.hawk.Hawk;
 import com.squareup.picasso.Picasso;
 
 import java.util.ArrayList;

@@ -1,6 +1,6 @@
 package com.github.tvbox.osc.util;
 
-import com.orhanobut.hawk.Hawk;
+import com.github.tvbox.osc.config.KeyValueStore;
 
 /**
  * 用户页"豆瓣热播"当日缓存（UI 摘 Hawk：UserFragment 的 home_hot/home_hot_day 键收口）。
@@ -18,23 +18,23 @@ public final class HomeHotCache {
 
     /** 缓存写入日（未缓存返回空串） */
     public static String getDay() {
-        return Hawk.get(KEY_DAY, "");
+        return KeyValueStore.get(KEY_DAY, "");
     }
 
     /** 缓存的热播 JSON（未缓存返回空串） */
     public static String getData() {
-        return Hawk.get(KEY_JSON, "");
+        return KeyValueStore.get(KEY_JSON, "");
     }
 
     /** 写入当日缓存 */
     public static void save(String day, String json) {
-        Hawk.put(KEY_DAY, day == null ? "" : day);
-        Hawk.put(KEY_JSON, json == null ? "" : json);
+        KeyValueStore.put(KEY_DAY, day == null ? "" : day);
+        KeyValueStore.put(KEY_JSON, json == null ? "" : json);
     }
 
     /** 清空当日缓存（下拉刷新强制重拉） */
     public static void clear() {
-        Hawk.delete(KEY_DAY);
-        Hawk.delete(KEY_JSON);
+        KeyValueStore.delete(KEY_DAY);
+        KeyValueStore.delete(KEY_JSON);
     }
 }

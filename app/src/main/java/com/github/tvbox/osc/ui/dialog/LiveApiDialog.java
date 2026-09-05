@@ -10,7 +10,7 @@ import com.github.tvbox.osc.R;
 import com.github.tvbox.osc.databinding.DialogInputSubsriptionBinding;
 import com.github.tvbox.osc.databinding.DialogLiveApiBinding;
 import com.github.tvbox.osc.util.LiveConfig;
-import com.github.tvbox.osc.util.SystemConfig;
+import com.github.tvbox.osc.config.SystemConfig;
 import com.lxj.xpopup.XPopup;
 import com.lxj.xpopup.core.CenterPopupView;
 import com.lxj.xpopup.interfaces.OnInputConfirmListener;

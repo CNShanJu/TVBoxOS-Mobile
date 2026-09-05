@@ -37,7 +37,7 @@ import com.github.tvbox.osc.util.FastClickCheckUtil;
 import com.github.tvbox.osc.util.HCallBack;
 import com.github.tvbox.osc.util.HomeHotCache;
 import com.github.tvbox.osc.util.HttpClient;
-import com.github.tvbox.osc.util.SystemConfig;
+import com.github.tvbox.osc.config.SystemConfig;
 import com.github.tvbox.osc.util.UA;
 import com.github.tvbox.osc.util.Utils;
 import com.google.gson.Gson;

@@ -27,7 +27,7 @@ import com.github.tvbox.osc.util.HistoryHelper
 import com.github.tvbox.osc.util.LoadingAnim
 import com.github.tvbox.osc.util.OkGoHelper
 import com.github.tvbox.osc.util.PlayerHelper
-import com.github.tvbox.osc.util.SystemConfig
+import com.github.tvbox.osc.config.SystemConfig
 import com.github.tvbox.osc.util.Utils
 import com.hjq.permissions.OnPermissionCallback
 import com.hjq.permissions.Permission

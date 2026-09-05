@@ -33,7 +33,7 @@ import com.github.tvbox.osc.ui.tv.widget.LoadMoreView;
 import com.github.tvbox.osc.ui.widget.ListSwipeRefreshLayout;
 import com.github.tvbox.osc.util.FastClickCheckUtil;
 import com.github.tvbox.osc.util.StackBlurBlur;
-import com.github.tvbox.osc.util.SystemConfig;
+import com.github.tvbox.osc.config.SystemConfig;
 import com.github.tvbox.osc.util.Utils;
 import com.github.tvbox.osc.viewmodel.SourceViewModel;
 import eightbitlab.com.blurview.BlurView;

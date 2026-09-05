@@ -1,4 +1,4 @@
-package com.github.tvbox.osc.util;
+package com.github.tvbox.osc.config;
 
 /**
  * @author pj567

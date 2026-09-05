@@ -26,7 +26,7 @@ import androidx.annotation.Nullable;
 import com.github.tvbox.osc.base.App;
 import com.github.tvbox.osc.bean.SourceBean;
 import com.github.tvbox.osc.download.DownloadUrlSniffer;
-import com.github.tvbox.osc.util.SystemConfig;
+import com.github.tvbox.osc.config.SystemConfig;
 
 import java.util.HashMap;
 import java.util.Map;
