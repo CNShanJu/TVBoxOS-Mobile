@@ -225,6 +225,17 @@ public class SourceViewModel extends ViewModel {
                 @Override
                 public void run() {
                     try {
+                        // 强类型试点:解析下沉 :spider;失败回退字符串通道
+                        com.github.tvbox.osc.bean.AbsXml typed =
+                                com.github.tvbox.osc.spiderapi.SpiderHomeProviders.get().category(
+                                        homeSourceBean.getKey(), sortData.id, page + "", true, sortData.filterSelect);
+                        if (typed != null && typed.movie != null) {
+                            absXml(typed, homeSourceBean.getKey());
+                            listResult.postValue(typed);
+                            return;
+                        }
+                        android.util.Log.i("SpiderBridge", "category(typed) 不可用,回退字符串通道: key="
+                                + homeSourceBean.getKey() + " tid=" + sortData.id + " pg=" + page);
                         json(listResult, com.github.tvbox.osc.spiderapi.SpiderContentProviders.get()
                                         .categoryContent(homeSourceBean.getKey(), sortData.id, page + "", true, sortData.filterSelect),
                                 homeSourceBean.getKey());
@@ -309,30 +320,30 @@ public class SourceViewModel extends ViewModel {
                 @Override
                 public void run() {
                     ExecutorService executor = Executors.newSingleThreadExecutor();
-                    Future<String> future = executor.submit(new Callable<String>() {
+                    Future<com.github.tvbox.osc.bean.AbsXml> future = executor.submit(new Callable<com.github.tvbox.osc.bean.AbsXml>() {
                         @Override
-                        public String call() throws Exception {
-                            return com.github.tvbox.osc.spiderapi.SpiderContentProviders.get()
+                        public com.github.tvbox.osc.bean.AbsXml call() throws Exception {
+                            // 强类型试点:解析下沉 :spider(带 15s 超时保护,与旧字符串链路一致)
+                            return com.github.tvbox.osc.spiderapi.SpiderHomeProviders.get()
                                     .homeVideoContent(sourceBean.getKey());
                         }
                     });
-                    String sortJson = null;
+                    com.github.tvbox.osc.bean.AbsXml result = null;
                     try {
-                        sortJson = future.get(15, TimeUnit.SECONDS);
+                        result = future.get(15, TimeUnit.SECONDS);
                     } catch (TimeoutException e) {
                         e.printStackTrace();
                         future.cancel(true);
                     } catch (InterruptedException | ExecutionException e) {
                         e.printStackTrace();
                     } finally {
-                        if (sortJson != null) {
-                            AbsXml absXml = json(null, sortJson, sourceBean.getKey());
-                            if (absXml != null && absXml.movie != null && absXml.movie.videoList != null) {
-                                callback.done(absXml.movie.videoList);
-                            } else {
-                                callback.done(null);
-                            }
+                        if (result != null && result.movie != null && result.movie.videoList != null) {
+                            absXml(result, sourceBean.getKey());
+                            android.util.Log.d("SpiderBridge", "homeVideo(typed) 命中: key=" + sourceBean.getKey()
+                                    + " size=" + result.movie.videoList.size());
+                            callback.done(result.movie.videoList);
                         } else {
+                            android.util.Log.w("SpiderBridge", "homeVideo(typed) 无结果,回退空列表: key=" + sourceBean.getKey());
                             callback.done(null);
                         }
                         try {
