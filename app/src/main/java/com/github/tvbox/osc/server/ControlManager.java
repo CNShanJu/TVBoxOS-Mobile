@@ -6,11 +6,8 @@ import android.content.Intent;
 import android.os.Bundle;
 import android.text.TextUtils;
 
-import com.github.tvbox.osc.event.RefreshEvent;
 import com.github.tvbox.osc.receiver.SearchReceiver;
 import com.github.tvbox.osc.config.SystemConfig;
-
-import org.greenrobot.eventbus.EventBus;
 
 import java.io.IOException;
 import java.util.regex.Matcher;
@@ -77,12 +74,12 @@ public class ControlManager {
 
                 @Override
                 public void onApiReceived(String url) {
-                    EventBus.getDefault().post(new RefreshEvent(RefreshEvent.TYPE_API_URL_CHANGE, url));
+                    // 历史遗留:曾以 TYPE_API_URL_CHANGE 广播,全仓零订阅(未接线),删除
                 }
 
                 @Override
                 public void onPushReceived(String url) {
-                    EventBus.getDefault().post(new RefreshEvent(RefreshEvent.TYPE_PUSH_URL, url));
+                    // 历史遗留:曾以 TYPE_PUSH_URL 广播,全仓零订阅(InputRequestProcess 亦标注"暂未实现"),删除
                 }
             });
             try {

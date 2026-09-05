@@ -783,7 +783,6 @@ public class DetailActivity extends BaseVbActivity<ActivityDetailBinding> {
             vodInfo.playNote = "";
         }
         com.github.tvbox.osc.repo.HistoryRepositories.history().save(sourceKey, vodInfo);
-        EventBus.getDefault().post(new RefreshEvent(RefreshEvent.TYPE_HISTORY_REFRESH));
     }
 
     @Override
