@@ -130,43 +130,22 @@
 
     </LinearLayout>
 
-    <RelativeLayout
+    <!-- 搜索结果区:结果列表(满屏宽)为底层,来源列表(固定 140dp)同容器收纳在屏左外;
+         内容区向右横滑把来源列表覆盖式滑出、左滑收回,松手自动吸附 -->
+    <com.github.tvbox.osc.ui.widget.HorizontalSlidePagesLayout
         android:id="@+id/llSearchResult"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:orientation="horizontal"
         android:visibility="gone"
         tools:visibility="visible">
 
         <LinearLayout
-            android:id="@+id/llWord"
-            android:layout_width="120dp"
-            android:layout_height="match_parent"
-            android:orientation="vertical"
-            android:paddingLeft="10dp">
-
-            <com.angcyo.tablayout.DslTabLayout
-                android:id="@+id/tab_layout"
-                android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                app:tab_draw_highlight="true"
-                app:tab_indicator_drawable="@drawable/bg_small_round_gray"
-                app:tab_orientation="VERTICAL"
-                app:tab_select_color="@color/colorPrimary">
-
-
-            </com.angcyo.tablayout.DslTabLayout>
-        </LinearLayout>
-
-        <LinearLayout
             android:id="@+id/llLayout"
-            android:layout_toEndOf="@+id/llWord"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:orientation="vertical"
             android:paddingLeft="10dp"
             android:paddingRight="10dp">
-
 
             <com.owen.tvrecyclerview.widget.TvRecyclerView
                 android:id="@+id/mGridView"
@@ -190,7 +169,27 @@
                 app:tv_selectedItemIsCentered="true"
                 app:tv_verticalSpacingWithMargins="@dimen/dp_5" />
 
-
         </LinearLayout>
-    </RelativeLayout>
+
+        <!-- 来源列表(左页):固定 140dp,平时收在屏左外;内容区向右横滑整盒右移,松手吸附。
+             无独立底色,与结果列表/页面背景一致,选中高亮由 DslTabLayout 自身绘制 -->
+        <LinearLayout
+            android:id="@+id/llWord"
+            android:layout_width="140dp"
+            android:layout_height="match_parent"
+            android:orientation="vertical"
+            android:paddingLeft="10dp">
+
+            <com.angcyo.tablayout.DslTabLayout
+                android:id="@+id/tab_layout"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                app:tab_draw_highlight="true"
+                app:tab_indicator_drawable="@drawable/bg_small_round_gray"
+                app:tab_orientation="VERTICAL"
+                app:tab_select_color="@color/colorPrimary">
+
+            </com.angcyo.tablayout.DslTabLayout>
+        </LinearLayout>
+    </com.github.tvbox.osc.ui.widget.HorizontalSlidePagesLayout>
 </LinearLayout>

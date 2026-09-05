@@ -124,6 +124,7 @@ class FastSearchActivity : BaseVbActivity<ActivityFastSearchBinding>(), TextWatc
             onSelectViewChange  = { _, selectViewList, _, _ ->
                     val tvItem: TextView = selectViewList.first() as TextView
                     filterResult(tvItem.text.toString())
+                    closeSourceDrawer() // 选中来源后收起抽屉,结果区回到全屏
                 }
         }
         mBinding.mGridView.setHasFixedSize(true)
@@ -185,6 +186,8 @@ class FastSearchActivity : BaseVbActivity<ActivityFastSearchBinding>(), TextWatc
         }
 
         setLoadSir(mBinding.llLayout)
+        // 来源列表(左页)与结果列表(右页)同容器并排;默认显示右页(结果全屏)
+        mBinding.llSearchResult.setPages(mBinding.llWord, mBinding.llLayout)
     }
 
     /** 搜索结果列表末尾"到底了"提示:占满整行居中,贴近底部 */
@@ -201,6 +204,39 @@ class FastSearchActivity : BaseVbActivity<ActivityFastSearchBinding>(), TextWatc
         val pad = (8 * resources.displayMetrics.density).toInt()
         footer.setPadding(pad, pad, pad, pad)
         adapter.addFooterView(footer)
+    }
+
+    /** 翻到来源列表页(左页);结果页(右页)默认显示,横滑吸附由 HorizontalSlidePagesLayout 处理 */
+    private fun openSourceDrawer() {
+        if (mBinding.llSearchResult.visibility != View.VISIBLE) return
+        if (!mBinding.llSearchResult.isLeftShown) {
+            mBinding.llSearchResult.showLeft()
+        }
+    }
+
+    private fun closeSourceDrawer() {
+        if (mBinding.llSearchResult.visibility != View.VISIBLE) return
+        if (mBinding.llSearchResult.isLeftShown) {
+            mBinding.llSearchResult.showRight()
+        }
+    }
+
+    /** 遥控适配:左方向键翻到来源列表;来源页展开时右方向键/返回键翻回结果 */
+    override fun onKeyDown(keyCode: Int, event: KeyEvent): Boolean {
+        if (mBinding.llSearchResult.visibility == View.VISIBLE) {
+            when (keyCode) {
+                KeyEvent.KEYCODE_DPAD_LEFT -> if (!mBinding.llSearchResult.isLeftShown) {
+                    openSourceDrawer()
+                    return true
+                }
+                KeyEvent.KEYCODE_DPAD_RIGHT, KeyEvent.KEYCODE_BACK ->
+                    if (mBinding.llSearchResult.isLeftShown) {
+                        closeSourceDrawer()
+                        return true
+                    }
+            }
+        }
+        return super.onKeyDown(keyCode, event)
     }
 
     /**
@@ -447,6 +483,7 @@ class FastSearchActivity : BaseVbActivity<ActivityFastSearchBinding>(), TextWatc
             saveSearchHistory(title)
         }
         hideHotAndHistorySearch(true)
+        closeSourceDrawer() // 新一次搜索:来源抽屉默认收起
         KeyboardUtils.hideSoftInput(this)
         cancel()
         showLoading()
@@ -471,6 +508,8 @@ class FastSearchActivity : BaseVbActivity<ActivityFastSearchBinding>(), TextWatc
         val textView = TextView(this)
         textView.text = text
         textView.gravity = Gravity.CENTER
+        // 字号与搜索结果条目里"更新至XX集"(tvNote 12sp)保持一致,高亮来源条观感小巧协调
+        textView.textSize = 12f
         val params = DslTabLayout.LayoutParams(-2, -2)
         params.topMargin = 20
         params.bottomMargin = 20

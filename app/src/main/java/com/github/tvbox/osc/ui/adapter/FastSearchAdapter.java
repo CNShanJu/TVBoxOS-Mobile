@@ -33,12 +33,14 @@ public class FastSearchAdapter extends BaseQuickAdapter<Movie.Video, BaseViewHol
         }
         ImageView ivThumb = helper.getView(R.id.ivThumb);
         if (!TextUtils.isEmpty(item.pic)) {
+            // 3:4 大竖图(约高183dp):圆角 12dp 更自然;override/缓存键随图区尺寸变化,避免旧缓存复用
+            String cacheKey = MD5.string2MD5(item.pic + "position=" + helper.getLayoutPosition() + "_t130x180");
             Picasso.get()
                     .load(item.pic)
-                    .transform(new RoundTransformation(MD5.string2MD5(item.pic + "position=" + helper.getLayoutPosition()))
+                    .transform(new RoundTransformation(cacheKey)
                             .centerCorp(true)
-                            .override(AutoSizeUtils.dp2px(mContext, 110), AutoSizeUtils.dp2px(mContext, 160))
-                            .roundRadius(AutoSizeUtils.dp2px(mContext, 20), RoundTransformation.RoundType.ALL))
+                            .override(AutoSizeUtils.dp2px(mContext, 130), AutoSizeUtils.dp2px(mContext, 180))
+                            .roundRadius(AutoSizeUtils.dp2px(mContext, 12), RoundTransformation.RoundType.ALL))
                     .placeholder(R.drawable.iv_load_fail)
                     .error(R.drawable.iv_load_fail)
                     .into(ivThumb);
