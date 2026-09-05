@@ -64,6 +64,7 @@ import com.github.tvbox.osc.ui.dialog.VideoDetailDialog;
 import com.github.tvbox.osc.ui.fragment.PlayFragment;
 import com.github.tvbox.osc.ui.kit.LinearSpacingItemDecoration;
 import com.github.tvbox.osc.util.BroadcastUtils;
+import com.github.tvbox.osc.util.DownloadSeriesModel;
 import com.github.tvbox.osc.util.DetailQuickSearchHelper;
 import com.github.tvbox.osc.util.EpisodeDownloadBatch;
 import com.github.tvbox.osc.ui.activity.DownloadActivity;
@@ -1005,46 +1006,26 @@ public class DetailActivity extends BaseVbActivity<ActivityDetailBinding> {
     }
 
     /** 构建下载选择弹窗的选集副本(带统一剧集标识),供底部弹窗与全屏右侧抽屉复用;
-        保留弹窗当前已勾选的集(按集名匹配, 排序/刷新均不丢选中) */
+        保留弹窗当前已勾选的集(按集名匹配, 排序/刷新均不丢选中)。纯逻辑见 DownloadSeriesModel */
     private List<VodInfo.VodSeries> buildDownloadSeriesCopy() {
-        java.util.Set<String> selectedNames = new java.util.HashSet<>();
+        List<VodInfo.VodSeries> shown = null;
         if (mDownloadDialog != null) {
-            List<VodInfo.VodSeries> shown = null;
             if (mDownloadDialog instanceof DownloadSeriesDialog) {
                 shown = ((DownloadSeriesDialog) mDownloadDialog).getCurrentList();
             } else if (mDownloadDialog instanceof DownloadSeriesRightDialog) {
                 shown = ((DownloadSeriesRightDialog) mDownloadDialog).getCurrentList();
             }
-            if (shown != null) {
-                for (VodInfo.VodSeries s : shown) {
-                    if (s.selected && s.name != null) selectedNames.add(s.name);
-                }
-            }
         }
-        List<VodInfo.VodSeries> copy = new ArrayList<>();
-        int copyIdx = 0;
-        for (VodInfo.VodSeries s : vodInfo.seriesMap.get(vodInfo.playFlag)) {
-            VodInfo.VodSeries c = new VodInfo.VodSeries();
-            c.name = s.name;
-            c.url = s.url;
-            c.selected = s.name != null && selectedNames.contains(s.name);
-            c.episodeId = DownloadFacade.get().buildEpisodeId(vodInfo.sourceKey, vodInfo.id, vodInfo.playFlag, copyIdx);
-            copyIdx++;
-            copy.add(c);
-        }
-        return copy;
+        java.util.Set<String> selectedNames = DownloadSeriesModel.collectSelectedNames(shown);
+        List<VodInfo.VodSeries> master = vodInfo.seriesMap.get(vodInfo.playFlag);
+        return DownloadSeriesModel.rebuildCopy(master, selectedNames,
+                idx -> DownloadFacade.get().buildEpisodeId(vodInfo.sourceKey, vodInfo.id, vodInfo.playFlag, idx));
     }
 
     /** 构建下载状态数组:0=可下载,1=已下载,2=下载中/排队(批量查询,一次快照避免逐集拷贝任务列表) */
     private int[] buildDownloadStates(List<VodInfo.VodSeries> copy, String sourceName, String vodName) {
-        int n = copy.size();
-        String[] episodeIds = new String[n];
-        String[] episodeNames = new String[n];
-        for (int i = 0; i < n; i++) {
-            episodeIds[i] = copy.get(i).episodeId;
-            episodeNames[i] = copy.get(i).name;
-        }
-        return DownloadFacade.get().getEpisodeStates(episodeIds, sourceName, vodName, episodeNames);
+        return DownloadFacade.get().getEpisodeStates(
+                DownloadSeriesModel.episodeIdsOf(copy), sourceName, vodName, DownloadSeriesModel.episodeNamesOf(copy));
     }
 
     /** 下载弹窗统一关闭回调:关闭后清除防重入标记,允许再次打开 */
