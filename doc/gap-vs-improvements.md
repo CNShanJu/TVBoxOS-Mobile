@@ -140,6 +140,10 @@ Exo→Media3、EventBus→Flow/接口、Hawk→DataStore、Java→Kotlin 渐进�
   getInt/泛型 get/put/delete/contains),SystemConfig 内部改走 KeyValueStore;App 侧 LiveConfig/SubscriptionConfig/
   HomeHotCache 亦改走 KeyValueStore(仅剩 App 启动装配直触 Hawk)。依赖补齐:core-storage→:log/:core-model/hawk,
   core-network→core-storage,spider→core-storage(无环、通过 checkModuleDependencies)。
+- ✅ 订阅页本地导入改系统 SAF(替代 hedzr 反射 StorageVolume 兼容性问题):`SubscriptionActivity.pickFile`
+  改用 `ActivityResultContracts.OpenDocument`(*/* + 扩展名校验),仅接受 ExternalStorageProvider 主卷并转真实
+  路径后仍以 clan:// 订阅源加入(保留记忆导入目录/去重/权限门禁);hedzr 选择器在字幕本地字幕导入
+  (SubtitleCoordinator)仍使用,真机回归见 9/5 订阅导入日志噪音是否消失。
 - ✅ LogEvent 空投清理:LOG 曾向 EventBus 空投 LogEvent(全仓零订阅者),现已移除投递与 `event/LogEvent`,
   LOG 保持纯 Logcat 输出;core-network 移除 eventbus 依赖与空 event 目录(运行时日志文件由 :log 模块承担)。
 - ✅ common(现 :core-network)event 收口完成:已删 HistoryStateEvent/TopStateEvent(零引用孤儿)、

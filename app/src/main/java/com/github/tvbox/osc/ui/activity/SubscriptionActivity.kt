@@ -1,8 +1,13 @@
 package com.github.tvbox.osc.ui.activity
 
 import android.content.Intent
+import android.net.Uri
+import android.os.Environment
+import android.provider.DocumentsContract
+import android.provider.OpenableColumns
 import android.text.TextUtils
 import android.view.View
+import androidx.activity.result.contract.ActivityResultContracts
 import com.blankj.utilcode.util.ClipboardUtils
 import com.blankj.utilcode.util.LogUtils
 import com.github.tvbox.osc.util.AppBubble
@@ -30,7 +35,8 @@ import com.hjq.permissions.OnPermissionCallback
 import com.hjq.permissions.Permission
 import com.hjq.permissions.XXPermissions
 import com.lxj.xpopup.XPopup
-import com.obsez.android.lib.filechooser.ChooserDialog
+
+import java.io.File
 import java.util.function.Consumer
 
 class SubscriptionActivity : BaseVbActivity<ActivitySubscriptionBinding>() {
@@ -221,29 +227,66 @@ class SubscriptionActivity : BaseVbActivity<ActivitySubscriptionBinding>() {
     }
 
     /**
-     *
+     * 本地导入(系统 SAF 文件选择器;替代 hedzr 反射 StorageVolume 的老实现):
+     * 选择 txt/json 后转"设备内部存储真实路径",再以 clan:// 订阅源加入列表。
      * @param checked 与showPermissionTipPopup一样,只记录并传递选中状态
      */
+    private var mPendingChecked = true
+    private val pickLocalDoc = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        uri?.let { handleLocalDoc(it) }
+    }
+
     private fun pickFile(checked: Boolean) {
-        ChooserDialog(this@SubscriptionActivity, R.style.FileChooser)
-            .withFilter(false, false, "txt", "json")
-            .withStartFile(
-                if (SubscriptionConfig.getLastImportDir().isEmpty()) "/storage/emulated/0/Download" else SubscriptionConfig.getLastImportDir()
-            )
-            .withChosenListener(ChooserDialog.Result { _, pathFile ->
-                SubscriptionConfig.setLastImportDir(pathFile.parent)
-                val clanPath =
-                    pathFile.absolutePath.replace("/storage/emulated/0", "clan://localhost")
-                for (item in mSubscriptions) {
-                    if (item.url == clanPath) {
-                        AppBubble.toastLong("订阅地址与" + item.name + "相同")
-                        return@Result
-                    }
+        mPendingChecked = checked
+        pickLocalDoc.launch(arrayOf("*/*"))
+    }
+
+    private fun handleLocalDoc(uri: Uri) {
+        try {
+            val name = queryDisplayName(uri)
+            val path = externalStoragePathOf(uri)
+            if (name.isNullOrEmpty() || path == null || !name.lowercase().endsWith(".txt") && !name.lowercase().endsWith(".json")) {
+                AppBubble.toast("请选择设备内部存储中的 txt/json 订阅文件")
+                return
+            }
+            // 记忆导入目录(与旧文件选择器一致:以父目录为准)
+            SubscriptionConfig.setLastImportDir(File(path).parent)
+            val clanPath = path.replace("/storage/emulated/0", "clan://localhost")
+            for (item in mSubscriptions) {
+                if (item.url == clanPath) {
+                    AppBubble.toastLong("订阅地址与" + item.name + "相同")
+                    return
                 }
-                addSubscription(pathFile.name, clanPath, checked)
-            })
-            .build()
-            .show()
+            }
+            addSubscription(name, clanPath, mPendingChecked)
+        } catch (t: Throwable) {
+            t.printStackTrace()
+            AppBubble.toast("读取所选文件失败")
+        }
+    }
+
+    /** 查询所选文档的显示名(取不到时用 uri 末段兜底) */
+    private fun queryDisplayName(uri: Uri): String? {
+        return try {
+            contentResolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)?.use { c ->
+                if (c.moveToFirst()) c.getString(0) else null
+            }
+        } catch (t: Throwable) {
+            uri.lastPathSegment
+        }
+    }
+
+    /** 仅支持 ExternalStorageProvider 主卷("primary:...")转真实路径;其它提供方无法由 clan 服务器按路径读取,返回 null */
+    private fun externalStoragePathOf(uri: Uri): String? {
+        if (uri.scheme != "content") return null
+        return try {
+            val docId = DocumentsContract.getDocumentId(uri)
+            val sep = docId.indexOf(':')
+            if (sep <= 0 || docId.substring(0, sep) != "primary") return null
+            Environment.getExternalStorageDirectory().absolutePath + "/" + docId.substring(sep + 1)
+        } catch (t: Throwable) {
+            null
+        }
     }
 
     private fun addSubscription(name: String, url: String, checked: Boolean) {
