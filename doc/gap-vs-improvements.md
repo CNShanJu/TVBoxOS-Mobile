@@ -255,6 +255,9 @@ Exo→Media3、EventBus→Flow/接口、Hawk→DataStore、Java→Kotlin 渐进�
 - ✅ LiveActivity 死代码收尾:showBottomEpg 无用空 Handler、一批零使用字段(playUrl/timeFormat/
   countDownTimer3/videoWidth/videoHeight/show)+ 从未赋值的 countDownTimer(恒空 cancel 块)删除,
   清 CountDownTimer/SimpleDateFormat import。LiveActivity 815→731 行。(679881bb/b8e0b7ce)
+- ✅ SourceViewModel 死代码/冗余清理:删除零调用 getSortFilter(及 gson JsonArray/JsonElement/
+  JsonObject/LinkedHashMap import);sortJson/sortXml 未用的 MutableLiveData result 参数去除
+  (解析后由调用方发布),4 处调用点同步。(1ddead9b)
 - ✅ 直播分组密码门禁抽离 `util/LiveChannelAuth`:isPasswordConfirmed/needInputPassword/
   visibleChannels 纯逻辑(组数据+确认集合传参),LiveActivity 三方法改委托;单测 4 例。
   (9bdcc169)
