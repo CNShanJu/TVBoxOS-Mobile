@@ -146,6 +146,10 @@ Exo→Media3、EventBus→Flow/接口、Hawk→DataStore、Java→Kotlin 渐进�
   (SubtitleCoordinator)仍使用,真机回归见 9/5 订阅导入日志噪音是否消失。
 - ✅ :download 持久化收口:`internal/{DownloadManager,DownloadStore,DownloadArchive,DownloadPolicy}` 的 Hawk 直存
   (任务列表/档案/并发/WiFi 策略)改走 `config.KeyValueStore`,:download 新增依赖 :core-storage、移除 hawk 库依赖。
+- ✅ js 运行时缓存文件化:spider `util/js/local`(JS localStorage 桥)改存 `filesDir/js_runtime/*.txt`(ApiConfig
+  setAppContext 注入 context),旧 Hawk 键按访问惰性迁移删除。
+  **hawk 移除决策**:core-storage 的 hawk 保留为"一次性 legacy 迁移通道"(下载任务/档案回退、旧键导入——
+  下载任务恢复数据安全优先),KeyValueStore 收敛为迁移辅助、DataStore 为运行权威;各模块(除 core-storage)已零 hawk 依赖。
 - ✅ Hawk→DataStore 分叉修复与收边:`:spider ApiConfig` 共享键(EPG_URL/LIVE_HISTORY/api_url/ijk_codec/自用
   HOME_API/DEFAULT_PARSE)改走 PrefsDataStore(与订阅/直播/播放域同底层);App.putDefault/DEBUG_OPEN 不再回写
   Hawk;RemoteTVBox 遥控记忆、HomeHotCache 热播缓存亦切 DataStore(含存量迁移)。js 运行时缓存(local.java)

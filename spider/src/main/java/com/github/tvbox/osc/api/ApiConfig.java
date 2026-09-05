@@ -67,13 +67,14 @@ public class ApiConfig implements com.github.tvbox.osc.spiderapi.SourceConfigApi
     /** 局域网地址前缀（由 app 侧 ControlManager 初始化后注入，替代直接依赖） */
     private static volatile String lanBase = "";
 
-    /** App 启动时注入 context（配置缓存目录等用；同步给爬虫 loader / FileUtils / UA） */
+    /** App 启动时注入 context（配置缓存目录等用；同步给爬虫 loader / FileUtils / UA / JS 本地桥） */
     public static void setAppContext(Context context) {
         appContext = context == null ? null : context.getApplicationContext();
         com.github.catvod.crawler.JarLoader.setContext(context);
         com.github.catvod.crawler.JsLoader.setContext(context);
         com.github.tvbox.osc.util.FileUtils.setContext(context);
         com.github.tvbox.osc.util.UA.setContext(context);
+        com.github.tvbox.osc.util.js.local.setContext(context);
     }
 
     /** 局域网地址前缀注入（app 侧 ControlManager.get().getAddress(true) 设置） */
