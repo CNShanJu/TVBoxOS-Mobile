@@ -34,4 +34,22 @@ public class EpisodeDownloadBatchTest {
         assertFalse(EpisodeDownloadBatch.containsResolution("第01集"));
         assertFalse(EpisodeDownloadBatch.containsResolution(null));
     }
+
+    @Test
+    public void resolveEpisodeId_keepsProvided() {
+        assertEquals("ep-123",
+                EpisodeDownloadBatch.resolveEpisodeId("src", "vod", "f", null, "第一集", "ep-123"));
+    }
+
+    @Test
+    public void countEnqueueOutcome_classifies() {
+        EpisodeDownloadBatch.Outcome out = new EpisodeDownloadBatch.Outcome();
+        EpisodeDownloadBatch.countEnqueueOutcome(true, 1, out);      // added
+        EpisodeDownloadBatch.countEnqueueOutcome(false, 1, out);     // downloadedExisted
+        EpisodeDownloadBatch.countEnqueueOutcome(false, 0, out);     // existedInQueue
+        assertEquals(1, out.added);
+        assertEquals(1, out.downloadedExisted);
+        assertEquals(1, out.existedInQueue);
+        assertEquals(0, out.failed);
+    }
 }

@@ -4,6 +4,13 @@
     android:layout_height="match_parent"
     android:background="@color/bg_body">
 
-    <!-- 开屏图暂已移除:新图标素材已确定,开屏展示素材待定,需要时在此处重新添加 ImageView -->
+    <!-- 开屏图:静态 ImageView 居中显示,避免 windowBackground 随系统启动窗口产生缩放动画。
+         直接复用图标资源 @drawable/app_icon,更换主体/素材时只改图标即可,开屏自动同步 -->
+    <ImageView
+        android:layout_width="360dp"
+        android:layout_height="360dp"
+        android:layout_gravity="center"
+        android:scaleType="fitCenter"
+        android:src="@drawable/app_icon" />
 
 </FrameLayout>

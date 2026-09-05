@@ -38,6 +38,37 @@ public final class EpisodeDownloadBatch {
     private EpisodeDownloadBatch() {
     }
 
+    /** 计算统一剧集标识:已有 episodeId 直接用;否则按集名在全集列表中的索引回退生成 */
+    public static String resolveEpisodeId(String sourceKey, String vodId, String playFlag,
+                                         List<VodInfo.VodSeries> seriesList, String sName, String episodeId) {
+        if (episodeId != null && !episodeId.isEmpty()) return episodeId;
+        int idx = 0;
+        if (seriesList != null) {
+            for (int i = 0; i < seriesList.size(); i++) {
+                if (seriesList.get(i) != null && seriesList.get(i).name != null
+                        && seriesList.get(i).name.equals(sName)) {
+                    idx = i;
+                    break;
+                }
+            }
+        }
+        return DownloadCore.buildEpisodeId(sourceKey, vodId, playFlag, idx);
+    }
+
+    /**
+     * 入队结果归类:ok=true → added;
+     * ok=false 按“已下载完成(状态1)”/“已在任务中”分别计入 downloadedExisted/existedInQueue。
+     */
+    public static void countEnqueueOutcome(boolean ok, int episodeState, Outcome out) {
+        if (out == null) return;
+        if (ok) {
+            out.added++;
+        } else {
+            if (episodeState == 1) out.downloadedExisted++;
+            else out.existedInQueue++;
+        }
+    }
+
     /**
      * 批量解析并入队。
      *
@@ -94,30 +125,13 @@ public final class EpisodeDownloadBatch {
                     epName = s.name + "_" + resLabel;
                 }
                 // 统一剧集标识(与详情页选集一一对应,精确去重):优先选集携带的 episodeId,旧数据按集名回退索引
-                String episodeId = s.episodeId;
-                if (episodeId == null || episodeId.isEmpty()) {
-                    int idx = 0;
-                    for (int i = 0; i < seriesList.size(); i++) {
-                        if (seriesList.get(i) != null && seriesList.get(i).name != null
-                                && seriesList.get(i).name.equals(s.name)) {
-                            idx = i;
-                            break;
-                        }
-                    }
-                    episodeId = DownloadCore.buildEpisodeId(sourceKey, vodId, playFlag, idx);
-                }
+                String episodeId = resolveEpisodeId(sourceKey, vodId, playFlag, seriesList, s.name, s.episodeId);
                 boolean ok = DownloadFacade.get().enqueue(new com.github.tvbox.osc.download.DownloadRequest(
                         url, sourceKey, playFlag, s.url, episodeId,
                         vodInfo.pic, rr.headers, sourceName, vodName, epName));
                 Log.i("TVBox-Download", "  - " + s.name + " enqueue=" + ok + " 文件名=" + epName + " url=" + url);
-                if (ok) {
-                    out.added++;
-                } else {
-                    // 已存在:区分"已下载完成"与"已在任务中",提示更精确
-                    int st = DownloadCore.getEpisodeState(episodeId, sourceName, vodName, s.name);
-                    if (st == 1) out.downloadedExisted++;
-                    else out.existedInQueue++;
-                }
+                // 归类:added / 已下载完成(状态1) / 已在任务中
+                countEnqueueOutcome(ok, DownloadCore.getEpisodeState(episodeId, sourceName, vodName, s.name), out);
             } catch (Throwable th) {
                 Log.e("TVBox-Download", "批量入队异常: " + (s.name == null ? "" : s.name), th);
                 out.failed++;
