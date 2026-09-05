@@ -35,8 +35,6 @@ import com.github.tvbox.osc.ui.activity.LocalPlayActivity;
 import com.github.tvbox.osc.ui.adapter.LocalVideoAdapter;
 import com.github.tvbox.osc.ui.dialog.ConfirmDialog;
 import com.github.tvbox.osc.ui.dialog.DeleteDownloadDialog;
-import com.github.tvbox.osc.util.DownloadConfig;
-import com.github.tvbox.osc.util.DownloadCore;
 import com.github.tvbox.osc.util.Utils;
 import com.lxj.xpopup.XPopup;
 
@@ -350,7 +348,7 @@ public class DownloadFragment extends BaseVbFragment<FragmentDownloadBinding> {
                                 "将删除该任务及其未完成的下载文件,确定?",
                                 "删除",
                                 () -> {
-                                    DownloadCore.remove(t, true);
+                                    DownloadFacade.get().remove(t, true);
                                     refresh();
                                 }))
                         .show();
@@ -603,11 +601,11 @@ public class DownloadFragment extends BaseVbFragment<FragmentDownloadBinding> {
     /** 刷新底部"显示内存和其他信息"条(居中) */
     private void updateStorageText() {
         try {
-            File dir = DownloadConfig.getSaveDir();
+            File dir = DownloadFacade.get().getSaveDir();
             StatFs stat = new StatFs(dir.getAbsolutePath());
             long free = stat.getAvailableBytes();
-            String wifi = DownloadConfig.isWifiOnly() ? "仅Wi-Fi" : "Wi-Fi+流量";
-            mBinding.tvStorage.setText("可用 " + formatSize(free) + "  |  " + wifi + " · 并发 " + DownloadConfig.getMaxConcurrent());
+            String wifi = DownloadFacade.get().isWifiOnly() ? "仅Wi-Fi" : "Wi-Fi+流量";
+            mBinding.tvStorage.setText("可用 " + formatSize(free) + "  |  " + wifi + " · 并发 " + DownloadFacade.get().getMaxConcurrent());
         } catch (Throwable th) {
             mBinding.tvStorage.setText("");
         }
@@ -799,7 +797,7 @@ public class DownloadFragment extends BaseVbFragment<FragmentDownloadBinding> {
                                     File p = new File(t.savePath).getParentFile();
                                     if (p != null) dirs.add(p);
                                 }
-                                DownloadCore.remove(t, false);
+                                DownloadFacade.get().remove(t, false);
                             }
                             for (com.github.tvbox.osc.download.ArchiveItem it : g.doneItems) {
                                 if (it.savePath != null) {
@@ -821,7 +819,7 @@ public class DownloadFragment extends BaseVbFragment<FragmentDownloadBinding> {
                             // 不勾选:只删下载中的任务(记录 + 过程文件),已完成记录与文件保留
                             for (DownloadTask t : g.tasks) {
                                 if (t.state != DownloadTask.STATE_COMPLETED) {
-                                    DownloadCore.remove(t, true);
+                                    DownloadFacade.get().remove(t, true);
                                 }
                             }
                         }
@@ -849,7 +847,7 @@ public class DownloadFragment extends BaseVbFragment<FragmentDownloadBinding> {
                                     File p = new File(t.savePath).getParentFile();
                                     if (p != null) dirs.add(p);
                                 }
-                                DownloadCore.remove(t, true);
+                                DownloadFacade.get().remove(t, true);
                             }
                             // 组内任务清空后,删掉空的剧名目录
                             for (File d : dirs) {
@@ -885,9 +883,9 @@ public class DownloadFragment extends BaseVbFragment<FragmentDownloadBinding> {
      * 仅在用户确认删除后调用(DeleteDownloadDialog 确认),确认前不动任何数据/文件。
      */
     private void removeTaskAndFile(String path, boolean deleteFiles) {
-        for (DownloadTask t : DownloadCore.getTasks()) {
+        for (DownloadTask t : DownloadFacade.get().getTasks()) {
             if (t.savePath != null && t.savePath.equals(path)) {
-                DownloadCore.remove(t, deleteFiles);
+                DownloadFacade.get().remove(t, deleteFiles);
                 return;
             }
         }

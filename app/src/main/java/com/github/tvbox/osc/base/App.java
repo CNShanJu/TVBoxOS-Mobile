@@ -100,11 +100,11 @@ public class App extends MultiDexApplication {
         // 崩溃捕获:未捕获异常落库(log 模块)
         LogStore.get().installCrashHandler();
         // 下载模块(:download) context 注入(保存目录/海报/网络监听/通知)
-        com.github.tvbox.osc.util.DownloadManager.init(this);
+        com.github.tvbox.osc.download.DownloadFacade.init(this);
         // 组合根:收敛 spider-api 服务注入(解析/手动判定/内容服务),见 AppCompositionRoot
         com.github.tvbox.osc.di.AppCompositionRoot.init();
         // 方案A:注册无头 WebView 嗅探器(嗅探型源任务启动前用它拿真实播放地址,串行复用保会话)
-        com.github.tvbox.osc.util.DownloadManager.setUrlSniffer(com.github.tvbox.osc.util.WebSniffResolver.get());
+        com.github.tvbox.osc.download.DownloadFacade.setUrlSniffer(com.github.tvbox.osc.util.WebSniffResolver.get());
         // 下载完成通知渠道(可选增强)
         com.github.tvbox.osc.download.DownloadNotifier.init(this);
         // 全局系统状态监控(网络/前后台/横竖屏/电量/磁盘, 基座层)

@@ -23,7 +23,7 @@ public final class AppCompositionRoot {
     public static void init() {
         android.util.Log.i("AppCompositionRoot", "init: 注入 UrlResolver/ManualCheck/Content/NetworkProvider");
         // 下载侧播放地址解析(:spider 提供实现,download 不依赖 :spider 实现)
-        com.github.tvbox.osc.util.DownloadManager.setUrlResolverApi(
+        com.github.tvbox.osc.download.DownloadFacade.setUrlResolverApi(
                 com.github.catvod.crawler.SpiderUrlResolverImpl.get());
         // 嗅探型源“手动视频判定”
         com.github.tvbox.osc.spiderapi.SpiderManualCheckProviders.set(

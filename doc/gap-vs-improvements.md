@@ -49,8 +49,9 @@ Exo→Media3、EventBus→Flow/接口、Hawk→DataStore、Java→Kotlin 渐进�
 ## 7. 近期可安全推进清单（按收益）
 1. ✅ `ParseBean` 已迁 `:core-model` 并纯化：移除 Base64(mixUrl)/proxy 替换依赖；行为收敛到
    `:spider` 的 `ParseBeanUrls.url()/mixUrl()`（调用点 PlayUrlResolver/PlayFragment 已切换）。
-2. ⚠️ download public 面 internal 化：`MSG_*` 阶段文案唯一权威已并入 `DownloadFacade`，
-   `DownloadFragment` 摘除 `util.DownloadManager` import；`DownloadManager/Scheduler/Executor/Archive` 等仍 public，待降可见性。
+2. ✅ download public 面收敛：`DownloadConfig/DownloadCore` 能力并入 `DownloadFacade`（config + episodeId/states），
+   app UI/工具全改走 Facade；装配入口 `init/setUrlResolverApi/setUrlSniffer` 收口到 Facade 静态方法；
+   app 对 `util.Download*` import 清零，`checkModuleDependencies` 新增源码级门禁防回归。
 3. ✅ app 内 `RoomDataManger` 直读已清零：UI 改走 `HistoryRepositories.history().get(...)`
    （接口新增 get(sourceKey,vodId)，Fake/单测同步）。
 4. 🔜 `common/util/HawkConfig/SystemConfig/HttpClient` 分模块收口（网络→core-network，配置→core-storage/新 config）。

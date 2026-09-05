@@ -7,8 +7,8 @@ import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.DiffUtil;
 
 import com.github.tvbox.osc.R;
+import com.github.tvbox.osc.download.DownloadFacade;
 import com.github.tvbox.osc.ui.adapter.SelectDialogAdapter;
-import com.github.tvbox.osc.util.DownloadConfig;
 import com.github.tvbox.osc.util.FastClickCheckUtil;
 import com.lxj.xpopup.core.CenterPopupView;
 
@@ -20,7 +20,7 @@ import java.util.ArrayList;
  * 下载设置弹窗(跟随主题):
  * - 仅 WiFi 下载:AppSwitch 开关组件
  * - 下载并发:点击弹 SelectDialog(1-5)
- * 与下载页标题栏齿轮、全局设置页共用 DownloadConfig,单一事实源。
+ * 与下载页标题栏齿轮、全局设置页共用 DownloadFacade,单一事实源。
  */
 public class DownloadSettingsDialog extends AppCenterPopupView {
 
@@ -43,10 +43,10 @@ public class DownloadSettingsDialog extends AppCenterPopupView {
         mSwitchWifi = findViewById(R.id.switch_wifi);
 
         // 仅 WiFi 下载开关(点击整行切换,AppSwitch 展示状态)
-        mSwitchWifi.setChecked(DownloadConfig.isWifiOnly());
+        mSwitchWifi.setChecked(DownloadFacade.get().isWifiOnly());
         findViewById(R.id.ll_wifi).setOnClickListener(v -> {
-            boolean newVal = !DownloadConfig.isWifiOnly();
-            DownloadConfig.setWifiOnly(newVal);
+            boolean newVal = !DownloadFacade.get().isWifiOnly();
+            DownloadFacade.get().setWifiOnly(newVal);
             mSwitchWifi.setChecked(newVal);
         });
 
@@ -56,13 +56,13 @@ public class DownloadSettingsDialog extends AppCenterPopupView {
             FastClickCheckUtil.check(v);
             ArrayList<String> types = new ArrayList<>();
             for (int i = 1; i <= 5; i++) types.add("并发 " + i);
-            int defaultPos = DownloadConfig.getMaxConcurrent() - 1;
+            int defaultPos = DownloadFacade.get().getMaxConcurrent() - 1;
             SelectDialog<String> dialog = new SelectDialog<>(getContext());
             dialog.setTip("选择同时下载任务数");
             dialog.setAdapter(new SelectDialogAdapter.SelectDialogInterface<String>() {
                 @Override
                 public void click(String value, int pos) {
-                    DownloadConfig.setMaxConcurrent(pos + 1);
+                    DownloadFacade.get().setMaxConcurrent(pos + 1);
                     refreshConcurrent();
                 }
 
@@ -76,6 +76,6 @@ public class DownloadSettingsDialog extends AppCenterPopupView {
     }
 
     private void refreshConcurrent() {
-        mTvConcurrent.setText(DownloadConfig.getMaxConcurrent() + " 个");
+        mTvConcurrent.setText(DownloadFacade.get().getMaxConcurrent() + " 个");
     }
 }

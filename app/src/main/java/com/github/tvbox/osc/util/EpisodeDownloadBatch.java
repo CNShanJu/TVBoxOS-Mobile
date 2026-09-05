@@ -52,7 +52,7 @@ public final class EpisodeDownloadBatch {
                 }
             }
         }
-        return DownloadCore.buildEpisodeId(sourceKey, vodId, playFlag, idx);
+        return DownloadFacade.get().buildEpisodeId(sourceKey, vodId, playFlag, idx);
     }
 
     /**
@@ -131,7 +131,7 @@ public final class EpisodeDownloadBatch {
                         vodInfo.pic, rr.headers, sourceName, vodName, epName));
                 Log.i("TVBox-Download", "  - " + s.name + " enqueue=" + ok + " 文件名=" + epName + " url=" + url);
                 // 归类:added / 已下载完成(状态1) / 已在任务中
-                countEnqueueOutcome(ok, DownloadCore.getEpisodeState(episodeId, sourceName, vodName, s.name), out);
+                countEnqueueOutcome(ok, DownloadFacade.get().getEpisodeState(episodeId, sourceName, vodName, s.name), out);
             } catch (Throwable th) {
                 Log.e("TVBox-Download", "批量入队异常: " + (s.name == null ? "" : s.name), th);
                 out.failed++;

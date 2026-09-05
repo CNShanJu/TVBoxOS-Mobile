@@ -14,7 +14,7 @@
 ## P0 收尾易做项（先清低风险尾巴）
 | # | 事项 | 现状 | 做法 | 验收 |
 |---|---|---|---|---|
-| 0.1 | 下载模块 internal 化 | ⚠️ Facade 已接入 UI | DownloadManager/Scheduler/Executor/Archive 移到 `internal` 包或 package-private；UI 只许碰 Facade | `download` 内 public 面只剩 Facade/任务 Bean；全量编译 |
+| 0.1 | 下载模块 internal 化 | ✅ Facade 全量收敛 | DownloadConfig/DownloadCore 能力并入 Facade;app 零 `util.Download*` import;装配入口收口 Facade;checkModuleDependencies 源码级门禁防回归 | `download` 内 public 面只剩 Facade/任务 Bean；全量编译 |
 | 0.2 | ParseBean 迁 core-model | ❌ 在 spider | 抽出 Base64/DefaultConfig 到调用侧，ParseBean 纯化后迁入 | ParseBean 在 core-model，无 Android 依赖 |
 | 0.3 | UI 不直读 ApiConfig/Hawk 的抽查治理 | ❌ | 新代码规范 + 圈出高风险点逐步收口 | 抽样 grep 违规点下降 |
 | 0.4 | 事件/线程规范 | ❌ | 禁止新增 EventBus 事件/页面自建线程池的评审清单 + 残余点替换 | 新改动不含新增 EventBus/`newFixedThreadPool` |

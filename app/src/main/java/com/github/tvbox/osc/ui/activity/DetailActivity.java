@@ -37,6 +37,7 @@ import com.github.tvbox.osc.R;
 import com.github.tvbox.osc.api.ApiConfig;
 import com.github.tvbox.osc.base.App;
 import com.github.tvbox.osc.base.BaseVbActivity;
+import com.github.tvbox.osc.download.DownloadFacade;
 import com.github.tvbox.osc.bean.AbsXml;
 import com.github.tvbox.osc.bean.CastVideo;
 import com.github.tvbox.osc.bean.Movie;
@@ -64,8 +65,6 @@ import com.github.tvbox.osc.ui.dialog.VideoDetailDialog;
 import com.github.tvbox.osc.ui.fragment.PlayFragment;
 import com.github.tvbox.osc.ui.widget.LinearSpacingItemDecoration;
 import com.github.tvbox.osc.util.BroadcastUtils;
-import com.github.tvbox.osc.util.DownloadConfig;
-import com.github.tvbox.osc.util.DownloadCore;
 import com.github.tvbox.osc.util.DetailQuickSearchHelper;
 import com.github.tvbox.osc.util.EpisodeDownloadBatch;
 import com.github.tvbox.osc.ui.activity.DownloadActivity;
@@ -1018,7 +1017,7 @@ public class DetailActivity extends BaseVbActivity<ActivityDetailBinding> {
             c.name = s.name;
             c.url = s.url;
             c.selected = s.name != null && selectedNames.contains(s.name);
-            c.episodeId = DownloadCore.buildEpisodeId(vodInfo.sourceKey, vodInfo.id, vodInfo.playFlag, copyIdx);
+            c.episodeId = DownloadFacade.get().buildEpisodeId(vodInfo.sourceKey, vodInfo.id, vodInfo.playFlag, copyIdx);
             copyIdx++;
             copy.add(c);
         }
@@ -1034,7 +1033,7 @@ public class DetailActivity extends BaseVbActivity<ActivityDetailBinding> {
             episodeIds[i] = copy.get(i).episodeId;
             episodeNames[i] = copy.get(i).name;
         }
-        return DownloadCore.getEpisodeStates(episodeIds, sourceName, vodName, episodeNames);
+        return DownloadFacade.get().getEpisodeStates(episodeIds, sourceName, vodName, episodeNames);
     }
 
     /** 下载弹窗统一关闭回调:关闭后清除防重入标记,允许再次打开 */
@@ -1157,7 +1156,7 @@ public class DetailActivity extends BaseVbActivity<ActivityDetailBinding> {
             return;
         }
         // 网络控制:默认仅 WiFi 下载;移动网络下强提醒流量风险,确认后才继续(统一走 DownloadConfig)
-        if (DownloadConfig.isWifiOnly() && DownloadConfig.isMobileNetwork()) {
+        if (DownloadFacade.get().isWifiOnly() && DownloadFacade.get().isMobileNetwork()) {
             // 统一主题化确认弹窗(替代 XPopup 默认 asConfirm)
             ConfirmDialog.show(this, "流量提醒", "当前为移动网络,继续下载将消耗手机流量,是否继续?",
                     "继续下载", () -> doStartDownloads(selected));

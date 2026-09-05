@@ -58,6 +58,25 @@ public final class DownloadFacade {
     }
 
     // ------------------------------------------------------------------
+    // 装配入口(App 组合根调用一次;UI 不接触):转发到模块内部 DownloadManager
+    // ------------------------------------------------------------------
+
+    /** App 启动初始化:注入 context(保存目录/海报/网络监听/通知)。仅组合根调用一次 */
+    public static void init(android.content.Context context) {
+        com.github.tvbox.osc.util.DownloadManager.init(context);
+    }
+
+    /** 注册播放地址解析契约实现(:spider 提供;App 组合根注入) */
+    public static void setUrlResolverApi(com.github.tvbox.osc.spiderapi.PlayUrlResolverApi api) {
+        com.github.tvbox.osc.util.DownloadManager.setUrlResolverApi(api);
+    }
+
+    /** 注册下载地址嗅探器(type0 嗅探源用;:app 模块实现并注入) */
+    public static void setUrlSniffer(com.github.tvbox.osc.download.DownloadUrlSniffer sniffer) {
+        com.github.tvbox.osc.util.DownloadManager.setUrlSniffer(sniffer);
+    }
+
+    // ------------------------------------------------------------------
     // 查询快照
     // ------------------------------------------------------------------
 
@@ -238,6 +257,58 @@ public final class DownloadFacade {
             } catch (Throwable ignored) {
             }
         }
+    }
+
+    // ------------------------------------------------------------------
+    // 配置门面(仅 WiFi / 并发 / 网络判定 / 保存目录;单一事实源在 DownloadManager)
+    // ------------------------------------------------------------------
+
+    /** 是否仅 WiFi 下载(默认开启;移动网络下下载前强提醒确认) */
+    public boolean isWifiOnly() {
+        return com.github.tvbox.osc.util.DownloadManager.get().isWifiOnly();
+    }
+
+    public void setWifiOnly(boolean wifiOnly) {
+        com.github.tvbox.osc.util.DownloadManager.get().setWifiOnly(wifiOnly);
+    }
+
+    /** 最大并发下载数(1-5) */
+    public int getMaxConcurrent() {
+        return com.github.tvbox.osc.util.DownloadManager.get().getMaxConcurrent();
+    }
+
+    /** 设置最大并发数(1-5),触发重新调度 */
+    public void setMaxConcurrent(int n) {
+        com.github.tvbox.osc.util.DownloadManager.get().setMaxConcurrent(n);
+    }
+
+    /** 当前网络是否为移动网络(蜂窝) */
+    public boolean isMobileNetwork() {
+        return com.github.tvbox.osc.util.DownloadManager.isMobileNetwork();
+    }
+
+    /** 下载保存根目录 */
+    public java.io.File getSaveDir() {
+        return com.github.tvbox.osc.util.DownloadManager.getSaveDir();
+    }
+
+    // ------------------------------------------------------------------
+    // 剧集状态(统一 EpisodeId 语义,见 DownloadCore;UI 不再直读下载内部实现)
+    // ------------------------------------------------------------------
+
+    /** 构建统一剧集标识: sourceKey|vodId|playFlag|playIndex */
+    public String buildEpisodeId(String sourceKey, String vodId, String playFlag, int playIndex) {
+        return com.github.tvbox.osc.util.DownloadCore.buildEpisodeId(sourceKey, vodId, playFlag, playIndex);
+    }
+
+    /** 批量查询剧集状态:0=未下载;1=已下载完成且文件存在;2=已有任务(下载中/排队/暂停);3=失败 */
+    public int[] getEpisodeStates(String[] episodeIds, String sourceName, String vodName, String[] episodeNames) {
+        return com.github.tvbox.osc.util.DownloadCore.getEpisodeStates(episodeIds, sourceName, vodName, episodeNames);
+    }
+
+    /** 单集下载状态(语义同上) */
+    public int getEpisodeState(String episodeId, String sourceName, String vodName, String episodeName) {
+        return com.github.tvbox.osc.util.DownloadCore.getEpisodeState(episodeId, sourceName, vodName, episodeName);
     }
 
     // ------------------------------------------------------------------
