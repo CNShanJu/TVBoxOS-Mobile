@@ -60,7 +60,7 @@
 ## 5. 大文件拆分（§三）— 未完成
 | 文件 | 行数 | 期望 |
 |---|---|---|
-| PlayFragment.java | ~1616 | PlayViewModel/Coordinator/PlayerSession/HistoryRepo（SubtitleCoordinator 已抽，见 §8） |
+| PlayFragment.java | ~1610 | PlayViewModel/Coordinator/PlayerSession(SubtitleCoordinator/PlayHistoryRepository 已抽,见 §8) |
 | DetailActivity.java | ~1276 | DetailViewModel/Repository/EpisodeSelectionState（已拆出少量 Helper） |
 | DownloadFragment.java | ~1208 | 已大量走 Facade，可继续薄化 |
 | SourceViewModel.java | ~930 | 依赖 SpiderService、可 Fake 单测 |
@@ -94,6 +94,11 @@ Exo→Media3、EventBus→Flow/接口、Hawk→DataStore、Java→Kotlin 渐进�
   (Activity,VodController,MyVideoView),承载字幕装载(缓存/外挂/内置自动选中文)/字幕设置弹窗
   (在线搜索/本地选择/字号延迟样式/开关)/音轨与内置字幕切换(SelectDialog+轨道切换+进度恢复);
   PlayFragment 相应方法变薄委托,refresh 字幕字号事件转调 applySubtitleSize。
+- ✅ PlayHistoryRepository 抽离(等价搬移,宿主薄委托):`util/player/PlayHistoryRepository.java`
+  收口 "key→MD5→CacheRepository" 读写与"跳过片头(st)叠加"读取语义(类型兼容分支/打印保留);
+  PlayFragment 的 getSavedProgress/saveProgress/切集与重置 delete 六处触点全委托,HistoryRepositories/MD5
+  直读清零;JVM 单测 7 例(Fake CacheRepository:roundTrip/skip 取大/String 兼容/删除)。
+  配套:common `MD5.string2MD5/encrypt` 的空值判断去 Android TextUtils 依赖(行为等价,纯算法类可 JVM 测)。
 - ⚠️ common/event 收口：已删 HistoryStateEvent/TopStateEvent(零引用孤儿)、DownloadEvent/RefreshEvent/ServerEvent
   各自归位业务/app 模块；common 仅剩 LogEvent(common 内 LOG.java 自用,EventBus 空投遗留——无人订阅,待日志页改造后清理)。
 - ⚠️ DownloadFragment 已完成 Facade 订阅去 EventBus;app 其余 EventBus 点(搜索/快速搜索/历史/直播等

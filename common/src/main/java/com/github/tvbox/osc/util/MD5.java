@@ -1,6 +1,5 @@
 package com.github.tvbox.osc.util;
 
-import android.text.TextUtils;
 import android.util.Base64;
 import android.util.Log;
 
@@ -111,7 +110,7 @@ public class MD5 {
         if (sDigest == null) {
             Log.e("MD5", "MD5信息摘要初始化失败");
             return null;
-        } else if (TextUtils.isEmpty(inStr)) {
+        } else if (inStr == null || inStr.isEmpty()) {
             Log.e("MD5", "参数strSource不能为空");
             return null;
         }
@@ -142,7 +141,7 @@ public class MD5 {
         if (sDigest == null) {
             Log.e("MD5", "MD5信息摘要初始化失败");
             return null;
-        } else if (TextUtils.isEmpty(strSource)) {
+        } else if (strSource == null || strSource.isEmpty()) {
             Log.e("MD5", "参数strSource不能为空");
             return null;
         }

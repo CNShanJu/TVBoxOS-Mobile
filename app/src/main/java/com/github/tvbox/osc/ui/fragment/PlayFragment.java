@@ -71,10 +71,10 @@ import com.github.tvbox.osc.util.HawkConfig;
 import com.github.tvbox.osc.util.HttpClient;
 import com.github.tvbox.osc.util.LOG;
 import com.github.tvbox.osc.util.LoadingAnim;
-import com.github.tvbox.osc.util.MD5;
 import com.github.tvbox.osc.util.PlayerHelper;
 import com.github.tvbox.osc.util.ParseBeanUrls;
 import com.github.tvbox.osc.util.VideoParseRuler;
+import com.github.tvbox.osc.util.player.PlayHistoryRepository;
 import com.github.tvbox.osc.util.thunder.Jianpian;
 import com.github.tvbox.osc.util.thunder.Thunder;
 import com.github.tvbox.osc.viewmodel.SourceViewModel;
@@ -118,6 +118,8 @@ public class PlayFragment extends BaseLazyFragment {
     private Handler mHandler;
     /** 字幕协调器(字幕装载/音轨与内置字幕切换/设置弹窗;见 util/player/SubtitleCoordinator) */
     private com.github.tvbox.osc.util.player.SubtitleCoordinator mSubtitleCoordinator;
+    /** 播放进度持久化(key→MD5→CacheRepository,见 util/player/PlayHistoryRepository) */
+    private final PlayHistoryRepository mPlayHistory = new PlayHistoryRepository();
     /** playback 会话原型:当前播放对应的会话键(PlaybackSessions 观察/日志用;不驱动内核) */
     private String playbackSessionKey;
 
@@ -167,24 +169,8 @@ public class PlayFragment extends BaseLazyFragment {
         } catch (JSONException e) {
             e.printStackTrace();
         }
-        long skip = st * 1000L;
-        Object theCache=com.github.tvbox.osc.repo.HistoryRepositories.cache().get(MD5.string2MD5(url));
-        if (theCache == null) {
-            return skip;
-        }
-        long rec = 0;
-        if (theCache instanceof Long) {
-            rec = (Long) theCache;
-        } else if (theCache instanceof String) {
-            try {
-                rec = Long.parseLong((String) theCache);
-            } catch (NumberFormatException e) {
-                System.out.println("String value is not a valid long.");
-            }
-        } else {
-            System.out.println("Value cannot be converted to long.");
-        }
-        return Math.max(rec, skip);
+        // 读取(含"跳过片头"叠加)委托 PlayHistoryRepository
+        return mPlayHistory.load(url, st * 1000L);
     }
 
     private void initView() {
@@ -215,7 +201,7 @@ public class PlayFragment extends BaseLazyFragment {
         ProgressManager progressManager = new ProgressManager() {
             @Override
             public void saveProgress(String url, long progress) {
-                com.github.tvbox.osc.repo.HistoryRepositories.cache().save(MD5.string2MD5(url), progress);
+                mPlayHistory.save(url, progress);
             }
 
             @Override
@@ -237,7 +223,7 @@ public class PlayFragment extends BaseLazyFragment {
                 String preProgressKey = progressKey;
                 PlayFragment.this.playNext(rmProgress);
                 if (rmProgress && preProgressKey != null)
-                    com.github.tvbox.osc.repo.HistoryRepositories.cache().delete(MD5.string2MD5(preProgressKey), 0);
+                    mPlayHistory.delete(preProgressKey);
             }
 
             @Override
@@ -959,8 +945,8 @@ public class PlayFragment extends BaseLazyFragment {
         String progressKey = mVodInfo.sourceKey + mVodInfo.id + mVodInfo.playFlag + mVodInfo.playIndex + vs.name;
         //重新播放清除现有进度
         if (reset) {
-            com.github.tvbox.osc.repo.HistoryRepositories.cache().delete(MD5.string2MD5(progressKey), 0);
-            com.github.tvbox.osc.repo.HistoryRepositories.cache().delete(MD5.string2MD5(subtitleCacheKey), 0);
+            mPlayHistory.delete(progressKey);
+            mPlayHistory.delete(subtitleCacheKey);
         }
         if (Jianpian.isJpUrl(vs.url)) {//荐片地址特殊判断
             String jp_url = vs.url;
