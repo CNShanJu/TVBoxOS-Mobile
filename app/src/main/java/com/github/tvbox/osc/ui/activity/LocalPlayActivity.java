@@ -7,7 +7,6 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
 
-import com.blankj.utilcode.util.ConvertUtils;
 import com.blankj.utilcode.util.GsonUtils;
 import com.blankj.utilcode.util.NotificationUtils;
 import com.blankj.utilcode.util.SPUtils;
@@ -26,15 +25,14 @@ import com.github.tvbox.osc.player.controller.LocalVideoController;
 import com.github.tvbox.osc.receiver.BatteryReceiver;
 import com.github.tvbox.osc.ui.dialog.AllLocalSeriesDialog;
 import com.github.tvbox.osc.ui.dialog.CastListDialog;
+import com.github.tvbox.osc.ui.dialog.DialogCoordinator;
 import com.github.tvbox.osc.ui.dialog.PlayingControlRightDialog;
 import com.github.tvbox.osc.util.BroadcastUtils;
 import com.github.tvbox.osc.util.HawkConfig;
 import com.github.tvbox.osc.util.PipHelper;
 import com.github.tvbox.osc.util.PlayerHelper;
 import com.google.common.reflect.TypeToken;
-import com.lxj.xpopup.XPopup;
 import com.lxj.xpopup.core.BasePopupView;
-import com.lxj.xpopup.enums.PopupPosition;
 import com.orhanobut.hawk.Hawk;
 
 import org.greenrobot.eventbus.EventBus;
@@ -217,14 +215,9 @@ public class LocalPlayActivity extends BaseVbActivity<ActivityLocalPlayBinding> 
             public void showSetting() {
                 // 本地播放设置:与在线全屏播放共用播放设置抽屉(功能一致)
                 mController.hideBottom();
-                new XPopup.Builder(LocalPlayActivity.this)
-                        .isViewMode(true)
-                        .hasNavigationBar(false)
-                        .popupHeight(com.blankj.utilcode.util.ScreenUtils.getScreenHeight())
-                        .popupWidth(com.blankj.utilcode.util.ConvertUtils.dp2px(320))
-                        .popupPosition(PopupPosition.Right)
-                        .asCustom(new PlayingControlRightDialog(LocalPlayActivity.this, mController, mVideoView))
-                        .show();
+                DialogCoordinator.right(LocalPlayActivity.this,
+                        new PlayingControlRightDialog(LocalPlayActivity.this, mController, mVideoView),
+                        320, true).show();
             }
 
             @Override
@@ -380,9 +373,8 @@ public class LocalPlayActivity extends BaseVbActivity<ActivityLocalPlayBinding> 
     /** 投屏弹窗(桩实现:暂不可用,与在线播放一致) */
     public void showCastDialog() {
         VideoInfo info = mVideoList.get(mPosition);
-        new XPopup.Builder(this)
-                .maxWidth(ConvertUtils.dp2px(360))
-                .asCustom(new CastListDialog(this, new CastVideo(info.getDisplayName(), "file://" + info.getPath())))
+        DialogCoordinator.centerMaxWidth(this,
+                new CastListDialog(this, new CastVideo(info.getDisplayName(), "file://" + info.getPath())), 360)
                 .show();
     }
 
@@ -411,15 +403,12 @@ public class LocalPlayActivity extends BaseVbActivity<ActivityLocalPlayBinding> 
     }
 
     public void showAllSeriesDialog(){
-        mAllSeriesRightDialog = new XPopup.Builder(this)
-                .isViewMode(true)//隐藏导航栏(手势条)在dialog模式下会闪一下,改为view模式,但需处理onBackPress的隐藏,下方同理
-                .hasNavigationBar(false)
-                .popupHeight(com.blankj.utilcode.util.ScreenUtils.getScreenHeight())
-                .popupPosition(PopupPosition.Right)
-                .asCustom(new AllLocalSeriesDialog(this, convertLocalVideo(), (position, text) -> {
+        // 右侧抽屉:本地选集列表(全高),与在线选集抽屉一致
+        mAllSeriesRightDialog = DialogCoordinator.right(this,
+                new AllLocalSeriesDialog(this, convertLocalVideo(), (position, text) -> {
                     mPosition = position;
                     play(true);
-                }));
+                }), 0, true);
         mAllSeriesRightDialog.show();
     }
 

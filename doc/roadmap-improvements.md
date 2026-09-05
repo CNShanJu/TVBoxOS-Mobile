@@ -38,7 +38,7 @@
 ## P3 工程化与现代化（长期）
 | # | 事项 | 现状 | 做法 | 验收 |
 |---|---|---|---|---|
-| 3.1 | ui-common→theme + ui-kit | ⚠️ ui-kit 已建 | app 内建 `ui.kit` package(§2.7 第一阶段):迁入 AppSwitch/AppTitleBar/RatioShadowLayout/ClearEditText/两个 ItemDecoration,带纯净边界约束;成熟后再拆 Gradle 模块 | UI 组件无 Hawk/ApiConfig/EventBus;ui-common 只留主题资源 |
+| 3.1 | ui-common→theme + ui-kit | ⚠️ ui-kit 已建 | app 内建 `ui.kit` package(§2.7 第一阶段):迁入 AppSwitch/AppTitleBar/RatioShadowLayout/ClearEditText/两个 ItemDecoration,带纯净边界约束;弹窗展示统一走 `DialogCoordinator`(ui.dialog);成熟后再拆 Gradle 模块 | UI 组件无 Hawk/ApiConfig/EventBus;ui-common 只留主题资源 |
 | 3.2 | 模块依赖检查 + 测试门禁 | ❌ | gradle 依赖方向校验 task + JVM 单测（FakeSpiderService 等） | CI 违反依赖方向即红 |
 | 3.3 | EventBus→Flow/监听接口 | ❌ | 分业务逐步替换 | 新事件不再走 EventBus |
 | 3.4 | Hawk→DataStore（类型安全 Config） | ❌ | Config/Repository 化 | 业务不再直接 Hawk.put/get |

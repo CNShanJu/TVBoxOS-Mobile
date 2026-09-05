@@ -65,6 +65,7 @@ import com.github.tvbox.osc.server.RemoteServer;
 import com.github.tvbox.osc.ui.activity.DetailActivity;
 import com.github.tvbox.osc.ui.adapter.ParseAdapter;
 import com.github.tvbox.osc.ui.adapter.SelectDialogAdapter;
+import com.github.tvbox.osc.ui.dialog.DialogCoordinator;
 import com.github.tvbox.osc.ui.dialog.PlayingControlDialog;
 import com.github.tvbox.osc.ui.dialog.PlayingControlRightDialog;
 import com.github.tvbox.osc.ui.dialog.SearchSubtitleDialog;
@@ -86,9 +87,7 @@ import com.github.tvbox.osc.util.thunder.Thunder;
 import com.github.tvbox.osc.viewmodel.SourceViewModel;
 import com.gyf.immersionbar.BarHide;
 import com.gyf.immersionbar.ImmersionBar;
-import com.lxj.xpopup.XPopup;
 import com.lxj.xpopup.core.BasePopupView;
-import com.lxj.xpopup.enums.PopupPosition;
 import com.obsez.android.lib.filechooser.ChooserDialog;
 import com.orhanobut.hawk.Hawk;
 
@@ -323,19 +322,13 @@ public class PlayFragment extends BaseLazyFragment {
             public void showSetting() {
                 // 按当前方向决定形态: 横屏右侧抽屉; 竖屏底部弹层(AppBottomPopupView 自带高度上限)
                 if (ScreenUtils.isLandscape()){
-                    mPlayingControlRightDialog = new XPopup.Builder(activity)
-                            .isViewMode(true)//改为view模式无法自动响应返回键操作,onBackPress时手动dismiss
-                            .hasNavigationBar(false)
-                            .popupHeight(ScreenUtils.getScreenHeight())
-                            .popupWidth(com.blankj.utilcode.util.ConvertUtils.dp2px(320))
-                            .popupPosition(PopupPosition.Right)
-                            .asCustom(new PlayingControlRightDialog(activity, mController, mVideoView));
+                    // view 模式无法自动响应返回键,onBackPress 时手动 dismiss
+                    mPlayingControlRightDialog = DialogCoordinator.right(activity,
+                            new PlayingControlRightDialog(activity, mController, mVideoView), 320, true);
                     mPlayingControlRightDialog.show();
                 }else {
-                    mPlayingControlDialog = new XPopup.Builder(activity)
-                            .isViewMode(true)
-                            .hasNavigationBar(false)
-                            .asCustom(new PlayingControlDialog(activity,mController,mVideoView));
+                    mPlayingControlDialog = DialogCoordinator.bottom(activity,
+                            new PlayingControlDialog(activity,mController,mVideoView), 0);
                     mPlayingControlDialog.show();
                 }
             }

@@ -43,9 +43,7 @@ public class LiveApiDialog extends AppCenterPopupView {
                 AppBubble.toast("暂无历史记录");
                 return;
             }
-            new XPopup.Builder(getContext())
-                    .asCustom(new ApiHistoryDialog(getContext(),liveApi, this::updateEt))
-                    .show();
+            DialogCoordinator.center(getContext(), new ApiHistoryDialog(getContext(), liveApi, this::updateEt)).show();
         });
 
         mBinding.btnCancel.setOnClickListener(v -> dismiss());

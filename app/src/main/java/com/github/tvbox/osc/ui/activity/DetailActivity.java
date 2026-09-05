@@ -58,6 +58,7 @@ import com.github.tvbox.osc.ui.dialog.AllVodSeriesBottomDialog;
 import com.github.tvbox.osc.ui.dialog.AllVodSeriesRightDialog;
 import com.github.tvbox.osc.ui.dialog.CastListDialog;
 import com.github.tvbox.osc.ui.dialog.ConfirmDialog;
+import com.github.tvbox.osc.ui.dialog.DialogCoordinator;
 import com.github.tvbox.osc.ui.dialog.DownloadSeriesDialog;
 import com.github.tvbox.osc.ui.dialog.DownloadSeriesRightDialog;
 import com.github.tvbox.osc.ui.dialog.QuickSearchDialog;
@@ -326,11 +327,7 @@ public class DetailActivity extends BaseVbActivity<ActivityDetailBinding> {
         }
 
         findViewById(R.id.ll_title).setOnClickListener(view -> {
-            new XPopup.Builder(this)
-                    .isViewMode(true)
-                    .hasNavigationBar(false)
-                    .asCustom(new VideoDetailDialog(this, vodInfo))
-                    .show();
+            DialogCoordinator.center(this, new VideoDetailDialog(this, vodInfo)).show();
         });
         findViewById(R.id.tvDownload).setOnClickListener(new View.OnClickListener() {
             @Override
@@ -487,33 +484,24 @@ public class DetailActivity extends BaseVbActivity<ActivityDetailBinding> {
     public void showCastDialog() {
 
         VodInfo.VodSeries vodSeries = vodInfo.seriesMap.get(vodInfo.playFlag).get(vodInfo.playIndex);
-        new XPopup.Builder(this)
-                .maxWidth(ConvertUtils.dp2px(360))
-                .asCustom(new CastListDialog(this, new CastVideo(vodSeries.name
-                        , TextUtils.isEmpty(playFragment.getFinalUrl()) ? vodSeries.url : playFragment.getFinalUrl())))
+        DialogCoordinator.centerMaxWidth(this, new CastListDialog(this, new CastVideo(vodSeries.name
+                , TextUtils.isEmpty(playFragment.getFinalUrl()) ? vodSeries.url : playFragment.getFinalUrl())), 360)
                 .show();
     }
 
     public void showAllSeriesDialog() {
         // 按当前方向决定形态: 横屏用右侧抽屉, 竖屏用底部弹层并限制高度(与详情页一致)
         if (ScreenUtils.isLandscape()) {
-            mAllSeriesRightDialog = new XPopup.Builder(this)
-                    .isViewMode(true)//隐藏导航栏(手势条)在dialog模式下会闪一下,改为view模式,但需处理onBackPress的隐藏,下方同理
-                    .hasNavigationBar(false)
-                    .popupWidth(ConvertUtils.dp2px(360)) // 固定抽屉宽度(与下载右侧抽屉一致),避免线路列表把弹窗撑开
-                    .popupHeight(ScreenUtils.getScreenHeight())
-                    .popupPosition(PopupPosition.Right)
-                    .enableDrag(false)//禁用拖拽,内部有横向rv
-                    .asCustom(new AllVodSeriesRightDialog(this));
+            // 右侧抽屉:固定宽度 360,与下载右侧抽屉一致,避免线路列表把弹窗撑开;内部有横向 rv 禁拖拽
+            mAllSeriesRightDialog = DialogCoordinator.right(this,
+                    new AllVodSeriesRightDialog(this), 360, false);
             mAllSeriesRightDialog.show();
         } else {
-            mAllSeriesBottomDialog = new XPopup.Builder(this)
-                    .isViewMode(true)
-                    .hasNavigationBar(false)
-                    .maxHeight(ScreenUtils.getScreenHeight() - (ScreenUtils.getScreenHeight() / 4))
-                    .asCustom(new AllVodSeriesBottomDialog(this, seriesAdapter.getData(), (position, text) -> {
+            mAllSeriesBottomDialog = DialogCoordinator.bottomMaxHeight(this,
+                    new AllVodSeriesBottomDialog(this, seriesAdapter.getData(), (position, text) -> {
                         chooseSeries(position, false);
-                    }, this::sortSeries, this::isSeriesReversed));
+                    }, this::sortSeries, this::isSeriesReversed),
+                    ScreenUtils.getScreenHeight() - (ScreenUtils.getScreenHeight() / 4));
             mAllSeriesBottomDialog.show();
         }
     }
@@ -952,15 +940,8 @@ public class DetailActivity extends BaseVbActivity<ActivityDetailBinding> {
         }
         // 立即弹抽屉(空数据 + loading),避免主线程构建选集/状态造成卡顿
         isDownloadDialogShowing = true;
-        mDownloadDialog = new XPopup.Builder(this)
-                .isViewMode(true)
-                .hasNavigationBar(false)
-                .popupWidth(ConvertUtils.dp2px(360)) // 固定抽屉宽度(与选集右侧抽屉一致),避免内容/按钮被挤出可视区
-                .popupHeight(ScreenUtils.getScreenHeight())
-                .popupPosition(com.lxj.xpopup.enums.PopupPosition.Right)
-                .enableDrag(false)
-                .setPopupCallback(downloadDialogCallback())
-                .asCustom(new DownloadSeriesRightDialog(this, new DownloadSeriesRightDialog.OnDownloadActionListener() {
+        mDownloadDialog = DialogCoordinator.right(this,
+                new DownloadSeriesRightDialog(this, new DownloadSeriesRightDialog.OnDownloadActionListener() {
                     @Override
                     public void onStartDownload(List<VodInfo.VodSeries> selected) {
                         startDownloads(selected);
@@ -977,7 +958,8 @@ public class DetailActivity extends BaseVbActivity<ActivityDetailBinding> {
                         sortSeries(); // 与选集抽屉一致:反转全集列表(副本随正表重建)
                         refreshDownloadDialogStates();
                     }
-                }, this::isSeriesReversed));
+                }, this::isSeriesReversed),
+                360, false, downloadDialogCallback());
         mDownloadDialog.show();
         // 后台准备数据(选集副本 + 下载状态批量查询),完成后主线程填充抽屉
         final String sourceName = getDownloadSourceName();
@@ -1089,13 +1071,10 @@ public class DetailActivity extends BaseVbActivity<ActivityDetailBinding> {
             return;
         }
         isDownloadDialogShowing = true;
-        mDownloadDialog = new XPopup.Builder(this)
-                .isViewMode(true)
-                .hasNavigationBar(false)
-                .maxHeight(ScreenUtils.getScreenHeight() * 2 / 3) // 底部弹窗封顶2/3屏,列表吃满剩余+滚动,按钮固定底部
-                // 弹窗关闭(确认/取消/点外部/返回键)后清除防重入标记,允许再次打开
-                .setPopupCallback(downloadDialogCallback())
-                .asCustom(new DownloadSeriesDialog(this, new DownloadSeriesDialog.OnDownloadActionListener() {
+        // 底部弹窗封顶 2/3 屏,列表吃满剩余+滚动,按钮固定底部;
+        // 弹窗关闭(确认/取消/点外部/返回键)后清除防重入标记,允许再次打开
+        mDownloadDialog = DialogCoordinator.bottomMaxHeight(this,
+                new DownloadSeriesDialog(this, new DownloadSeriesDialog.OnDownloadActionListener() {
                     @Override
                     public void onStartDownload(List<VodInfo.VodSeries> selected) {
                         startDownloads(selected);
@@ -1113,7 +1092,9 @@ public class DetailActivity extends BaseVbActivity<ActivityDetailBinding> {
                         sortSeries(); // 与选集抽屉一致:反转全集列表(副本随正表重建)
                         refreshDownloadDialogStates();
                     }
-                }, this::isSeriesReversed));
+                }, this::isSeriesReversed),
+                ScreenUtils.getScreenHeight() * 2 / 3,
+                downloadDialogCallback());
         mDownloadDialog.show();
         // 实时刷新: 订阅下载状态变化(下载中进度/完成/失败 → 弹窗实时更新勾选态)
         com.github.tvbox.osc.download.DownloadFacade.get().register(downloadStatusListener);

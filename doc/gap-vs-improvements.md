@@ -40,7 +40,11 @@
   lastChannel/liveHistory),LiveActivity/三个设置弹窗/历史源弹窗不再裸读 Hawk;EPG_URL 仍跨模块(spider 写)。
 - 直播设置弹窗重复已合并:`ui/dialog/LiveSettingPanel` 共享协调器,LiveSettingDialog(底部)/
   LiveSettingRightDialog(抽屉)收敛为薄壳(-372 行);LiveActivity 内嵌面板(showSettingGroup 家族)
-  无活调用入口(仅注释),tvRightSettingLayout 可见性分支为死代码,待真机回归确认后删除。
+  已删除(死代码,无调用入口,含 activity_live.xml 布局块)。
+- 弹窗展示协调器:`ui/dialog/DialogCoordinator` 统一 XPopup 组装(center/right/bottom/loading/confirm),
+  页面不再散拼 `new XPopup.Builder(...)`;DetailActivity/LiveActivity/LocalPlayActivity/PlayFragment/
+  DownloadFragment/MyFragment/BaseActivity/LiveApiDialog 已迁移;XPopup 内置形态(asCenterList/
+  asInputConfirm/asImageViewer)与 ConfirmDialog 工厂保留直调。
 
 ## 5. 大文件拆分（§三）— 未完成
 | 文件 | 行数 | 期望 |

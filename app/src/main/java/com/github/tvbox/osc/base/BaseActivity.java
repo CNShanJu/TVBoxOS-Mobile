@@ -31,7 +31,6 @@ import com.hjq.bar.TitleBar;
 import com.kingja.loadsir.callback.Callback;
 import com.kingja.loadsir.core.LoadService;
 import com.kingja.loadsir.core.LoadSir;
-import com.lxj.xpopup.XPopup;
 import com.lxj.xpopup.impl.LoadingPopupView;
 import com.orhanobut.hawk.Hawk;
 
@@ -220,14 +219,11 @@ public abstract class BaseActivity extends AppCompatActivity implements CustomAd
 
 
     /**
-     * 显示加载框
+     * 显示加载框（统一走 DialogCoordinator 生成）
      */
     public void showLoadingDialog() {
         if (loadingPopup == null) {
-            loadingPopup = new XPopup.Builder(this)
-                    .isLightNavigationBar(true)
-                    .hasShadowBg(false)
-                    .asLoading();
+            loadingPopup = com.github.tvbox.osc.ui.dialog.DialogCoordinator.loading(this);
         }
         loadingPopup.show();
     }

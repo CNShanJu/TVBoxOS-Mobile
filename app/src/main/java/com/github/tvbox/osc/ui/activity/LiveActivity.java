@@ -36,6 +36,7 @@ import com.github.tvbox.osc.ui.adapter.LiveChannelGroupNewAdapter;
 import com.github.tvbox.osc.ui.adapter.LiveChannelItemNewAdapter;
 import com.github.tvbox.osc.ui.dialog.AllChannelsRightDialog;
 import com.github.tvbox.osc.ui.dialog.CastListDialog;
+import com.github.tvbox.osc.ui.dialog.DialogCoordinator;
 import com.github.tvbox.osc.ui.dialog.LivePasswordDialog;
 import com.github.tvbox.osc.ui.dialog.LiveSettingDialog;
 import com.github.tvbox.osc.ui.dialog.LiveSettingRightDialog;
@@ -52,9 +53,7 @@ import com.github.tvbox.osc.util.live.TxtSubscribe;
 import com.google.gson.JsonArray;
 import com.gyf.immersionbar.BarHide;
 import com.gyf.immersionbar.ImmersionBar;
-import com.lxj.xpopup.XPopup;
 import com.lxj.xpopup.core.BasePopupView;
-import com.lxj.xpopup.enums.PopupPosition;
 import com.orhanobut.hawk.Hawk;
 import com.owen.tvrecyclerview.widget.V7LinearLayoutManager;
 
@@ -853,21 +852,14 @@ public class LiveActivity extends BaseActivity {
     }
 
     public void showAllChannelDialog() {
-        mAllChannelRightDialog = new XPopup.Builder(this)
-                .isViewMode(true)
-                .hasNavigationBar(false)
-                .hasShadowBg(false)
-                .popupHeight(ScreenUtils.getScreenHeight())
-                .popupPosition(PopupPosition.Right)
-                .asCustom(new AllChannelsRightDialog(this));
+        mAllChannelRightDialog = DialogCoordinator.right(this,
+                new AllChannelsRightDialog(this), 0, true, false, null);
         mAllChannelRightDialog.show();
     }
 
     public void showCastDialog() {
         if (currentLiveChannelItem!=null){
-            new XPopup.Builder(this)
-                    .maxWidth(ConvertUtils.dp2px(360))
-                    .asCustom(new CastListDialog(this,new CastVideo(currentLiveChannelItem.getChannelName(),currentLiveChannelItem.getUrl())))
+            DialogCoordinator.centerMaxWidth(this, new CastListDialog(this,new CastVideo(currentLiveChannelItem.getChannelName(),currentLiveChannelItem.getUrl())), 360)
                     .show();
         }
     }
@@ -918,20 +910,12 @@ public class LiveActivity extends BaseActivity {
             return;
         }
         if (fullScreenStyle){
-            mSettingRightDialog = new XPopup.Builder(this)
-                    .isViewMode(true)
-                    .hasNavigationBar(false)
-                    .popupHeight(ScreenUtils.getScreenHeight())
-                    .popupWidth(ConvertUtils.dp2px(300))
-                    .popupPosition(PopupPosition.Right)
-                    .asCustom(new LiveSettingRightDialog(this));
+            mSettingRightDialog = DialogCoordinator.right(this,
+                    new LiveSettingRightDialog(this), 300, true);
             mSettingRightDialog.show();
         }else {
-            mSettingBottomDialog = new XPopup.Builder(this)
-                    .isViewMode(true)
-                    .popupHeight(ScreenUtils.getScreenHeight()/2)
-                    .hasNavigationBar(false)
-                    .asCustom(new LiveSettingDialog(this));
+            mSettingBottomDialog = DialogCoordinator.bottom(this,
+                    new LiveSettingDialog(this), ScreenUtils.getScreenHeight() / 2);
             mSettingBottomDialog.show();
         }
 

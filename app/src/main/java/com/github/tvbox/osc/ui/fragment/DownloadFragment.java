@@ -35,8 +35,8 @@ import com.github.tvbox.osc.ui.activity.LocalPlayActivity;
 import com.github.tvbox.osc.ui.adapter.LocalVideoAdapter;
 import com.github.tvbox.osc.ui.dialog.ConfirmDialog;
 import com.github.tvbox.osc.ui.dialog.DeleteDownloadDialog;
+import com.github.tvbox.osc.ui.dialog.DialogCoordinator;
 import com.github.tvbox.osc.util.Utils;
-import com.lxj.xpopup.XPopup;
 
 import org.greenrobot.eventbus.EventBus;
 import org.greenrobot.eventbus.Subscribe;
@@ -341,16 +341,14 @@ public class DownloadFragment extends BaseVbFragment<FragmentDownloadBinding> {
                 // 删除:确认后记录+过程文件一起删,收起并刷新
                 swipedTaskIds.remove(t.id);
                 downloadingAdapter.notifyDataSetChanged();
-                new XPopup.Builder(mContext)
-                        .isDarkTheme(Utils.isDarkTheme())
-                        .asCustom(new ConfirmDialog(mContext,
-                                "删除任务",
-                                "将删除该任务及其未完成的下载文件,确定?",
-                                "删除",
-                                () -> {
-                                    DownloadFacade.get().remove(t, true);
-                                    refresh();
-                                }))
+                DialogCoordinator.centerDark(mContext, new ConfirmDialog(mContext,
+                        "删除任务",
+                        "将删除该任务及其未完成的下载文件,确定?",
+                        "删除",
+                        () -> {
+                            DownloadFacade.get().remove(t, true);
+                            refresh();
+                        }))
                         .show();
             }
         });
@@ -782,9 +780,7 @@ public class DownloadFragment extends BaseVbFragment<FragmentDownloadBinding> {
             if (selectedAggKeys.contains(g.key)) sel.add(g);
         }
         if (sel.isEmpty()) return;
-        new XPopup.Builder(mContext)
-                .isDarkTheme(Utils.isDarkTheme())
-                .asCustom(new DeleteDownloadDialog(mContext, deleteFiles -> {
+        DialogCoordinator.centerDark(mContext, new DeleteDownloadDialog(mContext, deleteFiles -> {
                     for (DownloadGroup g : sel) {
                         if (deleteFiles) {
                             // 勾选:全部删除,记录 + 整个文件夹(该来源下该剧名目录)。
@@ -834,48 +830,44 @@ public class DownloadFragment extends BaseVbFragment<FragmentDownloadBinding> {
     private void deleteSelectedDownloading() {
         List<DownloadTask> scope = new ArrayList<>(currentDlScope());
         if (scope.isEmpty()) return;
-        new XPopup.Builder(mContext)
-                .isDarkTheme(Utils.isDarkTheme())
-                .asCustom(new ConfirmDialog(mContext,
-                        "删除任务",
-                        "确定删除选中的 " + scope.size() + " 个任务?",
-                        "删除",
-                        () -> {
-                            Set<File> dirs = new LinkedHashSet<>();
-                            for (DownloadTask t : scope) {
-                                if (t.savePath != null) {
-                                    File p = new File(t.savePath).getParentFile();
-                                    if (p != null) dirs.add(p);
-                                }
-                                DownloadFacade.get().remove(t, true);
-                            }
-                            // 组内任务清空后,删掉空的剧名目录
-                            for (File d : dirs) {
-                                File[] fs = d.listFiles();
-                                if (fs != null && fs.length == 0) d.delete();
-                            }
-                            exitDlSelectMode();
-                            refresh();
-                        }))
-                .show();
+        DialogCoordinator.centerDark(mContext, new ConfirmDialog(mContext,
+                "删除任务",
+                "确定删除选中的 " + scope.size() + " 个任务?",
+                "删除",
+                () -> {
+                    Set<File> dirs = new LinkedHashSet<>();
+                    for (DownloadTask t : scope) {
+                        if (t.savePath != null) {
+                            File p = new File(t.savePath).getParentFile();
+                            if (p != null) dirs.add(p);
+                        }
+                        DownloadFacade.get().remove(t, true);
+                    }
+                    // 组内任务清空后,删掉空的剧名目录
+                    for (File d : dirs) {
+                        File[] fs = d.listFiles();
+                        if (fs != null && fs.length == 0) d.delete();
+                    }
+                    exitDlSelectMode();
+                    refresh();
+                }))
+        .show();
     }
 
     /** 删除选中的下载完成文件(详情页):确认后按"同时删除本地文件"决定 */
     private void deleteChecked() {
-        new XPopup.Builder(mContext)
-                .isDarkTheme(Utils.isDarkTheme())
-                .asCustom(new DeleteDownloadDialog(mContext, deleteFiles -> {
-                    List<VideoInfo> data = new ArrayList<>(localVideoAdapter.getData());
-                    for (VideoInfo item : data) {
-                        if (item.isChecked()) {
-                            removeTaskAndFile(item.getPath(), deleteFiles);
-                        }
-                    }
-                    localVideoAdapter.setSelectMode(false);
-                    updateToolbar();
-                    refresh();
-                }))
-                .show();
+        DialogCoordinator.centerDark(mContext, new DeleteDownloadDialog(mContext, deleteFiles -> {
+            List<VideoInfo> data = new ArrayList<>(localVideoAdapter.getData());
+            for (VideoInfo item : data) {
+                if (item.isChecked()) {
+                    removeTaskAndFile(item.getPath(), deleteFiles);
+                }
+            }
+            localVideoAdapter.setSelectMode(false);
+            updateToolbar();
+            refresh();
+        }))
+        .show();
     }
 
     /**
