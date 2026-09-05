@@ -38,6 +38,34 @@ public final class EpisodeDownloadBatch {
     private EpisodeDownloadBatch() {
     }
 
+    /**
+     * 批量入队完成后的提示文案(纯映射;UI 仅弹 toast)。优先"有新增"、
+     * 其次"均已存在(已下载/已在任务中)"、再"全部失败";空输入返回 null 由调用方处理。
+     */
+    public static String toastMessage(Outcome r) {
+        if (r.added > 0) {
+            int dups = r.downloadedExisted + r.existedInQueue;
+            return dups > 0
+                    ? "已加入 " + r.added + " 个下载任务," + dups + " 个已存在"
+                    : "已加入 " + r.added + " 个下载任务,可在\"我的-下载\"查看";
+        }
+        if (r.downloadedExisted > 0 || r.existedInQueue > 0) {
+            if (r.downloadedExisted > 0 && r.existedInQueue > 0) {
+                return r.downloadedExisted + " 集已下载," + r.existedInQueue + " 集已在任务中";
+            }
+            if (r.downloadedExisted > 0) {
+                return "所选剧集均已下载完成";
+            }
+            return "所选剧集已在下载任务中";
+        }
+        if (r.failed > 0) {
+            return r.failed > 1
+                    ? "所选剧集解析失败(" + r.failed + " 集),该源可能仅支持下载当前播放的剧集"
+                    : "该集解析失败,该源可能仅支持下载当前播放的剧集,请先播放该集再试";
+        }
+        return null;
+    }
+
     /** 计算统一剧集标识:已有 episodeId 直接用;否则按集名在全集列表中的索引回退生成 */
     public static String resolveEpisodeId(String sourceKey, String vodId, String playFlag,
                                          List<VodInfo.VodSeries> seriesList, String sName, String episodeId) {

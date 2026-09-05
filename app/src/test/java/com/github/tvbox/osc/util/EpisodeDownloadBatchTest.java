@@ -52,4 +52,36 @@ public class EpisodeDownloadBatchTest {
         assertEquals(1, out.existedInQueue);
         assertEquals(0, out.failed);
     }
+
+    @Test
+    public void toastMessage_prefersAddedThenDupThenFail() {
+        EpisodeDownloadBatch.Outcome addedOnly = new EpisodeDownloadBatch.Outcome();
+        addedOnly.added = 3;
+        assertTrue(EpisodeDownloadBatch.toastMessage(addedOnly).startsWith("已加入 3 个下载任务"));
+
+        EpisodeDownloadBatch.Outcome addedWithDup = new EpisodeDownloadBatch.Outcome();
+        addedWithDup.added = 1;
+        addedWithDup.downloadedExisted = 1;
+        addedWithDup.existedInQueue = 1;
+        assertTrue(EpisodeDownloadBatch.toastMessage(addedWithDup).contains("2 个已存在"));
+
+        EpisodeDownloadBatch.Outcome dupOnly = new EpisodeDownloadBatch.Outcome();
+        dupOnly.downloadedExisted = 2;
+        dupOnly.existedInQueue = 1;
+        assertEquals("2 集已下载,1 集已在任务中", EpisodeDownloadBatch.toastMessage(dupOnly));
+        dupOnly.existedInQueue = 0;
+        assertEquals("所选剧集均已下载完成", EpisodeDownloadBatch.toastMessage(dupOnly));
+        dupOnly.downloadedExisted = 0;
+        dupOnly.existedInQueue = 1;
+        assertEquals("所选剧集已在下载任务中", EpisodeDownloadBatch.toastMessage(dupOnly));
+
+        EpisodeDownloadBatch.Outcome fail = new EpisodeDownloadBatch.Outcome();
+        fail.failed = 2;
+        assertTrue(EpisodeDownloadBatch.toastMessage(fail).startsWith("所选剧集解析失败(2 集)"));
+        fail.failed = 1;
+        assertTrue(EpisodeDownloadBatch.toastMessage(fail).startsWith("该集解析失败"));
+
+        // 全空 → null(调用方给兜底文案)
+        assertEquals(null, EpisodeDownloadBatch.toastMessage(new EpisodeDownloadBatch.Outcome()));
+    }
 }

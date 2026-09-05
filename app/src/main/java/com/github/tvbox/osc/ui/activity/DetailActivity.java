@@ -1177,7 +1177,7 @@ public class DetailActivity extends BaseVbActivity<ActivityDetailBinding> {
         Log.i("TVBox-Download", "startDownloads: 已选 " + selected.size() + " 集, 来源=" + sourceName
                 + ", 剧名=" + vodName + ", 当前集=" + currentName + ", 分辨率=" + resLabel);
         AppBubble.toast("正在解析下载地址,请稍候...");
-        // 用与播放一致的爬虫单线程池解析地址,避免 quickjs 并发;解析/入队/计数收敛到 EpisodeDownloadBatch
+        // 用与播放一致的爬虫单线程池解析地址,避免 quickjs 并发;解析/入队/计数/文案收敛到 EpisodeDownloadBatch
         SourceViewModel.spThreadPool.execute(() -> {
             EpisodeDownloadBatch.Outcome r = EpisodeDownloadBatch.enqueue(selected, vodInfo, sourceName,
                     vodName, currentName, resLabel, playFragment == null ? null : new EpisodeDownloadBatch.CurrentEpisode() {
@@ -1191,30 +1191,10 @@ public class DetailActivity extends BaseVbActivity<ActivityDetailBinding> {
                             return playFragment.getPlayHeaders();
                         }
                     });
-            final int fAdded = r.added;
-            final int fDownloaded = r.downloadedExisted;
-            final int fInQueue = r.existedInQueue;
-            final int fFailed = r.failed;
+            final String msg = EpisodeDownloadBatch.toastMessage(r);
             runOnUiThread(() -> {
-                if (fAdded > 0) {
-                    int dups = fDownloaded + fInQueue;
-                    AppBubble.toast(dups > 0
-                            ? "已加入 " + fAdded + " 个下载任务," + dups + " 个已存在"
-                            : "已加入 " + fAdded + " 个下载任务,可在\"我的-下载\"查看");
-                } else if (fDownloaded > 0 || fInQueue > 0) {
-                    // 修正:原实现 duplicated 计数从未累加,导致"均已下载/已在任务中"分支不可达
-                    if (fDownloaded > 0 && fInQueue > 0) {
-                        AppBubble.toast(fDownloaded + " 集已下载," + fInQueue + " 集已在任务中");
-                    } else if (fDownloaded > 0) {
-                        AppBubble.toast("所选剧集均已下载完成");
-                    } else {
-                        AppBubble.toast("所选剧集已在下载任务中");
-                    }
-                } else if (fFailed > 0) {
-                    // 嗅探型源(WebView 解析)无法批量解析: 提示引导先播放目标集
-                    AppBubble.toast(fFailed > 1
-                            ? "所选剧集解析失败(" + fFailed + " 集),该源可能仅支持下载当前播放的剧集"
-                            : "该集解析失败,该源可能仅支持下载当前播放的剧集,请先播放该集再试");
+                if (msg != null) {
+                    AppBubble.toast(msg);
                 } else {
                     AppBubble.toast("所选剧集地址无效,无法下载");
                 }
