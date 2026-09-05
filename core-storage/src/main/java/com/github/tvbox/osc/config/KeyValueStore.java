@@ -1,5 +1,7 @@
 package com.github.tvbox.osc.config;
 
+import android.content.Context;
+
 import com.orhanobut.hawk.Hawk;
 
 /**
@@ -12,6 +14,11 @@ import com.orhanobut.hawk.Hawk;
 public final class KeyValueStore {
 
     private KeyValueStore() {
+    }
+
+    /** 存储初始化（App 启动调用一次；内部 Hawk.init） */
+    public static void init(Context context) {
+        Hawk.init(context == null ? null : context.getApplicationContext()).build();
     }
 
     // ── 读（强类型 + 默认值兜底）──

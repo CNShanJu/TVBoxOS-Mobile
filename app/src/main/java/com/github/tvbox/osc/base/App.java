@@ -18,12 +18,13 @@ import com.github.tvbox.osc.ui.activity.MainActivity;
 import com.github.tvbox.osc.util.AppLog;
 import com.github.tvbox.osc.util.FileUtils;
 import com.github.tvbox.osc.config.HawkConfig;
+import com.github.tvbox.osc.config.KeyValueStore;
 import com.github.tvbox.osc.util.LOG;
 import com.github.tvbox.osc.util.OkGoHelper;
 import com.github.tvbox.osc.util.PlayerHelper;
+import com.github.tvbox.osc.util.SubscriptionConfig;
 import com.github.tvbox.osc.util.Utils;
 import com.kingja.loadsir.core.LoadSir;
-import com.orhanobut.hawk.Hawk;
 import com.p2p.P2PClass;
 import com.whl.quickjs.android.QuickJSLoader;
 
@@ -129,9 +130,9 @@ public class App extends MultiDexApplication {
     }
 
     private void initParams() {
-        // Hawk
-        Hawk.init(this).build();
-        Hawk.put(HawkConfig.DEBUG_OPEN, false);
+        // 键值存储(config 包封装;内部 Hawk)
+        KeyValueStore.init(this);
+        KeyValueStore.put(HawkConfig.DEBUG_OPEN, false);
 
         putDefault(HawkConfig.HOME_REC, 0);                  //推荐: 0=豆瓣热播, 1=站点推荐
         putDefault(HawkConfig.PLAY_TYPE, 2);                 //播放器: 0=系统, 1=IJK, 2=Exo
@@ -164,17 +165,17 @@ public class App extends MultiDexApplication {
         List<Subscription> defaults = readDefaultSubscriptions();
         boolean filePresent = defaults != null;
         if (defaults == null) defaults = new ArrayList<>();
-        List<Subscription> injected = Hawk.get(HawkConfig.DEFAULT_SUBS, new ArrayList<Subscription>());
-        List<Subscription> subs = Hawk.get(HawkConfig.SUBSCRIPTIONS, new ArrayList<Subscription>());
+        List<Subscription> injected = SubscriptionConfig.getDefaultSubs();
+        List<Subscription> subs = SubscriptionConfig.getSubscriptions();
         if (subs == null) subs = new ArrayList<>();
 
         // 迁移兼容:旧版本注入默认订阅时未记录 DEFAULT_SUBS。
         // 1) 文件已清空:若列表符合旧版注入特征(首项勾选且接口地址=首项地址),视为注入集交给同步逻辑清除;
         // 2) 文件有内容:把与文件匹配的现有订阅视为注入集,文件后续删掉它们时能同步移除。
-        if (!Hawk.contains(HawkConfig.DEFAULT_SUBS)) {
+        if (!SubscriptionConfig.containsDefaultSubs()) {
             if (filePresent && defaults.isEmpty() && !subs.isEmpty()
                     && subs.get(0).isChecked()
-                    && TextUtils.equals(subs.get(0).getUrl(), Hawk.get(HawkConfig.API_URL, ""))) {
+                    && TextUtils.equals(subs.get(0).getUrl(), SubscriptionConfig.getApiUrl())) {
                 injected = new ArrayList<>(subs);
             } else if (!defaults.isEmpty()) {
                 for (Subscription def : defaults) {
@@ -212,8 +213,8 @@ public class App extends MultiDexApplication {
         // 3) 勾选与接口地址维护
         if (subs.isEmpty()) {
             if (changed) {
-                Hawk.put(HawkConfig.SUBSCRIPTIONS, subs);
-                Hawk.put(HawkConfig.API_URL, "");
+                SubscriptionConfig.setSubscriptions(subs);
+                SubscriptionConfig.setApiUrl("");
             }
         } else {
             boolean hasChecked = false;
@@ -223,16 +224,16 @@ public class App extends MultiDexApplication {
                     break;
                 }
             }
-            if (!hasChecked || removedChecked || TextUtils.isEmpty(Hawk.get(HawkConfig.API_URL, ""))) {
+            if (!hasChecked || removedChecked || TextUtils.isEmpty(SubscriptionConfig.getApiUrl())) {
                 subs.get(0).setChecked(true);
-                Hawk.put(HawkConfig.API_URL, subs.get(0).getUrl());
+                SubscriptionConfig.setApiUrl(subs.get(0).getUrl());
                 changed = true;
             }
-            if (changed) Hawk.put(HawkConfig.SUBSCRIPTIONS, subs);
+            if (changed) SubscriptionConfig.setSubscriptions(subs);
         }
 
         // 4) 记录本次文件内容,供下次同步
-        Hawk.put(HawkConfig.DEFAULT_SUBS, defaults);
+        SubscriptionConfig.setDefaultSubs(defaults);
     }
 
     private static boolean containsSub(List<Subscription> list, Subscription sub) {
@@ -287,8 +288,8 @@ public class App extends MultiDexApplication {
     }
 
     private void putDefault(String key, Object value) {
-        if (!Hawk.contains(key)) {
-            Hawk.put(key, value);
+        if (!KeyValueStore.contains(key)) {
+            KeyValueStore.put(key, value);
         }
     }
 

@@ -43,6 +43,24 @@ public final class SubscriptionConfig {
         KeyValueStore.put(HawkConfig.SUBSCRIPTIONS, subs == null ? new ArrayList<>() : subs);
     }
 
+    // ── 本地默认订阅(打包 assets 注入;App 启动与文件同步)──
+
+    /** 上次记录的本地默认订阅集(未记录返回空表) */
+    @SuppressWarnings("unchecked")
+    public static List<Subscription> getDefaultSubs() {
+        Object v = KeyValueStore.get(HawkConfig.DEFAULT_SUBS, null);
+        return v instanceof List ? (List<Subscription>) v : new ArrayList<>();
+    }
+
+    public static void setDefaultSubs(List<Subscription> subs) {
+        KeyValueStore.put(HawkConfig.DEFAULT_SUBS, subs == null ? new ArrayList<>() : subs);
+    }
+
+    /** 是否记录过本地默认订阅集(迁移兼容判定用) */
+    public static boolean containsDefaultSubs() {
+        return KeyValueStore.contains(HawkConfig.DEFAULT_SUBS);
+    }
+
     // ── 搜索历史（快速搜索页记录）──
 
     /** 搜索历史词（空表兜底） */

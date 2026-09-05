@@ -7,8 +7,8 @@ import com.github.tvbox.osc.base.App;
 import com.github.tvbox.osc.bean.IpScanningVo;
 import com.github.tvbox.osc.server.RemoteServer;
 import com.github.tvbox.osc.config.HawkConfig;
+import com.github.tvbox.osc.config.KeyValueStore;
 import com.github.tvbox.osc.util.IpScanning;
-import com.orhanobut.hawk.Hawk;
 
 import java.io.IOException;
 import java.net.URLEncoder;
@@ -111,7 +111,7 @@ public class RemoteTVBox {
     }
 
     public static String getAvalible() {
-        return Hawk.get(HawkConfig.REMOTE_TVBOX, null);
+        return (String) KeyValueStore.get(HawkConfig.REMOTE_TVBOX, null);
     }
 
     public static String getAvalibleActionUrl() {
@@ -122,7 +122,7 @@ public class RemoteTVBox {
     }
 
     public static void setAvalible(String viewHost) {
-        Hawk.put(HawkConfig.REMOTE_TVBOX, viewHost);
+        KeyValueStore.put(HawkConfig.REMOTE_TVBOX, viewHost);
     }
 
     private static void post(String url, Map<String, String> params, okhttp3.Callback callback) {
