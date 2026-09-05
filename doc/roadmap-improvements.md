@@ -1,6 +1,11 @@
 # TVBoxOS-Mobile 改进计划清单（源自 doc 改进.txt，结合当前仓库状态）
 
 > 状态图例：🔜待做 / ⚠️部分已做 / ✅已完成。每项含“怎么做 + 验收”。
+>
+> 进度快照（本清单更新于最近一次批量推进）：
+> ✅ 0.1 下载 UI 已全走 DownloadFacade + DownloadRequest 入队入口；✅ 1.1 NetworkProvider(general/noRedirect/playback)+组合根注入；
+> ✅ 1.2 HistoryRepository/CollectRepository 已出、UI 改走仓储接口；✅ 1.4 下载 Facade 补全且 UI 零 DownloadManager 直调；
+> ✅ :core-model/:core-storage/:core-network/:spider-api 模块齐位；SourceViewModel/嗅探/播放解析均走 spider-api 契约(app getCSP=0)。
 
 ## P0 收尾易做项（先清低风险尾巴）
 | # | 事项 | 现状 | 做法 | 验收 |
