@@ -191,6 +191,15 @@ Exo→Media3、EventBus→Flow/接口、Hawk→DataStore、Java→Kotlin 渐进�
   已无 EventBus 事件/依赖,event 目录删除。
 - ⚠️ DownloadFragment 已完成 Facade 订阅去 EventBus;app 其余 EventBus 点(搜索/快速搜索/历史/直播等
   refresh 事件)仍为跨 Fragment 通信,逐步收口属"状态/事件管理"长线项。
+  **当前面貌(截至 2026 快搜/字幕/死事件批次后)**:EventBus 订阅方仅剩
+  BaseActivity(空壳载体)/DetailActivity(`TYPE_REFRESH`、`TYPE_QUICK_SEARCH_RESULT`)/FastSearchActivity
+  (`TYPE_SEARCH_RESULT`、`ServerEvent`)/PlayService(`TYPE_REFRESH_NOTIFY`)/DownloadFacade(模块内桥);
+  PlayFragment/QuickSearchDialog/LocalPlayActivity/UserFragment/GridFragment 均已零订阅。
+  剩余有意保留:①播放器主线 `TYPE_REFRESH`/`TYPE_REFRESH_NOTIFY`(后台播放宿主销毁时 EventBus
+  静默丢弃是保护语义,直调化并入 PlayFragment 全驱动改造);②VM 多源结果流 `TYPE_SEARCH_RESULT`/
+  `TYPE_QUICK_SEARCH_RESULT`(每源一批、宿主累加,LiveData 单值会丢中间批次,归 SourceViewModel
+  注入化);③`ServerEvent` 遥控域(SearchReceiver 空壳/16-17 常量由并行侧接线);④download 模块内
+  Manager→Facade 桥(模块内实现,跨线程切主线程职责,非跨模块)。
 
 ## 10. 处理记录(按轮追加)
 - ✅ SourceViewModel type0/1 解析纯函数化:`spider-api/AbsXmlParser.parseXml/parseJson/normalize`(XStream 白名单加固、
