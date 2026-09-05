@@ -2,45 +2,39 @@ package com.github.tvbox.osc.util;
 
 import android.util.Log;
 
-import com.github.tvbox.osc.event.LogEvent;
-
-import org.greenrobot.eventbus.EventBus;
-
 /**
+ * 统一日志门面(android.util.Log 包装)。
+ * <p>
+ * 历史说明:曾向 EventBus 空投 {@code LogEvent}(无任何订阅者),已随 LogEvent 清理移除,
+ * 本类保持纯 Logcat 输出。运行日志文件由 :log 模块 AppLog 承担。
+ *
  * @author pj567
  * @date :2020/12/18
- * @description:
  */
 public class LOG {
     private static String TAG = "TVBox";
 
     public static void e(Throwable t) {
         Log.e(TAG, t.getMessage(), t);
-        EventBus.getDefault().post(new LogEvent(String.format("E/%s ==> ", TAG) + Log.getStackTraceString(t)));
     }
 
     public static void e(String tag, Throwable t) {
         Log.e(tag, t.getMessage(), t);
-        EventBus.getDefault().post(new LogEvent(String.format("E/%s ==> ", tag) + Log.getStackTraceString(t)));
     }
 
     public static void e(String msg) {
         Log.e(TAG, "" + msg);
-        EventBus.getDefault().post(new LogEvent(String.format("E/%s ==> ", TAG) + msg));
     }
 
     public static void e(String tag, String msg) {
         Log.e(tag, msg);
-        EventBus.getDefault().post(new LogEvent(String.format("E/%s ==> ", tag) + msg));
     }
 
     public static void i(String msg) {
         Log.i(TAG, msg);
-        EventBus.getDefault().post(new LogEvent(String.format("I/%s ==> ", TAG) + msg));
     }
 
     public static void i(String tag, String msg) {
         Log.i(tag, msg);
-        EventBus.getDefault().post(new LogEvent(String.format("I/%s ==> ", tag) + msg));
     }
 }

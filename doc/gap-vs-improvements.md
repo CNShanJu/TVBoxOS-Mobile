@@ -21,7 +21,7 @@
 | 模块 | 状态 | 残留 |
 |---|---|---|
 | `:core-model` | ✅ | `ParseBean` 仍在 `:spider`（本轮迁移）+ 含行为(getUrl proxy 替换 / mixUrl Base64) → 迁移时纯化 |
-| `:core-network` | ⚠️ | 目录/模块名已对齐(:core-network,原 common);内部仍是"公共垃圾桶"：`util/{HawkConfig,SystemConfig,HttpClient,OkGoHelper,AES,MD5,AdBlocker,AppLog,LOG,urlhttp/*}`、`event/*`(EventBus 事件)。改进.txt §2.8 期望逐步拆并 |
+| `:core-network` | ⚠️ | 目录/模块名已对齐;配置(SystemConfig/HawkConfig/KeyValueStore)已迁 :core-storage,event/LogEvent 已清;内部仍是杂项袋:`util/{HttpClient,OkGoHelper,AES,MD5,AdBlocker,AppLog,LOG,urlhttp/*}`(改进.txt §2.8 待拆) |
 | `:core-storage` | ✅ | data/cache/Repository + **配置归位**：`SystemConfig/HawkConfig` 迁入 `com.github.tvbox.osc.config`，新增 `KeyValueStore`(Hawk 类型安全封装,App 侧业务 Config 均走它);app 无 DAO 直读、UI 经门面读写配置 |
 | `:spider-api` / `:spider` | ✅ 试点 | 字符串通道(SpiderContentApi)仍在(过渡兼容)；`ApiConfig` 仍暴露具体 Spider(内部实现需留) |
 | `:download` | ✅ | 内部实现已收 `...download.internal` 包(Manager/Scheduler/Executor/Core/Store/Config/Policy/Archive/Notifier/Log/task 全族),公开包仅 Facade+模型/接口;app 零内部实现引用(门禁 java+kt 全查) |
@@ -140,7 +140,10 @@ Exo→Media3、EventBus→Flow/接口、Hawk→DataStore、Java→Kotlin 渐进�
   getInt/泛型 get/put/delete/contains),SystemConfig 内部改走 KeyValueStore;App 侧 LiveConfig/SubscriptionConfig/
   HomeHotCache 亦改走 KeyValueStore(仅剩 App 启动装配直触 Hawk)。依赖补齐:core-storage→:log/:core-model/hawk,
   core-network→core-storage,spider→core-storage(无环、通过 checkModuleDependencies)。
-- ⚠️ common/event 收口:已删 HistoryStateEvent/TopStateEvent(零引用孤儿)、DownloadEvent/RefreshEvent/ServerEvent
-  各自归位业务/app 模块；common 仅剩 LogEvent(common 内 LOG.java 自用,EventBus 空投遗留——无人订阅,待日志页改造后清理)。
+- ✅ LogEvent 空投清理:LOG 曾向 EventBus 空投 LogEvent(全仓零订阅者),现已移除投递与 `event/LogEvent`,
+  LOG 保持纯 Logcat 输出;core-network 移除 eventbus 依赖与空 event 目录(运行时日志文件由 :log 模块承担)。
+- ✅ common(现 :core-network)event 收口完成:已删 HistoryStateEvent/TopStateEvent(零引用孤儿)、
+  DownloadEvent/RefreshEvent/ServerEvent 各自归位业务/app 模块,LogEvent 空投随 LOG 改造移除——core-network
+  已无 EventBus 事件/依赖,event 目录删除。
 - ⚠️ DownloadFragment 已完成 Facade 订阅去 EventBus;app 其余 EventBus 点(搜索/快速搜索/历史/直播等
   refresh 事件)仍为跨 Fragment 通信,逐步收口属"状态/事件管理"长线项。
