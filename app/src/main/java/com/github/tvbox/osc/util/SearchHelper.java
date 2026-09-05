@@ -3,7 +3,6 @@ package com.github.tvbox.osc.util;
 import com.github.tvbox.osc.bean.SourceBean;
 import com.github.tvbox.osc.spiderapi.SourceConfigProviders;
 import com.github.tvbox.osc.ui.activity.FastSearchActivity;
-import com.orhanobut.hawk.Hawk;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -15,9 +14,9 @@ public class SearchHelper {
     public static HashMap<String, String> getSourcesForSearch() {
         HashMap<String, String> mCheckSources;
         try {
-            String api = Hawk.get(HawkConfig.API_URL, "");
+            String api = SubscriptionConfig.getApiUrl();
             if(api.isEmpty())return null;
-            HashMap<String, HashMap<String, String>> mCheckSourcesForApi = Hawk.get(HawkConfig.SOURCES_FOR_SEARCH, new HashMap<>());
+            HashMap<String, HashMap<String, String>> mCheckSourcesForApi = SubscriptionConfig.getCheckedSources();
             mCheckSources = mCheckSourcesForApi.get(api);
         } catch (Exception e) {
             return null;
@@ -27,21 +26,19 @@ public class SearchHelper {
     }
 
     public static void putCheckedSources(HashMap<String, String> mCheckSources,boolean isAll) {
-        String api = Hawk.get(HawkConfig.API_URL, "");
+        String api = SubscriptionConfig.getApiUrl();
         if (api.isEmpty()) {
             return;
         }
-        HashMap<String, HashMap<String, String>> mCheckSourcesForApi = Hawk.get(HawkConfig.SOURCES_FOR_SEARCH,null);
+        HashMap<String, HashMap<String, String>> mCheckSourcesForApi = SubscriptionConfig.getCheckedSources();
 
         if(isAll){
-            if (mCheckSourcesForApi == null) return;
             if (mCheckSourcesForApi.containsKey(api)) mCheckSourcesForApi.remove(api);
         }else {
-            if (mCheckSourcesForApi == null) mCheckSourcesForApi = new HashMap<>();
             mCheckSourcesForApi.put(api, mCheckSources);
         }
         FastSearchActivity.Companion.setCheckedSourcesForSearch(mCheckSources);
-        Hawk.put(HawkConfig.SOURCES_FOR_SEARCH, mCheckSourcesForApi);
+        SubscriptionConfig.setCheckedSources(mCheckSourcesForApi);
     }
 
     public static HashMap<String, String> getSources(){

@@ -38,9 +38,9 @@ import com.github.tvbox.osc.ui.dialog.SearchCheckboxDialog
 import com.github.tvbox.osc.ui.dialog.SearchSuggestionsDialog
 import com.github.tvbox.osc.util.FastClickCheckUtil
 import com.github.tvbox.osc.util.HCallBack
-import com.github.tvbox.osc.util.HawkConfig
 import com.github.tvbox.osc.util.HttpClient
 import com.github.tvbox.osc.util.SearchHelper
+import com.github.tvbox.osc.util.SubscriptionConfig
 import com.github.tvbox.osc.util.SystemConfig
 import com.github.tvbox.osc.viewmodel.SourceViewModel
 import com.google.gson.JsonElement
@@ -50,7 +50,6 @@ import com.google.gson.reflect.TypeToken
 import com.lxj.xpopup.XPopup
 import com.lxj.xpopup.core.BasePopupView
 import com.lxj.xpopup.interfaces.SimpleCallback
-import com.orhanobut.hawk.Hawk
 import com.zhy.view.flowlayout.FlowLayout
 import com.zhy.view.flowlayout.TagAdapter
 import org.greenrobot.eventbus.Subscribe
@@ -81,7 +80,7 @@ class FastSearchActivity : BaseVbActivity<ActivityFastSearchBinding>(), TextWatc
 
     /** 是否已勾选订阅(以订阅管理写入的接口地址为准) */
     private fun hasSubscription(): Boolean {
-        return !TextUtils.isEmpty(Hawk.get(HawkConfig.API_URL, ""))
+        return !TextUtils.isEmpty(SubscriptionConfig.getApiUrl())
     }
 
     override fun init() {
@@ -260,7 +259,7 @@ class FastSearchActivity : BaseVbActivity<ActivityFastSearchBinding>(), TextWatc
     }
 
     private fun initHistorySearch() {
-        val mSearchHistory: List<String> = Hawk.get(HawkConfig.HISTORY_SEARCH, ArrayList())
+        val mSearchHistory: List<String> = SubscriptionConfig.getSearchHistory()
         mBinding.llHistory.visibility = if (mSearchHistory.isNotEmpty()) View.VISIBLE else View.GONE
         mBinding.flHistory.adapter = object : TagAdapter<String?>(mSearchHistory) {
             override fun getView(parent: FlowLayout, position: Int, s: String?): View {
@@ -277,7 +276,7 @@ class FastSearchActivity : BaseVbActivity<ActivityFastSearchBinding>(), TextWatc
             true
         }
         findViewById<View>(R.id.iv_clear_history).setOnClickListener { view: View ->
-            Hawk.put(HawkConfig.HISTORY_SEARCH, ArrayList<Any>())
+            SubscriptionConfig.clearSearchHistory()
             //FlowLayout及其adapter貌似没有清空数据的api,简单粗暴重置
             view.postDelayed({ initHistorySearch() }, 300)
         }
@@ -391,7 +390,7 @@ class FastSearchActivity : BaseVbActivity<ActivityFastSearchBinding>(), TextWatc
 
     private fun saveSearchHistory(searchWord: String?) {
         if (!searchWord.isNullOrEmpty()) {
-            val history = Hawk.get(HawkConfig.HISTORY_SEARCH, ArrayList<String?>())
+            val history = SubscriptionConfig.getSearchHistory().toMutableList()
             if (!history.contains(searchWord)) {
                 history.add(0, searchWord)
             } else {
@@ -401,7 +400,7 @@ class FastSearchActivity : BaseVbActivity<ActivityFastSearchBinding>(), TextWatc
             if (history.size > 30) {
                 history.removeAt(30)
             }
-            Hawk.put(HawkConfig.HISTORY_SEARCH, history)
+            SubscriptionConfig.setSearchHistory(history)
         }
     }
 

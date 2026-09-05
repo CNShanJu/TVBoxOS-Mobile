@@ -21,8 +21,8 @@ import com.github.tvbox.osc.log.Category
 import com.github.tvbox.osc.log.LogStore
 import com.github.tvbox.osc.util.AppLog
 import com.github.tvbox.osc.util.HCallBack
-import com.github.tvbox.osc.util.HawkConfig
 import com.github.tvbox.osc.util.HttpClient
+import com.github.tvbox.osc.util.SubscriptionConfig
 import com.github.tvbox.osc.util.Utils
 import com.google.gson.JsonObject
 import com.google.gson.JsonParser
@@ -31,14 +31,13 @@ import com.hjq.permissions.Permission
 import com.hjq.permissions.XXPermissions
 import com.lxj.xpopup.XPopup
 import com.obsez.android.lib.filechooser.ChooserDialog
-import com.orhanobut.hawk.Hawk
 import java.util.function.Consumer
 
 class SubscriptionActivity : BaseVbActivity<ActivitySubscriptionBinding>() {
 
-    private var mBeforeUrl = Hawk.get(HawkConfig.API_URL, "")
+    private var mBeforeUrl = SubscriptionConfig.getApiUrl()
     private var mSelectedUrl = ""
-    private var mSubscriptions: MutableList<Subscription> = Hawk.get(HawkConfig.SUBSCRIPTIONS, ArrayList())
+    private var mSubscriptions: MutableList<Subscription> = SubscriptionConfig.getSubscriptions().toMutableList()
     private var mSubscriptionAdapter = SubscriptionAdapter()
     private val mSources: MutableList<Source> = ArrayList()
 
@@ -229,12 +228,10 @@ class SubscriptionActivity : BaseVbActivity<ActivitySubscriptionBinding>() {
         ChooserDialog(this@SubscriptionActivity, R.style.FileChooser)
             .withFilter(false, false, "txt", "json")
             .withStartFile(
-                if (TextUtils.isEmpty(Hawk.get("before_selected_path"))) "/storage/emulated/0/Download" else Hawk.get(
-                    "before_selected_path"
-                )
+                if (SubscriptionConfig.getLastImportDir().isEmpty()) "/storage/emulated/0/Download" else SubscriptionConfig.getLastImportDir()
             )
             .withChosenListener(ChooserDialog.Result { _, pathFile ->
-                Hawk.put("before_selected_path", pathFile.parent)
+                SubscriptionConfig.setLastImportDir(pathFile.parent)
                 val clanPath =
                     pathFile.absolutePath.replace("/storage/emulated/0", "clan://localhost")
                 for (item in mSubscriptions) {
@@ -357,8 +354,8 @@ class SubscriptionActivity : BaseVbActivity<ActivitySubscriptionBinding>() {
     override fun onPause() {
         super.onPause()
         // 更新缓存
-        Hawk.put(HawkConfig.API_URL, mSelectedUrl)
-        Hawk.put<List<Subscription>?>(HawkConfig.SUBSCRIPTIONS, mSubscriptions)
+        SubscriptionConfig.setApiUrl(mSelectedUrl)
+        SubscriptionConfig.setSubscriptions(mSubscriptions)
     }
 
     override fun finish() {

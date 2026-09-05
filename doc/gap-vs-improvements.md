@@ -30,9 +30,9 @@
 | `:playback` / feature-* | ❌ | 未建（改进.txt 第三/四阶段，需真机回归环境） |
 
 ## 4. 穿透点（UI/上层直读下层实现，新代码应避免）
-- UI 直读 `Hawk`：系统级偏好已收口 `SystemConfig`(showPreview/fastSearchMode/debugOpen/ignoreSslError/
-  lanServerEnable,含 OkGoHelper/FileUtils 读取点);订阅/搜索历史域(API_URL/SUBSCRIPTIONS/HISTORY_SEARCH/
-  SOURCES_FOR_SEARCH)、UserFragment home_hot 缓存、LivePlayerManager 频道配置、EPG_URL、RemoteTVBox 仍裸读(待收口)。
+- UI 直读 `Hawk`：订阅/搜索域已收口 `util.SubscriptionConfig`(apiUrl/subscriptions/searchHistory/checkedSources/
+  导入目录记忆 → SubscriptionActivity/FastSearchActivity/SearchHelper/HomeFragment 去 Hawk 直读);系统级偏好已
+  收口 `SystemConfig`;剩余裸读:UserFragment home_hot 缓存、LivePlayerManager 频道配置、EPG_URL、RemoteTVBox。
 - UI 直触 DAO/存储实现：已清零(app `RoomDataManger` 直读已收口到 HistoryRepository)。
 - UI/业务自建线程池：`PlayFragment`(PLAYED_RECORD_EXECUTOR/parseThreadPool)、`Thunder`、subtitle `DefaultTaskExecutor`、`LocalVideoFrameLoader`/`LocalVideoAdapter` 等 `new*ThreadPool`；未全部收口到模块级执行器（各点均有串行/取消语义约束，随大页面拆分一并治理）。
 - EventBus 仍广泛(register/post ~37 处)；新事件仍有出现，未真正退为"仅兼容层"。
@@ -79,11 +79,11 @@ Exo→Media3、EventBus→Flow/接口、Hawk→DataStore、Java→Kotlin 渐进�
 3. ✅ app 内 `RoomDataManger` 直读已清零：UI 改走 `HistoryRepositories.history().get(...)`
    （接口新增 get(sourceKey,vodId)，Fake/单测同步）。
 4. 🔜 `:core-network`(原 common)`util/{HawkConfig,SystemConfig,HttpClient}` 分模块收口（网络留下，配置→core-storage/新 config）。
-5. ⚠️ UI 摘 Hawk：直播偏好已收口 `LiveConfig`(键沿用 HawkConfig);系统级偏好已收口 `SystemConfig`
-   (showPreview/fastSearchMode/debugOpen/ignoreSslError/lanServerEnable → DetailActivity/GridFragment/
-   PlayFragment/SettingActivity/WebSniffResolver/ControlManager/OkGoHelper/FileUtils 去 Hawk 直读);
-   剩余:订阅/搜索历史域(API_URL/SUBSCRIPTIONS/DEFAULT_SUBS/HISTORY_SEARCH/SOURCES_FOR_SEARCH →
-   SubscriptionConfig 门面)、UserFragment home_hot 缓存、LivePlayerManager 频道配置、EPG_URL、RemoteTVBox。
+5. ⚠️ UI 摘 Hawk：直播偏好已收口 `LiveConfig`;系统级偏好已收口 `SystemConfig`(showPreview/fastSearchMode/
+   debugOpen/ignoreSslError/lanServerEnable);订阅/搜索域已收口 `util.SubscriptionConfig`(apiUrl/subscriptions/
+   searchHistory/checkedSources/导入目录;SubscriptionActivity/FastSearchActivity/SearchHelper/HomeFragment 去
+   Hawk 直读,HomeFragment 的 HOME_REC 归 SystemConfig);剩余:UserFragment home_hot 缓存、LivePlayerManager
+   频道配置、EPG_URL、RemoteTVBox。
 6. ⏸ playback shell + PlayFragment/DetailActivity 大拆分（需真机回归）。
 7. ⏸ feature 模块化、Media3/DataStore/Hilt（长期）。
 
