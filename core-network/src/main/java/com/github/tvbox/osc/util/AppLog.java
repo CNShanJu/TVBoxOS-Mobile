@@ -2,7 +2,7 @@ package com.github.tvbox.osc.util;
 
 import android.content.Context;
 import com.github.tvbox.osc.config.HawkConfig;
-import com.github.tvbox.osc.config.KeyValueStore;
+import com.github.tvbox.osc.config.PrefsDataStore;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -54,7 +54,7 @@ public class AppLog {
 
     /** 追加一条日志(线程安全);开关关闭时直接忽略 */
     public static void log(String tag, String msg) {
-        if (!KeyValueStore.getBoolean(HawkConfig.APP_LOG, false)) return;
+        if (!PrefsDataStore.getBoolean(HawkConfig.APP_LOG, false)) return;
         String line = "[" + new SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(new Date()) + "] " + tag + ": " + msg;
         List<String> lines = new ArrayList<>(1);
         lines.add(line);
@@ -130,7 +130,7 @@ public class AppLog {
     /** 批量写入日志文件(线程安全);开关关闭时忽略 */
     private static void appendLines(List<String> lines) {
         if (lines == null || lines.isEmpty()) return;
-        if (!KeyValueStore.getBoolean(HawkConfig.APP_LOG, false)) return;
+        if (!PrefsDataStore.getBoolean(HawkConfig.APP_LOG, false)) return;
         synchronized (LOCK) {
             try {
                 File dir = logDir();

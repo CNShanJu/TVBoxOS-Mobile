@@ -146,6 +146,9 @@ Exo→Media3、EventBus→Flow/接口、Hawk→DataStore、Java→Kotlin 渐进�
   (SubtitleCoordinator)仍使用,真机回归见 9/5 订阅导入日志噪音是否消失。
 - ✅ :download 持久化收口:`internal/{DownloadManager,DownloadStore,DownloadArchive,DownloadPolicy}` 的 Hawk 直存
   (任务列表/档案/并发/WiFi 策略)改走 `config.KeyValueStore`,:download 新增依赖 :core-storage、移除 hawk 库依赖。
+- ✅ DataStore 扩域(现代化):`PlayConfig`(播放 12 键,含 float)+ `PlayerFactory`(play_type 同键)+ `LogConfig`
+  (经注入实现 `DefaultLogConfigStore` 切 PrefsDataStore,app_log 全链路 AppLog/设置页同底层)均完成迁移,
+  旧 Hawk 存量各自一次性导入并删旧键。DataStore 化已覆盖:下载并发/WiFi、播放设置、日志开关三域。
 - ✅ DataStore 化试点(改进.txt §7.5):core-storage 引入 `datastore-preferences-rxjava3`,新增 `config.PrefsDataStore`
   (Preferences DataStore 同步门面:启动读盘入内存,get 内存直读,put 串行同步落盘;标量 int/boolean/string/float/long);
   `DownloadPolicy`(下载并发/仅WiFi 两纯标量键)完成迁移 + 旧 Hawk 存量一次性搬入并删旧键(App.initParams 先初始化
