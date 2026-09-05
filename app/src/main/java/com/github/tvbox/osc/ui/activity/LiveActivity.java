@@ -24,7 +24,6 @@ import com.blankj.utilcode.util.ScreenUtils;
 import com.github.tvbox.osc.util.AppBubble;
 import com.chad.library.adapter.base.BaseQuickAdapter;
 import com.github.tvbox.osc.R;
-import com.github.tvbox.osc.api.ApiConfig;
 import com.github.tvbox.osc.base.App;
 import com.github.tvbox.osc.base.BaseActivity;
 import com.github.tvbox.osc.bean.CastVideo;
@@ -547,7 +546,7 @@ public class LiveActivity extends BaseActivity {
 
 
     private void initLiveChannelList() {
-        List<LiveChannelGroup> list = ApiConfig.get().getChannelGroupList();
+        List<LiveChannelGroup> list = com.github.tvbox.osc.spiderapi.LiveChannelConfigProviders.get().getChannelGroupList();
         if (list.isEmpty()) {
             AppBubble.toast("频道列表为空");
             finish();
@@ -586,8 +585,8 @@ public class LiveActivity extends BaseActivity {
                     TxtSubscribe.parse(linkedHashMap, content);
                     livesArray = TxtSubscribe.live2JsonArray(linkedHashMap);
 
-                    ApiConfig.get().loadLives(livesArray);
-                    List<LiveChannelGroup> list = ApiConfig.get().getChannelGroupList();
+                    com.github.tvbox.osc.spiderapi.LiveChannelConfigProviders.get().loadLives(livesArray);
+                    List<LiveChannelGroup> list = com.github.tvbox.osc.spiderapi.LiveChannelConfigProviders.get().getChannelGroupList();
                     if (list.isEmpty()) {
                         AppBubble.toast("频道列表为空");
                         finish();

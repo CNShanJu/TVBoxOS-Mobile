@@ -18,6 +18,10 @@ public final class SourceConfigProviders {
         }
 
         @Override
+        public void setSourceBean(SourceBean sourceBean) {
+        }
+
+        @Override
         public SourceBean getHomeSourceBean() {
             return null;
         }

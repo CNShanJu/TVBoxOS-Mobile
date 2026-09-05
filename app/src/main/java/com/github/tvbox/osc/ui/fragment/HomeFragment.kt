@@ -16,9 +16,9 @@ import com.blankj.utilcode.util.ConvertUtils
 import com.blankj.utilcode.util.ScreenUtils
 import com.github.tvbox.osc.util.AppBubble
 import com.github.tvbox.osc.R
-import com.github.tvbox.osc.api.ApiConfig
-import com.github.tvbox.osc.api.ApiConfig.LoadConfigCallback
 import com.github.tvbox.osc.spiderapi.SourceConfigProviders
+import com.github.tvbox.osc.spiderapi.SourceLoaderApi
+import com.github.tvbox.osc.spiderapi.SourceLoaderProviders
 import com.github.tvbox.osc.base.App
 import com.github.tvbox.osc.base.BaseLazyFragment
 import com.github.tvbox.osc.base.BaseVbFragment
@@ -160,7 +160,7 @@ class HomeFragment : BaseVbFragment<FragmentHomeBinding>() {
     }
 
     private fun loadConfig(){
-        ApiConfig.get().loadConfig(onlyConfigChanged, object : LoadConfigCallback {
+        SourceLoaderProviders.get().loadConfig(onlyConfigChanged, object : SourceLoaderApi.Callback {
 
             override fun retry() {
                 mHandler.post { initData() }
@@ -168,7 +168,7 @@ class HomeFragment : BaseVbFragment<FragmentHomeBinding>() {
 
             override fun success() {
                 dataInitOk = true
-                if (ApiConfig.get().spider.isEmpty()) {
+                if (SourceLoaderProviders.get().spider.isEmpty()) {
                     jarInitOk = true
                 }
                 mHandler.postDelayed({ initData() }, 50)
@@ -194,11 +194,11 @@ class HomeFragment : BaseVbFragment<FragmentHomeBinding>() {
     }
 
     private fun loadJar(){
-        if (!ApiConfig.get().spider.isNullOrEmpty()) {
-            ApiConfig.get().loadJar(
+        if (!SourceLoaderProviders.get().spider.isNullOrEmpty()) {
+            SourceLoaderProviders.get().loadJar(
                 onlyConfigChanged,
-                ApiConfig.get().spider,
-                object : LoadConfigCallback {
+                SourceLoaderProviders.get().spider,
+                object : SourceLoaderApi.Callback {
                     override fun success() {
                         jarInitOk = true
                         mHandler.postDelayed({
@@ -376,7 +376,7 @@ class HomeFragment : BaseVbFragment<FragmentHomeBinding>() {
             dialog.setTip("请选择首页数据源")
             dialog.setAdapter(object : SelectDialogInterface<SourceBean?> {
                 override fun click(value: SourceBean?, pos: Int) {
-                    ApiConfig.get().setSourceBean(value)
+                    SourceConfigProviders.get().setSourceBean(value)
                     refreshHomeSources()
                 }
 

@@ -118,6 +118,12 @@ Exo→Media3、EventBus→Flow/接口、Hawk→DataStore、Java→Kotlin 渐进�
   getParseBeanList/jsonExt/jsonExtMix)+ `ParseConfigProviders` 持有者;AppCompositionRoot 桥接
   ApiConfig(jar loader)。app 内解析读取点 VodController(默认解析弹窗/列表)与 PlayFragment
   (解析流程 defaultParse/parseBeanList/jsonExt/jsonExtMix)全改走契约,两文件对 ApiConfig import 清零。
+- ✅ 直播/源加载收口 + ApiConfig 全 app 直读清零:新增 `spider-api.LiveChannelConfigApi`
+  (getChannelGroupList/loadLives)、`SourceLoaderApi`(loadConfig/loadJar/getSpider + Callback,
+  回调语义与原 LoadConfigCallback 对齐)、`SourceConfigApi.setSourceBean`;LiveActivity/HomeFragment
+  改走契约,清理 LivePlayerManager/FolderAdapter/DoubanSuggestAdapter/RemoteServer 四处死 import。
+  至此 app 代码对 `:spider` ApiConfig 的引用仅剩 AppCompositionRoot 桥接点(组合根,合法),业务/UI 全经
+  spider-api/player-api 契约。
 - ⚠️ common/event 收口：已删 HistoryStateEvent/TopStateEvent(零引用孤儿)、DownloadEvent/RefreshEvent/ServerEvent
   各自归位业务/app 模块；common 仅剩 LogEvent(common 内 LOG.java 自用,EventBus 空投遗留——无人订阅,待日志页改造后清理)。
 - ⚠️ DownloadFragment 已完成 Facade 订阅去 EventBus;app 其余 EventBus 点(搜索/快速搜索/历史/直播等

@@ -40,6 +40,70 @@ public final class AppCompositionRoot {
         // 强类型分类/首页视频(type3;失败自动回退字符串通道)
         com.github.tvbox.osc.spiderapi.SpiderHomeProviders.set(
                 com.github.catvod.crawler.SpiderHomeImpl.get());
+        // 直播频道配置契约:分组读取/直播源重建,桥接 ApiConfig
+        com.github.tvbox.osc.spiderapi.LiveChannelConfigProviders.set(new com.github.tvbox.osc.spiderapi.LiveChannelConfigApi() {
+            @Override
+            public java.util.List<com.github.tvbox.osc.bean.LiveChannelGroup> getChannelGroupList() {
+                return com.github.tvbox.osc.api.ApiConfig.get().getChannelGroupList();
+            }
+
+            @Override
+            public void loadLives(com.google.gson.JsonArray livesArray) {
+                com.github.tvbox.osc.api.ApiConfig.get().loadLives(livesArray);
+            }
+        });
+        // 源/订阅加载器契约:订阅配置/jar 加载触发,桥接 ApiConfig(回调语义一致)
+        com.github.tvbox.osc.spiderapi.SourceLoaderProviders.set(new com.github.tvbox.osc.spiderapi.SourceLoaderApi() {
+            @Override
+            public void loadConfig(final boolean useCache,
+                                   final com.github.tvbox.osc.spiderapi.SourceLoaderApi.Callback callback,
+                                   final android.app.Activity activity) {
+                com.github.tvbox.osc.api.ApiConfig.get().loadConfig(useCache, callback == null ? null
+                        : new com.github.tvbox.osc.api.ApiConfig.LoadConfigCallback() {
+                    @Override
+                    public void success() {
+                        callback.success();
+                    }
+
+                    @Override
+                    public void retry() {
+                        callback.retry();
+                    }
+
+                    @Override
+                    public void error(String msg) {
+                        callback.error(msg);
+                    }
+                }, activity);
+            }
+
+            @Override
+            public void loadJar(final boolean useCache, final String spider,
+                                final com.github.tvbox.osc.spiderapi.SourceLoaderApi.Callback callback) {
+                com.github.tvbox.osc.api.ApiConfig.get().loadJar(useCache, spider, callback == null ? null
+                        : new com.github.tvbox.osc.api.ApiConfig.LoadConfigCallback() {
+                    @Override
+                    public void success() {
+                        callback.success();
+                    }
+
+                    @Override
+                    public void retry() {
+                        callback.retry();
+                    }
+
+                    @Override
+                    public void error(String msg) {
+                        callback.error(msg);
+                    }
+                });
+            }
+
+            @Override
+            public String getSpider() {
+                return com.github.tvbox.osc.api.ApiConfig.get().getSpider();
+            }
+        });
         // 源配置元信息(ApiConfig 即契约实现:源注册表/首页源/vip 解析旗标)
         com.github.tvbox.osc.spiderapi.SourceConfigProviders.set(
                 com.github.tvbox.osc.api.ApiConfig.get());

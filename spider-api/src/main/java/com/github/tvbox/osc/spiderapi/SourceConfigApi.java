@@ -15,6 +15,9 @@ public interface SourceConfigApi {
     /** 按 key 取源；不存在返回 null */
     SourceBean getSource(String sourceKey);
 
+    /** 设为首页源（同步持久化） */
+    void setSourceBean(SourceBean sourceBean);
+
     /** 首页源（未设置时 ApiConfig 返回空占位对象） */
     SourceBean getHomeSourceBean();
 

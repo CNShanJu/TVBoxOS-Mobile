@@ -3,7 +3,6 @@ package com.github.tvbox.osc.util;
 import androidx.annotation.NonNull;
 import androidx.exifinterface.media.ExifInterface;
 
-import com.github.tvbox.osc.api.ApiConfig;
 import com.github.tvbox.osc.player.api.PlayConfig;
 import com.orhanobut.hawk.Hawk;
 

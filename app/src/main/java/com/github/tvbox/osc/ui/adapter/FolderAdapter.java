@@ -11,7 +11,6 @@ import com.blankj.utilcode.util.LogUtils;
 import com.chad.library.adapter.base.BaseQuickAdapter;
 import com.chad.library.adapter.base.BaseViewHolder;
 import com.github.tvbox.osc.R;
-import com.github.tvbox.osc.api.ApiConfig;
 import com.github.tvbox.osc.bean.VideoFolder;
 import com.github.tvbox.osc.bean.VideoInfo;
 import com.github.tvbox.osc.cache.VodCollect;
