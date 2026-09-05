@@ -114,6 +114,10 @@ Exo→Media3、EventBus→Flow/接口、Hawk→DataStore、Java→Kotlin 渐进�
   桥接 :spider ApiConfig 现有实现(避免 spider 反向依赖播放契约)。app 内 5 个解码配置读取点
   (IjkMediaPlayer/VodController/LocalVideoController/PlayerHelper/SettingActivity)改走契约,
   :spider ApiConfig 的 import 从播放侧清零。
+- ✅ 解析配置/解析执行收口:新增 `spider-api.ParseConfigApi`(getDefaultParse/setDefaultParse/
+  getParseBeanList/jsonExt/jsonExtMix)+ `ParseConfigProviders` 持有者;AppCompositionRoot 桥接
+  ApiConfig(jar loader)。app 内解析读取点 VodController(默认解析弹窗/列表)与 PlayFragment
+  (解析流程 defaultParse/parseBeanList/jsonExt/jsonExtMix)全改走契约,两文件对 ApiConfig import 清零。
 - ⚠️ common/event 收口：已删 HistoryStateEvent/TopStateEvent(零引用孤儿)、DownloadEvent/RefreshEvent/ServerEvent
   各自归位业务/app 模块；common 仅剩 LogEvent(common 内 LOG.java 自用,EventBus 空投遗留——无人订阅,待日志页改造后清理)。
 - ⚠️ DownloadFragment 已完成 Facade 订阅去 EventBus;app 其余 EventBus 点(搜索/快速搜索/历史/直播等

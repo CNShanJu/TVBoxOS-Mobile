@@ -43,6 +43,34 @@ public final class AppCompositionRoot {
         // 源配置元信息(ApiConfig 即契约实现:源注册表/首页源/vip 解析旗标)
         com.github.tvbox.osc.spiderapi.SourceConfigProviders.set(
                 com.github.tvbox.osc.api.ApiConfig.get());
+        // 解析配置/解析执行契约:默认解析/解析列表/通用与混流解析,桥接 ApiConfig(jar loader)
+        com.github.tvbox.osc.spiderapi.ParseConfigProviders.set(new com.github.tvbox.osc.spiderapi.ParseConfigApi() {
+            @Override
+            public com.github.tvbox.osc.bean.ParseBean getDefaultParse() {
+                return com.github.tvbox.osc.api.ApiConfig.get().getDefaultParse();
+            }
+
+            @Override
+            public void setDefaultParse(com.github.tvbox.osc.bean.ParseBean parseBean) {
+                com.github.tvbox.osc.api.ApiConfig.get().setDefaultParse(parseBean);
+            }
+
+            @Override
+            public java.util.List<com.github.tvbox.osc.bean.ParseBean> getParseBeanList() {
+                return com.github.tvbox.osc.api.ApiConfig.get().getParseBeanList();
+            }
+
+            @Override
+            public org.json.JSONObject jsonExt(String key, java.util.LinkedHashMap<String, String> jxs, String url) {
+                return com.github.tvbox.osc.api.ApiConfig.get().jsonExt(key, jxs, url);
+            }
+
+            @Override
+            public org.json.JSONObject jsonExtMix(String flag, String key, String name,
+                                                  java.util.LinkedHashMap<String, java.util.HashMap<String, String>> jxs, String url) {
+                return com.github.tvbox.osc.api.ApiConfig.get().jsonExtMix(flag, key, name, jxs, url);
+            }
+        });
         // IJK 解码配置契约:播放内核/设置页经接口读取,适配器桥接 ApiConfig 现有实现
         com.github.tvbox.osc.player.api.IjkCodecConfigProviders.set(new com.github.tvbox.osc.player.api.IjkCodecConfigApi() {
             @Override

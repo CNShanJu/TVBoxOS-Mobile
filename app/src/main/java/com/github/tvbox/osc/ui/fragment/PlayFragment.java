@@ -46,7 +46,6 @@ import com.blankj.utilcode.util.SPUtils;
 import com.blankj.utilcode.util.SpanUtils;
 import com.github.tvbox.osc.util.AppBubble;
 import com.github.tvbox.osc.R;
-import com.github.tvbox.osc.api.ApiConfig;
 import com.github.tvbox.osc.base.App;
 import com.github.tvbox.osc.base.BaseLazyFragment;
 import com.github.tvbox.osc.bean.ParseBean;
@@ -76,6 +75,7 @@ import com.github.tvbox.osc.util.ParseBeanUrls;
 import com.github.tvbox.osc.util.VideoParseRuler;
 import com.github.tvbox.osc.util.player.PlayHistoryRepository;
 import com.github.tvbox.osc.util.thunder.Jianpian;
+import com.github.tvbox.osc.spiderapi.ParseConfigProviders;
 import com.github.tvbox.osc.spiderapi.SourceConfigProviders;
 import com.github.tvbox.osc.util.thunder.Thunder;
 import com.github.tvbox.osc.viewmodel.SourceViewModel;
@@ -998,7 +998,7 @@ public class PlayFragment extends BaseLazyFragment {
         ParseBean parseBean = null;
         mController.showParse(useParse);
         if (useParse) {
-            parseBean = ApiConfig.get().getDefaultParse();
+            parseBean = ParseConfigProviders.get().getDefaultParse();
         } else {
             if (playUrl.startsWith("json:")) {
                 parseBean = new ParseBean();
@@ -1006,7 +1006,7 @@ public class PlayFragment extends BaseLazyFragment {
                 parseBean.setUrl(playUrl.substring(5));
             } else if (playUrl.startsWith("parse:")) {
                 String parseRedirect = playUrl.substring(6);
-                for (ParseBean pb : ApiConfig.get().getParseBeanList()) {
+                for (ParseBean pb : ParseConfigProviders.get().getParseBeanList()) {
                     if (pb.getName().equals(parseRedirect)) {
                         parseBean = pb;
                         break;
@@ -1155,7 +1155,7 @@ public class PlayFragment extends BaseLazyFragment {
             setTip("正在解析播放地址", true, false);
             parseThreadPool = Executors.newSingleThreadExecutor();
             LinkedHashMap<String, String> jxs = new LinkedHashMap<>();
-            for (ParseBean p : ApiConfig.get().getParseBeanList()) {
+            for (ParseBean p : ParseConfigProviders.get().getParseBeanList()) {
                 if (p.getType() == 1) {
                     jxs.put(p.getName(), ParseBeanUrls.mixUrl(p));
                 }
@@ -1163,7 +1163,7 @@ public class PlayFragment extends BaseLazyFragment {
             parseThreadPool.execute(new Runnable() {
                 @Override
                 public void run() {
-                    JSONObject rs = ApiConfig.get().jsonExt(ParseBeanUrls.url(pb), jxs, webUrl);
+                    JSONObject rs = ParseConfigProviders.get().jsonExt(ParseBeanUrls.url(pb), jxs, webUrl);
                     if (rs == null || !rs.has("url") || rs.optString("url").isEmpty()) {
 //                        errorWithRetry("解析错误", false);
                         setTip("解析错误", false, true);
@@ -1202,7 +1202,7 @@ public class PlayFragment extends BaseLazyFragment {
             parseThreadPool = Executors.newSingleThreadExecutor();
             LinkedHashMap<String, HashMap<String, String>> jxs = new LinkedHashMap<>();
             String extendName = "";
-            for (ParseBean p : ApiConfig.get().getParseBeanList()) {
+            for (ParseBean p : ParseConfigProviders.get().getParseBeanList()) {
                 HashMap data = new HashMap<String, String>();
                 data.put("url", ParseBeanUrls.url(p));
                 if (ParseBeanUrls.url(p).equals(ParseBeanUrls.url(pb))) {
@@ -1216,7 +1216,7 @@ public class PlayFragment extends BaseLazyFragment {
             parseThreadPool.execute(new Runnable() {
                 @Override
                 public void run() {
-                    JSONObject rs = ApiConfig.get().jsonExtMix(parseFlag + "111", ParseBeanUrls.url(pb), finalExtendName, jxs, webUrl);
+                    JSONObject rs = ParseConfigProviders.get().jsonExtMix(parseFlag + "111", ParseBeanUrls.url(pb), finalExtendName, jxs, webUrl);
                     if (rs == null || !rs.has("url") || rs.optString("url").isEmpty()) {
 //                        errorWithRetry("解析错误", false);
                         setTip("解析错误", false, true);

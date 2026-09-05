@@ -21,7 +21,6 @@ import androidx.recyclerview.widget.DiffUtil;
 
 import com.github.tvbox.osc.util.AppBubble;
 import com.github.tvbox.osc.R;
-import com.github.tvbox.osc.api.ApiConfig;
 import com.github.tvbox.osc.bean.IJKCode;
 import com.github.tvbox.osc.bean.ParseBean;
 import com.github.tvbox.osc.event.RefreshEvent;
@@ -293,15 +292,15 @@ public class VodController extends BaseController implements PlaybackSettingsCon
         mParseAdapter.setOnItemClickListener((adapter, view, position) -> {
             ParseBean parseBean = mParseAdapter.getItem(position);
             // 当前默认解析需要刷新
-            int currentDefault = mParseAdapter.getData().indexOf(ApiConfig.get().getDefaultParse());
+            int currentDefault = mParseAdapter.getData().indexOf(com.github.tvbox.osc.spiderapi.ParseConfigProviders.get().getDefaultParse());
             mParseAdapter.notifyItemChanged(currentDefault);
-            ApiConfig.get().setDefaultParse(parseBean);
+            com.github.tvbox.osc.spiderapi.ParseConfigProviders.get().setDefaultParse(parseBean);
             mParseAdapter.notifyItemChanged(position);
             listener.changeParse(parseBean);
             hideBottom();
         });
         mGridView.setAdapter(mParseAdapter);
-        mParseAdapter.setNewData(ApiConfig.get().getParseBeanList());
+        mParseAdapter.setNewData(com.github.tvbox.osc.spiderapi.ParseConfigProviders.get().getParseBeanList());
 
         //mParseRoot.setVisibility(VISIBLE);
 
