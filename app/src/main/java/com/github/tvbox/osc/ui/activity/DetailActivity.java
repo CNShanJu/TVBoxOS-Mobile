@@ -48,7 +48,6 @@ import com.github.tvbox.osc.constant.IntentKey;
 import com.github.tvbox.osc.databinding.ActivityDetailBinding;
 import com.github.tvbox.osc.event.RefreshEvent;
 import com.github.tvbox.osc.player.api.PlayConfig;
-import com.github.tvbox.osc.receiver.BatteryReceiver;
 import com.github.tvbox.osc.service.PlayService;
 import com.github.tvbox.osc.ui.adapter.ParseAdapter;
 import com.github.tvbox.osc.ui.adapter.SeriesAdapter;
@@ -130,7 +129,6 @@ public class DetailActivity extends BaseVbActivity<ActivityDetailBinding> {
     private View seriesFlagFocus = null;
     private boolean isReverse;
     private String preFlag = "";
-    BatteryReceiver mBatteryReceiver = new BatteryReceiver();
     //改为view模式无法自动响应返回键操作,onBackPress时手动dismiss
     private BasePopupView mAllSeriesRightDialog;
     private BasePopupView mAllSeriesBottomDialog;
@@ -155,7 +153,6 @@ public class DetailActivity extends BaseVbActivity<ActivityDetailBinding> {
         initViewModel();
         initData();
         initPipHelper();
-        BroadcastUtils.registerReceiverNotExported(this, mBatteryReceiver, new IntentFilter(Intent.ACTION_BATTERY_CHANGED));
         ImmersionBar.with(this)
                 .statusBarColor(R.color.black)
                 .navigationBarColor(R.color.white)
@@ -793,7 +790,6 @@ public class DetailActivity extends BaseVbActivity<ActivityDetailBinding> {
     protected void onDestroy() {
         pipHelper.setReceiverEnabled(false);
         super.onDestroy();
-        unregisterReceiver(mBatteryReceiver);
         // 注销广播接收器
         if (mHomeKeyReceiver != null) {
             unregisterReceiver(mHomeKeyReceiver);

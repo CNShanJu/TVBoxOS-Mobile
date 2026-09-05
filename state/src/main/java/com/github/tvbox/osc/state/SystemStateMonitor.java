@@ -48,6 +48,8 @@ public final class SystemStateMonitor {
     public static final String TYPE_SCREEN = "screen";
     public static final String TYPE_ORIENTATION = "orientation";
     public static final String TYPE_BATTERY = "battery";
+    /** 电池百分比变化事件(低/充电判定之外,供 UI 电池图标);value=数字字符串(0-100) */
+    public static final String TYPE_BATTERY_LEVEL = "battery_level";
     public static final String TYPE_DISK = "disk";
     public static final String TYPE_PERMISSION = "permission";
     public static final String TYPE_TIME = "time";
@@ -148,6 +150,11 @@ public final class SystemStateMonitor {
     /** 当前状态快照（页面打开时一次取全量，免轮询） */
     public SystemState getCurrentState() {
         return state;
+    }
+
+    /** 当前电池百分比(0-100;-1 未知)；UI 打开播放页时初始化电池图标用 */
+    public int getBatteryPercent() {
+        return state.batteryPercent;
     }
 
     /** 当前网络是否为移动网络（蜂窝）——需先 init 注入 context */
@@ -424,6 +431,14 @@ public final class SystemStateMonitor {
             boolean low = scale > 0 && ((float) level / scale) < LOW_BATTERY_RATIO;
             boolean charging = status == BatteryManager.BATTERY_STATUS_CHARGING
                     || status == BatteryManager.BATTERY_STATUS_FULL;
+            // 百分比变化事件:供 UI 电池图标(替代 EventBus 电量广播)
+            if (scale > 0 && level >= 0) {
+                int pct = (int) Math.round(level * 100f / scale);
+                if (pct != state.batteryPercent) {
+                    state.batteryPercent = pct;
+                    emit(TYPE_BATTERY_LEVEL, String.valueOf(pct));
+                }
+            }
             if (low != state.batteryLow) {
                 state.batteryLow = low;
                 log.warn(SystemSubType.BATTERY, low ? "低电量: " + level + "%" : "电量恢复正常: " + level + "%", null);

@@ -22,7 +22,6 @@ import com.github.tvbox.osc.event.RefreshEvent;
 import com.github.tvbox.osc.player.MyVideoView;
 import com.github.tvbox.osc.player.api.PlayConfig;
 import com.github.tvbox.osc.player.controller.LocalVideoController;
-import com.github.tvbox.osc.receiver.BatteryReceiver;
 import com.github.tvbox.osc.ui.dialog.AllLocalSeriesDialog;
 import com.github.tvbox.osc.ui.dialog.CastListDialog;
 import com.github.tvbox.osc.ui.dialog.DialogCoordinator;
@@ -54,12 +53,12 @@ public class LocalPlayActivity extends BaseVbActivity<ActivityLocalPlayBinding> 
     JSONObject mVodPlayerCfg;
     private List<VideoInfo> mVideoList = new ArrayList<>();
     private int mPosition;
-    BatteryReceiver mBatteryReceiver = new BatteryReceiver();
+    /** 电池百分比订阅(经 SystemStateMonitor,替代 EventBus 电量广播) */
+    private com.github.tvbox.osc.state.SystemStateMonitor.Listener mBatteryListener;
     private BasePopupView mAllSeriesRightDialog;
     private PipHelper pipHelper;
     @Override
     protected void init() {
-        BroadcastUtils.registerReceiverNotExported(this, mBatteryReceiver, new IntentFilter(Intent.ACTION_BATTERY_CHANGED));
         mVideoView = mBinding.player;
         mVideoView.startFullScreen();
         Bundle bundle = getIntent().getExtras();
@@ -71,6 +70,23 @@ public class LocalPlayActivity extends BaseVbActivity<ActivityLocalPlayBinding> 
         initPipHelper();
         initPlayerCfg();
         mVideoView.setVideoController(mController); //设置控制器
+        // 电池图标:经 SystemStateMonitor 订阅百分比变化(主线程回调)
+        com.github.tvbox.osc.state.SystemStateMonitor monitor = com.github.tvbox.osc.state.SystemStateMonitor.get();
+        if (monitor != null) {
+            mBatteryListener = e -> {
+                if (e != null && com.github.tvbox.osc.state.SystemStateMonitor.TYPE_BATTERY_LEVEL.equals(e.type)
+                        && mController != null && mController.mMyBatteryView != null) {
+                    try {
+                        mController.mMyBatteryView.updateBattery(Integer.parseInt(e.value));
+                    } catch (Throwable ignored) {
+                    }
+                }
+            };
+            monitor.register(mBatteryListener, com.github.tvbox.osc.state.SystemStateMonitor.TYPE_BATTERY_LEVEL);
+            if (mController.mMyBatteryView != null) {
+                mController.mMyBatteryView.updateBattery(monitor.getBatteryPercent());
+            }
+        }
         play(false);
 
         new Handler()
@@ -85,12 +101,6 @@ public class LocalPlayActivity extends BaseVbActivity<ActivityLocalPlayBinding> 
                 },500);
     }
 
-    @Subscribe(threadMode = ThreadMode.MAIN)
-    public void refresh(RefreshEvent event) {
-        if (event.type == RefreshEvent.TYPE_BATTERY_CHANGE && mController.mMyBatteryView!=null){
-            mController.mMyBatteryView.updateBattery((int) event.obj);
-        }
-    }
 
 
     /**
@@ -379,7 +389,11 @@ public class LocalPlayActivity extends BaseVbActivity<ActivityLocalPlayBinding> 
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        unregisterReceiver(mBatteryReceiver);
+        if (mBatteryListener != null) {
+            com.github.tvbox.osc.state.SystemStateMonitor monitor = com.github.tvbox.osc.state.SystemStateMonitor.get();
+            if (monitor != null) monitor.unregister(mBatteryListener);
+            mBatteryListener = null;
+        }
         if (mVideoView != null) {
             mVideoView.release();
             mVideoView = null;

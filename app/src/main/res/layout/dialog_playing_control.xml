@@ -179,8 +179,8 @@
 
                 <ImageView
                     android:id="@+id/decrease_start"
-                    android:layout_width="26dp"
-                    android:layout_height="26dp"
+                    android:layout_width="20dp"
+                    android:layout_height="20dp"
                     android:src="@drawable/ic_seek_left"
                     app:tint="@color/text_foreground"
                     />
@@ -198,16 +198,16 @@
                     tools:text="片头" />
                 <ImageView
                     android:id="@+id/increase_start"
-                    android:layout_width="26dp"
-                    android:layout_height="26dp"
+                    android:layout_width="20dp"
+                    android:layout_height="20dp"
                     android:src="@drawable/ic_seek_right"
                     app:tint="@color/text_foreground"
                     />
 
                 <ImageView
                     android:id="@+id/decrease_end"
-                    android:layout_width="26dp"
-                    android:layout_height="26dp"
+                    android:layout_width="20dp"
+                    android:layout_height="20dp"
                     android:src="@drawable/ic_seek_left"
                     app:tint="@color/text_foreground"
                     android:layout_marginStart="10dp"
@@ -226,8 +226,8 @@
                     tools:text="片尾" />
                 <ImageView
                     android:id="@+id/increase_end"
-                    android:layout_width="26dp"
-                    android:layout_height="26dp"
+                    android:layout_width="20dp"
+                    android:layout_height="20dp"
                     android:src="@drawable/ic_seek_right"
                     app:tint="@color/text_foreground"
                     />

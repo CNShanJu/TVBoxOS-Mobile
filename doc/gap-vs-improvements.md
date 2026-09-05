@@ -171,6 +171,9 @@ Exo→Media3、EventBus→Flow/接口、Hawk→DataStore、Java→Kotlin 渐进�
   `filesDir/*.json`(gson+原子 tmp rename),启动读文件、旧 Hawk 存量一次性迁移并删旧键;load 移到
   `DownloadManager.init(context)` 后 boot()(解决"构造早于 appContext"时序);并发/WiFi 等小偏好仍在
   KeyValueStore。配置存储(DataStore 化候选)不再承载大对象。
+- ✅ EventBus 收敛试点:电量改为 SystemStateMonitor 事件(`TYPE_BATTERY_LEVEL` 百分比 + SystemState.batteryPercent,
+  主线程回调),PlayFragment/LocalPlayActivity 电池图标改订阅 monitor(注册即取当前值);DetailActivity/LocalPlay
+  的 BatteryReceiver→EventBus 转发删除,BatteryReceiver.kt 孤儿文件移除。EventBus 仅剩跨页 refresh 事件(长线)。
 - ✅ :log 日志配置依赖倒置(DataStore 化前置):新增 `log.LogConfigStore` 端口,`LogConfig` 不再直 Hawk,由
   宿主注入 core-storage `DefaultLogConfigStore`(基于 KeyValueStore)或未来 DataStore 实现;:log 移除 hawk 依赖。
   → 第三方 hawk 现仅 core-storage `KeyValueStore` 单一持有,DataStore 化(第五阶段)前置已清。

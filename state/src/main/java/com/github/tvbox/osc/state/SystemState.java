@@ -23,6 +23,9 @@ public class SystemState {
     /** 是否充电中 */
     public boolean charging = false;
 
+    /** 电池百分比(0-100;-1 未知) */
+    public int batteryPercent = -1;
+
     /** 可用磁盘字节（根目录粗略值） */
     public long freeDiskBytes = 0;
 }

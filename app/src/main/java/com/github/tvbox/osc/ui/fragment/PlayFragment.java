@@ -112,6 +112,8 @@ public class PlayFragment extends BaseLazyFragment {
     private MyVideoView mVideoView;
     /** 播放会话门面(指令统一入口;底层暂为共享 MyVideoView,内核隔离见 player/PlayerSession) */
     private com.github.tvbox.osc.player.PlayerSession mPlaySession;
+    /** 电池百分比订阅(系统状态经 SystemStateMonitor,替代 EventBus 电量广播) */
+    private com.github.tvbox.osc.state.SystemStateMonitor.Listener mBatteryListener;
     private TextView mPlayLoadTip;
     private ImageView mPlayLoadErr;
     private View mPlayLoading;
@@ -152,8 +154,6 @@ public class PlayFragment extends BaseLazyFragment {
     public void refresh(RefreshEvent event) {
         if (event.type == RefreshEvent.TYPE_SUBTITLE_SIZE_CHANGE) {
             mSubtitleCoordinator.applySubtitleSize((int) event.obj);
-        } else if (event.type == RefreshEvent.TYPE_BATTERY_CHANGE && mController.mMyBatteryView!=null){
-            mController.mMyBatteryView.updateBattery((int) event.obj);
         }
     }
 
@@ -334,6 +334,23 @@ public class PlayFragment extends BaseLazyFragment {
         mVideoView.setVideoController(mController);
         mPlaySession = new com.github.tvbox.osc.player.PlayerSession(mVideoView);
         mSubtitleCoordinator = new com.github.tvbox.osc.util.player.SubtitleCoordinator(mActivity, mController, mPlaySession);
+        // 电池图标:经 SystemStateMonitor 订阅百分比变化(替代 EventBus 广播;主线程回调)
+        com.github.tvbox.osc.state.SystemStateMonitor monitor = com.github.tvbox.osc.state.SystemStateMonitor.get();
+        if (monitor != null) {
+            mBatteryListener = e -> {
+                if (e != null && com.github.tvbox.osc.state.SystemStateMonitor.TYPE_BATTERY_LEVEL.equals(e.type)
+                        && mController != null && mController.mMyBatteryView != null) {
+                    try {
+                        mController.mMyBatteryView.updateBattery(Integer.parseInt(e.value));
+                    } catch (Throwable ignored) {
+                    }
+                }
+            };
+            monitor.register(mBatteryListener, com.github.tvbox.osc.state.SystemStateMonitor.TYPE_BATTERY_LEVEL);
+            if (mController.mMyBatteryView != null) {
+                mController.mMyBatteryView.updateBattery(monitor.getBatteryPercent());
+            }
+        }
     }
 
     public boolean hideAllDialogSuccess(){
@@ -847,6 +864,11 @@ public class PlayFragment extends BaseLazyFragment {
 
         EventBus.getDefault().unregister(this);
         releasePlaybackSession(); // playback 会话原型:随视图销毁释放会话观察(共享视图不在此释放)
+        if (mBatteryListener != null) {
+            com.github.tvbox.osc.state.SystemStateMonitor monitor = com.github.tvbox.osc.state.SystemStateMonitor.get();
+            if (monitor != null) monitor.unregister(mBatteryListener);
+            mBatteryListener = null;
+        }
         if (mPlaySession != null) mPlaySession.release();
         mVideoView = null;
         stopLoadWebView(true);

@@ -4,7 +4,6 @@ import android.content.Intent;
 import android.content.res.Configuration;
 import android.os.Bundle;
 import android.text.TextUtils;
-import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.animation.BounceInterpolator;
@@ -89,17 +88,7 @@ public class UserFragment extends BaseLazyFragment {
         tvHotList1.setHasFixedSize(true);
         // 列数自适应:单卡宽度不超过 GRID_CARD_MAX_WIDTH_DP,屏幕越宽列数越多
         final int span = Utils.getAdaptiveGridSpan(Utils.GRID_CARD_MAX_WIDTH_DP);
-        GridLayoutManager glm = new GridLayoutManager(this.mContext, span);
-        // 末尾 footer("到底了")占满整行,文字才真正屏幕居中:
-        // init() 里 setAdapter/addFooterView 时 layoutManager 尚未设置,
-        // BRVAH 的 spanSizeLookup 未挂上,footer 默认只占 1 列 → 这里手动补
-        glm.setSpanSizeLookup(new GridLayoutManager.SpanSizeLookup() {
-            @Override
-            public int getSpanSize(int position) {
-                return position == homeHotVodAdapter.getItemCount() - 1 ? span : 1;
-            }
-        });
-        tvHotList1.setLayoutManager(glm);
+        tvHotList1.setLayoutManager(new GridLayoutManager(this.mContext, span));
     }
 
     /**
@@ -159,7 +148,15 @@ public class UserFragment extends BaseLazyFragment {
         });
 
         tvHotList1.setAdapter(homeHotVodAdapter);
-        addEndFooter();
+        // 底部悬浮"到底了"(共享组件 item_view_end_tip,布局中已默认隐藏):
+        // 滚到列表底部时才出现,贴底部导航栏;滚动联动显隐
+        mEndTip = findViewById(R.id.end_tip);
+        tvHotList1.addOnScrollListener(new RecyclerView.OnScrollListener() {
+            @Override
+            public void onScrolled(@NonNull RecyclerView recyclerView, int dx, int dy) {
+                refreshEndTip();
+            }
+        });
         setLoadSir2(tvHotList1);
         setupSwipeRefresh();
         initHomeHotVod(homeHotVodAdapter);
@@ -210,31 +207,25 @@ public class UserFragment extends BaseLazyFragment {
     }
 
     /**
-     * 列表末尾"到底了"提示:使用共享组件 item_view_end_tip(文案 @string/brvah_load_end,
-     * 与分类页 loadmore 的到底提示同源),默认隐藏,由 updateEndTip 按需显示。
+     * 同步刷新底部悬浮"到底了"(滚动监听中调用):
+     * 数据非空、列表确实滚到最底部(不能再向下滚)且曾有多屏内容(能向上滚回)才显示;
+     * 一屏即可看完或空数据不显示,避免"到底了"常驻造成假噪音。
      */
-    private void addEndFooter() {
-        mEndTip = LayoutInflater.from(mContext).inflate(R.layout.item_view_end_tip, null);
-        mEndTip.setVisibility(View.GONE);
-        homeHotVodAdapter.addFooterView(mEndTip);
+    private void refreshEndTip() {
+        if (mEndTip == null || tvHotList1 == null) return;
+        boolean hasData = !homeHotVodAdapter.getData().isEmpty();
+        boolean atBottom = !tvHotList1.canScrollVertically(1);
+        boolean scrolledUp = tvHotList1.canScrollVertically(-1);
+        mEndTip.setVisibility(hasData && atBottom && scrolledUp ? View.VISIBLE : View.GONE);
     }
 
     /**
-     * 数据就绪后刷新"到底了":默认不显示——只有列表内容确实能滚动(超过一屏、滚到底才有提示意义)
-     * 时才显示;一屏即可看完的内容不显示,避免"到底了"常驻造成假噪音。
-     * 空数据一律不显示(由 LoadSir 空态接管)。
+     * 数据/滚动变化后调度刷新:列表可能尚未完成布局(如刚 setNewData),
+     * post 到下一帧再判,保证 canScrollVertically 反映真实内容高度。
      */
     private void updateEndTip() {
-        if (mEndTip == null) return;
-        if (homeHotVodAdapter.getData().isEmpty()) {
-            mEndTip.setVisibility(View.GONE);
-            return;
-        }
-        tvHotList1.post(() -> {
-            if (mEndTip == null || tvHotList1 == null) return;
-            boolean scrollable = tvHotList1.canScrollVertically(1) || tvHotList1.canScrollVertically(-1);
-            mEndTip.setVisibility(scrollable ? View.VISIBLE : View.GONE);
-        });
+        if (tvHotList1 == null) return;
+        tvHotList1.post(this::refreshEndTip);
     }
 
     /**

@@ -42,8 +42,9 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_gravity="center"
-        android:layout_marginTop="@dimen/dp_50"
-        android:textColor="@color/white"
+        android:layout_marginTop="42dp"
+        android:textColor="@color/color_FFFFFF"
+        android:textSize="16sp"
         tools:text="1111111111111"
 
          />

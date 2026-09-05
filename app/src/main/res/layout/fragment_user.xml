@@ -56,5 +56,15 @@
                 app:tint="@color/text_highlight" />
         </FrameLayout>
 
+        <!-- "到底了"悬浮提示:落在列表底部留白区内、贴近底部导航栏(见 item_view_end_tip) -->
+        <include
+            android:id="@+id/end_tip"
+            layout="@layout/item_view_end_tip"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_alignParentBottom="true"
+            android:layout_centerHorizontal="true"
+            android:layout_marginBottom="20dp"
+            android:visibility="gone" />
     </RelativeLayout>
 </com.github.tvbox.osc.ui.widget.ListSwipeRefreshLayout>

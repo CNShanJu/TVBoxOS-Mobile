@@ -32,7 +32,6 @@
                 android:orientation="vertical"
                 android:paddingVertical="20dp"
                 android:background="@drawable/bg_large_round_gray">
-
                 <LinearLayout
                     android:id="@+id/llHomeRec"
                     android:layout_width="match_parent"
@@ -178,7 +177,15 @@
                         android:src="@drawable/ic_pre"
                         app:tint="@color/text_foreground"/>
                 </LinearLayout>
+            </LinearLayout>
 
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:paddingVertical="20dp"
+                android:layout_marginTop="14dp"
+                android:background="@drawable/bg_large_round_gray">
                 <LinearLayout
                     android:id="@+id/llPrivateBrowsing"
                     android:layout_width="match_parent"
@@ -283,9 +290,42 @@
                         android:layout_marginStart="10dp"
                         android:clickable="false"/>
                 </LinearLayout>
+                <LinearLayout
+                    android:id="@+id/llDns"
+                    android:layout_width="match_parent"
+                    android:layout_height="@dimen/dp_60"
+                    android:focusable="true"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal"
+                    android:paddingHorizontal="40dp"
+                    android:foreground="?android:selectableItemBackground">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="安全DNS"
+                        android:textColor="@color/text_foreground"
+                        android:textSize="16sp"/>
+
+                    <TextView
+                        android:id="@+id/tvDns"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:gravity="end"
+                        android:maxLines="1"
+                        android:ellipsize="end" />
+
+                    <ImageView
+                        android:layout_width="26dp"
+                        android:layout_height="26dp"
+                        android:layout_gravity="center"
+                        android:alpha="0.75"
+                        android:src="@drawable/ic_pre"
+                        app:tint="@color/text_foreground"/>
+                </LinearLayout>
             </LinearLayout>
 
-            <!-- 下载设置:与下载页标题栏齿轮共用 DownloadConfig,单一事实源 -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -293,7 +333,6 @@
                 android:paddingVertical="20dp"
                 android:layout_marginTop="14dp"
                 android:background="@drawable/bg_large_round_gray">
-
                 <LinearLayout
                     android:id="@+id/llDlWifiOnly"
                     android:layout_width="match_parent"
@@ -388,7 +427,6 @@
                 <!--        android:textColor="@color/text_sub_foreground"-->
                 <!--        android:textSize="12sp"/>-->
                 <!--</LinearLayout>-->
-
             </LinearLayout>
 
             <LinearLayout
@@ -463,66 +501,6 @@
                         android:layout_height="wrap_content"
                         android:clickable="false"/>
                 </LinearLayout>
-
-                <LinearLayout
-                    android:id="@+id/llSubscriptionLog"
-                    android:layout_width="match_parent"
-                    android:layout_height="60dp"
-                    android:focusable="true"
-                    android:gravity="center_vertical"
-                    android:orientation="horizontal"
-                    android:paddingHorizontal="40dp"
-                    android:foreground="?android:selectableItemBackground">
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="业务日志"
-                        android:textColor="@color/text_foreground"
-                        android:textSize="16sp"/>
-
-                    <Space
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1" />
-
-                    <com.github.tvbox.osc.ui.kit.AppSwitch
-                        android:id="@+id/switchSubscriptionLog"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:clickable="false"/>
-                </LinearLayout>
-
-                <LinearLayout
-                    android:id="@+id/llSubscriptionLogView"
-                    android:layout_width="match_parent"
-                    android:layout_height="60dp"
-                    android:focusable="true"
-                    android:gravity="center_vertical"
-                    android:orientation="horizontal"
-                    android:paddingHorizontal="40dp"
-                    android:foreground="?android:selectableItemBackground">
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="查看日志"
-                        android:textColor="@color/text_foreground"
-                        android:textSize="16sp"/>
-
-                    <Space
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1" />
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="›"
-                        android:textColor="@color/text_sub_foreground"
-                        android:textSize="20sp"/>
-                </LinearLayout>
-
                 <LinearLayout
                     android:id="@+id/llPressSpeed"
                     android:layout_width="match_parent"
@@ -596,7 +574,6 @@
                         android:src="@drawable/ic_pre"
                         app:tint="@color/text_foreground"/>
                 </LinearLayout>
-
                 <LinearLayout
                     android:id="@+id/llMediaCodec"
                     android:layout_width="match_parent"
@@ -767,7 +744,6 @@
                         android:layout_height="wrap_content"
                         android:clickable="false"/>
                 </LinearLayout>
-
             </LinearLayout>
 
             <LinearLayout
@@ -777,7 +753,73 @@
                 android:paddingVertical="20dp"
                 android:layout_marginTop="14dp"
                 android:background="@drawable/bg_large_round_gray">
+                <LinearLayout
+                    android:id="@+id/llSubscriptionLog"
+                    android:layout_width="match_parent"
+                    android:layout_height="60dp"
+                    android:focusable="true"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal"
+                    android:paddingHorizontal="40dp"
+                    android:foreground="?android:selectableItemBackground">
 
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="业务日志"
+                        android:textColor="@color/text_foreground"
+                        android:textSize="16sp"/>
+
+                    <Space
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1" />
+
+                    <com.github.tvbox.osc.ui.kit.AppSwitch
+                        android:id="@+id/switchSubscriptionLog"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:clickable="false"/>
+                </LinearLayout>
+
+                <LinearLayout
+                    android:id="@+id/llSubscriptionLogView"
+                    android:layout_width="match_parent"
+                    android:layout_height="60dp"
+                    android:focusable="true"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal"
+                    android:paddingHorizontal="40dp"
+                    android:foreground="?android:selectableItemBackground">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="查看日志"
+                        android:textColor="@color/text_foreground"
+                        android:textSize="16sp"/>
+
+                    <Space
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="›"
+                        android:textColor="@color/text_sub_foreground"
+                        android:textSize="20sp"/>
+                </LinearLayout>
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:paddingVertical="20dp"
+                android:layout_marginTop="14dp"
+                android:background="@drawable/bg_large_round_gray">
                 <LinearLayout
                     android:id="@+id/llBackup"
                     android:layout_width="match_parent"
@@ -808,43 +850,6 @@
                         android:src="@drawable/ic_pre"
                         app:tint="@color/text_foreground"/>
                 </LinearLayout>
-
-
-                <LinearLayout
-                    android:id="@+id/llDns"
-                    android:layout_width="match_parent"
-                    android:layout_height="@dimen/dp_60"
-                    android:focusable="true"
-                    android:gravity="center_vertical"
-                    android:orientation="horizontal"
-                    android:paddingHorizontal="40dp"
-                    android:foreground="?android:selectableItemBackground">
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="安全DNS"
-                        android:textColor="@color/text_foreground"
-                        android:textSize="16sp"/>
-
-                    <TextView
-                        android:id="@+id/tvDns"
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:gravity="end"
-                        android:maxLines="1"
-                        android:ellipsize="end" />
-
-                    <ImageView
-                        android:layout_width="26dp"
-                        android:layout_height="26dp"
-                        android:layout_gravity="center"
-                        android:alpha="0.75"
-                        android:src="@drawable/ic_pre"
-                        app:tint="@color/text_foreground"/>
-                </LinearLayout>
-
                 <LinearLayout
                     android:id="@+id/llHistoryNum"
                     android:layout_width="match_parent"
@@ -913,7 +918,6 @@
                         android:src="@drawable/ic_pre"
                         app:tint="@color/text_foreground"/>
                 </LinearLayout>
-
             </LinearLayout>
 
         </LinearLayout>

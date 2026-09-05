@@ -60,6 +60,10 @@ public class GridFragment extends BaseLazyFragment {
     private int page = 1;
     private int maxPage = 1;
     private boolean isLoad = false;
+    /** 底部悬浮"到底了"(布局中默认隐藏,滚到列表最底且确认无更多时显示,贴近底部导航栏) */
+    private View mEndTip = null;
+    /** 是否已确认"没有更多"(loadmore 判 end 后置真;恢复快照/刷新时按层复位) */
+    private boolean mEndReached = false;
     /** 筛选按钮毛玻璃是否已 setup(initView 会被多次调用, 只装一次) */
     private boolean filterBlurSetup = false;
     private boolean isTop = true;
@@ -175,10 +179,16 @@ public class GridFragment extends BaseLazyFragment {
             this.showSuccess(); // 收起加载/空态占位
             gridAdapter.setNewData(info.data); // 恢复该层数据(BRVH 会自动复位加载更多开关)
             if (info.loadMoreEnd) {
-                gridAdapter.loadMoreEnd(); // 还原“没有更多”的 footer 状态
+                // 该层之前已"没有更多":还原状态(不再渲染 BRVAH end 行,由底部悬浮提示承担)
+                mEndReached = true;
+                gridAdapter.loadMoreComplete();
+                gridAdapter.setEnableLoadMore(false);
+            } else {
+                mEndReached = false;
             }
             restoreScroll(info.scrollPos, info.scrollOffset);
             mGridView.requestFocus();
+            updateEndTip();
         }
         return true;
     }
@@ -206,6 +216,8 @@ public class GridFragment extends BaseLazyFragment {
         this.page = 1;
         this.maxPage = 1;
         this.isLoad = false;
+        this.mEndReached = false;
+        updateEndTip(); // 清掉旧层残留的"到底了"
     }
 
     private void initView() {
@@ -271,6 +283,16 @@ public class GridFragment extends BaseLazyFragment {
         });
         gridAdapter.setLoadMoreView(new LoadMoreView());
 
+        // 底部悬浮"到底了"(共享组件,布局中默认隐藏):滚到列表最底且确认无更多时才显示
+        mEndTip = findViewById(R.id.end_tip);
+        if (mEndTip != null) mEndTip.setVisibility(View.GONE);
+        mGridView.addOnScrollListener(new RecyclerView.OnScrollListener() {
+            @Override
+            public void onScrolled(@NonNull RecyclerView recyclerView, int dx, int dy) {
+                refreshEndTip();
+            }
+        });
+
         findViewById(R.id.btn_filter).setOnClickListener(view -> showFilter());
         setupFilterBlur();
         setupSwipeRefresh();
@@ -301,9 +323,11 @@ public class GridFragment extends BaseLazyFragment {
         page = 1;
         maxPage = 1;
         isLoad = false;
+        mEndReached = false;
         // 复位 footer: 重新开启加载更多并清除旧的"到底了"状态, 下一页请求期间显示"加载中"
         gridAdapter.loadMoreComplete();
         gridAdapter.setEnableLoadMore(true);
+        updateEndTip();
         sourceViewModel.getList(sortData, page);
     }
 
@@ -312,6 +336,25 @@ public class GridFragment extends BaseLazyFragment {
         if (mSwipeRefresh != null && mSwipeRefresh.isRefreshing()) {
             mSwipeRefresh.setRefreshing(false);
         }
+    }
+
+    /**
+     * 同步刷新底部悬浮"到底了"(滚动监听中调用):数据非空、已确认无更多(mEndReached)、
+     * 列表确实滚到最底(不能再向下滚)且曾有多屏内容(能向上滚回)才显示;
+     * 一屏看完/空数据不显示,避免"到底了"常驻噪音。
+     */
+    private void refreshEndTip() {
+        if (mEndTip == null || mGridView == null || gridAdapter == null) return;
+        boolean hasData = !gridAdapter.getData().isEmpty();
+        boolean atBottom = !mGridView.canScrollVertically(1);
+        boolean scrolledUp = mGridView.canScrollVertically(-1);
+        mEndTip.setVisibility(mEndReached && hasData && atBottom && scrolledUp ? View.VISIBLE : View.GONE);
+    }
+
+    /** 数据/滚动变化后调度刷新:列表可能尚未完成布局,post 到下一帧再判 */
+    private void updateEndTip() {
+        if (mGridView == null) return;
+        mGridView.post(this::refreshEndTip);
     }
 
     /**
@@ -358,10 +401,13 @@ public class GridFragment extends BaseLazyFragment {
                     maxPage = absXml.movie.pagecount;
 
                     if (page > maxPage) {
-                        gridAdapter.loadMoreEnd();
+                        // 确认没有更多:不再渲染列表尾的 BRVAH end 行,改由底部悬浮提示承担(贴导航栏)
+                        mEndReached = true;
+                        gridAdapter.loadMoreComplete();
                         gridAdapter.setEnableLoadMore(false);
                         if(page>2)AppBubble.toast("没有更多了");
                     } else {
+                        mEndReached = false;
                         gridAdapter.loadMoreComplete();
                         gridAdapter.setEnableLoadMore(true);
                     }
@@ -370,10 +416,12 @@ public class GridFragment extends BaseLazyFragment {
                         showEmpty();
                     }else{
                         AppBubble.toast("没有更多了");
-                        gridAdapter.loadMoreEnd();
+                        mEndReached = true;
+                        gridAdapter.loadMoreComplete();
+                        gridAdapter.setEnableLoadMore(false);
                     }
-                    gridAdapter.setEnableLoadMore(false);
                 }
+                updateEndTip();
                 finishSwipeRefresh();
             }
         });
@@ -390,6 +438,7 @@ public class GridFragment extends BaseLazyFragment {
         }
         showLoading();
         isLoad = false;
+        mEndReached = false;
         scrollTop();
         sourceViewModel.getList(sortData, page);
     }
