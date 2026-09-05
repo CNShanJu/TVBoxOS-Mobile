@@ -42,7 +42,8 @@ class HistoryActivity : BaseVbActivity<ActivityHistoryBinding>() {
                 FastClickCheckUtil.check(view)
                 val vodInfo = historyAdapter!!.data[position]
                 historyAdapter!!.remove(position)
-                RoomDataManger.deleteVodRecord(vodInfo.sourceKey, vodInfo)
+                com.github.tvbox.osc.repo.HistoryRepositories.history()
+                    .delete(vodInfo.sourceKey, vodInfo.id)
                 LogStore.log(Category.SYSTEM, "删除历史: " + (vodInfo.name ?: "?"))
                 updateEmptyState()
                 true
@@ -54,7 +55,7 @@ class HistoryActivity : BaseVbActivity<ActivityHistoryBinding>() {
             com.github.tvbox.osc.ui.dialog.ConfirmDialog.show(this, "提示", "确定清空全部观看历史?", "清空", {
                 showLoadingDialog()
                 lifecycleScope.launch(Dispatchers.IO) {
-                    RoomDataManger.deleteVodRecordAll()
+                    com.github.tvbox.osc.repo.HistoryRepositories.history().clear()
                     // 在主线程更新数据
                     withContext(Dispatchers.Main) {
                         dismissLoadingDialog()
@@ -83,7 +84,7 @@ class HistoryActivity : BaseVbActivity<ActivityHistoryBinding>() {
 
         lifecycleScope.launch(Dispatchers.IO) {
             // 源是否存在/历史保留上限由 UI 层判定(与旧 RoomDataManger 内聚逻辑等价;storage 不再依赖业务配置)
-            val allVodRecord = RoomDataManger.getAllVodRecord(
+            val allVodRecord = com.github.tvbox.osc.repo.HistoryRepositories.history().query(
                 100,
                 { key -> com.github.tvbox.osc.api.ApiConfig.get().getSource(key) != null },
                 com.github.tvbox.osc.util.HistoryHelper.getHisNum(

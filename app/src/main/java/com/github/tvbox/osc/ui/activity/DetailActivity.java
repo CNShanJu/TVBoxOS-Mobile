@@ -798,7 +798,7 @@ public class DetailActivity extends BaseVbActivity<ActivityDetailBinding> {
         } catch (Throwable th) {
             vodInfo.playNote = "";
         }
-        RoomDataManger.insertVodRecord(sourceKey, vodInfo);
+        com.github.tvbox.osc.repo.HistoryRepositories.history().save(sourceKey, vodInfo);
         EventBus.getDefault().post(new RefreshEvent(RefreshEvent.TYPE_HISTORY_REFRESH));
     }
 
