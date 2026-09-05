@@ -196,6 +196,9 @@ Exo→Media3、EventBus→Flow/接口、Hawk→DataStore、Java→Kotlin 渐进�
 - ✅ SourceViewModel type0/1 解析纯函数化:`spider-api/AbsXmlParser.parseXml/parseJson/normalize`(XStream 白名单加固、
   xml 清洗、线路串→beanList、sourceKey 回填),VM `xml()/json()` 改为解析+`publishDetailPayload` 副作用分离;
   建议真机回归 type0/1 列表/详情/搜索与 type3 typed 路径。并行侧同文件改动(absXml 简化)已合流,评审一次。
+- ✅ 真机 NPE 修复(typed 通道):absXml(typed) 改走公开的 `AbsXmlParser.normalize`,统一回填 sourceKey 并
+  拆分线路串→beanList(此前并行简化把 typed 端拆分丢掉,checkThunder 遍历 null beanList 崩溃);另加
+  beanList 空防御。gate 绿。真机回归点:type3 typed 详情/播放/雷资源判定。(commit 348fca79)
 
 ## 9. 待真机回归后继续(播放器主线尾段,当前挂起)
 - PlayerApi 会话内核**实验选项**:设置页加"播放器内核:PlayerApi 会话(实验)"开关(默认关);
