@@ -198,58 +198,28 @@ public class DownloadFragment extends BaseVbFragment<FragmentDownloadBinding> {
                     name = name + " · " + ep;
                 }
                 helper.setText(R.id.tv_name, name);
-                // 行2:状态 · 进度
-                String status;
+                // 行2:状态 · 进度(文本/色调/阶段判定抽到 DownloadDisplay,颜色在此取)
+                String status = DownloadDisplay.statusTextOf(task);
                 int statusColor;
-                if (task.state == DownloadTask.STATE_FAILED) {
-                    status = "失败";
-                    statusColor = ContextCompat.getColor(mContext, R.color.red);
-                } else if (task.state == DownloadTask.STATE_PAUSED) {
-                    status = "已暂停";
-                    statusColor = ContextCompat.getColor(mContext, R.color.text_sub_foreground);
-                } else if (task.state == DownloadTask.STATE_NETWORK_PAUSED) {
-                    status = "网络中断";
-                    statusColor = ContextCompat.getColor(mContext, R.color.text_sub_foreground);
-                } else if (task.state == DownloadTask.STATE_SYSTEM_PAUSED) {
-                    status = "排队中";
-                    statusColor = ContextCompat.getColor(mContext, R.color.text_sub_foreground);
-                } else if (task.state == DownloadTask.STATE_WAITING) {
-                    status = "等待中";
-                    statusColor = ContextCompat.getColor(mContext, R.color.text_sub_foreground);
-                } else if (task.state == DownloadTask.STATE_CANCELLED) {
-                    status = "已取消";
-                    statusColor = ContextCompat.getColor(mContext, R.color.text_sub_foreground);
-                } else {
-                    // 收尾阶段(message 带阶段+进度,如 "文件合并中(45%)"/"补片中(剩3片)"/"文件封装中"),前缀匹配
-                    if (task.message != null && task.message.startsWith(DownloadFacade.MSG_REPAIRING)) {
-                        status = task.message;
-                    } else if (task.message != null && task.message.startsWith(DownloadFacade.MSG_VERIFYING)) {
-                        status = task.message;
-                    } else if (task.message != null && task.message.startsWith(DownloadFacade.MSG_MERGING)) {
-                        status = task.message;
-                    } else if (task.message != null && task.message.startsWith(DownloadFacade.MSG_REMUX)) {
-                        status = task.message;
-                    } else {
-                        status = "下载中";
-                    }
-                    statusColor = ContextCompat.getColor(mContext, R.color.download_active);
+                switch (DownloadDisplay.statusToneOf(task)) {
+                    case ERROR:
+                        statusColor = ContextCompat.getColor(mContext, R.color.red);
+                        break;
+                    case MUTED:
+                        statusColor = ContextCompat.getColor(mContext, R.color.text_sub_foreground);
+                        break;
+                    default:
+                        statusColor = ContextCompat.getColor(mContext, R.color.download_active);
+                        break;
                 }
                 TextView tvStatus = helper.getView(R.id.tv_status);
-                // 收尾阶段 message 自带进度(合并x%/剩K片),不再追加整体百分比(此时进度恒为100%)
-                boolean stageHasProgress = task.message != null
-                        && (task.message.startsWith(DownloadFacade.MSG_MERGING)
-                        || task.message.startsWith(DownloadFacade.MSG_REPAIRING));
+                // 收尾阶段(合并x%/剩K片)message 自带进度,不再追加整体百分比(此时进度恒为100%)
+                boolean stageHasProgress = DownloadDisplay.stageMessageOwnsProgress(task.message);
                 String statusText = stageHasProgress
                         ? status
                         : status + " · " + task.getProgressPercent() + "%";
                 // 实时网速:仅真正下载中显示,放在"下载中 xx%"后面(大小行不显示,避免被挤压)
-                if (task.state == DownloadTask.STATE_DOWNLOADING
-                        && task.message != null
-                        && !task.message.startsWith(DownloadFacade.MSG_VERIFYING)
-                        && !task.message.startsWith(DownloadFacade.MSG_MERGING)
-                        && !task.message.startsWith(DownloadFacade.MSG_REMUX)
-                        && !task.message.startsWith(DownloadFacade.MSG_REPAIRING)
-                        && task.speed > 0) {
+                if (DownloadDisplay.shouldShowSpeed(task) && task.speed > 0) {
                     statusText += " · " + DownloadDisplay.formatSpeed(task.speed);
                 }
                 tvStatus.setText(statusText);

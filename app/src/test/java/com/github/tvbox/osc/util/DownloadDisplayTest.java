@@ -6,6 +6,7 @@ import static org.junit.Assert.assertNull;
 import com.github.tvbox.osc.bean.DownloadTask;
 import com.github.tvbox.osc.bean.VideoInfo;
 import com.github.tvbox.osc.download.ArchiveItem;
+import com.github.tvbox.osc.download.DownloadFacade;
 
 import org.junit.Test;
 
@@ -127,6 +128,62 @@ public class DownloadDisplayTest {
         t.message = "连接超时";
         String s = DownloadDisplay.buildPercentText(t);
         assertTrue(s, s.contains("失败:连接超时"));
+    }
+
+    // ── 状态行文本/色调/阶段判定 ──
+
+    @Test
+    public void statusTextOf_mapsStates() {
+        assertEquals("失败", DownloadDisplay.statusTextOf(state(DownloadTask.STATE_FAILED, null)));
+        assertEquals("已暂停", DownloadDisplay.statusTextOf(state(DownloadTask.STATE_PAUSED, null)));
+        assertEquals("网络中断", DownloadDisplay.statusTextOf(state(DownloadTask.STATE_NETWORK_PAUSED, null)));
+        assertEquals("排队中", DownloadDisplay.statusTextOf(state(DownloadTask.STATE_SYSTEM_PAUSED, null)));
+        assertEquals("等待中", DownloadDisplay.statusTextOf(state(DownloadTask.STATE_WAITING, null)));
+        assertEquals("已取消", DownloadDisplay.statusTextOf(state(DownloadTask.STATE_CANCELLED, null)));
+        assertEquals("下载中", DownloadDisplay.statusTextOf(state(DownloadTask.STATE_DOWNLOADING, null)));
+        // 收尾阶段 message 原样
+        assertEquals("文件合并中(45%)",
+                DownloadDisplay.statusTextOf(state(DownloadTask.STATE_DOWNLOADING, DownloadFacade.MSG_MERGING + "(45%)")));
+        assertEquals("补片中(剩3片)",
+                DownloadDisplay.statusTextOf(state(DownloadTask.STATE_DOWNLOADING, DownloadFacade.MSG_REPAIRING + "(剩3片)")));
+    }
+
+    @Test
+    public void statusToneOf_mapsTones() {
+        assertEquals(DownloadDisplay.StatusTone.ERROR, DownloadDisplay.statusToneOf(state(DownloadTask.STATE_FAILED, null)));
+        assertEquals(DownloadDisplay.StatusTone.MUTED, DownloadDisplay.statusToneOf(state(DownloadTask.STATE_PAUSED, null)));
+        assertEquals(DownloadDisplay.StatusTone.MUTED, DownloadDisplay.statusToneOf(state(DownloadTask.STATE_NETWORK_PAUSED, null)));
+        assertEquals(DownloadDisplay.StatusTone.MUTED, DownloadDisplay.statusToneOf(state(DownloadTask.STATE_SYSTEM_PAUSED, null)));
+        assertEquals(DownloadDisplay.StatusTone.MUTED, DownloadDisplay.statusToneOf(state(DownloadTask.STATE_WAITING, null)));
+        assertEquals(DownloadDisplay.StatusTone.MUTED, DownloadDisplay.statusToneOf(state(DownloadTask.STATE_CANCELLED, null)));
+        assertEquals(DownloadDisplay.StatusTone.ACTIVE, DownloadDisplay.statusToneOf(state(DownloadTask.STATE_DOWNLOADING, null)));
+    }
+
+    @Test
+    public void stageAndSpeedJudgements() {
+        // 合并/补片 message 自带进度
+        assertTrue(DownloadDisplay.stageMessageOwnsProgress(DownloadFacade.MSG_MERGING));
+        assertTrue(DownloadDisplay.stageMessageOwnsProgress(DownloadFacade.MSG_REPAIRING));
+        assertFalse(DownloadDisplay.stageMessageOwnsProgress(DownloadFacade.MSG_VERIFYING));
+        assertFalse(DownloadDisplay.stageMessageOwnsProgress(null));
+        // 网速仅下载中且非收尾阶段
+        DownloadTask dl = state(DownloadTask.STATE_DOWNLOADING, null);
+        assertFalse(DownloadDisplay.shouldShowSpeed(dl)); // message null
+        dl.message = "";
+        assertTrue(DownloadDisplay.shouldShowSpeed(dl));   // 空串非 null:与原实现一致显示
+        dl.message = "普通下载中";
+        assertTrue(DownloadDisplay.shouldShowSpeed(dl));
+        dl.message = DownloadFacade.MSG_MERGING;
+        assertFalse(DownloadDisplay.shouldShowSpeed(dl));
+        dl.state = DownloadTask.STATE_PAUSED;
+        assertFalse(DownloadDisplay.shouldShowSpeed(dl));
+    }
+
+    private static DownloadTask state(int state, String msg) {
+        DownloadTask t = new DownloadTask();
+        t.state = state;
+        t.message = msg;
+        return t;
     }
 
     private static void assertTrue(boolean b) {

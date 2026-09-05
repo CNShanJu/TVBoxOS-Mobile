@@ -83,6 +83,72 @@ public final class DownloadDisplay {
         return sb.toString();
     }
 
+    // ── 任务行状态展示(纯映射;颜色由 UI 按色调键取) ──
+
+    /** 状态行色调:错误(红)/次要(灰)/下载中高亮 */
+    public enum StatusTone { ERROR, MUTED, ACTIVE }
+
+    private static boolean msgIs(String msg, String stage) {
+        return msg != null && msg.startsWith(stage);
+    }
+
+    /** 收尾阶段(合并x%/剩K片)message 自带进度,不再追加整体百分比 */
+    public static boolean stageMessageOwnsProgress(String msg) {
+        return msgIs(msg, com.github.tvbox.osc.download.DownloadFacade.MSG_MERGING)
+                || msgIs(msg, com.github.tvbox.osc.download.DownloadFacade.MSG_REPAIRING);
+    }
+
+    /** 状态行文本:失败/已暂停/网络中断/排队中/等待中/已取消/收尾 message/下载中 */
+    public static String statusTextOf(DownloadTask t) {
+        switch (t.state) {
+            case DownloadTask.STATE_FAILED:
+                return "失败";
+            case DownloadTask.STATE_PAUSED:
+                return "已暂停";
+            case DownloadTask.STATE_NETWORK_PAUSED:
+                return "网络中断";
+            case DownloadTask.STATE_SYSTEM_PAUSED:
+                return "排队中";
+            case DownloadTask.STATE_WAITING:
+                return "等待中";
+            case DownloadTask.STATE_CANCELLED:
+                return "已取消";
+            default:
+                break;
+        }
+        String msg = t.message;
+        if (msgIs(msg, com.github.tvbox.osc.download.DownloadFacade.MSG_REPAIRING)
+                || msgIs(msg, com.github.tvbox.osc.download.DownloadFacade.MSG_VERIFYING)
+                || msgIs(msg, com.github.tvbox.osc.download.DownloadFacade.MSG_MERGING)
+                || msgIs(msg, com.github.tvbox.osc.download.DownloadFacade.MSG_REMUX)) {
+            return msg;
+        }
+        return "下载中";
+    }
+
+    /** 状态行色调键:失败=ERROR;各暂停/取消=次要;下载中/收尾=ACTIVE */
+    public static StatusTone statusToneOf(DownloadTask t) {
+        if (t.state == DownloadTask.STATE_FAILED) return StatusTone.ERROR;
+        switch (t.state) {
+            case DownloadTask.STATE_PAUSED:
+            case DownloadTask.STATE_NETWORK_PAUSED:
+            case DownloadTask.STATE_SYSTEM_PAUSED:
+            case DownloadTask.STATE_WAITING:
+            case DownloadTask.STATE_CANCELLED:
+                return StatusTone.MUTED;
+            default:
+                return StatusTone.ACTIVE;
+        }
+    }
+
+    /** 是否显示实时网速:真正下载中且非收尾阶段(message 非 校验/合并/封装/补片) */
+    public static boolean shouldShowSpeed(DownloadTask t) {
+        if (t.state != DownloadTask.STATE_DOWNLOADING || t.message == null) return false;
+        return !stageMessageOwnsProgress(t.message)
+                && !msgIs(t.message, com.github.tvbox.osc.download.DownloadFacade.MSG_VERIFYING)
+                && !msgIs(t.message, com.github.tvbox.osc.download.DownloadFacade.MSG_REMUX);
+    }
+
     /** 实时网速文本 */
     public static String formatSpeed(long bytesPerSec) {
         if (bytesPerSec >= 1024 * 1024) {
