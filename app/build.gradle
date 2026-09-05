@@ -183,7 +183,7 @@ dependencies {
     implementation project(":log")
     implementation project(":state")
     implementation project(":player-api")
-    implementation project(":common")
+    implementation project(":core-network")
     implementation project(":ui-common")
     implementation project(":spider")
     implementation project(":download")

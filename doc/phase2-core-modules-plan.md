@@ -27,6 +27,10 @@
 
 ## 2. 迁移顺序与门禁
 
+- ⏳ 已建基座：原 `:common` 已更名挂接为 `:core-network`（`settings.gradle` 用 projectDir 指向 common 目录，
+  FQN 不变、全仓零代码改动，Debug/Release 通过）。后续裁剪动作（网络面内聚 / 配置与工具迁出 / 事件收敛）
+  按本计划逐批执行，每批“移出→清依赖→全量编译”。
+
 - ✅ 已完成：`:core-model` 模块创建；第一批 Movie/MovieSort 迁入；第二批 18 个纯模型迁入
   （AbsJson/AbsSortJson/AbsSortXml/AbsXml/CastVideo/IpScanningVo/Live*/Source/Subscription/Subtitle/
   SubtitleData/TmdbVodInfo/SourceBean/LiveChannelGroup/LiveChannelItem）；第三批 DownloadTask 迁入。

@@ -88,6 +88,14 @@
   Activity 内不再持有 searchExecutorService/pauseRunnable/quickSearchData 等搜索状态。
 - 详情/播放页另有先期拆分的 `util/player/PlayParseHelper.java`（暂未被引用，见“待后续”）。
 
+### 1.9 模块化(改进.txt 第二/三阶段已落地部分)
+- 新增 `:core-model`（纯 Java，23 个共享 DTO：Movie/MovieSort/AbsXml/AbsSortXml/AbsJson/AbsSortJson/
+  SourceBean/Subscription/VodInfo(+嵌套)/DownloadTask/IJKCode/Live*/Subtitle*/TmdbVodInfo/Source 等）。
+- 新增 `:core-storage`（android-library）：迁入 data/cache 包(Entity/DAO/AppDataManager/RoomDataManger/CacheManager)，
+  已去除对 App 单例、spider ApiConfig、HistoryHelper/SystemConfig/Hawk 的依赖；Room schema 统一导出。
+- 原 `:common` 已更名挂接为 `:core-network`（projectDir=common，FQN 不变）；裁剪计划见
+  `doc/phase2-core-modules-plan.md`。
+
 ## 2. 待后续（需真机回归或架构决策）
 
 | 项 | 说明 |
