@@ -4,7 +4,6 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.StatFs;
-import android.text.TextUtils;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewConfiguration;
@@ -29,6 +28,7 @@ import com.github.tvbox.osc.bean.VideoInfo;
 import com.github.tvbox.osc.databinding.FragmentDownloadBinding;
 import com.github.tvbox.osc.constant.CacheConst;
 import com.github.tvbox.osc.download.DownloadFacade;
+import com.github.tvbox.osc.util.DownloadDisplay;
 import com.github.tvbox.osc.ui.activity.LocalPlayActivity;
 import com.github.tvbox.osc.ui.adapter.LocalVideoAdapter;
 import com.github.tvbox.osc.ui.dialog.ConfirmDialog;
@@ -257,7 +257,7 @@ public class DownloadFragment extends BaseVbFragment<FragmentDownloadBinding> {
                         && !task.message.startsWith(DownloadFacade.MSG_REMUX)
                         && !task.message.startsWith(DownloadFacade.MSG_REPAIRING)
                         && task.speed > 0) {
-                    statusText += " · " + formatSpeed(task.speed);
+                    statusText += " · " + DownloadDisplay.formatSpeed(task.speed);
                 }
                 tvStatus.setText(statusText);
                 tvStatus.setTextColor(statusColor);
@@ -525,7 +525,7 @@ public class DownloadFragment extends BaseVbFragment<FragmentDownloadBinding> {
         downloadingAdapter.setNewData(tasksInGroup(currentVodGroup, currentSourceName));
         List<VideoInfo> files = buildFolderVideosFromRecords(currentVodGroup, currentSourceName);
         String sig = currentVodGroup + "\u0001" + (currentSourceName == null ? "" : currentSourceName)
-                + "\u0001" + doneSignature(files);
+                + "\u0001" + DownloadDisplay.doneSignature(files);
         if (sig.equals(doneListSignature)) return; // 内容未变:跳过重建(保持多选与滚动状态)
         doneListSignature = sig;        // 重建时保留多选勾选(按路径恢复),且不重置多选模式,避免刷新打断"下载完成"长按多选
         Set<String> checked = new LinkedHashSet<>();
@@ -542,15 +542,6 @@ public class DownloadFragment extends BaseVbFragment<FragmentDownloadBinding> {
         localVideoAdapter.setNewData(files);
         // 数据重建后同步一次选中计数(BRVAH notifyDataSetChanged 为 final,列表重建无法被计数拦截)
         localVideoAdapter.syncSelection();
-    }
-
-    /** 下载完成列表指纹:文件路径 + 大小 */
-    private static String doneSignature(List<VideoInfo> files) {
-        StringBuilder sb = new StringBuilder();
-        for (VideoInfo v : files) {
-            sb.append(v.getPath()).append('|').append(v.getSize()).append(';');
-        }
-        return sb.toString();
     }
 
     /** 刷新剧集展示插槽:聚合组件(剧集网格) / 详情组件(导航+tab+两列表) 二选一换入;
@@ -605,7 +596,7 @@ public class DownloadFragment extends BaseVbFragment<FragmentDownloadBinding> {
             StatFs stat = new StatFs(dir.getAbsolutePath());
             long free = stat.getAvailableBytes();
             String wifi = DownloadFacade.get().isWifiOnly() ? "仅Wi-Fi" : "Wi-Fi+流量";
-            mBinding.tvStorage.setText("可用 " + formatSize(free) + "  |  " + wifi + " · 并发 " + DownloadFacade.get().getMaxConcurrent());
+            mBinding.tvStorage.setText("可用 " + DownloadDisplay.formatSize(free) + "  |  " + wifi + " · 并发 " + DownloadFacade.get().getMaxConcurrent());
         } catch (Throwable th) {
             mBinding.tvStorage.setText("");
         }
@@ -804,7 +795,7 @@ public class DownloadFragment extends BaseVbFragment<FragmentDownloadBinding> {
                                 }
                             }
                             for (File d : dirs) {
-                                deleteRecursive(d);
+                                DownloadDisplay.deleteRecursive(d);
                             }
                             // 已完成集(档案表): 文件已随文件夹删除, 同步删档案记录;
                             // deleteFile=true 兜底: 文件夹删除失败(权限/占用)时再尝试删单个文件
@@ -992,13 +983,13 @@ public class DownloadFragment extends BaseVbFragment<FragmentDownloadBinding> {
             info.setEpisodeId(it.episodeId); // 统一剧集标识:回跳详情页/本地播放联动用
             info.setVodName(vodName); // 主标题:剧名
             // 集数名(第1集_720P 去清晰度后缀;无则按索引推导 第N集;仍无则文件名)
-            info.setEpisodeName(episodeTitleOf(it, f.getName()));
+            info.setEpisodeName(DownloadDisplay.episodeTitleOf(it, f.getName()));
             // 来源名 + 清晰度(从集数名/文件名解析 480P/720P...)
             info.setSourceName(it.sourceName);
-            info.setResolution(resolutionOf(it, f.getName()));
+            info.setResolution(DownloadDisplay.resolutionOf(it, f.getName()));
             // 播放过的剧集标题置灰
             if (played != null && it.episodeId != null) {
-                String idx = lastSegment(it.episodeId);
+                String idx = DownloadDisplay.lastSegment(it.episodeId);
                 info.setPlayed(idx != null && played.contains(idx));
             }
             videos.add(info);
@@ -1033,37 +1024,6 @@ public class DownloadFragment extends BaseVbFragment<FragmentDownloadBinding> {
         }
         playedCache.put(videoId, set);
         return set;
-    }
-
-    /** episodeId 最后一段(playIndex) */
-    private static String lastSegment(String episodeId) {
-        int i = episodeId.lastIndexOf('|');
-        return i >= 0 ? episodeId.substring(i + 1) : null;
-    }
-
-    /** 集数名:优先档案 episodeName(去清晰度后缀),空则按索引推导 第N集,再空用文件名(去扩展名) */
-    private static String episodeTitleOf(com.github.tvbox.osc.download.ArchiveItem it, String fileName) {
-        String label = it.episodeName;
-        if (TextUtils.isEmpty(label) && it.episodeId != null) {
-            String idx = lastSegment(it.episodeId);
-            if (idx != null && idx.matches("\\d+")) label = "第" + idx + "集";
-        }
-        if (TextUtils.isEmpty(label)) {
-            label = fileName;
-            int dot = label.lastIndexOf('.');
-            if (dot > 0) label = label.substring(0, dot);
-        }
-        return label.replaceAll("(?i)_?(\\d{3,4}p|4k|2k|8k|sd|hd|fhd|uhd)$", "").trim();
-    }
-
-    /** 清晰度:从集数名/文件名解析最后一个 480P/720P/1080P/4K... 段;无则 null */
-    private static String resolutionOf(com.github.tvbox.osc.download.ArchiveItem it, String fileName) {
-        String s = TextUtils.isEmpty(it.episodeName) ? fileName : it.episodeName;
-        if (TextUtils.isEmpty(s)) return null;
-        java.util.regex.Matcher m = java.util.regex.Pattern.compile("(?i)(\\d{3,4}p|4k|2k|8k|sd|hd|fhd|uhd)").matcher(s);
-        String last = null;
-        while (m.find()) last = m.group(1);
-        return last == null ? null : last.toUpperCase();
     }
 
     // ------------------------------------------------------------------
@@ -1241,17 +1201,6 @@ public class DownloadFragment extends BaseVbFragment<FragmentDownloadBinding> {
         }
     }
 
-    private static void deleteRecursive(File f) {
-        if (f == null || !f.exists()) return;
-        if (f.isDirectory()) {
-            File[] fs = f.listFiles();
-            if (fs != null) {
-                for (File c : fs) deleteRecursive(c);
-            }
-        }
-        f.delete();
-    }
-
     /** 用内置播放器播放下载的文件(与"我的-本地视频"一致) */
     private void playFile(VideoInfo info) {
         try {
@@ -1278,7 +1227,7 @@ public class DownloadFragment extends BaseVbFragment<FragmentDownloadBinding> {
         }
         if (t.totalBytes > 0) {
             if (sb.length() > 0) sb.append("  ");
-            sb.append(formatSize(t.downloadedBytes)).append("/").append(formatSize(t.totalBytes));
+            sb.append(DownloadDisplay.formatSize(t.downloadedBytes)).append("/").append(DownloadDisplay.formatSize(t.totalBytes));
         }
         sb.append(" (").append(t.getProgressPercent()).append("%)");
         // 实时网速已移至状态行("下载中 xx%"后面),不在此行显示,避免被挤压
@@ -1286,21 +1235,5 @@ public class DownloadFragment extends BaseVbFragment<FragmentDownloadBinding> {
             sb.append(" 失败:").append(t.message);
         }
         return sb.toString();
-    }
-
-    private static String formatSpeed(long bytesPerSec) {
-        if (bytesPerSec >= 1024 * 1024) {
-            return String.format("%.1fMB/s", bytesPerSec / 1024.0 / 1024.0);
-        }
-        if (bytesPerSec >= 1024) {
-            return String.format("%.0fKB/s", bytesPerSec / 1024.0);
-        }
-        return bytesPerSec + "B/s";
-    }
-
-    private static String formatSize(long bytes) {
-        if (bytes < 1024 * 1024) return (bytes / 1024) + "KB";
-        if (bytes < 1024L * 1024 * 1024) return (bytes / 1024 / 1024) + "MB";
-        return String.format("%.2fGB", bytes / 1024.0 / 1024.0 / 1024.0);
     }
 }
