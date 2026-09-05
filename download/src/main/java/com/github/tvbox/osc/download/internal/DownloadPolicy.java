@@ -11,6 +11,7 @@ import com.github.tvbox.osc.bean.DownloadTask;
 import com.github.tvbox.osc.state.SystemEvent;
 import com.github.tvbox.osc.state.SystemStateMonitor;
 import com.github.tvbox.osc.config.KeyValueStore;
+import com.github.tvbox.osc.config.PrefsDataStore;
 
 import java.io.File;
 import java.util.Map;
@@ -34,11 +35,33 @@ public class DownloadPolicy {
     /** 最大并发下载数(1-5) */
     private volatile int maxConcurrent = 3;
 
+    /** 旧 Hawk 存量一次性迁移(下载并发/仅WiFi → PrefsDataStore;Policy 类加载时执行一次) */
+    private static volatile boolean migrated = false;
+
+    private static synchronized void migrateLegacyOnce() {
+        if (migrated) return;
+        migrated = true;
+        try {
+            if (KeyValueStore.contains(DownloadManager.HAWK_MAX_CONCURRENT)) {
+                int v = KeyValueStore.get(DownloadManager.HAWK_MAX_CONCURRENT, 3);
+                PrefsDataStore.put(DownloadManager.HAWK_MAX_CONCURRENT, v);
+                KeyValueStore.delete(DownloadManager.HAWK_MAX_CONCURRENT);
+            }
+            if (KeyValueStore.contains(DownloadManager.HAWK_WIFI_ONLY)) {
+                boolean v = KeyValueStore.get(DownloadManager.HAWK_WIFI_ONLY, true);
+                PrefsDataStore.put(DownloadManager.HAWK_WIFI_ONLY, v);
+                KeyValueStore.delete(DownloadManager.HAWK_WIFI_ONLY);
+            }
+        } catch (Throwable ignored) {
+        }
+    }
+
     DownloadPolicy(DownloadManager dm) {
         this.dm = dm;
+        migrateLegacyOnce();
         int savedConcurrent = 3;
         try {
-            savedConcurrent = KeyValueStore.get(DownloadManager.HAWK_MAX_CONCURRENT, 3);
+            savedConcurrent = PrefsDataStore.getInt(DownloadManager.HAWK_MAX_CONCURRENT, 3);
         } catch (Throwable ignored) {
         }
         maxConcurrent = Math.max(1, Math.min(5, savedConcurrent));
@@ -75,7 +98,7 @@ public class DownloadPolicy {
         int v = Math.max(1, Math.min(5, n));
         maxConcurrent = v;
         try {
-            KeyValueStore.put(DownloadManager.HAWK_MAX_CONCURRENT, v);
+            PrefsDataStore.put(DownloadManager.HAWK_MAX_CONCURRENT, v);
         } catch (Throwable ignored) {
         }
         dm.notifyChanged();
@@ -85,7 +108,7 @@ public class DownloadPolicy {
     /** 是否仅 WiFi 下载(默认开启,移动网络下载前需强提醒确认) */
     boolean isWifiOnly() {
         try {
-            return KeyValueStore.get(DownloadManager.HAWK_WIFI_ONLY, true);
+            return PrefsDataStore.getBoolean(DownloadManager.HAWK_WIFI_ONLY, true);
         } catch (Throwable th) {
             return true;
         }
@@ -93,7 +116,7 @@ public class DownloadPolicy {
 
     void setWifiOnly(boolean wifiOnly) {
         try {
-            KeyValueStore.put(DownloadManager.HAWK_WIFI_ONLY, wifiOnly);
+            PrefsDataStore.put(DownloadManager.HAWK_WIFI_ONLY, wifiOnly);
         } catch (Throwable ignored) {
         }
     }

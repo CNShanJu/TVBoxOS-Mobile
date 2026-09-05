@@ -132,6 +132,8 @@ public class App extends MultiDexApplication {
     private void initParams() {
         // 键值存储(config 包封装;内部 Hawk)
         KeyValueStore.init(this);
+        // 现代化偏好存储(Preferences DataStore;标量域逐步迁移,见 DownloadPolicy 试点)
+        com.github.tvbox.osc.config.PrefsDataStore.init(this);
         KeyValueStore.put(HawkConfig.DEBUG_OPEN, false);
 
         putDefault(HawkConfig.HOME_REC, 0);                  //推荐: 0=豆瓣热播, 1=站点推荐
