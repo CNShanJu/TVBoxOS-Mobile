@@ -23,7 +23,6 @@ import android.webkit.WebViewClient;
 
 import androidx.annotation.Nullable;
 
-import com.github.tvbox.osc.api.ApiConfig;
 import com.github.tvbox.osc.base.App;
 import com.github.tvbox.osc.bean.SourceBean;
 import com.github.tvbox.osc.download.DownloadUrlSniffer;
@@ -110,7 +109,7 @@ public class WebSniffResolver implements DownloadUrlSniffer {
     private void runSniff(String sourceKey, String rawUrl, long timeoutMs, CountDownLatch done) {
         try {
             resetState();
-            sourceBean = ApiConfig.get().getSource(sourceKey);
+            sourceBean = com.github.tvbox.osc.spiderapi.SourceConfigProviders.get().getSource(sourceKey);
             sniffWebUrl = rawUrl;
             ensureWebView();
 

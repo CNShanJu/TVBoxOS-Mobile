@@ -3,8 +3,8 @@ package com.github.tvbox.osc.ui.adapter;
 import com.chad.library.adapter.base.BaseQuickAdapter;
 import com.chad.library.adapter.base.BaseViewHolder;
 import com.github.tvbox.osc.R;
-import com.github.tvbox.osc.api.ApiConfig;
 import com.github.tvbox.osc.bean.Movie;
+import com.github.tvbox.osc.spiderapi.SourceConfigProviders;
 
 import java.util.ArrayList;
 
@@ -21,7 +21,7 @@ public class QuickSearchAdapter extends BaseQuickAdapter<Movie.Video, BaseViewHo
     @Override
     protected void convert(BaseViewHolder helper, Movie.Video item) {
         // lite
-        helper.setText(R.id.tvName, String.format("%s  %s %s %s", ApiConfig.get().getSource(item.sourceKey).getName(), item.name, item.type == null ? "" : item.type, item.note == null ? "" : item.note));
+        helper.setText(R.id.tvName, String.format("%s  %s %s %s", SourceConfigProviders.get().getSource(item.sourceKey).getName(), item.name, item.type == null ? "" : item.type, item.note == null ? "" : item.note));
         // with preview
         /*
         helper.setText(R.id.tvName, item.name);

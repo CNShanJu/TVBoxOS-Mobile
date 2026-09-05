@@ -34,7 +34,6 @@ import com.blankj.utilcode.util.ServiceUtils;
 import com.github.tvbox.osc.util.AppBubble;
 import com.chad.library.adapter.base.BaseQuickAdapter;
 import com.github.tvbox.osc.R;
-import com.github.tvbox.osc.api.ApiConfig;
 import com.github.tvbox.osc.base.App;
 import com.github.tvbox.osc.base.BaseVbActivity;
 import com.github.tvbox.osc.download.DownloadFacade;
@@ -637,7 +636,7 @@ public class DetailActivity extends BaseVbActivity<ActivityDetailBinding> {
 
                     mBinding.tvName.setText(TextUtils.isEmpty(mVideo.name) ? "暂无信息" : mVideo.name);
                     String srcName = "";
-                    SourceBean detailSource = ApiConfig.get().getSource(mVideo.sourceKey);
+                    SourceBean detailSource = com.github.tvbox.osc.spiderapi.SourceConfigProviders.get().getSource(mVideo.sourceKey);
                     if (detailSource != null) srcName = detailSource.getName();
                     mBinding.tvSite.setText("来源：" + (TextUtils.isEmpty(srcName) ? "未知" : srcName));
 
@@ -1216,7 +1215,7 @@ public class DetailActivity extends BaseVbActivity<ActivityDetailBinding> {
     private String getDownloadSourceName() {
         String sourceName = "未分类";
         try {
-            SourceBean sb = ApiConfig.get().getSource(vodInfo.sourceKey);
+            SourceBean sb = com.github.tvbox.osc.spiderapi.SourceConfigProviders.get().getSource(vodInfo.sourceKey);
             if (sb != null && !TextUtils.isEmpty(sb.getName())) {
                 sourceName = sb.getName();
             } else if (!TextUtils.isEmpty(vodInfo.sourceKey)) {

@@ -21,13 +21,13 @@ import com.blankj.utilcode.util.ScreenUtils
 import com.github.tvbox.osc.util.AppBubble
 import com.github.catvod.crawler.JsLoader
 import com.github.tvbox.osc.R
-import com.github.tvbox.osc.api.ApiConfig
 import com.github.tvbox.osc.base.BaseVbActivity
 import com.github.tvbox.osc.bean.AbsXml
 import com.github.tvbox.osc.bean.DoubanSuggestBean
 import com.github.tvbox.osc.bean.Movie
 import com.github.tvbox.osc.bean.SourceBean
 import com.github.tvbox.osc.databinding.ActivityFastSearchBinding
+import com.github.tvbox.osc.spiderapi.SourceConfigProviders
 import com.github.tvbox.osc.event.RefreshEvent
 import com.github.tvbox.osc.event.ServerEvent
 import com.github.tvbox.osc.log.Category
@@ -208,7 +208,7 @@ class FastSearchActivity : BaseVbActivity<ActivityFastSearchBinding>(), TextWatc
      * 指定搜索源(过滤)
      */
     private fun filterSearchSource() {
-        val allSourceBean = ApiConfig.get().sourceBeanList
+        val allSourceBean = SourceConfigProviders.get().sourceBeanList
         if (allSourceBean.isNotEmpty()) {
             val searchAbleSource: MutableList<SourceBean> = ArrayList()
             for (sourceBean: SourceBean in allSourceBean) {
@@ -496,8 +496,8 @@ class FastSearchActivity : BaseVbActivity<ActivityFastSearchBinding>(), TextWatc
         }
         searchExecutorService = Executors.newFixedThreadPool(10)
         val searchRequestList: MutableList<SourceBean> = ArrayList()
-        searchRequestList.addAll(ApiConfig.get().sourceBeanList)
-        val home = ApiConfig.get().homeSourceBean
+        searchRequestList.addAll(SourceConfigProviders.get().sourceBeanList)
+        val home = SourceConfigProviders.get().homeSourceBean
         searchRequestList.remove(home)
         searchRequestList.add(0, home)
         val siteKey = ArrayList<String>()

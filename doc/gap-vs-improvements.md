@@ -100,9 +100,15 @@ Exo→Media3、EventBus→Flow/接口、Hawk→DataStore、Java→Kotlin 渐进�
   直读清零;JVM 单测 7 例(Fake CacheRepository:roundTrip/skip 取大/String 兼容/删除)。
   配套:common `MD5.string2MD5/encrypt` 的空值判断去 Android TextUtils 依赖(行为等价,纯算法类可 JVM 测)。
 - ✅ SourceViewModel 去 ApiConfig 直读:新增 `spider-api.SourceConfigApi`(getSource/getHomeSourceBean/
-  getVipParseFlags,只用 core-model 类型)+ `SourceConfigProviders` 持有者(:spider 的 ApiConfig 实现契约,
-  AppCompositionRoot.init 注入);SourceViewModel 改持 `SourceConfigApi` 字段,8 处 `ApiConfig.get().*` 清零,
-  不再 import :spider 的 ApiConfig 类(VM 侧源元信息可经接口注入 Fake;type0/1 内联解析仍留)。
+  getSourceBeanList/getVipParseFlags,只用 core-model 类型)+ `SourceConfigProviders` 持有者(:spider 的
+  ApiConfig 实现契约,AppCompositionRoot.init 注入);SourceViewModel 改持 `SourceConfigApi` 字段,8 处
+  `ApiConfig.get().*` 清零,不再 import :spider 的 ApiConfig 类(VM 侧源元信息可经接口注入 Fake;type0/1
+  内联解析仍留)。
+- ✅ UI/展示层源元信息读取收口(同一契约):DetailActivity/GridFragment/UserFragment/HomeFragment/
+  CollectActivity/HistoryActivity/FastSearchActivity、Search/History/Collect/FastSearch/QuickSearch Adapter、
+  PlayFragment(getSource/getVipParseFlags)、SearchHelper/DetailQuickSearchHelper/WebSniffResolver 等
+  18 处文件改走 `SourceConfigProviders`;app 内"源元信息(源注册表/首页源/源列表/vip 旗标)"经 ApiConfig
+  直读清零(HomeFragment 等保留 ApiConfig 仅做 loadConfig/loadJar/setSourceBean 等源管理调用)。
 - ⚠️ common/event 收口：已删 HistoryStateEvent/TopStateEvent(零引用孤儿)、DownloadEvent/RefreshEvent/ServerEvent
   各自归位业务/app 模块；common 仅剩 LogEvent(common 内 LOG.java 自用,EventBus 空投遗留——无人订阅,待日志页改造后清理)。
 - ⚠️ DownloadFragment 已完成 Facade 订阅去 EventBus;app 其余 EventBus 点(搜索/快速搜索/历史/直播等

@@ -23,6 +23,11 @@ public final class SourceConfigProviders {
         }
 
         @Override
+        public List<SourceBean> getSourceBeanList() {
+            return Collections.emptyList();
+        }
+
+        @Override
         public List<String> getVipParseFlags() {
             return Collections.emptyList();
         }

@@ -19,7 +19,6 @@ import com.blankj.utilcode.util.GsonUtils;
 import com.blankj.utilcode.util.LogUtils;
 import com.chad.library.adapter.base.BaseQuickAdapter;
 import com.github.tvbox.osc.R;
-import com.github.tvbox.osc.api.ApiConfig;
 import com.github.tvbox.osc.base.BaseLazyFragment;
 import com.github.tvbox.osc.bean.AbsXml;
 import com.github.tvbox.osc.bean.Movie;
@@ -237,7 +236,7 @@ public class GridFragment extends BaseLazyFragment {
                     bundle.putString("sourceKey", video.sourceKey);
                     bundle.putString("title", video.name);
                     bundle.putString("vodName", video.name);
-                    SourceBean homeSourceBean = ApiConfig.get().getHomeSourceBean();
+                    SourceBean homeSourceBean = com.github.tvbox.osc.spiderapi.SourceConfigProviders.get().getHomeSourceBean();
                     if(("12".indexOf(getUITag()) != -1) && (video.tag.equals("folder") || video.tag.equals("cover"))){
                         focusedView = view;
                         changeView(video.id,video.tag.equals("folder"));
@@ -386,7 +385,7 @@ public class GridFragment extends BaseLazyFragment {
     }
 
     private void initData() {
-        if (ApiConfig.get().getHomeSourceBean().getApi()==null){// 系统杀死app恢复缓存的fragment后会直接getList,此时首页api都未加载完
+        if (com.github.tvbox.osc.spiderapi.SourceConfigProviders.get().getHomeSourceBean().getApi()==null){// 系统杀死app恢复缓存的fragment后会直接getList,此时首页api都未加载完
             showEmpty();
             return;
         }

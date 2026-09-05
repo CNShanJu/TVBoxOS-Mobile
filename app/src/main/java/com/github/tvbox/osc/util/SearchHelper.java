@@ -1,7 +1,7 @@
 package com.github.tvbox.osc.util;
 
-import com.github.tvbox.osc.api.ApiConfig;
 import com.github.tvbox.osc.bean.SourceBean;
+import com.github.tvbox.osc.spiderapi.SourceConfigProviders;
 import com.github.tvbox.osc.ui.activity.FastSearchActivity;
 import com.orhanobut.hawk.Hawk;
 
@@ -46,7 +46,7 @@ public class SearchHelper {
 
     public static HashMap<String, String> getSources(){
         HashMap<String, String> mCheckSources = new HashMap<>();
-        for (SourceBean bean : ApiConfig.get().getSourceBeanList()) {
+        for (SourceBean bean : SourceConfigProviders.get().getSourceBeanList()) {
             if (!bean.isSearchable()) {
                 continue;
             }

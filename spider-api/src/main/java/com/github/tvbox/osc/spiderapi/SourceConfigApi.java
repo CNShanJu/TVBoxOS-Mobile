@@ -18,6 +18,9 @@ public interface SourceConfigApi {
     /** 首页源（未设置时 ApiConfig 返回空占位对象） */
     SourceBean getHomeSourceBean();
 
+    /** 全部已加载源（副本） */
+    List<SourceBean> getSourceBeanList();
+
     /** vip 解析旗标列表 */
     List<String> getVipParseFlags();
 }

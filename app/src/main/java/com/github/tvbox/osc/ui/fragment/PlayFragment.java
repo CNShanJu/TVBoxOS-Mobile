@@ -76,6 +76,7 @@ import com.github.tvbox.osc.util.ParseBeanUrls;
 import com.github.tvbox.osc.util.VideoParseRuler;
 import com.github.tvbox.osc.util.player.PlayHistoryRepository;
 import com.github.tvbox.osc.util.thunder.Jianpian;
+import com.github.tvbox.osc.spiderapi.SourceConfigProviders;
 import com.github.tvbox.osc.util.thunder.Thunder;
 import com.github.tvbox.osc.viewmodel.SourceViewModel;
 import com.gyf.immersionbar.BarHide;
@@ -738,7 +739,7 @@ public class PlayFragment extends BaseLazyFragment {
                         }
                     }
                     if (parse || jx) {
-                        boolean userJxList = (playUrl.isEmpty() && ApiConfig.get().getVipParseFlags().contains(flag)) || jx;
+                        boolean userJxList = (playUrl.isEmpty() && SourceConfigProviders.get().getVipParseFlags().contains(flag)) || jx;
                         initParse(flag, userJxList, playUrl, url);
                     } else {
                         mController.showParse(false);
@@ -760,7 +761,7 @@ public class PlayFragment extends BaseLazyFragment {
 //        mVodInfo = (VodInfo) bundle.getSerializable("VodInfo");
         mVodInfo = App.getInstance().getVodInfo();
         sourceKey = bundle.getString("sourceKey");
-        sourceBean = ApiConfig.get().getSource(sourceKey);
+        sourceBean = SourceConfigProviders.get().getSource(sourceKey);
         initPlayerCfg();
         play(false);
     }

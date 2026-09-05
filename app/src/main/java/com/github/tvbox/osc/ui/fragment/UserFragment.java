@@ -20,7 +20,6 @@ import com.github.tvbox.osc.util.AppBubble;
 import com.github.tvbox.osc.util.StackBlurBlur;
 import com.chad.library.adapter.base.BaseQuickAdapter;
 import com.github.tvbox.osc.R;
-import com.github.tvbox.osc.api.ApiConfig;
 import com.github.tvbox.osc.base.BaseLazyFragment;
 import com.github.tvbox.osc.bean.Movie;
 import com.github.tvbox.osc.bean.VodInfo;
@@ -130,7 +129,7 @@ public class UserFragment extends BaseLazyFragment {
         homeHotVodAdapter.setOnItemClickListener(new BaseQuickAdapter.OnItemClickListener() {
             @Override
             public void onItemClick(BaseQuickAdapter adapter, View view, int position) {
-                if (ApiConfig.get().getSourceBeanList().isEmpty()){
+                if (com.github.tvbox.osc.spiderapi.SourceConfigProviders.get().getSourceBeanList().isEmpty()){
                     AppBubble.toast("暂无订阅");
                     return;
                 }
@@ -151,7 +150,7 @@ public class UserFragment extends BaseLazyFragment {
         homeHotVodAdapter.setOnItemLongClickListener(new BaseQuickAdapter.OnItemLongClickListener() {
             @Override
             public boolean onItemLongClick(BaseQuickAdapter adapter, View view, int position) {
-                if (ApiConfig.get().getSourceBeanList().isEmpty()) return true;
+                if (com.github.tvbox.osc.spiderapi.SourceConfigProviders.get().getSourceBeanList().isEmpty()) return true;
                 Movie.Video vod = ((Movie.Video) adapter.getItem(position));
                 Bundle bundle = new Bundle();
                 bundle.putString("title", vod.name);

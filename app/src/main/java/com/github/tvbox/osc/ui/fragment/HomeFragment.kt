@@ -18,6 +18,7 @@ import com.github.tvbox.osc.util.AppBubble
 import com.github.tvbox.osc.R
 import com.github.tvbox.osc.api.ApiConfig
 import com.github.tvbox.osc.api.ApiConfig.LoadConfigCallback
+import com.github.tvbox.osc.spiderapi.SourceConfigProviders
 import com.github.tvbox.osc.base.App
 import com.github.tvbox.osc.base.BaseLazyFragment
 import com.github.tvbox.osc.base.BaseVbFragment
@@ -121,12 +122,12 @@ class HomeFragment : BaseVbFragment<FragmentHomeBinding>() {
             mSortDataList =
                 if (absXml?.classes != null && absXml.classes.sortList != null) {
                     DefaultConfig.adjustSort(
-                        ApiConfig.get().homeSourceBean.key,
+                        SourceConfigProviders.get().homeSourceBean.key,
                         absXml.classes.sortList,
                         true
                     )
                 } else {
-                    DefaultConfig.adjustSort(ApiConfig.get().homeSourceBean.key, ArrayList(), true)
+                    DefaultConfig.adjustSort(SourceConfigProviders.get().homeSourceBean.key, ArrayList(), true)
                 }
             initViewPager(absXml)
         }
@@ -136,7 +137,7 @@ class HomeFragment : BaseVbFragment<FragmentHomeBinding>() {
         val mainActivity = mActivity as MainActivity
         onlyConfigChanged = mainActivity.useCacheConfig
 
-        val home = ApiConfig.get().homeSourceBean
+        val home = SourceConfigProviders.get().homeSourceBean
         if (home != null && !home.name.isNullOrEmpty()) {
             mBinding.tvName.text = home.name
             mBinding.tvName.postDelayed({ mBinding.tvName.isSelected = true }, 2000)
@@ -147,7 +148,7 @@ class HomeFragment : BaseVbFragment<FragmentHomeBinding>() {
             dataInitOk && jarInitOk -> {
                 //正常初始化会先加载,最终到这,此时数据有以下几种情况
                 // 1. api/jar/spider等均加载完,正常显示数据。2. 缺失spider(存疑?)/api配置有问题同样加载(最后空布局 或 只有豆瓣首页)
-                sourceViewModel?.getSort(ApiConfig.get().homeSourceBean.key)
+                sourceViewModel?.getSort(SourceConfigProviders.get().homeSourceBean.key)
             }
             dataInitOk && !jarInitOk -> {
                 loadJar()
@@ -367,7 +368,7 @@ class HomeFragment : BaseVbFragment<FragmentHomeBinding>() {
     }
 
     private fun showSiteSwitch() {
-        val sites = ApiConfig.get().sourceBeanList
+        val sites = SourceConfigProviders.get().sourceBeanList
         if (sites.size > 0) {
             val dialog = SelectDialog<SourceBean>(requireActivity())
             val tvRecyclerView = dialog.findViewById<TvRecyclerView>(R.id.list)
@@ -390,7 +391,7 @@ class HomeFragment : BaseVbFragment<FragmentHomeBinding>() {
                 override fun areContentsTheSame(oldItem: SourceBean, newItem: SourceBean): Boolean {
                     return oldItem.key.contentEquals(newItem.key)
                 }
-            }, sites, sites.indexOf(ApiConfig.get().homeSourceBean))
+            }, sites, sites.indexOf(SourceConfigProviders.get().homeSourceBean))
             dialog.show()
         } else {
             AppBubble.toastLong("暂无可用数据源")
@@ -417,7 +418,7 @@ class HomeFragment : BaseVbFragment<FragmentHomeBinding>() {
                 // 源是否存在/历史保留上限由 UI 层判定(与旧 RoomDataManger 内聚逻辑等价;storage 不再依赖业务配置)
                 val allVodRecord = com.github.tvbox.osc.repo.HistoryRepositories.history().query(
                     100,
-                    { key -> com.github.tvbox.osc.api.ApiConfig.get().getSource(key) != null },
+                    { key -> SourceConfigProviders.get().getSource(key) != null },
                     com.github.tvbox.osc.util.HistoryHelper.getHisNum(
                         com.github.tvbox.osc.util.SystemConfig.getHistoryNum()
                     )

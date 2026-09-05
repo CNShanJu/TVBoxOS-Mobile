@@ -1,6 +1,5 @@
 package com.github.tvbox.osc.util;
 
-import com.github.tvbox.osc.api.ApiConfig;
 import com.github.tvbox.osc.bean.AbsXml;
 import com.github.tvbox.osc.bean.Movie;
 import com.github.tvbox.osc.bean.SourceBean;
@@ -150,8 +149,8 @@ public class DetailQuickSearchHelper {
             pendingSearch.clear();
         }
         List<SourceBean> searchRequestList = new ArrayList<>();
-        searchRequestList.addAll(ApiConfig.get().getSourceBeanList());
-        SourceBean home = ApiConfig.get().getHomeSourceBean();
+        searchRequestList.addAll(com.github.tvbox.osc.spiderapi.SourceConfigProviders.get().getSourceBeanList());
+        SourceBean home = com.github.tvbox.osc.spiderapi.SourceConfigProviders.get().getHomeSourceBean();
         searchRequestList.remove(home);
         searchRequestList.add(0, home);
 

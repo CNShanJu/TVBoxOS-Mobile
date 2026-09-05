@@ -6,9 +6,9 @@ import android.widget.ImageView;
 import com.chad.library.adapter.base.BaseQuickAdapter;
 import com.chad.library.adapter.base.BaseViewHolder;
 import com.github.tvbox.osc.R;
-import com.github.tvbox.osc.api.ApiConfig;
 import com.github.tvbox.osc.bean.Movie;
 import com.github.tvbox.osc.picasso.RoundTransformation;
+import com.github.tvbox.osc.spiderapi.SourceConfigProviders;
 import com.github.tvbox.osc.util.HawkConfig;
 import com.github.tvbox.osc.util.MD5;
 import com.orhanobut.hawk.Hawk;
@@ -26,7 +26,7 @@ public class SearchAdapter extends BaseQuickAdapter<Movie.Video, BaseViewHolder>
     @Override
     protected void convert(BaseViewHolder helper, Movie.Video item) {
             helper.setText(R.id.tvName, item.name);
-            helper.setText(R.id.tvSite, ApiConfig.get().getSource(item.sourceKey).getName());
+            helper.setText(R.id.tvSite, SourceConfigProviders.get().getSource(item.sourceKey).getName());
             helper.setVisible(R.id.tvNote, item.note != null && !item.note.isEmpty());
             if (item.note != null && !item.note.isEmpty()) {
                 helper.setText(R.id.tvNote, item.note);

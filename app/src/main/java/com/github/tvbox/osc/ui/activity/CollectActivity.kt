@@ -8,7 +8,6 @@ import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.GridLayoutManager
 import com.chad.library.adapter.base.BaseQuickAdapter
 import com.github.tvbox.osc.R
-import com.github.tvbox.osc.api.ApiConfig
 import com.github.tvbox.osc.base.BaseVbActivity
 import com.github.tvbox.osc.bean.VodInfo
 import com.github.tvbox.osc.cache.RoomDataManger
@@ -76,7 +75,7 @@ class CollectActivity : BaseVbActivity<ActivityCollectBinding>() {
                 FastClickCheckUtil.check(view)
                 val vodInfo = collectAdapter.data[position]
                 if (vodInfo != null) {
-                    if (ApiConfig.get().getSource(vodInfo.sourceKey) != null) {
+                    if (com.github.tvbox.osc.spiderapi.SourceConfigProviders.get().getSource(vodInfo.sourceKey) != null) {
                         val bundle = Bundle()
                         bundle.putString("id", vodInfo.vodId)
                         bundle.putString("sourceKey", vodInfo.sourceKey)
