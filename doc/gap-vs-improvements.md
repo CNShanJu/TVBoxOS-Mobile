@@ -45,6 +45,12 @@
   页面不再散拼 `new XPopup.Builder(...)`;DetailActivity/LiveActivity/LocalPlayActivity/PlayFragment/
   DownloadFragment/MyFragment/BaseActivity/LiveApiDialog 已迁移;XPopup 内置形态(asCenterList/
   asInputConfirm/asImageViewer)与 ConfirmDialog 工厂保留直调。
+- 同构弹窗内容层合并(改进.txt §三 消除重复):
+  `ui/dialog/{LiveSetting,DownloadSeries,PlayingControl}Panel` 共享内容协调器,
+  各自 Bottom/Right 双壳收敛为薄壳(仅保留 壳/间距/字号 差异);
+  已合并:LiveSettingDialog↔Right / DownloadSeriesDialog↔Right / PlayingControlDialog↔Right。
+  说明:AllVodSeriesBottom↔Right 是**刻意差异**(Bottom 本地 RoundChip 网格单选,Right 复用
+  DetailActivity 的 SeriesAdapter+flags 且 onDismiss 复位 grid)——不强行合并,保持两套适配器契约。
 
 ## 5. 大文件拆分（§三）— 未完成
 | 文件 | 行数 | 期望 |

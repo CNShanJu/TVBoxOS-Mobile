@@ -19,7 +19,6 @@ import com.github.tvbox.osc.ui.widget.RoundChip;
 import com.github.tvbox.osc.util.AppBubble;
 import com.github.tvbox.osc.util.LoadingAnim;
 import com.github.tvbox.osc.util.Utils;
-import com.lxj.xpopup.core.BottomPopupView;
 
 import org.jetbrains.annotations.NotNull;
 
@@ -27,26 +26,16 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * 选择下载剧集弹窗(底部):三 box 布局(标题 / 集数列表吃满剩余+内部滚动 / 按钮)。
- * 点击"下载"立即弹出,内容先 loading;数据异步准备完成后通过 {@link #setData(List, int[])} 填充。
- * states:0=可下载;1=已下载(置灰);2=下载中/排队(置灰)。
+ * 选择下载剧集弹窗（底部样式）：三 box 布局（标题 / 集数列表吃满剩余+内部滚动 / 按钮）。
+ * 数据与交互收敛到 {@link DownloadSeriesPanel}（与全屏抽屉共用），本类只保留底部壳与渲染差异（间距 20）。
  */
 public class DownloadSeriesDialog extends AppBottomPopupView {
 
-    public interface OnDownloadActionListener {
-        /** 开始下载所选剧集(selected 为已勾选的列表) */
-        void onStartDownload(List<VodInfo.VodSeries> selected);
-
-        /** 打开下载管理页 */
-        void onOpenDownloadManager();
-
-        /** 倒序排列剧集(与选集抽屉一致) */
-        void onSortSeries();
+    /** 兼容别名：与全屏抽屉同一组下载动作回调（共享 {@link DownloadSeriesPanel.Listener}） */
+    public interface OnDownloadActionListener extends DownloadSeriesPanel.Listener {
     }
 
-    private final OnDownloadActionListener mListener;
-    /** 当前是否已倒序(倒序按钮文字切换;由 DetailActivity 注入 isSeriesReversed) */
-    private final java.util.function.BooleanSupplier mIsReversed;
+    private final DownloadSeriesPanel mPanel;
     private List<VodInfo.VodSeries> mList = new ArrayList<>();
     private int[] mStates = new int[0];
     private TextView mTvSelected;
@@ -61,8 +50,7 @@ public class DownloadSeriesDialog extends AppBottomPopupView {
                                 OnDownloadActionListener listener,
                                 java.util.function.BooleanSupplier isReversed) {
         super(context);
-        mListener = listener;
-        mIsReversed = isReversed;
+        mPanel = new DownloadSeriesPanel(listener, isReversed);
     }
 
     @Override
@@ -90,24 +78,17 @@ public class DownloadSeriesDialog extends AppBottomPopupView {
         mAdapter = new ItemAdapter();
         mRv.setAdapter(mAdapter);
         mAdapter.setOnItemClickListener((a, view, position) -> {
-            VodInfo.VodSeries item = mList != null && position >= 0 && position < mList.size() ? mList.get(position) : null;
-            if (item == null) return;
-            int st = mStates != null && position >= 0 && position < mStates.length ? mStates[position] : 0;
-            if (st == 1) {
-                AppBubble.toast("该集已下载完成");
+            if (!mPanel.toggleSelect(position)) {
+                int st = mPanel.stateAt(position);
+                AppBubble.toast(st == 1 ? "该集已下载完成" : "该集下载中或已在任务中");
                 return;
             }
-            if (st == 2) {
-                AppBubble.toast("该集下载中或已在任务中");
-                return;
-            }
-            item.selected = !item.selected; // 多选:点一下选中,再点取消(失败集也可重新勾选下载)
             a.notifyItemChanged(position);
             updateCount();
         });
 
         // 数据未就绪前显示 loading
-        if (mList == null || mList.isEmpty()) {
+        if (mPanel.getCurrentList() == null || mPanel.getCurrentList().isEmpty()) {
             mFlLoading.setVisibility(View.VISIBLE);
             mRv.setVisibility(View.GONE);
         }
@@ -117,38 +98,34 @@ public class DownloadSeriesDialog extends AppBottomPopupView {
         mTvSort = findViewById(R.id.tv_sort);
         updateSortButton();
         findViewById(R.id.tv_sort).setOnClickListener(v -> {
-            if (mListener != null) mListener.onSortSeries();
+            mPanel.sort();
             updateSortButton();
         });
         findViewById(R.id.btn_start).setOnClickListener(v -> {
-            List<VodInfo.VodSeries> selected = new ArrayList<>();
-            if (mList != null) {
-                for (VodInfo.VodSeries s : mList) {
-                    if (s.selected) selected.add(s);
-                }
-            }
-            Log.i("TVBox-Download", "开始下载:已选 " + selected.size() + " 集");
-            if (selected.isEmpty()) {
+            int selected = mPanel.selectedCount();
+            Log.i("TVBox-Download", "开始下载:已选 " + selected + " 集");
+            if (!mPanel.collectAndDownload()) {
                 // 未选择:仅提醒,不关闭弹窗
                 AppBubble.toast("请先选择要下载的剧集");
                 return;
             }
             dismiss();
-            if (mListener != null) mListener.onStartDownload(selected);
         });
         findViewById(R.id.btn_manager).setOnClickListener(v -> {
             dismiss();
-            if (mListener != null) mListener.onOpenDownloadManager();
+            mPanel.openManager();
         });
     }
 
     /** 当前展示的选集列表(供外部刷新副本时保留勾选, 避免下载状态刷新导致选中自动取消) */
     public List<VodInfo.VodSeries> getCurrentList() {
-        return mList;
+        return mPanel.getCurrentList();
     }
 
     /** 数据准备完成后填充(主线程调用):显示选集网格,隐藏 loading */
-    public void setData(List<VodInfo.VodSeries> list, int[] states) {        mList = list != null ? list : new ArrayList<>();
+    public void setData(List<VodInfo.VodSeries> list, int[] states) {
+        mPanel.setData(list, states);
+        mList = mPanel.getCurrentList();
         mStates = states != null ? states : new int[0];
         if (mFlLoading != null) {
             mFlLoading.setVisibility(View.GONE);
@@ -171,26 +148,20 @@ public class DownloadSeriesDialog extends AppBottomPopupView {
     }
 
     private void updateCount() {
-        int count = 0;
-        if (mList != null) {
-            for (VodInfo.VodSeries s : mList) {
-                if (s.selected) count++;
-            }
-        }
-        mTvSelected.setText("(已选 " + count + ")");
+        mTvSelected.setText("(已选 " + mPanel.selectedCount() + ")");
     }
 
     /** 倒序按钮文字跟随共用状态:已倒序显示"正序",否则"倒序" */
     private void updateSortButton() {
         try {
-            if (mTvSort != null && mIsReversed != null) {
-                mTvSort.setText(mIsReversed.getAsBoolean() ? "正序" : "倒序");
+            if (mTvSort != null) {
+                mTvSort.setText(mPanel.sortButtonText());
             }
         } catch (Throwable ignored) {
         }
     }
 
-    /** 集数条目:RoundChip 文字样式(与全屏抽屉/选集统一,无边框无背景)+ 状态图标(已下载绿✓ / 下载中蓝↓),选中蓝字 */
+    /** 集数条目:RoundChip 文字样式(无边框无背景)+ 状态图标(已下载绿✓ / 下载中蓝↓),选中蓝字 */
     private class ItemAdapter extends BaseQuickAdapter<VodInfo.VodSeries, BaseViewHolder> {
         ItemAdapter() {
             super(R.layout.item_series, mList);
@@ -199,7 +170,7 @@ public class DownloadSeriesDialog extends AppBottomPopupView {
         @Override
         protected void convert(BaseViewHolder helper, VodInfo.VodSeries item) {
             int pos = helper.getAdapterPosition();
-            int st = mStates != null && pos >= 0 && pos < mStates.length ? mStates[pos] : 0;
+            int st = mPanel.stateAt(pos);
             RoundChip chip = helper.getView(R.id.sl);
             chip.setTitle(item.name);
             if (st == 1) {
