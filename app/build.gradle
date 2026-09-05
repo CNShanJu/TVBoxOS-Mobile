@@ -224,6 +224,8 @@ dependencies {
     implementation 'com.eightbitlab:blurview:1.6.3'
     //崩溃
     implementation project(":crash")
+    //单元测试(JVM,纯逻辑)
+    testImplementation 'junit:junit:4.13.2'
     //dlna投屏(已移除:com.github.devin1014.DLNA-Cast:dlna-dmc:V1.0.0 已从 JitPack 消失,功能暂用桩实现,见 _backup_dlna/)
     // Lifecycles(显式依赖,替代已废弃合并包 lifecycle-extensions:ViewModel/LiveData/协程作用域)
     implementation 'androidx.lifecycle:lifecycle-viewmodel:2.6.2'
