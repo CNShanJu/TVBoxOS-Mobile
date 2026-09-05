@@ -93,6 +93,8 @@ public abstract class BaseController extends BaseVideoController implements Gest
 
     private TextView mSlideInfo;
     private View mLoading;
+    /** 加载中网速文字(tag=play_load_net_speed,仅点播/本地布局有):与 loading 同显隐保持一致 */
+    private View mNetSpeed;
 
     @Override
     protected void initView() {
@@ -102,8 +104,16 @@ public abstract class BaseController extends BaseVideoController implements Gest
         setOnTouchListener(this);
         mSlideInfo = findViewWithTag("vod_control_slide_info");
         mLoading = findViewWithTag("vod_control_loading");
+        mNetSpeed = findViewWithTag("play_load_net_speed"); // 直播布局无此 tag → null,仅控 loading
         // 播放器加载动画跟随设置页"加载动画"选项(默认/Glowing Fish)
         LoadingAnim.apply(mLoading);
+    }
+
+    /** loading 与网速同显隐:缓冲/准备中显示,其余隐藏(网速与 loading 严格一致,消除时显时不显) */
+    private void setLoadingVisible(boolean visible) {
+        int v = visible ? VISIBLE : GONE;
+        if (mLoading != null) mLoading.setVisibility(v);
+        if (mNetSpeed != null) mNetSpeed.setVisibility(v);
     }
 
     @Override
@@ -116,25 +126,25 @@ public abstract class BaseController extends BaseVideoController implements Gest
         super.onPlayStateChanged(playState);
         switch (playState) {
             case VideoView.STATE_IDLE:
-                mLoading.setVisibility(GONE);
+                setLoadingVisible(false);
                 break;
             case VideoView.STATE_PLAYING:
-                mLoading.setVisibility(GONE);
+                setLoadingVisible(false);
                 break;
             case VideoView.STATE_PAUSED:
-                mLoading.setVisibility(GONE);
+                setLoadingVisible(false);
                 break;
             case VideoView.STATE_PREPARED:
             case VideoView.STATE_ERROR:
             case VideoView.STATE_BUFFERED:
-                mLoading.setVisibility(GONE);
+                setLoadingVisible(false);
                 break;
             case VideoView.STATE_PREPARING:
             case VideoView.STATE_BUFFERING:
-                mLoading.setVisibility(VISIBLE);
+                setLoadingVisible(true);
                 break;
             case VideoView.STATE_PLAYBACK_COMPLETED:
-                mLoading.setVisibility(GONE);
+                setLoadingVisible(false);
                 break;
         }
     }

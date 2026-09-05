@@ -294,7 +294,9 @@ public class PlayerHelper {
             return new DecimalFormat("#.00").format(speed / 1048576d) + "Mb/s";
         else if(speed > 1024)
             return (speed / 1024) + "Kb/s";
+        else if (speed > 0)
+            return speed + "B/s";
         else
-            return speed > 0?speed + "B/s":"";
+            return "0Kb/s"; // 缓冲暂停瞬间速度=0:稳定占位,避免文字内容忽空造成"网速时显时不显"
     }
 }
