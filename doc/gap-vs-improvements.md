@@ -219,7 +219,11 @@ Exo→Media3、EventBus→Flow/接口、Hawk→DataStore、Java→Kotlin 渐进�
   (FastSearch 主搜索通道),改投 TYPE_QUICK_SEARCH_RESULT null(与 type0/1 快搜 onError 对齐),避免错误清空
   无关搜索页结果。(db13be31)
 - ✅ UserFragment/GridFragment 死 EventBus import 清理(无 @Subscribe/register/post;GridFragment 的
-  mGridView.post 为 View.post 非 EventBus)。(e2bfc2b7/90299dd4)
+  mGridView.post 为 View.post 非 EventBus)。(e2bfc2b7/90299dd4/ca63859e)
+- ✅ DetailActivity onDestroy 断开快搜输出桥(setQuickSearchOutput null)并清弹窗引用,防匿名回调
+  悬空引用已销毁弹窗/Activity。(d2580119)
+- ✅ SortParser type0 XML 分类样例单测(parseSortXml 已测:rss/class/ty 解析 + filters 空补 +
+  畸形输入返回 null;JSON 分支原有覆盖)。双通道均 JVM 可测。(9077b3fd)
 
 ## 9. 待真机回归后继续(播放器主线尾段,当前挂起)
 - PlayerApi 会话内核**实验选项**:设置页加"播放器内核:PlayerApi 会话(实验)"开关(默认关);
