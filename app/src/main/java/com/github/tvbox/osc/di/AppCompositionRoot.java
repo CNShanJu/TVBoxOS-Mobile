@@ -10,10 +10,12 @@ package com.github.tvbox.osc.di;
  */
 public final class AppCompositionRoot {
 
+    private static volatile com.github.tvbox.osc.net.NetworkProvider networkProvider;
+
     private AppCompositionRoot() {
     }
 
-    /** 在 App.onCreate 网络/下载组件初始化后调用 */
+    /** App.onCreate 网络/下载组件初始化后调用 */
     public static void init() {
         // 下载侧播放地址解析(:spider 提供实现,download 不依赖 :spider 实现)
         com.github.tvbox.osc.util.DownloadManager.setUrlResolverApi(
@@ -24,5 +26,29 @@ public final class AppCompositionRoot {
         // 首页/分类/详情/搜索/播放解析内容(SourceViewModel 不取具体 Spider)
         com.github.tvbox.osc.spiderapi.SpiderContentProviders.set(
                 com.github.catvod.crawler.SpiderContentImpl.get());
+        // 网络客户端提供者:general/noRedirect 来自 OkGoHelper;playback 复用 Exo 已建实例
+        networkProvider = new com.github.tvbox.osc.net.NetworkProvider() {
+            @Override
+            public okhttp3.OkHttpClient general() {
+                return com.github.tvbox.osc.util.OkGoHelper.getDefaultClient();
+            }
+
+            @Override
+            public okhttp3.OkHttpClient noRedirect() {
+                return com.github.tvbox.osc.util.OkGoHelper.getNoRedirectClient();
+            }
+
+            @Override
+            public okhttp3.OkHttpClient playback() {
+                okhttp3.OkHttpClient c = com.github.tvbox.osc.base.App.playbackHttpClient;
+                return c != null ? c : com.github.tvbox.osc.net.NetworkProvider.DEFAULT.playback();
+            }
+        };
+    }
+
+    /** 网络客户端提供者(供后续新代码经接口取客户端;缺省为按需构建) */
+    public static com.github.tvbox.osc.net.NetworkProvider network() {
+        com.github.tvbox.osc.net.NetworkProvider p = networkProvider;
+        return p != null ? p : com.github.tvbox.osc.net.NetworkProvider.DEFAULT;
     }
 }

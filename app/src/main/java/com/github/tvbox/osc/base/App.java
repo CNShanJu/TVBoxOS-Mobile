@@ -313,18 +313,22 @@ public class App extends MultiDexApplication {
         }
     }
 
-    /** Exo 播放内核使用与全局共享同一套根配置的 OkHttpClient(公共基础在 :common OkGoHelper.newBaseBuilder) */
+    /** Exo 播放内核使用与全局共享同一套根配置的 OkHttpClient(公共基础在 :core-network OkGoHelper.newBaseBuilder) */
     private void initExoOkHttpClient() {
         try {
             OkHttpClient.Builder builder = OkGoHelper.newBaseBuilder();
             builder.retryOnConnectionFailure(true);
             builder.followRedirects(true);
             builder.followSslRedirects(true);
-            xyz.doikki.videoplayer.exo.ExoMediaSourceHelper.getInstance(this).setOkClient(builder.build());
+            playbackHttpClient = builder.build();
+            xyz.doikki.videoplayer.exo.ExoMediaSourceHelper.getInstance(this).setOkClient(playbackHttpClient);
         } catch (Throwable th) {
             th.printStackTrace();
         }
     }
+
+    /** 播放内核客户端(供 NetworkProvider.playback 复用同一实例) */
+    public static volatile okhttp3.OkHttpClient playbackHttpClient;
 
     /** Picasso 全局单例（原 OkGoHelper.initPicasso 拆回 app 侧） */
     private void initPicasso() {
