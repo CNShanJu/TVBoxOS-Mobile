@@ -242,6 +242,11 @@ Exo→Media3、EventBus→Flow/接口、Hawk→DataStore、Java→Kotlin 渐进�
 - ✅ LiveActivity 移除死代码:EPG `getTime(String,String)`/`durationToString(int)` 全仓零调用,删除并清 import。(57203751)
 - ✅ DownloadFragment 聚合分组抽离 `util/DownloadGrouping`(纯数据):DownloadGroup 模型 + 分组/归属/组序/
   存在性判定迁出,宿主仅留 Facade 取数与委托;JVM 单测 6 例。DownloadFragment 1306→1079 行。(30a792be)
+- ✅ 任务行状态展示下沉 DownloadDisplay:statusTextOf/statusToneOf(ERROR/MUTED/ACTIVE,颜色表留 UI)、
+  stageMessageOwnsProgress(合并/补片自带进度)、shouldShowSpeed(逐字等价原 startsWith 判定);单测 3 组。
+  DownloadDisplayTest 累计 12 例。(aef13cfd)
+- ✅ 聚合卡副标题 aggregateNote(任务数+已完成且文件存在集数)下沉 DownloadGrouping;单测 7 例。
+  DownloadFragment 1306→1038 行。(1f876086)
 
 ## 9. 待真机回归后继续(播放器主线尾段,当前挂起)
 - PlayerApi 会话内核**实验选项**:设置页加"播放器内核:PlayerApi 会话(实验)"开关(默认关);
