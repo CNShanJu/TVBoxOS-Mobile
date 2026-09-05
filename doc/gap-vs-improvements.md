@@ -215,6 +215,11 @@ Exo→Media3、EventBus→Flow/接口、Hawk→DataStore、Java→Kotlin 渐进�
   QUICK_SEARCH/SELECT/WORD/WORD_CHANGE(2-5)。保留 TYPE_QUICK_SEARCH_RESULT:SourceViewModel→DetailActivity
   的多源异步结果流(每源一批、宿主累加),LiveData 单值会丢中间批次,归"SourceViewModel 双轨/注入化"长线。
   (98a253a3)真机回归点:详情页"来源"快搜弹窗数据流/点词切换/点结果跳详情。
+- ✅ type4 快搜 onError 路由修复:SourceViewModel.getQuickSearch type4 分支 HTTP 失败误投 TYPE_SEARCH_RESULT
+  (FastSearch 主搜索通道),改投 TYPE_QUICK_SEARCH_RESULT null(与 type0/1 快搜 onError 对齐),避免错误清空
+  无关搜索页结果。(db13be31)
+- ✅ UserFragment/GridFragment 死 EventBus import 清理(无 @Subscribe/register/post;GridFragment 的
+  mGridView.post 为 View.post 非 EventBus)。(e2bfc2b7/90299dd4)
 
 ## 9. 待真机回归后继续(播放器主线尾段,当前挂起)
 - PlayerApi 会话内核**实验选项**:设置页加"播放器内核:PlayerApi 会话(实验)"开关(默认关);
