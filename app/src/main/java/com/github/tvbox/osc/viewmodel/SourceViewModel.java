@@ -635,8 +635,8 @@ public class SourceViewModel extends ViewModel {
 
                     @Override
                     public void onError(Throwable e) {
-                        // searchResult.postValue(null);
-                        EventBus.getDefault().post(new RefreshEvent(RefreshEvent.TYPE_SEARCH_RESULT, null));
+                        // quickSearchResult.postValue(null);
+                        EventBus.getDefault().post(new RefreshEvent(RefreshEvent.TYPE_QUICK_SEARCH_RESULT, null));
                     }
                 });
         } else {
