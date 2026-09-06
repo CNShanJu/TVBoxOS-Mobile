@@ -356,6 +356,13 @@ Exo→Media3、EventBus→Flow/接口、Hawk→DataStore、Java→Kotlin 渐进�
    Picasso 下载器每张带 `@Headers=` 图片的 header JSON 解析、局域网 `/proxy` 每次请求的
    请求头序列化,均改类级静态 GSON(Gson 线程安全,AGENTS:解析器复用实例禁热路径重复构建);
    其余点均为冷路径(懒加载/一次性)。(1b121034)
+- ✅ EventBus 收窄为按需注册(BaseActivity 空壳订阅下线,改进.txt §五 兼容层收口):
+   BaseActivity 移除全 Activity 自动 register 与空 `@Subscribe refresh` 壳——此前每条事件
+   投递会扇出到所有存活 Activity 的空实现(无谓分发);真实订阅方各自补 @Subscribe 并自管
+   register/unregister:DetailActivity(TYPE_REFRESH/TYPE_QUICK_SEARCH_RESULT)、
+   FastSearchActivity(TYPE_SEARCH_RESULT/ServerEvent)、VideoListActivity(本地列表重扫)。
+   全仓 EventBus 订阅方收敛为:DetailActivity/FastSearchActivity/PlayService/
+   DownloadFacade(模块内桥),零空壳订阅。(27315f4f)
 
 ## 9. 待真机回归后继续(播放器主线尾段,当前挂起)
 > 集中回归清单见 `doc/device-regression-checklist.md`(按功能域分组,门禁绿后逐项过)。
