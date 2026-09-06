@@ -345,6 +345,13 @@ Exo→Media3、EventBus→Flow/接口、Hawk→DataStore、Java→Kotlin 渐进�
    (懒加载/一次性),热路径早已静态复用。(d4699d7c)
 - ⚠️ 大文件物理拆分(PlayFragment 997/DetailActivity 1085/DownloadFragment 1082/
    SourceViewModel 858)与播放器主线尾段属阶段三,需真机回归背书,本轮不做搬移。
+- ✅ 弹窗 Activity 强转清零收尾(改进.txt §七 红线):VideoDetailDialog 不再
+   `(DetailActivity) context` 强转,改构造注入窄宿主 `VideoDetailDialog.Host`
+   (仅 getCurrentVodUrl),DetailActivity implements Host。复核 grep:全仓 UI 组件
+   已无 `(Activity) context` 具体 Activity 强转(含 kotlin as 强转)。(cbd70b33)
+   注:§9 "SourceViewModel xml/json 纯函数提取" 主体已完成——type0/1 解析已下沉
+   :spider-api(AbsXmlParser/SortParser,带 JVM 单测),VM 仅剩薄委托与多源发布编排,
+   收口依赖 Device 回归轮。
 
 ## 9. 待真机回归后继续(播放器主线尾段,当前挂起)
 > 集中回归清单见 `doc/device-regression-checklist.md`(按功能域分组,门禁绿后逐项过)。
