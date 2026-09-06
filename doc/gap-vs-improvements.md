@@ -422,6 +422,13 @@ Exo→Media3、EventBus→Flow/接口、Hawk→DataStore、Java→Kotlin 渐进�
   对当前 HEAD 不适用(osc→mbox 包名隔离,无老用户/无 Hawk 存量);G 组双内核起播验证通过,余 play/pause/
   seek/切集/通知/断点等观感项待人工逐项比对;PlaybackSession 的 D 级日志在本机型被全局过滤,
   核对须走业务日志。
+- ✅ **后台播放补系统媒体控制中心组件**(用户需求):PlayService 接入平台 MediaSession(API 21+,
+  零新依赖,avoided androidx.media:media 1.0.0 旧 support 命名空间问题)——前台通知
+  category=transport/vis=PUBLIC,会话 metadata=片名/集数、actions 含 PLAY/PAUSE/SKIP/SEEK,
+  状态轮询(800ms)同步播放/暂停/进度;MediaSession 回调直接驱动共享 videoView,skip/stop 复用
+  VOD_CONTROL 广播通道。真机验证:后台播放下会话 MBoxPlayback 注册,
+  `cmd media_session dispatch play/pause` 双向驱动——play→PLAYING+进度推进,pause→PAUSED+
+  position 冻结。控制中心/锁屏媒体卡由此可暂停/继续/切集。(ba7e685b,门禁全绿)
 
 ## 9. 待真机回归后继续(播放器主线尾段,当前挂起)
 > 集中回归清单见 `doc/device-regression-checklist.md`(按功能域分组,门禁绿后逐项过)。

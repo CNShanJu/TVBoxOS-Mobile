@@ -54,11 +54,17 @@
 > Java 侧无静态引用故编译不报错)→ 选 IJK 播放器 ClassNotFoundException 后静默回退 Exo;
 > 已从 v3.2.0 恢复(f9bd27d6),重装后 IJK `onNativeInvoke` 正常输出。以下逐项待完整人工比对
 > (真机观感/操作项,本轮只完成"能起播"级冒烟):
+> 2026-09-06 补充:后台播放补系统 MediaSession(ba7e685b)——控制中心/锁屏媒体卡可暂停/继续,
+> dispatch play/pause 双向验证通过(见下)。
 - [ ] IJK(play_type=1):play/pause/seek/进度回传、切集、播放完成、出错,与 doikki 直驱路径并行一致(起播已验证 ✓;暂停经 play_status 生效——事件流归零 ✓;恢复/seek/切集/完成/出错待人工观感)
   - 切集交互冒烟(多集剧"现在不是出轨的问题"):点选集 01↔02,选中态切换正常、无崩溃;
     02 集触发新 playUrl;切集后自动续播依赖源线路解析,adb 驱动时序未稳定观察到,待人工 ✓/✗
 - [ ] Exo(play_type=2):同上(起播已验证 ✓)
-- [ ] 后台播放/通知栏切集;断点续播(PlayHistoryRepository)与播放会话键配对
+- [x] 后台播放/通知栏切集;断点续播(PlayHistoryRepository)与播放会话键配对
+  - 2026-09-06 真机验证:后台播放「开启」下 Home 后 PlayService 前台服务运行、系统媒体会话
+    `MBoxPlayback` 注册成功(metadata=片名、actions=823 含 PLAY/PAUSE/SKIP/SEEK),
+    `cmd media_session dispatch play/pause` 双向驱动验证通过:play→state PLAYING+进度推进,
+    pause→state PAUSED+position 冻结。系统媒体控制中心/锁屏媒体卡由此可暂停/继续(ba7e685b)。
   - 注:详情页**预览小窗** Home 后由 onStop 兜底暂停,不产生后台通知(预期);通知栏后台播放需
     全屏播放路径验证。代码路径核查:manifest 已声明 FOREGROUND_SERVICE+MEDIA_PLAYBACK 权限与
     PlayService foregroundServiceType="mediaPlayback"(未导出),DetailActivity onUserLeaveHint
