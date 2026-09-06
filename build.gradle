@@ -135,6 +135,20 @@ tasks.register('checkModuleDependencies') {
                 }
             }
         }
+        // app 层红线:UI/组件对具体 Activity 强转(改进.txt §七/AGENTS §六;应经窄宿主接口注入)
+        def activityCastPattern = ~/\((DetailActivity|LiveActivity|MainActivity|LocalPlayActivity|DownloadActivity|FastSearchActivity|SettingActivity|VideoListActivity|BaseActivity|BaseVbActivity)\)\s*(context|mContext|this)/
+        appSourceDirs.each { dir ->
+            if (!dir.exists()) return
+            dir.eachFileRecurse(groovy.io.FileType.FILES) { f ->
+                if (!(f.name.endsWith('.java') || f.name.endsWith('.kt'))) return
+                def lines = f.getText('UTF-8').readLines()
+                lines.eachWithIndex { line, idx ->
+                    if (activityCastPattern.matcher(line).find()) {
+                        violations << "app 层红线[具体 Activity 强转]: ${f.path}:${idx + 1}"
+                    }
+                }
+            }
+        }
         if (violations) {
             throw new GradleException("模块依赖方向/验收红线违规:\n  " + violations.join('\n  '))
         }
