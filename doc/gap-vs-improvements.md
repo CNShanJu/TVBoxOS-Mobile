@@ -401,6 +401,9 @@ Exo→Media3、EventBus→Flow/接口、Hawk→DataStore、Java→Kotlin 渐进�
    渲染比对,暂缓。(b6c94a9b)
 - ✅ Time 时间模型单测(SRT/ASS/帧率三格式共用时间解析):解析毫秒、SRT 往返格式化、
    ASS 补零行为锁定。(8eaed57e)
+- ✅ 依赖/注释同步:player-api 移除 hawk 传递残留的 gson 依赖(core-storage 注释更正为
+   PrefsDataStore);评估文档补记 Style 颜色十六进制分支错位缺陷(与样式段缺陷同批待修)。
+   (fe6a80d8/3fb724b4)
 
 ## 9. 待真机回归后继续(播放器主线尾段,当前挂起)
 > 集中回归清单见 `doc/device-regression-checklist.md`(按功能域分组,门禁绿后逐项过)。
