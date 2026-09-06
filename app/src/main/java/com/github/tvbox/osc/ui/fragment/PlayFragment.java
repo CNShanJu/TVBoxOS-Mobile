@@ -646,8 +646,7 @@ public class PlayFragment extends BaseLazyFragment {
         try {
             releasePlaybackSession();
             if (mVideoView == null || mVodInfo == null || mVodInfo.id == null) return;
-            playbackSessionKey = "vod|" + sourceKey + "|" + mVodInfo.id + "|" + mVodInfo.playFlag
-                    + "|" + mVodInfo.playIndex;
+            playbackSessionKey = com.github.tvbox.osc.util.player.PlaySessionKeys.playbackSessionKey(sourceKey, mVodInfo);
             com.github.tvbox.osc.player.VideoViewPlayerApi api =
                     mPlaySession != null ? mPlaySession.playerApi() : null;
             if (api == null) {

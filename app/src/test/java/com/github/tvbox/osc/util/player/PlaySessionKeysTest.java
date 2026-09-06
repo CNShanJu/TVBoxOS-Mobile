@@ -39,6 +39,12 @@ public class PlaySessionKeysTest {
         assertFalse(a.equals(c)); // 索引不同键不同(进度不串集)
     }
 
+    @Test
+    public void playbackSessionKey_vodPrefixed() {
+        assertEquals("vod|src|vod1|f1|3", PlaySessionKeys.playbackSessionKey("src", vod(3)));
+        assertEquals("vod|null|vod1|f1|0", PlaySessionKeys.playbackSessionKey(null, vod(0)));
+    }
+
     private static void assertFalse(boolean b) {
         org.junit.Assert.assertFalse(b);
     }

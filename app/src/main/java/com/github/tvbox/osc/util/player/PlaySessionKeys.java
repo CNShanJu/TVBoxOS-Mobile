@@ -23,4 +23,9 @@ public final class PlaySessionKeys {
         return vodInfo.sourceKey + "-" + vodInfo.id + "-" + vodInfo.playFlag
                 + "-" + vodInfo.playIndex + "-" + seriesName + "-subt";
     }
+
+    /** playback 会话 key = vod|来源|剧id|线路|索引(与 PlaybackSessions 登记语义一致) */
+    public static String playbackSessionKey(String sourceKey, VodInfo vodInfo) {
+        return "vod|" + sourceKey + "|" + vodInfo.id + "|" + vodInfo.playFlag + "|" + vodInfo.playIndex;
+    }
 }
