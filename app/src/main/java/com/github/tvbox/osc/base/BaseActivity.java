@@ -19,7 +19,6 @@ import com.blankj.utilcode.util.AppUtils;
 import com.github.tvbox.osc.R;
 import com.github.tvbox.osc.callback.EmptyCallback;
 import com.github.tvbox.osc.callback.LoadingCallback;
-import com.github.tvbox.osc.event.RefreshEvent;
 import com.github.tvbox.osc.player.api.PlayConfig;
 import com.github.tvbox.osc.ui.activity.DetailActivity;
 import com.github.tvbox.osc.util.AppManager;
@@ -31,10 +30,6 @@ import com.kingja.loadsir.callback.Callback;
 import com.kingja.loadsir.core.LoadService;
 import com.kingja.loadsir.core.LoadSir;
 import com.lxj.xpopup.impl.LoadingPopupView;
-
-import org.greenrobot.eventbus.EventBus;
-import org.greenrobot.eventbus.Subscribe;
-import org.greenrobot.eventbus.ThreadMode;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -53,7 +48,6 @@ public abstract class BaseActivity extends AppCompatActivity implements CustomAd
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        EventBus.getDefault().register(this);
 
         if (getLayoutResID()==-1){
             initVb();
@@ -68,11 +62,6 @@ public abstract class BaseActivity extends AppCompatActivity implements CustomAd
         if (!App.getInstance().isNormalStart){
             AppUtils.relaunchApp(true);
         }
-    }
-
-    @Subscribe(threadMode = ThreadMode.MAIN)
-    public void refresh(RefreshEvent event) {
-
     }
 
 
@@ -165,7 +154,6 @@ public abstract class BaseActivity extends AppCompatActivity implements CustomAd
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        EventBus.getDefault().unregister(this);
         AppManager.getInstance().finishActivity(this);
     }
 

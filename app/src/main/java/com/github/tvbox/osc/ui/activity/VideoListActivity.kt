@@ -22,6 +22,9 @@ import com.lxj.xpopup.XPopup
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import org.greenrobot.eventbus.EventBus
+import org.greenrobot.eventbus.Subscribe
+import org.greenrobot.eventbus.ThreadMode
 import java.util.stream.Collectors
 
 class VideoListActivity : BaseVbActivity<ActivityMovieFoldersBinding>() {
@@ -29,6 +32,9 @@ class VideoListActivity : BaseVbActivity<ActivityMovieFoldersBinding>() {
     private var mLocalVideoAdapter = LocalVideoAdapter()
     private var mSelectedCount = 0
     override fun init() {
+        // 本地视频列表依赖 RefreshEvent 触发列表重扫,自行注册生命周期
+        // (BaseActivity 已移除"全 Activity 自动注册",EventBus 只投给真正需要的页面)
+        EventBus.getDefault().register(this)
 
         mBucketDisplayName = intent.extras?.getString("bucketDisplayName")?:""
 
@@ -127,8 +133,14 @@ class VideoListActivity : BaseVbActivity<ActivityMovieFoldersBinding>() {
         mLocalVideoAdapter.cancelAllSelection()
     }
 
-    override fun refresh(event: RefreshEvent) {
+    @Subscribe(threadMode = ThreadMode.MAIN)
+    fun refresh(event: RefreshEvent) {
         Handler().postDelayed({ groupVideos() }, 1000)
+    }
+
+    override fun onDestroy() {
+        EventBus.getDefault().unregister(this)
+        super.onDestroy()
     }
 
     override fun onResume() {

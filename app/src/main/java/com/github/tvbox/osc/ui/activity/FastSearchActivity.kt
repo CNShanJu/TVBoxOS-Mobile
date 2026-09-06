@@ -53,6 +53,7 @@ import com.lxj.xpopup.core.BasePopupView
 import com.lxj.xpopup.interfaces.SimpleCallback
 import com.zhy.view.flowlayout.FlowLayout
 import com.zhy.view.flowlayout.TagAdapter
+import org.greenrobot.eventbus.EventBus
 import org.greenrobot.eventbus.Subscribe
 import org.greenrobot.eventbus.ThreadMode
 import java.util.concurrent.atomic.AtomicInteger
@@ -82,6 +83,9 @@ class FastSearchActivity : BaseVbActivity<ActivityFastSearchBinding>(), TextWatc
     }
 
     override fun init() {
+        // 快速搜索页是 TYPE_SEARCH_RESULT/ServerEvent 真实订阅方,自行注册生命周期
+        // (BaseActivity 已移除"全 Activity 自动注册",EventBus 只投给真正需要的页面)
+        EventBus.getDefault().register(this)
         sourceViewModel = ViewModelProvider(this).get(SourceViewModel::class.java)
         initView()
         initData()
@@ -424,7 +428,7 @@ class FastSearchActivity : BaseVbActivity<ActivityFastSearchBinding>(), TextWatc
     }
 
     @Subscribe(threadMode = ThreadMode.MAIN)
-    override fun refresh(event: RefreshEvent) {
+    fun refresh(event: RefreshEvent) {
         if (event.type == RefreshEvent.TYPE_SEARCH_RESULT) {
             try {
                 searchData(if (event.obj == null) null else event.obj as AbsXml)
@@ -664,6 +668,7 @@ class FastSearchActivity : BaseVbActivity<ActivityFastSearchBinding>(), TextWatc
 
     override fun onDestroy() {
         super.onDestroy()
+        EventBus.getDefault().unregister(this)
         cancel()
         synchronized(searchLock) {
             searchEpoch++

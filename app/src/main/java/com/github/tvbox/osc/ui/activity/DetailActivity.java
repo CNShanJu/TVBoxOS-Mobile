@@ -8,6 +8,8 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.res.Configuration;
 import android.os.Bundle;
+
+import androidx.annotation.Nullable;
 import android.text.TextUtils;
 import android.view.KeyEvent;
 import android.view.View;
@@ -65,6 +67,7 @@ import com.lxj.xpopup.XPopup;
 import com.lxj.xpopup.core.BasePopupView;
 import com.owen.tvrecyclerview.widget.V7LinearLayoutManager;
 
+import org.greenrobot.eventbus.EventBus;
 import org.greenrobot.eventbus.Subscribe;
 import org.greenrobot.eventbus.ThreadMode;
 import org.json.JSONObject;
@@ -781,8 +784,17 @@ public class DetailActivity extends BaseVbActivity<ActivityDetailBinding>
         com.github.tvbox.osc.repo.HistoryRepositories.history().save(sourceKey, vodInfo);
     }
 
+    /** 详情页是 RefreshEvent(TYPE_REFRESH/TYPE_QUICK_SEARCH_RESULT)的真实订阅方,自行注册生命周期
+     * (BaseActivity 已移除"全 Activity 自动注册 + 空壳订阅",EventBus 只投给真正需要的页面) */
+    @Override
+    protected void onCreate(@Nullable Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        EventBus.getDefault().register(this);
+    }
+
     @Override
     protected void onDestroy() {
+        EventBus.getDefault().unregister(this);
         pipHelper.setReceiverEnabled(false);
         super.onDestroy();
         // 注销广播接收器
