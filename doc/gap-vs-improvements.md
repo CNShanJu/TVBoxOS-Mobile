@@ -434,6 +434,10 @@ Exo→Media3、EventBus→Flow/接口、Hawk→DataStore、Java→Kotlin 渐进�
   AbsXmlParser.parseJson(含 normalize);VM 消费点二次归一(parseJson 内部 + absXml())由新增
   幂等单测 normalize_isIdempotent 锁定无害。VM type0/1/4 六入口 typed-first 收敛为行为面,
   按评估 §J 需逐源真机回归,留真机批。(0cce8442,门禁全绿)
+- ✅ K5/§J 基建子步:URL 拼装/归一抽 :core-network util/HttpUrls 纯类(无 android 依赖,
+  HttpClient 委托、行为零变化;JVM 等值单测锁定),并新增带参同步
+  `HttpClient.getSync(url, params, headers)`——为 HTTP 型源(type0/1/4)typed 取数
+  复用同一拼装语义铺路。评估 §J 修订方向①/② 均依赖此底座。(fe58a119,门禁全绿)
 
 ## 9. 待真机回归后继续(播放器主线尾段,当前挂起)
 > 集中回归清单见 `doc/device-regression-checklist.md`(按功能域分组,门禁绿后逐项过)。
