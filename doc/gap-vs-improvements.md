@@ -352,6 +352,10 @@ Exo→Media3、EventBus→Flow/接口、Hawk→DataStore、Java→Kotlin 渐进�
    注:§9 "SourceViewModel xml/json 纯函数提取" 主体已完成——type0/1 解析已下沉
    :spider-api(AbsXmlParser/SortParser,带 JVM 单测),VM 仅剩薄委托与多源发布编排,
    收口依赖 Device 回归轮。
+- ✅ Gson 热路径静态复用复核+收口:app 内 `new Gson()` 逐点复核——热路径仅剩两处:
+   Picasso 下载器每张带 `@Headers=` 图片的 header JSON 解析、局域网 `/proxy` 每次请求的
+   请求头序列化,均改类级静态 GSON(Gson 线程安全,AGENTS:解析器复用实例禁热路径重复构建);
+   其余点均为冷路径(懒加载/一次性)。(1b121034)
 
 ## 9. 待真机回归后继续(播放器主线尾段,当前挂起)
 > 集中回归清单见 `doc/device-regression-checklist.md`(按功能域分组,门禁绿后逐项过)。
