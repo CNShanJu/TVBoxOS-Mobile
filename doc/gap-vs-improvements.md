@@ -470,3 +470,4 @@ EventBus 订阅方已收敛 4 个真实方;仍剩多源结果流(TYPE_SEARCH_RES
 - ✅ Java→Kotlin 试点续:DownloadSeriesModel 转 Kotlin(object + @JvmStatic;IntFunction 工厂参数与数组拆分语义等价)。
 - ✅ Java→Kotlin 试点续:LiveChannelNav 转 Kotlin(object + @JvmStatic;IntUnaryOperator/IntPredicate 参数与回卷/跳过锁定语义等价)。
 - ✅ Java→Kotlin 试点续:DownloadGrouping、EpisodeDownloadBatch 转 Kotlin(@JvmStatic/@JvmField 保 Java 字段;分组/入队文案/解析逻辑测试托底)。
+- ✅ Java→Kotlin 试点续:DownloadDisplay、M3u8Cleaner 转 Kotlin(格式/文案/指纹/HLS 净化全部等值,各自测试托底)。
