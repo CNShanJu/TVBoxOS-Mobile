@@ -34,7 +34,6 @@ import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
-import com.github.tvbox.osc.config.KeyValueStore;
 
 import org.apache.commons.lang3.StringUtils;
 import org.json.JSONObject;
@@ -498,7 +497,6 @@ public class ApiConfig implements com.github.tvbox.osc.spiderapi.SourceConfigApi
         // 直播源
         liveChannelGroupList.clear();           //修复从后台切换重复加载频道列表
         String liveURL = SystemConfig.getLiveUrl();
-        //String epgURL  = KeyValueStore.get(HawkConfig.EPG_URL, "");
 
         String liveURL_final = null;
         try {
@@ -549,7 +547,6 @@ public class ApiConfig implements com.github.tvbox.osc.spiderapi.SourceConfigApi
                         //if (StringUtils.isBlank(epgURL)) {
                             PrefsDataStore.put(HawkConfig.EPG_URL, epg);
 //                        } else {
-//                            KeyValueStore.put(HawkConfig.EPG_URL, epgURL);
 //                        }
                     }
 
@@ -578,7 +575,6 @@ public class ApiConfig implements com.github.tvbox.osc.spiderapi.SourceConfigApi
                                 //if (StringUtils.isBlank(epgURL)) {
                                     PrefsDataStore.put(HawkConfig.EPG_URL, epg);
 //                                } else {
-//                                    KeyValueStore.put(HawkConfig.EPG_URL, epgURL);
 //                                }
                             }
 
@@ -816,16 +812,11 @@ public class ApiConfig implements com.github.tvbox.osc.spiderapi.SourceConfigApi
     }
 
 
-    /** 读现代化偏好,无则查旧 Hawk 并一次性迁移(自用记忆键) */
+    /** 读现代化偏好键(DataStore 权威;旧 Hawk 迁移已退役) */
     private static String legacyPrefs(String key, String def) {
-        String v = PrefsDataStore.getString(key, null);
-        if (v == null && KeyValueStore.contains(key)) {
-            v = KeyValueStore.getString(key, "");
-            PrefsDataStore.put(key, v);
-            KeyValueStore.delete(key);
-        }
-        return v == null ? def : v;
+        return PrefsDataStore.getString(key, def);
     }
+
     public void setSourceBean(SourceBean sourceBean) {
         this.mHomeSource = sourceBean;
         PrefsDataStore.put(HawkConfig.HOME_API, sourceBean.getKey());

@@ -4,7 +4,6 @@ import android.content.Context;
 
 import androidx.annotation.Keep;
 
-import com.github.tvbox.osc.config.KeyValueStore;
 import com.whl.quickjs.wrapper.Function;
 
 import java.io.File;
@@ -73,7 +72,6 @@ public class local {
     public void delete(String str, String str2) {
         try {
             deleteFile(fileOf("jsRuntime_" + str + "_" + str2));
-            KeyValueStore.delete("jsRuntime_" + str + "_" + str2); // 清旧 Hawk 残留
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -86,16 +84,6 @@ public class local {
             String key = "jsRuntime_" + str + "_" + str2;
             String fromFile = readFile(fileOf(key));
             if (fromFile != null) return fromFile;
-            // 旧 Hawk 存量惰性迁移(一次)
-            Object raw = KeyValueStore.get(key, null);
-            if (raw instanceof String) {
-                String legacy = (String) raw;
-                if (!legacy.isEmpty()) {
-                    writeFile(fileOf(key), legacy);
-                    KeyValueStore.delete(key);
-                    return legacy;
-                }
-            }
             return str2;
         } catch (Exception e) {
             return str2;
@@ -107,7 +95,6 @@ public class local {
     public void set(String str, String str2, String str3) {
         try {
             writeFile(fileOf("jsRuntime_" + str + "_" + str2), str3);
-            KeyValueStore.delete("jsRuntime_" + str + "_" + str2); // 迁走后清旧
         } catch (Exception e) {
             e.printStackTrace();
         }
