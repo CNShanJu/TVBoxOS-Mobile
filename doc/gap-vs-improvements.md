@@ -385,6 +385,11 @@ Exo→Media3、EventBus→Flow/接口、Hawk→DataStore、Java→Kotlin 渐进�
 - ✅ FastSearch 非空断言警告清理(searchAdapter!! 等多余 !!)。Kotlin 编译告警清点:
    本轮触及文件内告警已清零(HomeFragment/SettingActivity/SubscriptionActivity 等告警属并行批改动范围)。
    (307073a1)
+- ✅ 新增《后续改造评估》(hawk 退役 / 播放器主线收口 / 杂项袋与死代码):代码级证据评估产出
+   `doc/后续改造评估.md`——hawk 现仅 core-storage KeyValueStore 持有且已退化为"读一次旧键即删"的
+   一次性迁移通道,退役须与旧版升级数据回归同批(建议先无 hawk 化灰度再删);播放器收口按
+   P1 原型回归→P2 会话唯一指令→P3 默认开启→P4 基建收口 四阶段推进;杂项袋/死代码/EventBus 直调
+   列小步清单。待并行批合流与真机回归后按序执行。
 
 ## 9. 待真机回归后继续(播放器主线尾段,当前挂起)
 > 集中回归清单见 `doc/device-regression-checklist.md`(按功能域分组,门禁绿后逐项过)。
