@@ -6,6 +6,7 @@ import android.os.Bundle
 import android.view.View
 import androidx.recyclerview.widget.DiffUtil
 import com.github.tvbox.osc.log.LogConfig
+import com.github.tvbox.osc.player.PlayerTrackHelper
 import com.github.tvbox.osc.player.api.IjkCodecConfigProviders
 import com.github.tvbox.osc.player.api.PlayConfig
 import com.github.tvbox.osc.util.AppBubble
@@ -34,7 +35,6 @@ import com.hjq.permissions.Permission
 import com.hjq.permissions.XXPermissions
 import com.lxj.xpopup.XPopup
 import okhttp3.HttpUrl
-import tv.danmaku.ijk.media.player.IjkMediaPlayer
 import java.io.File
 
 /**
@@ -218,7 +218,7 @@ class SettingActivity : BaseVbActivity<ActivitySettingBinding>() {
                     mBinding.tvDns.text = OkGoHelper.dnsHttpsList[pos]
                     SystemConfig.setDohUrl(pos)
                     OkGoHelper.refreshDnsOverHttps()
-                    IjkMediaPlayer.toggleDotPort(pos > 0)
+                    PlayerTrackHelper.toggleDotPort(pos > 0)
                 }
 
                 override fun getDisplay(name: String?): String {

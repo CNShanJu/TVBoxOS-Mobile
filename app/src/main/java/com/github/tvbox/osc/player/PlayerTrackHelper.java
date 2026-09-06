@@ -52,4 +52,9 @@ public final class PlayerTrackHelper {
             ((KernelTrackSupport) mediaPlayer).setOnSubtitleListener(listener);
         }
     }
+
+    /** DoT 端口开关(仅 IJK 内核提供;随安全 DNS 选择联动)。内核差异集中在本适配层,UI 不直触内核类 */
+    public static void toggleDotPort(boolean enable) {
+        tv.danmaku.ijk.media.player.IjkMediaPlayer.toggleDotPort(enable);
+    }
 }
