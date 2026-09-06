@@ -413,6 +413,15 @@ Exo→Media3、EventBus→Flow/接口、Hawk→DataStore、Java→Kotlin 渐进�
 - ✅ 字幕时间模型 Time 由 Java 转 Kotlin(Java→Kotlin 现代化批次):保持 `@JvmField mseconds` 公开字段
   (SRT/ASS/STL/SCC/TTML 等格式读写同址)与 Java 构造/`getTime(format)` 语义逐字等价;原有 TimeTest
   (解析/往返格式化/补零)原地锁语义,门禁绿后提交。
+- ✅ **真机回归发现并修复 IJK 内核缺陷**(K4 首轮,MEIZU 21/Android 16):模块化批次 76158888 误删
+  `player/.../tv/danmaku/ijk/media/player/ffmpeg/FFmpegApi.java`(仅按"移除未注册 Exo/FFmpeg 扩展"清理,
+  但该类是 IJK `libplayer.so` JNI FindClass 必需;Java 侧无静态引用故编译/门禁不报)。真机选 IJK 播放器 →
+  `ClassNotFoundException: ...FFmpegApi` → 内核静默回退 Exo。已从 v3.2.0 恢复该 5 行文件(f9bd27d6),
+  门禁全绿,重装后 IJK `onNativeInvoke` 正常、音视频出流。
+- ✅ 设备回归结论登记(见 device-regression-checklist §G/§H 注):mbox 专属包名(9fe89c10)使 hawk 升级回归
+  对当前 HEAD 不适用(osc→mbox 包名隔离,无老用户/无 Hawk 存量);G 组双内核起播验证通过,余 play/pause/
+  seek/切集/通知/断点等观感项待人工逐项比对;PlaybackSession 的 D 级日志在本机型被全局过滤,
+  核对须走业务日志。
 
 ## 9. 待真机回归后继续(播放器主线尾段,当前挂起)
 > 集中回归清单见 `doc/device-regression-checklist.md`(按功能域分组,门禁绿后逐项过)。
@@ -455,6 +464,9 @@ EventBus 订阅方已收敛 4 个真实方;仍剩多源结果流(TYPE_SEARCH_RES
 ### E. 待修缺陷 / 待放行(已登记)
 - FormatASS 样式段解析缺陷 + Style 颜色十六进制错位(doc/后续改造评估.md §E):需真实 .ass 语料+真机渲染比对;
 - 播放器收口 P1–P4(清单 G 组)、hawk 版 N+1 发布放行(清单 H 组):均需设备回归。
+  - 2026-09-06 首轮真机(MEIZU 21/Android 16)进展:K4 已开跑——G 组双内核起播验证通过,
+    IJK FFmpegApi 误删缺陷已修(f9bd27d6);H 组因 mbox 包名隔离判定"对当前 HEAD 不适用"
+    (osc→mbox 无 Hawk 存量场景,详见 checklist §H);G 组观感项/通知/断点待逐项人工比对。
 
 - ✅ 主搜索批次流直调化(改进.txt §五 试点):TYPE_SEARCH_RESULT 下线——SourceViewModel 增 SearchBatchListener,FastSearchActivity 注入/置空并主线程投递;refresh 订阅与常量删除。quick 结果流亦已直调化(TYPE_QUICK_SEARCH_RESULT 下线,8e1e8fa6)。详情选集/播放配置同步亦已直调化(PlayFragment.PlaySyncHost,TYPE_REFRESH 下线,702f24db)。EventBus 现仅剩:后台通知 TYPE_REFRESH_NOTIFY(PlayFragment/VodController→PlayService)、遥控 ServerEvent、DownloadFacade 模块内桥;DetailActivity/SourceViewModel 内 EventBus 已归零。
 - ✅ 死代码清扫:app 模块删除 14 个零引用类(旧 EPG/直播控制器/列表适配/旧控件/工具,-1099 行,06adec9c/504c77a6);其余模块全仓扫描仅 4 候选均判定保留(CaocInitProvider=crash Manifest auto-init Provider;SpiderDebug/SpiderJS/UTF8BOMFighter=QuickJS JS 桥按名反射,需 jar/真机确认后才可删)。

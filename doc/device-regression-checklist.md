@@ -48,15 +48,29 @@
 - [ ] 无痕浏览:退出后历史不写
 
 ## G. PlayerApi 会话 P1 原型回归(播放器收口 P1,见 doc/后续改造评估.md B.3)
-- [ ] IJK(play_type=1):play/pause/seek/进度回传、切集、播放完成、出错,与 doikki 直驱路径并行一致
-- [ ] Exo(play_type=2):同上
+> 2026-09-06 MEIZU 21(Android 16)首轮:安装/启动/主页热播/快搜/详情/预览播放链路通;
+> Exo 与 IJK 双内核均真机起流出画面+音频。**发现并修复 IJK 内核缺陷**:模块化批次
+> (76158888)误删 `tv.danmaku.ijk.media.player.ffmpeg.FFmpegApi`(`libplayer.so` JNI FindClass 必需,
+> Java 侧无静态引用故编译不报错)→ 选 IJK 播放器 ClassNotFoundException 后静默回退 Exo;
+> 已从 v3.2.0 恢复(f9bd27d6),重装后 IJK `onNativeInvoke` 正常输出。以下逐项待完整人工比对
+> (真机观感/操作项,本轮只完成"能起播"级冒烟):
+- [ ] IJK(play_type=1):play/pause/seek/进度回传、切集、播放完成、出错,与 doikki 直驱路径并行一致(起播已验证 ✓)
+- [ ] Exo(play_type=2):同上(起播已验证 ✓)
 - [ ] 后台播放/通知栏切集;断点续播(PlayHistoryRepository)与播放会话键配对
 - [ ] 会话 bind/release 无泄漏(进出详情/连续切集/页面销毁),共享 mVideoView 不被会话误释放
+  - 注:本机型 logcat 全局滤掉 D 级,PlaybackSession 的 `Log.d` bind/unbind 不可见;核对须
+    看 app 业务日志(PLAYER 类)或换带 D 级机型,不能以 logcat 无输出判否。
 
 ## H. 配置迁移与 hawk 退役升级回归(见 doc/后续改造评估.md A;版 N 灰度 / 版 N+1 前必过)
-- [ ] 旧版(含 Hawk 旧键)升级:订阅列表与勾选源、直播历史与频道播放配置、播放设置、下载任务与档案、日志开关、遥控记忆、首页条数均保留
-- [ ] 升级后旧键清除;再次冷启不重复迁移、无异常日志
-- [ ] 版 N(KeyValueStore 无 hawk 化)在"已迁移设备"上行为与升级前一致
+> 2026-09-06 结论:**mbox 专属包名(9fe89c10)使本组对当前 HEAD 不适用**——applicationId 已从
+> `com.github.tvbox.osc` 改为 `com.github.tvbox.osc.mbox`,与含 Hawk 旧键的历史版本(v3.2.0 及更早,
+> 包名 `com.github.tvbox.osc`)视为两个不同应用,覆盖安装不保留数据,hawk 键无迁移路径可验证;
+> 且 mbox 是新包无老用户,不存在 Hawk 存量升级场景。hawk N+1 升级回归仅对 **osc 包名历史发布线**
+> 有意义(若未来需验证,目标:旧版 v3.2.0 → osc 包名 N+1 点 9fe89c10~1)。当前 mbox 新装
+> 设置持久化已冒烟通过(默认播放器切 IJK→冷启→仍 IJK)。
+- [ ] 旧版(含 Hawk 旧键)升级 → **不适用(mbox 包名隔离,见上注)**
+- [ ] 升级后旧键清除;再次冷启不重复迁移、无异常日志 → mbox 新装冷启无 KeyValueStore/hawk 报错 ✓
+- [ ] 版 N(KeyValueStore 无 hawk 化)在"已迁移设备"上行为与升级前一致 → mbox 无此场景;设置持久化冷启生效 ✓
 
 ## I. 设备回归执行手册(操作级;G/H 组逐项照此执行)
 
