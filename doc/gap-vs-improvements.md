@@ -404,6 +404,11 @@ Exo→Media3、EventBus→Flow/接口、Hawk→DataStore、Java→Kotlin 渐进�
 - ✅ 依赖/注释同步:player-api 移除 hawk 传递残留的 gson 依赖(core-storage 注释更正为
    PrefsDataStore);评估文档补记 Style 颜色十六进制分支错位缺陷(与样式段缺陷同批待修)。
    (fe6a80d8/3fb724b4)
+- ✅ hawk 退役版 N+1(代码侧)已实施:KeyValueStore 类删除,各域 legacy 迁移分支全部移除
+   (core-storage SystemConfig/DefaultLogConfigStore、player-api PlayConfig、download
+   Store/Policy/Archive、app 订阅-直播-热播-遥控、spider ApiConfig/local),运行权威统一
+   PrefsDataStore/文件;AGENTS/评估文档同步。发布仍需 H 组旧版升级回归。
+   (cea1160b/95efedf7/10e0ddbe/f6ff846a/910b02a0/03c6a0b6)
 
 ## 9. 待真机回归后继续(播放器主线尾段,当前挂起)
 > 集中回归清单见 `doc/device-regression-checklist.md`(按功能域分组,门禁绿后逐项过)。
