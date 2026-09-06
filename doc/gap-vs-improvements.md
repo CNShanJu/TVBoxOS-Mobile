@@ -329,6 +329,22 @@ Exo→Media3、EventBus→Flow/接口、Hawk→DataStore、Java→Kotlin 渐进�
 - ✅ Zip Slip 收口:spider `Path.unzip`(爬虫 jar 可调用的解压点)逐条目做 canonical 包含性
    校验,拒绝 NUL/../绝对路径/符号链接逃逸,整体失败不落盘;仓库三处解压点(RemoteServer/
    Path.unzip/crash 读自身 dex)全部防护或只读。(0f5d7d35)
+- ✅ 搜索线程池收口(改进.txt §六"页面不得自建线程池",第二轮):FastSearchActivity 页面自建
+   `FixedThreadPool(10)` + shutdownNow/pauseRunnable 机制移除,每源搜索提交应用级共享大池
+   (HeavyTaskUtil) + epoch 自检(新一轮发起即自弃过期任务)+ 暂停 pending 续跑(onResume 重派),
+   行为与旧等价(点结果跳详情暂停/回前台续跑);SourceViewModel type3 首页加载两处每轮
+   `newSingleThreadExecutor` + shutdown 改提交共享大池,15s 超时/cancel 语义不变。
+   (e5935879/8d944d96)
+- ✅ Manifest 暴露面精简:删零使用权限 REORDER_TASKS/CHANGE_WIFI_MULTICAST_STATE(app+player)、
+   app 重复 WAKE_LOCK(player 内核自持)与未用 `<queries idm>`;无 intent-filter 的内部 Activity
+   (Main/Live/Detail/FastSearch/Setting/History/Collect/Download/Log/VideoList)补显式
+   android:exported=false(行为不变,默认即 false)。复核达标项:resConfigs 'zh-rCN','zh'、
+   org.gradle.parallel/caching 开启、Room 2.5.2/lifecycle 2.6.2 显式对齐、下载进度 600ms 节流
+   落盘(flushProgress/DownloadProgressEvent)、启动缓存清理移出主线程(阈值 100MB 延迟后台)、
+   图片库唯一 Picasso、UA 常量表去重——均已在位;Gson 各 `new Gson()` 点复核均为冷路径
+   (懒加载/一次性),热路径早已静态复用。(d4699d7c)
+- ⚠️ 大文件物理拆分(PlayFragment 997/DetailActivity 1085/DownloadFragment 1082/
+   SourceViewModel 858)与播放器主线尾段属阶段三,需真机回归背书,本轮不做搬移。
 
 ## 9. 待真机回归后继续(播放器主线尾段,当前挂起)
 > 集中回归清单见 `doc/device-regression-checklist.md`(按功能域分组,门禁绿后逐项过)。
