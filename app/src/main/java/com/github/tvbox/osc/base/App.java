@@ -11,6 +11,7 @@ import com.github.tvbox.osc.bean.VodInfo;
 import com.github.tvbox.osc.callback.EmptyCallback;
 import com.github.tvbox.osc.callback.LoadingCallback;
 import com.github.tvbox.osc.data.AppDataManager;
+import com.github.tvbox.osc.log.Category;
 import com.github.tvbox.osc.log.LogStore;
 import com.github.tvbox.osc.server.ControlManager;
 import com.github.tvbox.osc.state.SystemStateMonitor;
@@ -97,6 +98,8 @@ public class App extends MultiDexApplication {
         initCrashConfig();
         Utils.initTheme();
         AppLog.log("运行", "应用启动(Android " + android.os.Build.VERSION.RELEASE + ")");
+        // 业务日志(系统类目):记录本机屏幕尺寸(宽×高,px),便于按机型定位布局/适配问题
+        logDeviceScreenToBiz();
         // 崩溃捕获:未捕获异常落库(log 模块)
         LogStore.get().installCrashHandler();
         // 下载模块(:download) context 注入(保存目录/海报/网络监听/通知)
@@ -109,6 +112,23 @@ public class App extends MultiDexApplication {
         
         // 全局系统状态监控(网络/前后台/横竖屏/电量/磁盘, 基座层)
         SystemStateMonitor.init(this);
+    }
+
+    /**
+     * 记录本机屏幕尺寸到业务日志(系统类目,INFO):每次启动调用一次,便于按机型/分辨率定位
+     * 布局与适配问题。用真实显示区域(含状态栏/导航栏,getRealMetrics);LogStore 未启用时静默丢弃。
+     */
+    private void logDeviceScreenToBiz() {
+        try {
+            android.util.DisplayMetrics dm = new android.util.DisplayMetrics();
+            android.view.Display display = ((android.view.WindowManager) getSystemService(android.content.Context.WINDOW_SERVICE)).getDefaultDisplay();
+            display.getRealMetrics(dm);
+            int wDp = Math.round(dm.widthPixels / dm.density);
+            int hDp = Math.round(dm.heightPixels / dm.density);
+            LogStore.log(Category.SYSTEM, "设备屏幕: " + dm.widthPixels + "x" + dm.heightPixels
+                    + " px(" + wDp + "x" + hDp + " dp,density=" + dm.density + ")");
+        } catch (Throwable ignored) {
+        }
     }
 
     /** 播放器缓存清理:延迟到首屏后再执行;仅当缓存超阈值才递归删除,低优先级后台线程 */
