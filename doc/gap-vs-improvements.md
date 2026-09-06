@@ -390,6 +390,10 @@ Exo→Media3、EventBus→Flow/接口、Hawk→DataStore、Java→Kotlin 渐进�
    一次性迁移通道,退役须与旧版升级数据回归同批(建议先无 hawk 化灰度再删);播放器收口按
    P1 原型回归→P2 会话唯一指令→P3 默认开启→P4 基建收口 四阶段推进;杂项袋/死代码/EventBus 直调
    列小步清单。待并行批合流与真机回归后按序执行。
+- ✅ hawk 退役版 N(无 hawk 化灰度)已实施:KeyValueStore 摘除 Hawk 后端(init 占位、legacy 读取默认值、
+   put/delete 空操作),core-storage 移除 hawk 依赖,App 装配去掉 KeyValueStore.init,proguard keep 删除。
+   各域 legacy 分支保留但自然失效;版 N+1(旧版升级数据回归通过后)再删本类与分支。详见
+   `doc/后续改造评估.md` A.3。(4b775b18/3d9d9dcc)
 
 ## 9. 待真机回归后继续(播放器主线尾段,当前挂起)
 > 集中回归清单见 `doc/device-regression-checklist.md`(按功能域分组,门禁绿后逐项过)。
