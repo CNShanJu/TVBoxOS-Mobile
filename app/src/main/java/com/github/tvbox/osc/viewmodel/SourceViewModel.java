@@ -18,6 +18,7 @@ import com.github.tvbox.osc.event.RefreshEvent;
 import com.github.tvbox.osc.util.DefaultConfig;
 import com.github.tvbox.osc.util.HCallBack;
 import com.github.tvbox.osc.util.HttpClient;
+import com.github.tvbox.osc.util.HeavyTaskUtil;
 import com.github.tvbox.osc.util.LOG;
 import com.github.tvbox.osc.config.SystemConfig;
 import com.github.tvbox.osc.util.thunder.Thunder;
@@ -41,7 +42,6 @@ import java.util.Map;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
@@ -91,7 +91,9 @@ public class SourceViewModel extends ViewModel {
             Runnable waitResponse = new Runnable() {
                 @Override
                 public void run() {
-                    ExecutorService executor = Executors.newSingleThreadExecutor();
+                    // 线程池治理(改进.txt §六):不再每轮 newSingleThreadExecutor 后 shutdown,
+                    // 直接提交应用级共享大池(HeavyTaskUtil),15s 超时 + cancel 语义不变
+                    ExecutorService executor = HeavyTaskUtil.getBigTaskExecutorService();
                     boolean typedHit = false;
                     try {
                         AbsSortXml sortXml = null;
@@ -152,11 +154,6 @@ public class SourceViewModel extends ViewModel {
                         android.util.Log.i("SpiderTrace", "[首页] " + sourceBean.getName()
                                 + " homeContent 结束 耗时=" + (System.currentTimeMillis() - traceStart)
                                 + "ms typed=" + typedHit);
-                        try {
-                            executor.shutdown();
-                        } catch (Throwable th) {
-                            th.printStackTrace();
-                        }
                     }
                 }
             };
@@ -372,7 +369,8 @@ public class SourceViewModel extends ViewModel {
             Runnable waitResponse = new Runnable() {
                 @Override
                 public void run() {
-                    ExecutorService executor = Executors.newSingleThreadExecutor();
+                    // 线程池治理(改进.txt §六):不再每轮 newSingleThreadExecutor 后 shutdown,
+                    ExecutorService executor = HeavyTaskUtil.getBigTaskExecutorService();
                     Future<com.github.tvbox.osc.bean.AbsXml> future = executor.submit(new Callable<com.github.tvbox.osc.bean.AbsXml>() {
                         @Override
                         public com.github.tvbox.osc.bean.AbsXml call() throws Exception {
@@ -398,11 +396,6 @@ public class SourceViewModel extends ViewModel {
                         } else {
                             android.util.Log.w("SpiderBridge", "homeVideo(typed) 无结果,回退空列表: key=" + sourceBean.getKey());
                             callback.done(null);
-                        }
-                        try {
-                            executor.shutdown();
-                        } catch (Throwable th) {
-                            th.printStackTrace();
                         }
                     }
                 }
