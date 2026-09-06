@@ -1,6 +1,5 @@
 package com.github.tvbox.osc.player.api;
 
-import com.github.tvbox.osc.config.KeyValueStore;
 import com.github.tvbox.osc.config.PrefsDataStore;
 
 import java.util.LinkedHashMap;
@@ -48,43 +47,6 @@ public final class PlayConfig {
     }
 
 
-    static {
-        migrateLegacyOnce();
-    }
-
-    /** 旧 Hawk 存量一次性迁移到 PrefsDataStore(DataStore 化扩域;类加载时执行,PrefsDataStore 已在 App 启动早期 init) */
-    private static volatile boolean migratedLegacy = false;
-
-    private static synchronized void migrateLegacyOnce() {
-        if (migratedLegacy) return;
-        migratedLegacy = true;
-        try {
-            com.github.tvbox.osc.config.KeyValueStore legacy = null; // 仅便于阅读;实际静态调用
-            move(KEY_PLAY_TYPE, 0);
-            move(KEY_PLAY_RENDER, 0);
-            move(KEY_PLAY_SCALE, 0);
-            move(KEY_PLAY_TIME_STEP, 1);
-            move(KEY_IJK_CODEC, "软解码");
-            move(KEY_IJK_CACHE_PLAY, false);
-            move(KEY_BACKGROUND_PLAY_TYPE, 0);
-            move(KEY_VIDEO_PURIFY, true);
-            move(KEY_VIDEO_SPEED, 2.0f);
-            move(KEY_SUBTITLE_OPEN, false);
-            move(KEY_SUBTITLE_TEXT_SIZE, -1);
-            move(KEY_SUBTITLE_TIME_DELAY, 0);
-        } catch (Throwable ignored) {
-        }
-    }
-
-    @SuppressWarnings("unchecked")
-    private static <T> void move(String key, T defValue) {
-        if (com.github.tvbox.osc.config.KeyValueStore.contains(key)) {
-            T v = (T) com.github.tvbox.osc.config.KeyValueStore.get(key, null);
-            if (v == null) v = defValue;
-            PrefsDataStore.put(key, v);
-            com.github.tvbox.osc.config.KeyValueStore.delete(key);
-        }
-    }
 
     // ── 查询 ──
 
