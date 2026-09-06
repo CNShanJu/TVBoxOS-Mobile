@@ -10,6 +10,7 @@ import com.github.tvbox.osc.R
 import com.github.tvbox.osc.base.BaseVbActivity
 import com.github.tvbox.osc.databinding.ActivityLogBinding
 import com.github.tvbox.osc.util.LogViewAssembler
+import com.github.tvbox.osc.util.Utils
 import com.lxj.xpopup.XPopup
 import java.io.File
 
@@ -169,6 +170,7 @@ class LogActivity : BaseVbActivity<ActivityLogBinding>() {
         }
         val display = Array(dayFiles.size) { i -> LogViewAssembler.dayLabel(dayFiles[i].name) }
         XPopup.Builder(this)
+            .isDarkTheme(Utils.isAppDarkTheme()) // 底部抽屉跟随 App 主题(直读主题设置,避免 ROM uiMode 不同步误判浅色)
             .asBottomList("选择日期", display) { position, _ ->
                 if (position in dayFiles.indices) {
                     selectedFile = dayFiles[position]
