@@ -438,6 +438,15 @@ Exo→Media3、EventBus→Flow/接口、Hawk→DataStore、Java→Kotlin 渐进�
   HttpClient 委托、行为零变化;JVM 等值单测锁定),并新增带参同步
   `HttpClient.getSync(url, params, headers)`——为 HTTP 型源(type0/1/4)typed 取数
   复用同一拼装语义铺路。评估 §J 修订方向①/② 均依赖此底座。(fe58a119,门禁全绿)
+- ✅ K5/§J 收敛闭环(detail/search/quickSearch/play/category 拼参 typed-first):搜索/快搜
+  857db402、type4 play 拼参 8c7b5b9b、category(list) 724f7514——filterSelect 序列化在 :spider
+  android 环境内用与 VM legacy **同 API 的 org.json+Base64**(同实例→键序/结果一致),typed 优先 →
+  fetch*HttpLegacy 逐字兜底;真机冒烟主页/热播分类正常、无崩溃,逐源分页回归待设备批;Home sort
+  (getSort)受 homeRec 富化耦合仍待设备批。(登记见 doc/后续改造评估.md §J/K,门禁全绿)
+- ✅ 工作区卫生(无提交):删除 194 个运行残留——`app/hs_err_pid*.log`×187 + `app/replay_pid*.log`×2
+  (此前 Gradle 测试执行器 OOM 崩溃转储)+ 根 `hs_err_pid*.log`×2 + 根 `build-release.log`/
+  `build_gates_last.log`/`build_gates_appbubble.log`×3。均未跟踪且早被 .gitignore `*.log` 忽略,
+  git 树零变化;按文件名精确删除(未用 git clean),并行 wave 文件原样保留。
 
 ## 9. 待真机回归后继续(播放器主线尾段,当前挂起)
 > 集中回归清单见 `doc/device-regression-checklist.md`(按功能域分组,门禁绿后逐项过)。
@@ -467,7 +476,10 @@ Exo→Media3、EventBus→Flow/接口、Hawk→DataStore、Java→Kotlin 渐进�
 | :ui-common / ui-kit 边界 | ✅ 达标 | ui-common 纯资源(0 java,107 res);ui-kit 15 组件无 Hawk/EventBus/ApiConfig/Activity 强转/自建线程池违例;拆独立模块待复用稳定(见评估 §I) |
 
 ### B. 大页面物理拆分(改进.txt §三,阶段三)
-PlayFragment 997 / DetailActivity 1097 / DownloadFragment 1082 / SourceViewModel 851 / LiveActivity 883。
+> 行数实测于 HEAD 701bccb8(2026-09-06,Get-Content 计行,与 git HEAD 一致):
+> PlayFragment 1010 / DetailActivity 1063 / DownloadFragment 1082 / SourceViewModel 949 / LiveActivity 883。
+> 注:SourceViewModel 因 K5 typed-first 收敛(+fetch*HttpLegacy 逐字兜底)较旧记录(851)净增;
+> 物理拆分未动,仍属阶段三。
 协调器与纯化已大量下沉;剩余宿主编排需真机回归背书后继续搬移。
 
 ### C. 状态与事件(改进.txt §五)
