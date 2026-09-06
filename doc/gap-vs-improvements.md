@@ -452,3 +452,5 @@ EventBus 订阅方已收敛 4 个真实方;仍剩多源结果流(TYPE_SEARCH_RES
 ### E. 待修缺陷 / 待放行(已登记)
 - FormatASS 样式段解析缺陷 + Style 颜色十六进制错位(doc/后续改造评估.md §E):需真实 .ass 语料+真机渲染比对;
 - 播放器收口 P1–P4(清单 G 组)、hawk 版 N+1 发布放行(清单 H 组):均需设备回归。
+
+- ✅ 主搜索批次流直调化(改进.txt §五 试点):TYPE_SEARCH_RESULT 下线——SourceViewModel 增 SearchBatchListener,FastSearchActivity 注入/置空并主线程投递;refresh 订阅与常量删除。剩 quick 结果流(TYPE_QUICK_SEARCH_RESULT,Detail 侧)与后台通知(TYPE_REFRESH_NOTIFY,PlayService)继续按同类收口。(7d93a239)
