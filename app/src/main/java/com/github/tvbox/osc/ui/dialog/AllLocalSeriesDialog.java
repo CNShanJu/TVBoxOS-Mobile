@@ -46,7 +46,7 @@ public class AllLocalSeriesDialog extends AppDrawerPopupView {
         super.onCreate();
         View bg = findViewById(R.id.bg);
         bg.setBackgroundColor(ContextCompat.getColor(getContext(), R.color.bg_popup));
-        findViewById(R.id.v_gesture_line).setVisibility(GONE);
+        findViewById(R.id.v_drag_zone).setVisibility(GONE); // 右侧抽屉无拖拽手势条,隐藏热区
         RecyclerView rv = findViewById(R.id.rv);
 
         rv.setLayoutManager(new GridLayoutManager(getContext(), Utils.getSeriesSpanCount(mList)));

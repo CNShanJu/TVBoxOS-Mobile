@@ -43,7 +43,6 @@ import com.github.tvbox.osc.util.SubscriptionConfig
 import com.github.tvbox.osc.config.SystemConfig
 import com.github.tvbox.osc.viewmodel.SourceViewModel
 import com.lxj.xpopup.XPopup
-import com.owen.tvrecyclerview.widget.TvRecyclerView
 import com.owen.tvrecyclerview.widget.V7GridLayoutManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -366,8 +365,8 @@ class HomeFragment : BaseVbFragment<FragmentHomeBinding>() {
         val sites = SourceConfigProviders.get().sourceBeanList
         if (sites.size > 0) {
             val dialog = SelectDialog<SourceBean>(requireActivity())
-            val tvRecyclerView = dialog.findViewById<TvRecyclerView>(R.id.list)
-            tvRecyclerView.setLayoutManager(V7GridLayoutManager(dialog.context, 2))
+            dialog.setListLayoutManager(V7GridLayoutManager(dialog.context, 2))
+            dialog.setDynamicHeightByScreen(true) // 源列表按屏高分档动态撑高:大屏60%/小屏铺满/区间50%
             dialog.setTip("请选择首页数据源")
             dialog.setAdapter(object : SelectDialogInterface<SourceBean?> {
                 override fun click(value: SourceBean?, pos: Int) {

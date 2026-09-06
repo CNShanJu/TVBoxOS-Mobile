@@ -4,17 +4,27 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/bg"
     android:layout_width="match_parent"
-    android:layout_height="match_parent"
+    android:layout_height="wrap_content"
     android:orientation="vertical"
-    android:paddingTop="14dp"
+    android:paddingTop="8dp"
     android:paddingBottom="12dp">
 
-    <com.lihang.ShadowLayout
-        android:layout_width="30dp"
-        android:layout_height="2dp"
-        android:layout_gravity="center_horizontal"
-        app:hl_cornerRadius="10dp"
-        app:hl_layoutBackground="@color/gray_darker" />
+    <!-- 拖拽热区(手势条):内含细横条视觉,整块可按住上下拖动调整弹窗高度 -->
+    <LinearLayout
+        android:id="@+id/v_drag_zone"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center_horizontal"
+        android:paddingTop="6dp"
+        android:paddingBottom="6dp">
+
+        <com.lihang.ShadowLayout
+            android:layout_width="30dp"
+            android:layout_height="2dp"
+            android:layout_gravity="center_horizontal"
+            app:hl_cornerRadius="10dp"
+            app:hl_layoutBackground="@color/gray_darker" />
+    </LinearLayout>
 
     <!-- box1: 标题 + 已选计数 -->
     <LinearLayout
@@ -58,6 +68,7 @@
 
     <!-- box2: 集数列表,吃满剩余高度,内容超出内部滚动 -->
     <FrameLayout
+        android:id="@+id/list_box"
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1"

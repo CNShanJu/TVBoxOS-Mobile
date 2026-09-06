@@ -154,11 +154,22 @@ public final class DownloadDialogCoordinator {
                 new DownloadSeriesDialog(context, actions, host::isSeriesReversed),
                 ScreenUtils.getScreenHeight() * 2 / 3,
                 downloadDialogCallback());
+        // 懒加载:进详情页不预载下载数据,抽屉打开(onShow)才查询;
+        // 这里再监听拖拽“展开”动作:每次展开(拉到 70%)也重查一次下载状态,保证新数据即时可见
+        if (mDownloadDialog instanceof DownloadSeriesDialog) {
+            ((DownloadSeriesDialog) mDownloadDialog).setSheetActionListener(
+                    new SheetResizeController.ActionListener() {
+                        @Override public void onSheetExpanded() {
+                            refreshDownloadDialogStates();
+                        }
+                        @Override public void onSheetCollapsed() { }
+                        @Override public void onSheetClosed() { }
+                    });
+        }
         mDownloadDialog.show();
         // 实时刷新: 订阅下载状态变化(下载中进度/完成/失败 → 弹窗实时更新勾选态)
         DownloadFacade.get().register(downloadStatusListener);
-        // 后台准备数据(选集副本 + 下载状态批量查询),完成后主线程填充弹窗
-        refreshDownloadDialogStates();
+        // 数据首次查询放到抽屉展开回调 onShow 内执行(每次打开必查一次)
     }
 
     /** 两个弹窗共享的动作回调(同时满足两个弹窗各自的 Listener 子接口) */
@@ -189,7 +200,14 @@ public final class DownloadDialogCoordinator {
         return new com.lxj.xpopup.interfaces.XPopupCallback() {
             @Override public void onCreated(BasePopupView popupView) { }
             @Override public void beforeShow(BasePopupView popupView) { }
-            @Override public void onShow(BasePopupView popupView) { }
+
+            @Override
+            public void onShow(BasePopupView popupView) {
+                // 懒加载:抽屉真正展开后再查下载状态(每次打开都会查一次;进详情页不预载)
+                if (popupView instanceof DownloadSeriesDialog) {
+                    refreshDownloadDialogStates();
+                }
+            }
 
             @Override
             public void onDismiss(BasePopupView popupView) {

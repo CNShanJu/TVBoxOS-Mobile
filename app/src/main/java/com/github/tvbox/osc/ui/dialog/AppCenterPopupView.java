@@ -17,7 +17,7 @@ import com.lxj.xpopup.core.CenterPopupView;
  *   <li>背景统一 {@link R.drawable#bg_large_round_popup}(全圆角 + bg_popup 主题色)——由布局根设置,
  *       基类不强设避免与 XPopup 默认容器叠加产生四角异常;</li>
  *   <li>最大宽度统一 {@link DialogStyle#CENTER_MAX_WIDTH_DP},窄屏自适应;</li>
- *   <li>最大高度统一 屏幕 70%,内容超限自动包 ScrollView 内部滚动,不撑满全屏;</li>
+ *   <li>最大高度统一按 {@link DialogHeightPolicy} 分档封顶(内容自适应,超高自动包 ScrollView 内部滚动);</li>
  * </ul>
  * 调主题背景/宽度/高度只改基类/常量,一处生效全部居中弹窗。
  * 子类实现 {@link #getImplLayoutId()} 与 {@link #onCreate()};
@@ -39,11 +39,14 @@ public abstract class AppCenterPopupView extends CenterPopupView {
         return Math.round(dp * getContext().getResources().getDisplayMetrics().density);
     }
 
-    /** 统一最大高度:短边 70%(横竖屏一致——横屏时短边=竖屏高,防横屏挤压;内容多时内部滚动) */
+    /**
+     * 统一最大高度:按“屏幕可用高度(dp)”分档封顶(≥700dp→60%、≤480dp→铺满、区间→50%),
+     * 内容少时保持内容自然高度;内容超高时内部滚动。
+     * 阈值/占比集中在 {@link DialogHeightPolicy}。
+     */
     @Override
     protected int getMaxHeight() {
-        int shortSide = Math.min(ScreenUtils.getScreenWidth(), ScreenUtils.getScreenHeight());
-        return Math.round(shortSide * 0.7f);
+        return DialogHeightPolicy.maxHeightPx(getContext());
     }
 
     /**

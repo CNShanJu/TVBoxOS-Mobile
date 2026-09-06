@@ -26,10 +26,10 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * 选择下载剧集弹窗（底部样式）：三 box 布局（标题 / 集数列表吃满剩余+内部滚动 / 按钮）。
- * 数据与交互收敛到 {@link DownloadSeriesPanel}（与全屏抽屉共用），本类只保留底部壳与渲染差异（间距 20）。
+ * 选择下载剧集弹窗（底部样式）：标题 / 集数列表吃满剩余+内部滚动 / 按钮。
+ * 数据与交互收敛到 {@link DownloadSeriesPanel}（与全屏抽屉共用），本类只保留底部壳与渲染差异。
  */
-public class DownloadSeriesDialog extends AppBottomPopupView {
+public class DownloadSeriesDialog extends SheetResizableBottomPopup {
 
     /** 兼容别名：与全屏抽屉同一组下载动作回调（共享 {@link DownloadSeriesPanel.Listener}） */
     public interface OnDownloadActionListener extends DownloadSeriesPanel.Listener {
@@ -45,6 +45,8 @@ public class DownloadSeriesDialog extends AppBottomPopupView {
     private ItemAdapter mAdapter;
     private GridLayoutManager mGridManager;
     private GridSpacingItemDecoration mGridDecoration;
+    /** 由外部(DownloadDialogCoordinator)注入:拖拽 展开/收回/收起 动作回传(懒加载数据刷新等) */
+    private SheetResizeController.ActionListener mSheetActionListener;
 
     public DownloadSeriesDialog(@NonNull @NotNull Context context,
                                 OnDownloadActionListener listener,
@@ -93,6 +95,14 @@ public class DownloadSeriesDialog extends AppBottomPopupView {
             mRv.setVisibility(View.GONE);
         }
 
+        // 手势/点击热区:loading 阶段先按收起态 50% 占位;数据就绪后由 setData 触发 sync
+        // (不自动 sync:内容就绪时机由 DownloadDialogCoordinator 的数据刷新决定)
+        attachSheet(R.id.bg, R.id.list_box, R.id.rv, false);
+        if (mSheetActionListener != null) {
+            SheetResizeController ctrl = sheetResize();
+            if (ctrl != null) ctrl.setActionListener(mSheetActionListener);
+        }
+
         updateCount();
         // 倒序按钮:文字随共用状态切换(未倒序=倒序, 已倒序=正序)
         mTvSort = findViewById(R.id.tv_sort);
@@ -122,6 +132,13 @@ public class DownloadSeriesDialog extends AppBottomPopupView {
         return mPanel.getCurrentList();
     }
 
+    /** 注入拖拽 展开/收回/收起 动作回传(懒加载数据刷新等宿主行为,见 DownloadDialogCoordinator) */
+    public void setSheetActionListener(SheetResizeController.ActionListener listener) {
+        mSheetActionListener = listener;
+        SheetResizeController ctrl = sheetResize();
+        if (ctrl != null) ctrl.setActionListener(listener);
+    }
+
     /** 数据准备完成后填充(主线程调用):显示选集网格,隐藏 loading */
     public void setData(List<VodInfo.VodSeries> list, int[] states) {
         mPanel.setData(list, states);
@@ -136,6 +153,13 @@ public class DownloadSeriesDialog extends AppBottomPopupView {
             mAdapter.setNewData(mList);
         }
         updateCount();
+        // 内容就绪后按内容定高(内容少→自适应;多→定高+可展开),等待一帧让列表完成布局
+        if (mRv != null) {
+            mRv.post(() -> {
+                SheetResizeController ctrl = sheetResize();
+                if (ctrl != null && isShow()) ctrl.sync();
+            });
+        }
     }
 
     /** 更新网格列数与间距装饰(1列/2列/3列) */

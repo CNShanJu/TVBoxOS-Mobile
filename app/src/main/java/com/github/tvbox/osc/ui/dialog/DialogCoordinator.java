@@ -55,6 +55,7 @@ public final class DialogCoordinator {
 
     /**
      * 右侧全屏抽屉（view 模式避免手势条闪烁；禁拖拽由调用方按内容决定）。
+     * 宽度除 widthDp 外还受横向抽屉分档上限约束(见 {@link AppDrawerPopupView#getMaxWidth()})。
      *
      * @param widthDp   抽屉宽度 dp（300/320/360 等，随内容定；<=0 用 XPopup 默认宽）
      * @param enableDrag 是否允许横向拖拽关闭（内部含横向列表的传 false）
@@ -106,6 +107,31 @@ public final class DialogCoordinator {
         XPopup.Builder builder = new XPopup.Builder(ctx)
                 .isViewMode(true)
                 .hasNavigationBar(false);
+        if (heightPx > 0) {
+            builder = builder.popupHeight(heightPx);
+        }
+        if (callback != null) {
+            builder = builder.setPopupCallback(callback);
+        }
+        return builder.asCustom(content);
+    }
+
+    /**
+     * 可上拉拖拽的纵向抽屉(底部弹窗,XPopup enableDrag 走 SmartDragLayout 手势):
+     * 高度分档同纵向抽屉策略,区间档(480~700dp 屏高)上限由 50% 放宽到 70%
+     * (见 {@link DialogHeightPolicy#bottomDrawerMaxHeightPx(Context, boolean)})。
+     */
+    public static BasePopupView bottomDraggable(Context ctx, BasePopupView content, int heightPx) {
+        return bottomDraggable(ctx, content, heightPx, null);
+    }
+
+    /** {@link #bottomDraggable(Context, BasePopupView, int)} + 生命周期回调 */
+    public static BasePopupView bottomDraggable(Context ctx, BasePopupView content, int heightPx,
+                                                XPopupCallback callback) {
+        XPopup.Builder builder = new XPopup.Builder(ctx)
+                .isViewMode(true)
+                .hasNavigationBar(false)
+                .enableDrag(true);
         if (heightPx > 0) {
             builder = builder.popupHeight(heightPx);
         }

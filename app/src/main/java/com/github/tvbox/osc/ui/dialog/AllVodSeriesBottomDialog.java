@@ -21,10 +21,10 @@ import org.jetbrains.annotations.NotNull;
 import java.util.List;
 
 /**
- * 全集弹窗(详情页"全部"):RoundChip 文字样式(与全屏选集/下载抽屉统一,无边框无背景),固定3列,单选。
+ * 全集弹窗(详情页"全部"):RoundChip 文字样式(与全屏选集/下载抽屉统一,无边框无背景),网格,单选。
  * 不像全屏右侧弹窗一样共用activity的adapter,adapter横向和网格布局逻辑不同,同屏显示切换会有视觉差
  */
-public class AllVodSeriesBottomDialog extends AppBottomPopupView {
+public class AllVodSeriesBottomDialog extends SheetResizableBottomPopup {
 
     List<VodInfo.VodSeries> mList;
     private final OnSelectListener mSelectListener;
@@ -82,11 +82,14 @@ public class AllVodSeriesBottomDialog extends AppBottomPopupView {
 
         rv.postDelayed(() -> {//xpopup重写maxHeight后布局完成未滑动完毕导致定位异常,加延时可正常滑动
             for (int i = 0; i < mList.size(); i++) {
-                if (mList.get(i).selected){
+                if (mList.get(i).selected) {
                     rv.smoothScrollToPosition(i);
                 }
             }
-        },500);
+        }, 500);
+
+        // 顶部手势条/标题一带可拖、可点:默认 50%;内容少时自适应(不拉伸),内容超高可展开到 70%
+        attachSheet(R.id.bg, R.id.list_box, R.id.rv, true);
 
         seriesAdapter.setOnItemClickListener((adapter, view, position) -> {
             for (int j = 0; j < seriesAdapter.getData().size(); j++) {
@@ -95,9 +98,8 @@ public class AllVodSeriesBottomDialog extends AppBottomPopupView {
             }
             seriesAdapter.getData().get(position).selected = true;
             seriesAdapter.notifyItemChanged(position);
-            mSelectListener.onSelect(position,"");
+            mSelectListener.onSelect(position, "");
         });
-
     }
 
     /** 倒序按钮文字跟随共用状态:已倒序显示"正序",否则"倒序" */

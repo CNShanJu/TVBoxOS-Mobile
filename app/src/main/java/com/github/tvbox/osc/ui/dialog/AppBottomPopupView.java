@@ -15,7 +15,8 @@ import com.lxj.xpopup.core.BottomPopupView;
 /**
  * 统一的底部弹窗基类:
  * 背景统一使用 {@link R.drawable#bg_bottom_dialog}(顶部圆角 + bg_popup 主题色),
- * 最大高度统一 短边 80%(横竖屏一致); 横屏时宽度限制为屏幕 55% 居中, 防全宽挤压。
+ * 最大高度统一按 {@link DialogHeightPolicy} 分档封顶(内容自适应,内容少时保持内容高);
+ * 横屏时宽度限制为屏幕 55% 居中, 防全宽挤压。
  * 调主题背景/尺寸只改基类/常量,一处生效全部底部弹窗。
  * 子类只需实现 {@link #getImplLayoutId()} 与各自 {@link #onCreate()};
  * 标题+内容+按钮结构时,中间内容区用 weight=1 + 内部滚动,避免挤压上下标题/按钮。
@@ -27,11 +28,15 @@ public abstract class AppBottomPopupView extends BottomPopupView {
         super(context);
     }
 
-    /** 统一最大高度:短边 80%(横竖屏一致——横屏时短边=竖屏高,防横屏挤压) */
+    /**
+     * 纵向抽屉最大高度:按“屏幕可用高度(dp)”分档(≤480dp→铺满、≥700dp→固定 540dp、区间→50%,
+     * 区间档可拖拽展开(enableDrag)时放宽到 70%);内容少时保持内容自然高度。
+     * 阈值/数值集中在 {@link DialogHeightPolicy}。
+     */
     @Override
     protected int getMaxHeight() {
-        int shortSide = Math.min(ScreenUtils.getScreenWidth(), ScreenUtils.getScreenHeight());
-        return Math.round(shortSide * 0.8f);
+        boolean dragExpandable = popupInfo != null && popupInfo.enableDrag;
+        return DialogHeightPolicy.bottomDrawerMaxHeightPx(getContext(), dragExpandable);
     }
 
     @Override
