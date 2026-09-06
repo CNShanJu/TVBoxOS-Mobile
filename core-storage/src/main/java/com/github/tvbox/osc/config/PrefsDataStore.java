@@ -35,7 +35,7 @@ public final class PrefsDataStore {
     private PrefsDataStore() {
     }
 
-    /** App 启动调用一次(DataStore 为运行权威;旧 Hawk 键一次性迁移通道已下线,见 KeyValueStore) */
+    /** App 启动调用一次(DataStore 为运行权威;DataStore 为运行权威;旧 Hawk 一次性迁移通道已下线退役) */
     public static void init(Context context) {
         if (store != null) return;
         synchronized (PrefsDataStore.class) {

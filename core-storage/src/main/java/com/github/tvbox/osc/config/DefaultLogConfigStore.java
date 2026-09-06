@@ -19,29 +19,7 @@ public final class DefaultLogConfigStore implements LogConfigStore {
     }
 
     public static LogConfigStore get() {
-        migrateLegacy();
         return INSTANCE;
-    }
-
-    /** 旧 Hawk 存量一次性迁移到 PrefsDataStore(日志三键) */
-    private static synchronized void migrateLegacy() {
-        if (migrated) return;
-        migrated = true;
-        try {
-            move(KEY_ENABLED, false);
-            move(KEY_LEVEL, 1);
-            move(KEY_RETENTION, 7);
-        } catch (Throwable ignored) {
-        }
-    }
-
-    @SuppressWarnings("unchecked")
-    private static <T> void move(String key, T defValue) {
-        if (KeyValueStore.contains(key)) {
-            T v = (T) KeyValueStore.get(key, null);
-            PrefsDataStore.put(key, v == null ? defValue : v);
-            KeyValueStore.delete(key);
-        }
     }
 
     @Override

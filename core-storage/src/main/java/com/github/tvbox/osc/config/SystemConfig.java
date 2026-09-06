@@ -40,60 +40,6 @@ public final class SystemConfig {
 
     private static final List<Listener> listeners = new CopyOnWriteArrayList<>();
 
-    static {
-        migrateLegacy();
-    }
-
-    /** 旧 Hawk 存量一次性迁移到 PrefsDataStore(DataStore 化扩域;类加载执行,PrefsDataStore 已由 App 启动早期 init) */
-    private static volatile boolean migratedLegacy = false;
-
-    private static synchronized void migrateLegacy() {
-        if (migratedLegacy) return;
-        migratedLegacy = true;
-        try {
-            moveInt(KEY_DOH_URL, 0);
-            moveInt(KEY_THEME, 0);
-            moveInt(KEY_HOME_REC, 0);
-            moveInt(KEY_HISTORY_NUM, 0);
-            moveString(KEY_LIVE_URL, "");
-            moveBool(KEY_PRIVATE_BROWSING, false);
-            moveBool(KEY_SHOW_PREVIEW, true);
-            moveBool(KEY_FAST_SEARCH_MODE, false);
-            moveBool(KEY_DEBUG_OPEN, false);
-            moveBool(KEY_IGNORE_SSL_ERROR, false);
-            moveBool(KEY_LAN_SERVER_ENABLE, false);
-            // loading_anim:仅迁移字符串(旧数字型 0/1 极老选择已弃,不迁移避免类型冲突)
-            if (KeyValueStore.contains(KEY_LOADING_ANIM)) {
-                Object legacy = KeyValueStore.get(KEY_LOADING_ANIM, null);
-                if (legacy instanceof String) {
-                    PrefsDataStore.put(KEY_LOADING_ANIM, legacy);
-                }
-                KeyValueStore.delete(KEY_LOADING_ANIM);
-            }
-        } catch (Throwable ignored) {
-        }
-    }
-
-    private static void moveInt(String key, int def) {
-        if (KeyValueStore.contains(key)) {
-            PrefsDataStore.put(key, KeyValueStore.getInt(key, def));
-            KeyValueStore.delete(key);
-        }
-    }
-
-    private static void moveBool(String key, boolean def) {
-        if (KeyValueStore.contains(key)) {
-            PrefsDataStore.put(key, KeyValueStore.getBoolean(key, def));
-            KeyValueStore.delete(key);
-        }
-    }
-
-    private static void moveString(String key, String def) {
-        if (KeyValueStore.contains(key)) {
-            PrefsDataStore.put(key, KeyValueStore.getString(key, def));
-            KeyValueStore.delete(key);
-        }
-    }
 
     private SystemConfig() {
     }
