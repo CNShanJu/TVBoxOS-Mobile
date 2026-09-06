@@ -70,7 +70,7 @@ app / feature
 ## 六、验收红线(新代码不得触碰)
 
 1. app 内基本搜索不到 `getCSP()`、`DownloadManager.get()` 与具体播放器内核直调(见 `checkModuleDependencies` 门禁)。
-2. UI/页面层禁止裸读 Hawk 或具体配置单例(一律经 KeyValueStore/DataStore 之上的业务 Config 门面,如 SystemConfig/LiveConfig/PlayConfig/SubscriptionConfig)。
+2. UI/页面层禁止裸读 Hawk 或具体配置单例(一律经业务 Config 门面读写,如 SystemConfig/LiveConfig/PlayConfig/SubscriptionConfig;底层为 core-storage `PrefsDataStore`/DataStore)。
 3. UI 禁止自建线程池;禁止 `(Activity) context` 强转具体 Activity 依赖弹窗/组件(依赖经构造注入窄宿主接口)。
 4. UI 组件禁止发 EventBus 业务事件;新代码禁止新增 EventBus 事件。
 5. 模块依赖只增公开契约接口;Gradle 依赖默认 `implementation`,谨慎 `api`。
@@ -119,7 +119,7 @@ app / feature
 
 ## 十、常用基础设施速查
 
-- 配置:core-storage `config.PrefsDataStore`(DataStore,运行权威)+ `KeyValueStore`(兼容/迁移);各业务 Config 门面见 `com.github.tvbox.osc.config`(SystemConfig)与各模块 config 包。
+- 配置:core-storage `config.PrefsDataStore`(DataStore,运行权威;历史 Hawk 一次性迁移通道 `KeyValueStore` 已随 hawk 退役下线);各业务 Config 门面见 `com.github.tvbox.osc.config`(SystemConfig)与各模块 config 包。
 - 契约 Providers(app 侧桥接 :spider 实现):`spider-api.SourceConfigProviders/ParseConfigProviders/LiveChannelConfigApi/SourceLoaderApi/IjkCodecConfigProviders` 等,业务/UI 一律经它们取源元信息,禁止直触 ApiConfig。
 - 弹窗:统一 `ui/dialog/DialogCoordinator`(center/right/bottom/loading/confirm);同构内容层合并用共享 Panel(如 LiveSettingPanel/DownloadSeriesPanel/PlayingControlPanel),Bottom/Right 收敛为薄壳。
 - 共享执行器:`util/HeavyTaskUtil`(getBigTaskExecutorService 并行 / getSerialExecutorService 串行);配合 epoch/过期自检做取消语义。
