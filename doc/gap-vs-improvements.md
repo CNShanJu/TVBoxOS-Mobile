@@ -457,3 +457,4 @@ EventBus 订阅方已收敛 4 个真实方;仍剩多源结果流(TYPE_SEARCH_RES
 - ✅ 死代码清扫:app 模块删除 14 个零引用类(旧 EPG/直播控制器/列表适配/旧控件/工具,-1099 行,06adec9c/504c77a6);其余模块全仓扫描仅 4 候选均判定保留(CaocInitProvider=crash Manifest auto-init Provider;SpiderDebug/SpiderJS/UTF8BOMFighter=QuickJS JS 桥按名反射,需 jar/真机确认后才可删)。
 - ✅ 静态审计追加:共享 DTO(Movie/VodInfo/Abs*/SourceBean/Subscription 等)确认单源在 :core-model,app/spider 仅存 UI 本地模型(Epginfo/VideoFolder/VideoInfo/Doh),无重复定义;app 移除重复 kotlin-stdlib 声明(依赖面未见其它零引用项)。
 - ✅ 门禁硬化(改进.txt §六/AGENTS §六 落地):checkModuleDependencies 现自动扫描 app(含测试)的 getCSP 直调/Hawk import/DownloadManager.get() 直调/业务自建 OkHttpClient,违规即抛错;此前仅靠人工 grep。
+- ✅ 门禁再硬化:UI 层红线自动化(app/ui 禁 IJK/Exo 内核 import 与自建线程池),与验收红线扫描一并入 checkModuleDependencies。
