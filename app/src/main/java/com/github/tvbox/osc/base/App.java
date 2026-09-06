@@ -18,7 +18,6 @@ import com.github.tvbox.osc.ui.activity.MainActivity;
 import com.github.tvbox.osc.util.AppLog;
 import com.github.tvbox.osc.util.FileUtils;
 import com.github.tvbox.osc.config.HawkConfig;
-import com.github.tvbox.osc.config.KeyValueStore;
 import com.github.tvbox.osc.util.LOG;
 import com.github.tvbox.osc.util.OkGoHelper;
 import com.github.tvbox.osc.util.PlayerHelper;
@@ -130,8 +129,6 @@ public class App extends MultiDexApplication {
     }
 
     private void initParams() {
-        // 键值存储(config 包封装;内部 Hawk)
-        KeyValueStore.init(this);
         // 现代化偏好存储(Preferences DataStore;标量域逐步迁移,见 DownloadPolicy 试点)
         com.github.tvbox.osc.config.PrefsDataStore.init(this);
         com.github.tvbox.osc.config.PrefsDataStore.put(HawkConfig.DEBUG_OPEN, false);
