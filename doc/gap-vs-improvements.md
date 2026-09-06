@@ -396,6 +396,9 @@ Exo→Media3、EventBus→Flow/接口、Hawk→DataStore、Java→Kotlin 渐进�
    `doc/后续改造评估.md` A.3。(4b775b18/3d9d9dcc)
 - ✅ 死代码清理:删除零引用 `util/AppBizLog`(业务日志门面,已被 :log LogStore/CategoryLogger 取代;
    目录文档未收录,无需同步)。TLSSocketFactory 仍待并行目录文档合流后删除。(6dad955a)
+- ✅ 疑似缺陷记录(不贸然改):FormatASS 样式段解析缺陷复现并登记(评估文档 §E)——外层循环
+   段内读取会吞掉下一个段头,Styles 段不进入(.ass 样式丢失)。修复需真实 .ass 语料+真机
+   渲染比对,暂缓。(b6c94a9b)
 
 ## 9. 待真机回归后继续(播放器主线尾段,当前挂起)
 > 集中回归清单见 `doc/device-regression-checklist.md`(按功能域分组,门禁绿后逐项过)。
