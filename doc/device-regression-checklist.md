@@ -58,6 +58,8 @@
 - [ ] Exo(play_type=2):同上(起播已验证 ✓)
 - [ ] 后台播放/通知栏切集;断点续播(PlayHistoryRepository)与播放会话键配对
 - [ ] 会话 bind/release 无泄漏(进出详情/连续切集/页面销毁),共享 mVideoView 不被会话误释放
+  - 首轮冒烟:连续进出详情 2 次,IJK 每次重新起流(线程 21024→21593,onNativeInvoke 正常),
+    无崩溃/ClassNotFound/FATAL,共享视图可复用 ✓;bind/unbind 精确配对需业务日志核对(见下注)
   - 注:本机型 logcat 全局滤掉 D 级,PlaybackSession 的 `Log.d` bind/unbind 不可见;核对须
     看 app 业务日志(PLAYER 类)或换带 D 级机型,不能以 logcat 无输出判否。
 
