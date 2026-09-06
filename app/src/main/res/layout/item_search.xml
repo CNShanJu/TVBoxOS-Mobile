@@ -1,20 +1,22 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
-    android:layout_height="183dp"
+    android:layout_height="150dp"
     xmlns:tools="http://schemas.android.com/tools"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:paddingHorizontal="10dp"
-    android:layout_marginTop="16dp"
-    android:layout_marginBottom="16dp"
+    android:layout_marginTop="20dp"
+    android:layout_marginBottom="20dp"
     android:orientation="horizontal">
 
-    <!-- 海报图:图/文 weight 3.5/6.5,3:4 竖图,centerCrop 不变形 -->
+    <!-- 海报图:图/文 weight 3.5/6.5;圆角由 View 层裁切兜底(加载/占位也圆角) -->
     <ImageView
         android:id="@+id/ivThumb"
         android:layout_width="0dp"
         android:layout_weight="3.5"
         android:layout_height="match_parent"
+        android:background="@drawable/bg_img_round_corner"
+        android:clipToOutline="true"
         android:scaleType="centerCrop"/>
 
     <LinearLayout

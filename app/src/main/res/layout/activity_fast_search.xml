@@ -156,7 +156,7 @@
                 android:visibility="invisible"
                 app:tv_horizontalSpacingWithMargins="@dimen/dp_5"
                 app:tv_selectedItemIsCentered="true"
-                app:tv_verticalSpacingWithMargins="@dimen/dp_5" />
+                app:tv_verticalSpacingWithMargins="@dimen/dp_12" />
 
             <com.owen.tvrecyclerview.widget.TvRecyclerView
                 android:id="@+id/mGridViewFilter"
@@ -167,7 +167,7 @@
                 android:visibility="invisible"
                 app:tv_horizontalSpacingWithMargins="@dimen/dp_5"
                 app:tv_selectedItemIsCentered="true"
-                app:tv_verticalSpacingWithMargins="@dimen/dp_5" />
+                app:tv_verticalSpacingWithMargins="@dimen/dp_12" />
 
         </LinearLayout>
 

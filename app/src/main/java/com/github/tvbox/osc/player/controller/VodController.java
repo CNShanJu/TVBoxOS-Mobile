@@ -205,7 +205,6 @@ public class VodController extends BaseController implements PlaybackSettingsCon
         // 画中画按钮:设备支持小窗就始终显示(手动进入小窗的入口),与"后台播放"设置无关。
         // "后台播放"设置控制的是按Home切后台时的行为:0关闭/1后台续播/2自动进小窗
         pip.setVisibility(Utils.supportsPiPMode() ? VISIBLE : GONE);
-        mMyBatteryView = findViewById(R.id.battery);
         mTopRightDeviceInfo = findViewById(R.id.container_top_right_device_info);
         mLlSpeed = findViewById(R.id.ll_speed);
         mTvSpeedTip = findViewById(R.id.tv_speed);

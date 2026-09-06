@@ -76,8 +76,11 @@ public class PlayerTitleView extends FrameLayout implements IControlComponent {
         });
         mTitle = findViewById(R.id.title);
         mSysTime = findViewById(R.id.sys_time);
-        //电量
+        // 左侧频道/标题字号与右侧系统时间保持一致(以时间为基准,避免名称过大)
+        mTitle.setTextSize(android.util.TypedValue.COMPLEX_UNIT_PX, mSysTime.getTextSize());
+        //电量 icon 移除:隐藏并停止更新(与全屏控制栏一致,不再显示电池)
         ImageView batteryLevel = findViewById(R.id.iv_battery);
+        batteryLevel.setVisibility(GONE);
         mBatteryReceiver = new BatteryReceiver(batteryLevel);
     }
 

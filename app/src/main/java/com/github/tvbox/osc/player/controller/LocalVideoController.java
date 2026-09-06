@@ -188,7 +188,6 @@ public class LocalVideoController extends BaseController implements PlaybackSett
         View pip = findViewById(R.id.pip);
         // 画中画按钮:设备支持小窗就显示(与在线播放一致)
         pip.setVisibility(Utils.supportsPiPMode() ? VISIBLE : GONE);
-        mMyBatteryView = findViewById(R.id.battery);
         mCurrentTime = findViewById(R.id.curr_time);
         mTvSpeedTip = findViewById(R.id.tv_speed);
         mLlSpeed = findViewById(R.id.ll_speed);

@@ -19,6 +19,7 @@ import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
+import com.github.tvbox.osc.R;
 import com.github.tvbox.osc.util.LoadingAnim;
 import java.util.Map;
 
@@ -116,6 +117,12 @@ public abstract class BaseController extends BaseVideoController implements Gest
         mNetSpeed = findViewWithTag("play_load_net_speed"); // 直播布局无此 tag → null,仅控 loading
         // 播放器加载动画跟随设置页"加载动画"选项(默认/Glowing Fish)
         LoadingAnim.apply(mLoading);
+        // 直播全屏控制器根统一固定 30dp 边距:标题栏/右侧菜单/底部控制条等 doikki 组件
+        // 全部内缩相同距离、位置恒定,不读取挖孔安全区(固定值,无视摄像头)。
+        if (getLayoutId() == R.layout.player_live_control_view) {
+            int side = Math.round(30f * getResources().getDisplayMetrics().density);
+            setPadding(side, 0, side, 0);
+        }
         // 初始也走状态机:控制器刚 inflate、尚未收到播放状态回调时,把初始态视作 STATE_IDLE
         // 收敛一次——loading/网速的显隐唯一由 refreshLoadingUi 决定,不依赖布局默认值,
         // 也不存在"手动隐藏"的第二条路径。

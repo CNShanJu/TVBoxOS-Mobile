@@ -14,8 +14,8 @@
             android:layout_height="wrap_content"
             android:visibility="gone"
             tools:visibility="visible"
-            android:layout_marginStart="@dimen/dp_20"
-            android:layout_marginLeft="@dimen/dp_20"
+            android:layout_marginStart="@dimen/dp_30"
+            android:layout_marginLeft="@dimen/dp_30"
             android:layout_marginTop="18dp"
             android:orientation="vertical">
 
@@ -89,7 +89,7 @@
         android:layout_height="wrap_content"
         android:layout_gravity="end|top"
         android:layout_marginTop="18dp"
-        android:layout_marginRight="@dimen/dp_20"
+        android:layout_marginRight="@dimen/dp_30"
         android:gravity="end"
         android:orientation="vertical"
         android:visibility="gone"
@@ -126,12 +126,6 @@
                 android:tag="vod_control_pause_time"
                 android:text="12:00"
                 android:textColor="@color/white" />
-
-            <com.github.tvbox.osc.ui.widget.MyBatteryView
-                android:id="@+id/battery"
-                android:layout_width="26dp"
-                android:layout_height="14dp"
-                android:layout_toEndOf="@+id/tv_sys_time" />
         </LinearLayout>
 
         <LinearLayout
@@ -155,7 +149,7 @@
                 android:layout_width="30dp"
                 android:layout_height="30dp"
                 android:layout_marginEnd="8dp"
-                android:padding="4dp"
+                android:padding="3dp"
                 android:scaleType="centerCrop"
                 android:src="@drawable/ic_cast"
                 android:layout_marginStart="4dp"
@@ -166,7 +160,7 @@
                 android:layout_width="30dp"
                 android:layout_height="30dp"
                 android:scaleType="centerCrop"
-                android:padding="2dp"
+                android:padding="3dp"
                 android:src="@drawable/ic_setting"
                 android:tint="@color/white"
                 android:layout_marginStart="4dp"
@@ -208,7 +202,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginBottom="@dimen/dp_10"
-            android:layout_marginHorizontal="20dp"
+            android:layout_marginHorizontal="@dimen/dp_30"
             android:orientation="horizontal"
             android:visibility="gone"
             tools:visibility="visible">
@@ -240,7 +234,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginBottom="14dp"
-            android:layout_marginHorizontal="20dp"
+            android:layout_marginHorizontal="@dimen/dp_30"
             android:orientation="horizontal"
             android:gravity="center_vertical">
 
