@@ -429,6 +429,11 @@ Exo→Media3、EventBus→Flow/接口、Hawk→DataStore、Java→Kotlin 渐进�
   VOD_CONTROL 广播通道。真机验证:后台播放下会话 MBoxPlayback 注册,
   `cmd media_session dispatch play/pause` 双向驱动——play→PLAYING+进度推进,pause→PAUSED+
   position 冻结。控制中心/锁屏媒体卡由此可暂停/继续/切集。(ba7e685b,门禁全绿)
+- ✅ K5/§J 子步:type3 typed 解析权威单一化——SpiderHomeImpl.parse/SpiderDetailImpl.detail/
+  SpiderSearchImpl.search 删除各自内联的"Gson→AbsJson→toAbsXml"双实现,统一复用与 VM 同源的
+  AbsXmlParser.parseJson(含 normalize);VM 消费点二次归一(parseJson 内部 + absXml())由新增
+  幂等单测 normalize_isIdempotent 锁定无害。VM type0/1/4 六入口 typed-first 收敛为行为面,
+  按评估 §J 需逐源真机回归,留真机批。(0cce8442,门禁全绿)
 
 ## 9. 待真机回归后继续(播放器主线尾段,当前挂起)
 > 集中回归清单见 `doc/device-regression-checklist.md`(按功能域分组,门禁绿后逐项过)。
@@ -452,6 +457,7 @@ Exo→Media3、EventBus→Flow/接口、Hawk→DataStore、Java→Kotlin 渐进�
 | :playback / feature-* 模块 | ❌ 未建 | 阶段三/四;需真机回归环境 |
 | :core-network 杂项袋拆分 | ✅ 完成 | AES/MD5→:core-utils、urlhttp 旧栈删除、AdBlocker→:core-utils、SubUrlResolver(s)→:spider、LOG/AppLog→:core-storage(5bf1d01d);util 余纯网络职责 |
 | 字符串通道 SpiderContentApi | ⚠️ 澄清:typed 底座,非删除项 | typed 实现(SpiderHome/Detail/SearchImpl)内部经 SpiderContentImpl 拉取后再解析,string 通道是运行底座;可治理点=收窄 app 直用面(SourceViewModel typed-first+fallback),需真机背书(见评估 §H) |
+| SourceViewModel type0/1/4 契约化 | ⏳ 解析层已收口 | typed 解析已与 VM 同源(AbsXmlParser,0cce8442);VM type0/1/4 六入口 typed-first 收敛为行为面,需逐源真机回归(见评估 §J/K5) |
 | 播放器内核收口 | ⚠️ | UI 层内核直用清零(SettingActivity DoT 收口 PlayerTrackHelper,45ea6745);MyVideoView 仍 7 文件 import(播放器全驱动 P1-P4 待真机) |
 | Exo→Media3 | ❌ | player 仍 exoplayer 2.18.7,media3 import 0 |
 | :ui-common / ui-kit 边界 | ✅ 达标 | ui-common 纯资源(0 java,107 res);ui-kit 15 组件无 Hawk/EventBus/ApiConfig/Activity 强转/自建线程池违例;拆独立模块待复用稳定(见评估 §I) |
