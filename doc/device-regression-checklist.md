@@ -60,7 +60,12 @@
 - [ ] Exo(play_type=2):同上(起播已验证 ✓)
 - [ ] 后台播放/通知栏切集;断点续播(PlayHistoryRepository)与播放会话键配对
   - 注:详情页**预览小窗** Home 后由 onStop 兜底暂停,不产生后台通知(预期);通知栏后台播放需
-    全屏播放路径验证,本轮未驱动到,待人工
+    全屏播放路径验证。代码路径核查:manifest 已声明 FOREGROUND_SERVICE+MEDIA_PLAYBACK 权限与
+    PlayService foregroundServiceType="mediaPlayback"(未导出),DetailActivity onUserLeaveHint
+    (type=1→openBackgroundPlay)→onPause→playServerSwitch→PlayService.start 链路完整,未见缺陷;
+    adb 注入 Home 的时序无法把播放器稳定留在"播放中"态复现通知,通知栏显示/切集操作待人工真机
+  - 2026-09-06 补充:设置页将后台播放类型由"画中画"切"开启"成功持久化(冷启仍在);通知权限
+    授予后 appops POST_NOTIFICATION=allow
 - [ ] 会话 bind/release 无泄漏(进出详情/连续切集/页面销毁),共享 mVideoView 不被会话误释放
   - 首轮冒烟:连续进出详情 2 次,IJK 每次重新起流(线程 21024→21593,onNativeInvoke 正常),
     无崩溃/ClassNotFound/FATAL,共享视图可复用 ✓;bind/unbind 精确配对需业务日志核对(见下注)
