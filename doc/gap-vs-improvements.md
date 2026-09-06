@@ -271,6 +271,8 @@ Exo→Media3、EventBus→Flow/接口、Hawk→DataStore、Java→Kotlin 渐进�
   public 入口转发协调器;同步清理 30+ 失效 import。DetailActivity 1244→993 行。
   (013f9c15)真机回归点:详情"下载"底部弹窗、全屏控制栏右侧抽屉、选集勾选/排序保留、
   批量下载文案、下载状态实时刷新。
+- ✅ DetailActivity 再清理零调用死方法 getHtml;同时并行侧提交搜索卡片/全屏控制样式批
+  (9bb20a51),整仓门禁复绿。DetailActivity →987 行。(254bb13d)
 - ✅ 直播分组密码门禁抽离 `util/LiveChannelAuth`:isPasswordConfirmed/needInputPassword/
   visibleChannels 纯逻辑(组数据+确认集合传参),LiveActivity 三方法改委托;单测 4 例。
   (9bdcc169)
