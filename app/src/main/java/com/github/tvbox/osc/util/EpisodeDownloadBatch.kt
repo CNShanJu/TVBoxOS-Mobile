@@ -175,7 +175,7 @@ object EpisodeDownloadBatch {
                 val ok = DownloadFacade.get().enqueue(
                     DownloadRequest(
                         url, sourceKey, playFlag, s.url, episodeId,
-                        vi.pic, rr.headers, sourceName, vodName, epName
+                        vi.pic, rr?.headers, sourceName, vodName, epName
                     )
                 )
                 Log.i("TVBox-Download", "  - " + s.name + " enqueue=" + ok + " 文件名=" + epName + " url=" + url)
