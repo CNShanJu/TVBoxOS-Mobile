@@ -320,6 +320,15 @@ Exo→Media3、EventBus→Flow/接口、Hawk→DataStore、Java→Kotlin 渐进�
   (parseFlag/webUrl/UA/headers)全部收口,PlayFragment 只实现宿主回调(提示/播放/错误重试/解析源展示/
   主线程投递)与 setSourceBean;PlayFragment 1607→997 行。startPlayUrl 仍留宿主(播放器会话接线,属
   PlayerApi 全驱动长线)。(待提交)
+- ✅ TLS 安全红线收口(OkHttp 网络栈默认校验证书):此前 OkGoHelper/spider OkHttp 无条件挂
+   `SSLCompat+TM`(信任任意证书)仅撤了恒真 HostnameVerifier,证书链校验仍全局关闭;本次改为
+   仅当 `SystemConfig.isIgnoreSslError()`(默认关,与 WebView 同一开关)时才挂载,默认走 OkHttp
+   系统证书链+主机名校验;`SSLCompat` 构造函数不再 `setDefaultSSLSocketFactory` 改写
+   HttpsURLConnection 全局默认(去除 trust-all 全局副作用)。行为:开"忽略证书错误"后 OkHttp
+   请求需重启应用生效(与既有提示一致)。(cae55368)
+- ✅ Zip Slip 收口:spider `Path.unzip`(爬虫 jar 可调用的解压点)逐条目做 canonical 包含性
+   校验,拒绝 NUL/../绝对路径/符号链接逃逸,整体失败不落盘;仓库三处解压点(RemoteServer/
+   Path.unzip/crash 读自身 dex)全部防护或只读。(0f5d7d35)
 
 ## 9. 待真机回归后继续(播放器主线尾段,当前挂起)
 > 集中回归清单见 `doc/device-regression-checklist.md`(按功能域分组,门禁绿后逐项过)。
