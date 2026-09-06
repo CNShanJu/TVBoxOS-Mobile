@@ -749,9 +749,11 @@ public class SourceViewModel extends ViewModel {
                 playResult.postValue(null);
             }
         } else if (type == 4) {
-            Map<String, String> playParams = new HashMap<>();
-            playParams.put("play", url);
-            playParams.put("flag", playFlag);
+            Map<String, String> playParams = com.github.tvbox.osc.spiderapi.HttpSourceParams.play(type, url, playFlag);
+            if (playParams == null) {
+                playResult.postValue(null);
+                return;
+            }
             HttpClient.get(sourceBean.getApi(), playParams, null, "play", new HCallBack() {
                     @Override
                     public void onSuccess(String json) {

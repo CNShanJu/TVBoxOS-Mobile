@@ -50,4 +50,21 @@ public final class HttpSourceParams {
         }
         return params;
     }
+
+    /**
+     * 播放解析参数(type4 HTTP 源;与 SourceViewModel.getPlay type4 旧拼参逐字一致):
+     * type4 → play=url + flag=线路。type0/1 无 HTTP(本地拼 JSONObject),返回 null。
+     *
+     * @param type   源类型
+     * @param url    播放地址
+     * @param flag   线路 flag
+     */
+    public static Map<String, String> play(int type, String url, String flag) {
+        if (type != 4) return null;
+        if (url == null) return null;
+        Map<String, String> params = new HashMap<>();
+        params.put("play", url);
+        params.put("flag", flag);
+        return params;
+    }
 }

@@ -63,4 +63,19 @@ public class HttpSourceParamsTest {
         assertNull(HttpSourceParams.search(2, "测试", false));
         assertNull(HttpSourceParams.search(0, null, false));
     }
+
+    @Test
+    public void play_type4_hasPlayAndFlag() {
+        Map<String, String> p = HttpSourceParams.play(4, "http://x/a.m3u8", "线路1");
+        assertEquals("http://x/a.m3u8", p.get("play"));
+        assertEquals("线路1", p.get("flag"));
+        assertEquals(2, p.size());
+    }
+
+    @Test
+    public void play_nonType4OrNullUrlReturnsNull() {
+        assertNull(HttpSourceParams.play(0, "http://x/a.m3u8", "l"));
+        assertNull(HttpSourceParams.play(1, "http://x/a.m3u8", "l"));
+        assertNull(HttpSourceParams.play(4, null, "l"));
+    }
 }
