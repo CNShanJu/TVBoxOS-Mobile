@@ -36,12 +36,12 @@ import com.github.tvbox.osc.subtitle.format.FormatSTL;
 import com.github.tvbox.osc.subtitle.format.TimedTextFileFormat;
 import com.github.tvbox.osc.subtitle.model.TimedTextObject;
 import com.github.tvbox.osc.subtitle.runtime.AppTaskExecutor;
+import com.github.tvbox.osc.util.CharsetUtils;
 import com.github.tvbox.osc.util.FileUtils;
 import com.github.tvbox.osc.util.HttpClient;
 import com.github.tvbox.osc.util.UnicodeReader;
 
 import org.apache.commons.io.input.ReaderInputStream;
-import org.mozilla.universalchardet.UniversalDetector;
 
 import java.io.ByteArrayInputStream;
 import java.io.File;
@@ -175,11 +175,8 @@ public class SubtitleLoader {
         Response response = HttpClient.getResponseSync(remoteSubtitlePath, headers);
         try {
             byte[] bytes = response.body().bytes();
-            UniversalDetector detector = new UniversalDetector(null);
-            detector.handleData(bytes, 0, bytes.length);
-            detector.dataEnd();
-            String encoding = detector.getDetectedCharset();
-            String content = new String(bytes, encoding);
+            // 字符集探测统一走 CharsetUtils(UniversalDetector + 中文常用字回退;探测失败不再 NPE)
+            String content = new String(bytes, CharsetUtils.detect(bytes));
             InputStream is = new ByteArrayInputStream(content.getBytes());
             String filename = "";
             String contentDispostion = response.header("content-disposition", "");
@@ -221,11 +218,8 @@ public class SubtitleLoader {
             return null;
         }
         byte[] bytes = FileUtils.readSimple(file);
-        UniversalDetector detector = new UniversalDetector(null);
-        detector.handleData(bytes, 0, bytes.length);
-        detector.dataEnd();
-        String encoding = detector.getDetectedCharset();
-        String content = new String(bytes, encoding);
+        // 字符集探测统一走 CharsetUtils(UniversalDetector + 中文常用字回退;探测失败不再 NPE)
+        String content = new String(bytes, CharsetUtils.detect(bytes));
         InputStream is = new ByteArrayInputStream(content.getBytes());
         String filePath = file.getPath();
         SubtitleLoadSuccessResult subtitleLoadSuccessResult = new SubtitleLoadSuccessResult();
