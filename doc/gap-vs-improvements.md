@@ -463,3 +463,4 @@ EventBus 订阅方已收敛 4 个真实方;仍剩多源结果流(TYPE_SEARCH_RES
 - ✅ Java→Kotlin 试点(§八 五阶段):HistoryHelper 转 Kotlin(object + @JvmStatic,旧 Java 静态调用与 HistoryHelperTest 不受影响)。
 - ✅ Java→Kotlin 试点续:SearchFilter 转 Kotlin(object + @JvmStatic,测试与 FastSearch 调用不变)。
 - ✅ Java→Kotlin 试点续:PlayedVodKey 转 Kotlin(object + @JvmStatic,播放/下载调用与测试不变)。
+- ✅ Java→Kotlin 试点续:PlaySessionKeys 转 Kotlin(注意:@JvmStatic 方法若被 Java 传 null,参数须声明可空并复刻拼接语义,测试先行发现该点)。
