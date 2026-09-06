@@ -725,11 +725,10 @@ public class PlayFragment extends BaseLazyFragment {
         public void onChanged(JSONObject info) {
             if (info != null) {
                 try {
-                    progressKey = info.optString("proKey", null);
                     boolean parse = info.optString("parse", "1").equals("1");
                     boolean jx = info.optString("jx", "0").equals("1");
                     playSubtitle = info.optString("subt", /*"https://dash.akamaized.net/akamai/test/caption_test/ElephantsDream/ElephantsDream_en.vtt"*/"");
-                    subtitleCacheKey = info.optString("subtKey", null);
+                    // progressKey/subtitleCacheKey 由 play() 经 PlayRequest 落字段,不再从 proKey/subtKey 回写
                     String playUrl = info.optString("playUrl", "");
                     String flag = info.optString("flag");
                     String url = info.getString("url");
@@ -954,10 +953,13 @@ public class PlayFragment extends BaseLazyFragment {
         releasePlaybackSession(); // playback 会话原型:切换前释放上一会话(只停观察,不释放共享 mVideoView)
         if (mPlaySession != null) mPlaySession.release();
         com.github.tvbox.osc.util.player.PlayRequest playRequest = com.github.tvbox.osc.util.player.PlayRequest.of(mVodInfo, vs);
+        // 播放请求上下文收敛:键单一来源 PlayRequest;playResult 回调不再经 proKey/subtKey 回写
+        progressKey = playRequest.progressKey();
+        subtitleCacheKey = playRequest.subtitleCacheKey();
         //重新播放清除现有进度
         if (reset) {
-            mPlayHistory.delete(playRequest.progressKey());
-            mPlayHistory.delete(playRequest.subtitleCacheKey());
+            mPlayHistory.delete(progressKey);
+            mPlayHistory.delete(subtitleCacheKey);
         }
         if (Jianpian.isJpUrl(vs.url)) {//荐片地址特殊判断
             String jp_url = vs.url;
