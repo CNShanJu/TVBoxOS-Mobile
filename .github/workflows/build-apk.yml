@@ -64,6 +64,11 @@ jobs:
             echo "signing=fallback-debug" >> "$GITHUB_OUTPUT"
           fi
 
+      - name: Verify (unit tests + module/red-line gate)
+        run: |
+          chmod +x gradlew
+          ./gradlew :app:testDebugUnitTest checkModuleDependencies --no-daemon --console=plain
+
       - name: Build Release APK
         run: |
           chmod +x gradlew
