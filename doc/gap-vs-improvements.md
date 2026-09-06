@@ -432,10 +432,10 @@ Exo→Media3、EventBus→Flow/接口、Hawk→DataStore、Java→Kotlin 渐进�
 |---|---|---|
 | :playback / feature-* 模块 | ❌ 未建 | 阶段三/四;需真机回归环境 |
 | :core-network 杂项袋拆分 | ✅ 完成 | AES/MD5→:core-utils、urlhttp 旧栈删除、AdBlocker→:core-utils、SubUrlResolver(s)→:spider、LOG/AppLog→:core-storage(5bf1d01d);util 余纯网络职责 |
-| 字符串通道 SpiderContentApi 下线 | ⚠️ | 仍有 4 处引用;先补 FakeSpiderService 单测背书 |
+| 字符串通道 SpiderContentApi | ⚠️ 澄清:typed 底座,非删除项 | typed 实现(SpiderHome/Detail/SearchImpl)内部经 SpiderContentImpl 拉取后再解析,string 通道是运行底座;可治理点=收窄 app 直用面(SourceViewModel typed-first+fallback),需真机背书(见评估 §H) |
 | 播放器内核收口 | ⚠️ | MyVideoView 仍 7 文件 import(PlayFragment/LocalPlay/PlayService/PlayingControl*/PlayerSession) |
 | Exo→Media3 | ❌ | player 仍 exoplayer 2.18.7,media3 import 0 |
-| ui-kit 拆模块 | ⚠️ | app 内 ui/kit 16 组件,成熟后再拆(符合规划) |
+| :ui-common / ui-kit 边界 | ✅ 达标 | ui-common 纯资源(0 java,107 res);ui-kit 15 组件无 Hawk/EventBus/ApiConfig/Activity 强转/自建线程池违例;拆独立模块待复用稳定(见评估 §I) |
 
 ### B. 大页面物理拆分(改进.txt §三,阶段三)
 PlayFragment 997 / DetailActivity 1097 / DownloadFragment 1082 / SourceViewModel 851 / LiveActivity 883。
