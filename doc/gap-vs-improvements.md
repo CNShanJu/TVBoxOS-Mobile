@@ -465,3 +465,4 @@ EventBus 订阅方已收敛 4 个真实方;仍剩多源结果流(TYPE_SEARCH_RES
 - ✅ Java→Kotlin 试点续:PlayedVodKey 转 Kotlin(object + @JvmStatic,播放/下载调用与测试不变)。
 - ✅ Java→Kotlin 试点续:PlaySessionKeys 转 Kotlin(注意:@JvmStatic 方法若被 Java 传 null,参数须声明可空并复刻拼接语义,测试先行发现该点)。
 - ✅ Java→Kotlin 试点续:PlayRequest 转 Kotlin(class + private ctor + companion @JvmStatic of,保留 vodInfo()/seriesName() 等 Java 风格访问器以兼容 Java 调用)。
+- ✅ Java→Kotlin 试点续:LiveChannelAuth 转 Kotlin(object + @JvmStatic;visibleChannels 保持可空返回语义)。
