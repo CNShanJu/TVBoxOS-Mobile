@@ -464,31 +464,58 @@ public class SourceViewModel extends ViewModel {
                 }
             });
         } else if (type == 0 || type == 1|| type == 4) {
-            Map<String, String> detailParams = new HashMap<>();
-            detailParams.put("ac", type == 0 ? "videolist" : "detail");
-            detailParams.put("ids", id);
-            HttpClient.get(sourceBean.getApi(), detailParams, null, "detail", new HCallBack() {
-
-                        @Override
-                        public void onSuccess(String content) {
-                            if (type == 0) {
-                                String xml = content;
-                                xml(detailResult, xml, sourceBean.getKey());
-                            } else {
-                                String json = content;
-                                LOG.i(json);
-                                json(detailResult, json, sourceBean.getKey());
-                            }
+            spThreadPool.execute(new Runnable() {
+                @Override
+                public void run() {
+                    try {
+                        // type0/1/4 HTTP 源契约化:typed detail(SpiderDetailImpl 按类型拼参拉取+解析)
+                        // 成功即发布;失败回退旧 HttpClient 直连(行为兜底)
+                        com.github.tvbox.osc.bean.AbsXml typed =
+                                com.github.tvbox.osc.spiderapi.SpiderDetailProviders.get().detail(sourceKey, id);
+                        if (typed != null && typed.movie != null) {
+                            absXml(typed, sourceBean.getKey());
+                            checkThunder(typed, 0);
+                            return;
                         }
-
-                        @Override
-                        public void onError(Throwable e) {
-                            detailResult.postValue(null);
-                        }
-                    });
+                        android.util.Log.i("SpiderBridge", "detail(typed/http) 不可用,回退旧路径: key=" + sourceKey + " id=" + id);
+                    } catch (Throwable th) {
+                        th.printStackTrace();
+                    }
+                    fetchDetailHttpLegacy(sourceBean, type, id);
+                }
+            });
         } else {
             detailResult.postValue(null);
         }
+    }
+
+    /** type0/1/4 详情旧路径:HttpClient 直连拼参(typed 失败时的行为兜底,与原实现逐字一致) */
+    private void fetchDetailHttpLegacy(final SourceBean sourceBean, final int type, final String id) {
+        Map<String, String> detailParams =
+                com.github.tvbox.osc.spiderapi.HttpSourceParams.detail(type, id);
+        if (detailParams == null) {
+            detailResult.postValue(null);
+            return;
+        }
+        HttpClient.get(sourceBean.getApi(), detailParams, null, "detail", new HCallBack() {
+
+                    @Override
+                    public void onSuccess(String content) {
+                        if (type == 0) {
+                            String xml = content;
+                            xml(detailResult, xml, sourceBean.getKey());
+                        } else {
+                            String json = content;
+                            LOG.i(json);
+                            json(detailResult, json, sourceBean.getKey());
+                        }
+                    }
+
+                    @Override
+                    public void onError(Throwable e) {
+                        detailResult.postValue(null);
+                    }
+                });
     }
     /**
      * 主搜索"每源一批"结果直调监听(改进.txt §五 收口):替代 FastSearch 场景的
