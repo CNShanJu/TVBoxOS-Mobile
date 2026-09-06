@@ -394,6 +394,8 @@ Exo→Media3、EventBus→Flow/接口、Hawk→DataStore、Java→Kotlin 渐进�
    put/delete 空操作),core-storage 移除 hawk 依赖,App 装配去掉 KeyValueStore.init,proguard keep 删除。
    各域 legacy 分支保留但自然失效;版 N+1(旧版升级数据回归通过后)再删本类与分支。详见
    `doc/后续改造评估.md` A.3。(4b775b18/3d9d9dcc)
+- ✅ 死代码清理:删除零引用 `util/AppBizLog`(业务日志门面,已被 :log LogStore/CategoryLogger 取代;
+   目录文档未收录,无需同步)。TLSSocketFactory 仍待并行目录文档合流后删除。(6dad955a)
 
 ## 9. 待真机回归后继续(播放器主线尾段,当前挂起)
 > 集中回归清单见 `doc/device-regression-checklist.md`(按功能域分组,门禁绿后逐项过)。
