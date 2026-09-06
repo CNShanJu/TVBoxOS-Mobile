@@ -453,4 +453,4 @@ EventBus 订阅方已收敛 4 个真实方;仍剩多源结果流(TYPE_SEARCH_RES
 - FormatASS 样式段解析缺陷 + Style 颜色十六进制错位(doc/后续改造评估.md §E):需真实 .ass 语料+真机渲染比对;
 - 播放器收口 P1–P4(清单 G 组)、hawk 版 N+1 发布放行(清单 H 组):均需设备回归。
 
-- ✅ 主搜索批次流直调化(改进.txt §五 试点):TYPE_SEARCH_RESULT 下线——SourceViewModel 增 SearchBatchListener,FastSearchActivity 注入/置空并主线程投递;refresh 订阅与常量删除。quick 结果流亦已直调化(TYPE_QUICK_SEARCH_RESULT 下线,8e1e8fa6)。剩后台通知(TYPE_REFRESH_NOTIFY,PlayService)、详情选集同步(TYPE_REFRESH,Fragment→Activity 屏内)与遥控 ServerEvent 为合理保留;SourceViewModel 内 EventBus 归零。
+- ✅ 主搜索批次流直调化(改进.txt §五 试点):TYPE_SEARCH_RESULT 下线——SourceViewModel 增 SearchBatchListener,FastSearchActivity 注入/置空并主线程投递;refresh 订阅与常量删除。quick 结果流亦已直调化(TYPE_QUICK_SEARCH_RESULT 下线,8e1e8fa6)。详情选集/播放配置同步亦已直调化(PlayFragment.PlaySyncHost,TYPE_REFRESH 下线,702f24db)。EventBus 现仅剩:后台通知 TYPE_REFRESH_NOTIFY(PlayFragment/VodController→PlayService)、遥控 ServerEvent、DownloadFacade 模块内桥;DetailActivity/SourceViewModel 内 EventBus 已归零。
