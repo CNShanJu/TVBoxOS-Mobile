@@ -2,61 +2,58 @@ package com.github.tvbox.osc.config;
 
 import android.content.Context;
 
-import com.orhanobut.hawk.Hawk;
-
 /**
- * 键值存储类型安全封装（core-storage 配置收口：Hawk 的类型安全门面）。
+ * 键值存储类型安全封装——Hawk 一次性迁移通道已下线(版 N:无 hawk 化灰度)。
  * <p>
- * 键沿用旧应用 key（历史数据兼容）；只暴露强类型 get 与 put/delete/contains，
- * UI/业务不直接触碰 Hawk 实现与原始值转换。后续配置门面（SystemConfig 等）与
- * 各业务 Config 统一经本类读写。
+ * 历史:各域(系统偏好/播放设置/下载任务档案与策略/订阅/直播/日志/遥控/爬虫缓存)已迁到
+ * DataStore({@link PrefsDataStore})或应用私有文件,旧 Hawk 键均按访问"读一次即删"。本类原为
+ * Hawk 类型安全门面;现已摘除 Hawk 后端与依赖:
+ * <ul>
+ *   <li>{@link #init} 为空占位实现(保留以便 App 装配调用点不改);</li>
+ *   <li>旧键读取(contains/get*)一律返回"不存在/默认值"——已跑过迁移的存量设备无感,
+ *       各域 legacy 分支自然失效不再触发;</li>
+ *   <li>put/delete 为空操作:当前全仓无活跃 legacy 写入,禁止再经本类写旧键。</li>
+ * </ul>
+ * 版 N+1(下一发布窗口,旧版升级数据回归通过后):删除本类与各域 legacy 分支调用点。
  */
 public final class KeyValueStore {
 
     private KeyValueStore() {
     }
 
-    /** 存储初始化（App 启动调用一次；内部 Hawk.init） */
+    /** 存储初始化占位(原 Hawk.init;已无后端) */
     public static void init(Context context) {
-        Hawk.init(context == null ? null : context.getApplicationContext()).build();
     }
 
-    // ── 读（强类型 + 默认值兜底）──
+    // ── legacy 迁移通道读取:已无后端,一律默认值(见类注释)──
 
     public static String getString(String key, String defValue) {
-        Object v = Hawk.get(key, null);
-        return v instanceof String ? (String) v : defValue;
-    }
-
-    public static boolean getBoolean(String key, boolean defValue) {
-        Object v = Hawk.get(key, null);
-        return v instanceof Boolean ? (Boolean) v : defValue;
-    }
-
-    public static int getInt(String key, int defValue) {
-        Object v = Hawk.get(key, null);
-        if (v instanceof Number) return ((Number) v).intValue();
         return defValue;
     }
 
-    /** 任意类型读取（内部存储结构由调用方保证;null 时返回 defValue） */
-    @SuppressWarnings("unchecked")
-    public static <T> T get(String key, T defValue) {
-        T v = (T) Hawk.get(key, null);
-        return v == null ? defValue : v;
+    public static boolean getBoolean(String key, boolean defValue) {
+        return defValue;
     }
 
-    // ── 写 / 删 / 存在 ──
+    public static int getInt(String key, int defValue) {
+        return defValue;
+    }
+
+    /** 任意类型读取:存量迁移通道已下线,恒返回 defValue */
+    @SuppressWarnings("unchecked")
+    public static <T> T get(String key, T defValue) {
+        return defValue;
+    }
+
+    // ── 写 / 删 / 存在:禁止再经 legacy 键读写(当前全仓无活跃调用)──
 
     public static void put(String key, Object value) {
-        Hawk.put(key, value);
     }
 
     public static void delete(String key) {
-        Hawk.delete(key);
     }
 
     public static boolean contains(String key) {
-        return Hawk.contains(key);
+        return false;
     }
 }
