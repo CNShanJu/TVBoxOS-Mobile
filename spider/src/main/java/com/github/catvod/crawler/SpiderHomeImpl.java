@@ -83,14 +83,79 @@ public final class SpiderHomeImpl implements SpiderHomeApi {
     @Override
     public AbsXml category(String sourceKey, String tid, String pg, boolean filter, Map<String, String> extend) {
         SourceBean sb = ApiConfig.get().getSource(sourceKey);
-        if (sb == null || sb.getType() != 3) return null;
-        Map<String, String> ext = extend == null ? new HashMap<>() : new HashMap<>(extend);
-        String content = SpiderContentImpl.get().categoryContent(sourceKey, tid, pg, filter, ext);
-        AbsXml xml = parse(sourceKey, content, "category(typed)");
-        if (xml != null) {
-            android.util.Log.d("SpiderBridge", "category(typed) 成功: key=" + sourceKey + " tid=" + tid + " pg=" + pg);
+        if (sb == null) return null;
+        int type = sb.getType();
+        if (type == 3) {
+            Map<String, String> ext = extend == null ? new HashMap<>() : new HashMap<>(extend);
+            String content = SpiderContentImpl.get().categoryContent(sourceKey, tid, pg, filter, ext);
+            AbsXml xml = parse(sourceKey, content, "category(typed)");
+            if (xml != null) {
+                android.util.Log.d("SpiderBridge", "category(typed) 成功: key=" + sourceKey + " tid=" + tid + " pg=" + pg);
+            }
+            return xml;
         }
-        return xml;
+        if (type == 0 || type == 1 || type == 4) {
+            return categoryFromHttp(sb, type, tid, pg, extend);
+        }
+        return null; // 其余类型不支持 typed,回退旧路径
+    }
+
+    /** type0/1/4 HTTP 接口:按类型拼参(与 VM getList 旧逻辑同 API 等值)拉取后按 XML/JSON 解析 */
+    private AbsXml categoryFromHttp(SourceBean sb, int type, String tid, String pg, Map<String, String> filterSelect) {
+        try {
+            String content;
+            if (type == 4) {
+                String ext;
+                if (filterSelect != null && !filterSelect.isEmpty()) {
+                    ext = android.util.Base64.encodeToString(
+                            new org.json.JSONObject(filterSelect).toString().getBytes("UTF-8"),
+                            android.util.Base64.DEFAULT | android.util.Base64.NO_WRAP);
+                } else {
+                    ext = android.util.Base64.encodeToString("{}".getBytes("UTF-8"),
+                            android.util.Base64.DEFAULT | android.util.Base64.NO_WRAP);
+                }
+                Map<String, String> params = new HashMap<>();
+                params.put("ac", "detail");
+                params.put("filter", "true");
+                params.put("t", tid);
+                params.put("pg", pg);
+                params.put("ext", ext);
+                content = com.github.tvbox.osc.util.HttpClient.getSync(sb.getApi(), params, null);
+            } else {
+                Map<String, String> params = new HashMap<>();
+                params.put("ac", type == 0 ? "videolist" : "detail");
+                params.put("t", tid);
+                params.put("pg", pg);
+                if (filterSelect != null) {
+                    for (Map.Entry<String, String> entry : filterSelect.entrySet()) {
+                        params.put(entry.getKey(), entry.getValue());
+                    }
+                }
+                params.put("f", (filterSelect == null || filterSelect.isEmpty())
+                        ? "" : new org.json.JSONObject(filterSelect).toString());
+                content = com.github.tvbox.osc.util.HttpClient.getSync(sb.getApi(), params, null);
+            }
+            if (content == null || content.isEmpty()) {
+                android.util.Log.w("SpiderBridge", "category(typed/http): 内容为空 key=" + sb.getKey()
+                        + " tid=" + tid + " pg=" + pg);
+                return null;
+            }
+            AbsXml xml = type == 0
+                    ? com.github.tvbox.osc.spiderapi.AbsXmlParser.parseXml(content, sb.getKey())
+                    : com.github.tvbox.osc.spiderapi.AbsXmlParser.parseJson(content, sb.getKey());
+            if (xml == null || xml.movie == null) {
+                android.util.Log.w("SpiderBridge", "category(typed/http): 解析为空 key=" + sb.getKey()
+                        + " tid=" + tid + " pg=" + pg);
+                return null;
+            }
+            android.util.Log.d("SpiderBridge", "category(typed/http) 成功: key=" + sb.getKey()
+                    + " tid=" + tid + " pg=" + pg + " type=" + type);
+            return xml;
+        } catch (Throwable th) {
+            android.util.Log.w("SpiderBridge", "category(typed/http) 异常: key=" + sb.getKey()
+                    + " tid=" + tid + " pg=" + pg, th);
+            return null;
+        }
     }
 
     @Override

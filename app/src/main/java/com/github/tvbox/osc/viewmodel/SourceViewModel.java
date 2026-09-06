@@ -258,7 +258,40 @@ public class SourceViewModel extends ViewModel {
                     }
                 }
             });
-        } else if (type == 0 || type == 1) {
+        } else if (type == 0 || type == 1 || type == 4) {
+            // HTTP 源分类列表契约化:typed 优先;失败/空结果回退旧 HttpClient 直连(行为兜底)
+            final MovieSort.SortData finalSortData = sortData;
+            final int finalPage = page;
+            spThreadPool.execute(new Runnable() {
+                @Override
+                public void run() {
+                    com.github.tvbox.osc.bean.AbsXml typed = null;
+                    try {
+                        typed = com.github.tvbox.osc.spiderapi.SpiderHomeProviders.get().category(
+                                homeSourceBean.getKey(), finalSortData.id, finalPage + "", true,
+                                finalSortData.filterSelect);
+                    } catch (Throwable th) {
+                        th.printStackTrace();
+                    }
+                    if (typed != null && typed.movie != null) {
+                        absXml(typed, homeSourceBean.getKey());
+                        listResult.postValue(typed);
+                        return;
+                    }
+                    android.util.Log.i("SpiderBridge", "category(typed/http) 不可用,回退旧路径: key="
+                            + homeSourceBean.getKey() + " tid=" + finalSortData.id + " pg=" + finalPage);
+                    fetchListHttpLegacy(homeSourceBean, type, finalSortData, finalPage);
+                }
+            });
+        } else {
+            listResult.postValue(null);
+        }
+    }
+
+    /** type0/1/4 分类列表旧路径:HttpClient 直连拼参(typed 失败时的行为兜底,与原实现逐字一致) */
+    private void fetchListHttpLegacy(final SourceBean homeSourceBean, final int type,
+                                     final MovieSort.SortData sortData, final int page) {
+        if (type == 0 || type == 1) {
             Map<String, String> listParams = new HashMap<>();
             listParams.put("ac", type == 0 ? "videolist" : "detail");
             listParams.put("t", sortData.id);
@@ -287,18 +320,18 @@ public class SourceViewModel extends ViewModel {
                             listResult.postValue(null);
                         }
                     });
-        }else if (type == 4) {
-            String ext= "";
+        } else if (type == 4) {
+            String ext = "";
             if (sortData.filterSelect != null && sortData.filterSelect.size() > 0) {
                 try {
                     String selectExt = new JSONObject(sortData.filterSelect).toString();
-                    ext = Base64.encodeToString(selectExt.getBytes("UTF-8"), Base64.DEFAULT |  Base64.NO_WRAP);
+                    ext = Base64.encodeToString(selectExt.getBytes("UTF-8"), Base64.DEFAULT | Base64.NO_WRAP);
                     LOG.i(ext);
                 } catch (UnsupportedEncodingException e) {
                     e.printStackTrace();
                 }
-            }else {
-                ext = Base64.encodeToString("{}".getBytes(), Base64.DEFAULT |  Base64.NO_WRAP);
+            } else {
+                ext = Base64.encodeToString("{}".getBytes(), Base64.DEFAULT | Base64.NO_WRAP);
             }
             Map<String, String> listExtParams = new HashMap<>();
             listExtParams.put("ac", "detail");
