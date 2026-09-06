@@ -6,6 +6,9 @@
 > 门禁绿后按下方分组逐项过,建议一次一个源/一条线路复现。
 
 ## A. 数据源解析(type0/1/3/4 + typed 通道)
+> 2026-09-06 typed-first 收敛进展(评估 §J,饭太硬订阅/糯米源):detail/search/quickSearch 三入口
+> type0/1/4 typed-first 已实施(旧路径兜底)并真机冒烟——糯米源搜索出结果、进详情选集/线路渲染、
+> 播放出画面、无崩溃;type3 JS 源无回归。以下逐项待完整逐源回归:
 - [ ] type0 XML 源:首页分类/列表/详情/搜索各走一遍(解析已纯化到 AbsXmlParser/SortParser,XStream 白名单加固)
 - [ ] type1 JSON 源:同上(type1 走 JSON 通道)
 - [ ] type3 typed 源:列表/详情/**播放**;重点验证选集线路拆分与 **checkThunder 雷资源判定**(曾真机 NPE,已修:348fca79/6c07f31f)
