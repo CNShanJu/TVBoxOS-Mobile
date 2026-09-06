@@ -431,7 +431,7 @@ Exo→Media3、EventBus→Flow/接口、Hawk→DataStore、Java→Kotlin 渐进�
 | 项 | 状态 | 前置/说明 |
 |---|---|---|
 | :playback / feature-* 模块 | ❌ 未建 | 阶段三/四;需真机回归环境 |
-| :core-network 杂项袋拆分 | ⚠️→✅ slice1 | 新增 :core-utils(AES/MD5 已迁,e3f997df/e3fd24a2);余 urlhttp/AESUtil、AdBlocker、LOG/AppLog 归位评估 |
+| :core-network 杂项袋拆分 | ⚠️→✅ slice1/2 | AES/MD5→:core-utils;urlhttp 旧栈 7 类删除、AdBlocker→:core-utils、SubUrlResolver(s)→:spider(ff259588);余 LOG/AppLog 归位评估 |
 | 字符串通道 SpiderContentApi 下线 | ⚠️ | 仍有 4 处引用;先补 FakeSpiderService 单测背书 |
 | 播放器内核收口 | ⚠️ | MyVideoView 仍 7 文件 import(PlayFragment/LocalPlay/PlayService/PlayingControl*/PlayerSession) |
 | Exo→Media3 | ❌ | player 仍 exoplayer 2.18.7,media3 import 0 |
