@@ -371,6 +371,10 @@ Exo→Media3、EventBus→Flow/接口、Hawk→DataStore、Java→Kotlin 渐进�
    字幕加载各自内联的 UniversalDetector 探测改为统一 `CharsetUtils.detect`(同探测器 +
    中文常用字回退,上一批已带单测);同时修复探测结果为空时 `new String(bytes, null)`
    的潜在 NPE。CharsetUtils 由零引用变为实际消费方,不再有重复的探测实现。(e314cb5e)
+- ✅ 搜索词表纯函数修正+单测:SearchHelper.splitWords 此前会向快速搜索词表注入空候选词
+   (Java \W 为 ASCII 语义,中文标题如"你好 world"拆分出空串);现过滤空串,原文恒在首位、
+   仅补 ASCII 词。补 SearchHelperTest(纯中文/中英混排/纯 ASCII/空串)与 HistoryHelper
+   历史条数档位单测(越界回退首档)。(d5a046af/c0bed35a)
 
 ## 9. 待真机回归后继续(播放器主线尾段,当前挂起)
 > 集中回归清单见 `doc/device-regression-checklist.md`(按功能域分组,门禁绿后逐项过)。
