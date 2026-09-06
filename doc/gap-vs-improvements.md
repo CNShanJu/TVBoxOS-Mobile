@@ -268,6 +268,9 @@ Exo→Media3、EventBus→Flow/接口、Hawk→DataStore、Java→Kotlin 渐进�
 - ✅ 直播分组密码门禁抽离 `util/LiveChannelAuth`:isPasswordConfirmed/needInputPassword/
   visibleChannels 纯逻辑(组数据+确认集合传参),LiveActivity 三方法改委托;单测 4 例。
   (9bdcc169)
+- ✅ 频道组/频道导航纯化 `util/LiveChannelNav`:getNextChannel 跨组/加密跳过/回卷决策抽出,
+  行为等价 + 全锁定/单组防死循环兜底;firstOpenGroup 并入 LiveChannelAuth。
+  LiveActivity 815→705 行;导航/门禁单测累计 9 例。(afccb330)
 - ✅ LiveActivity 死字段清理:hsEpg(Hashtable)/imgLiveIcon 零使用、isSHIYI 恒假开关
   (if 恒不触发/赋值恒 false)连用法删除,清 Hashtable import。LiveActivity 815→746 行。(ede84aea)
 
