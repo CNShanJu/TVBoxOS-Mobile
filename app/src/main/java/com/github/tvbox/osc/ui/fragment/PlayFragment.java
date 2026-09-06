@@ -64,6 +64,19 @@ import java.util.Set;
 import xyz.doikki.videoplayer.player.ProgressManager;
 
 public class PlayFragment extends BaseLazyFragment {
+    /** 宿主同步接口(详情预览页选集高亮/播放配置回写;屏内直调,替代历史 EventBus TYPE_REFRESH 屏内事件) */
+    public interface PlaySyncHost {
+        void onEpisodeSelected(int index);
+
+        void onPlayerCfgChanged(org.json.JSONObject cfg);
+    }
+
+    private PlaySyncHost mSyncHost;
+
+    public void setPlaySyncHost(PlaySyncHost host) {
+        this.mSyncHost = host;
+    }
+
     private MyVideoView mVideoView;
     /** 播放会话门面(指令统一入口;底层暂为共享 MyVideoView,内核隔离见 player/PlayerSession) */
     private com.github.tvbox.osc.player.PlayerSession mPlaySession;
@@ -188,7 +201,7 @@ public class PlayFragment extends BaseLazyFragment {
             @Override
             public void updatePlayerCfg() {
                 mVodInfo.playerCfg = mVodPlayerCfg.toString();
-                EventBus.getDefault().post(new RefreshEvent(RefreshEvent.TYPE_REFRESH, mVodPlayerCfg));
+                if (mSyncHost != null) mSyncHost.onPlayerCfgChanged(mVodPlayerCfg);
             }
             @Override
             public void replay(boolean replay) {
@@ -918,7 +931,7 @@ public class PlayFragment extends BaseLazyFragment {
     public void play(boolean reset) {
         if (mVodInfo == null) return;
         VodInfo.VodSeries vs = mVodInfo.seriesMap.get(mVodInfo.playFlag).get(mVodInfo.playIndex);
-        EventBus.getDefault().post(new RefreshEvent(RefreshEvent.TYPE_REFRESH, mVodInfo.playIndex));
+        if (mSyncHost != null) mSyncHost.onEpisodeSelected(mVodInfo.playIndex);
         EventBus.getDefault().post(new RefreshEvent(RefreshEvent.TYPE_REFRESH_NOTIFY, mVodInfo.name + "&&" + vs.name));
         String playTitleInfo = mVodInfo.name + " " + vs.name;
         setTip("正在获取播放信息", true, false);

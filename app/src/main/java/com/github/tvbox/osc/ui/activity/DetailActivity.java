@@ -36,7 +36,6 @@ import com.github.tvbox.osc.bean.SourceBean;
 import com.github.tvbox.osc.bean.VodInfo;
 import com.github.tvbox.osc.repo.HistoryRepositories;
 import com.github.tvbox.osc.databinding.ActivityDetailBinding;
-import com.github.tvbox.osc.event.RefreshEvent;
 import com.github.tvbox.osc.player.api.PlayConfig;
 import com.github.tvbox.osc.service.PlayService;
 import com.github.tvbox.osc.ui.adapter.ParseAdapter;
@@ -67,9 +66,6 @@ import com.lxj.xpopup.XPopup;
 import com.lxj.xpopup.core.BasePopupView;
 import com.owen.tvrecyclerview.widget.V7LinearLayoutManager;
 
-import org.greenrobot.eventbus.EventBus;
-import org.greenrobot.eventbus.Subscribe;
-import org.greenrobot.eventbus.ThreadMode;
 import org.json.JSONObject;
 
 import java.io.ByteArrayInputStream;
@@ -86,7 +82,7 @@ import java.util.List;
  */
 
 public class DetailActivity extends BaseVbActivity<ActivityDetailBinding>
-        implements DownloadDialogCoordinator.Host, VideoDetailDialog.Host {
+        implements DownloadDialogCoordinator.Host, VideoDetailDialog.Host, PlayFragment.PlaySyncHost {
     private PlayFragment playFragment = null;
     private SourceViewModel sourceViewModel;
     /** 详情页"快速搜索"请求编排(共享线程池 + epoch 去重/暂停;UI 只负责弹窗展示与直喂数据) */
@@ -294,6 +290,7 @@ public class DetailActivity extends BaseVbActivity<ActivityDetailBinding>
         preFlag = "";
         if (showPreview) {
             playFragment = new PlayFragment();
+            playFragment.setPlaySyncHost(this);
             getSupportFragmentManager().beginTransaction().add(R.id.previewPlayer, playFragment).commit();
             getSupportFragmentManager().beginTransaction().show(playFragment).commitAllowingStateLoss();
         }
@@ -743,35 +740,29 @@ public class DetailActivity extends BaseVbActivity<ActivityDetailBinding>
         }
     }
 
-    @Subscribe(threadMode = ThreadMode.MAIN)
-    public void refresh(RefreshEvent event) {
-        if (event.type == RefreshEvent.TYPE_REFRESH) {
-            if (event.obj != null) {
-                if (event.obj instanceof Integer) {
-                    int index = (int) event.obj;
-                    for (int j = 0; j < vodInfo.seriesMap.get(vodInfo.playFlag).size(); j++) {
-                        seriesAdapter.getData().get(j).selected = false;
-                        seriesAdapter.notifyItemChanged(j);
-                    }
-                    seriesAdapter.getData().get(index).selected = true;
-                    seriesAdapter.notifyItemChanged(index);
-                    //mBinding.mGridView.setSelection(index);
-                    vodInfo.playIndex = index;
-                    //保存历史
-                    insertVod(sourceKey, vodInfo);
-                } else if (event.obj instanceof JSONObject) {
-                    vodInfo.playerCfg = ((JSONObject) event.obj).toString();
-                    //保存历史
-                    insertVod(sourceKey, vodInfo);
-                }
-
-            }
-            try {
-                quickSearchHelper.handleQuickSearchResult(event.obj == null ? null : (AbsXml) event.obj);
-            } catch (Exception e) {
-                quickSearchHelper.handleQuickSearchResult(null);
-            }
+    /** PlaySyncHost:选集切换同步(预览播放器→详情选集高亮/历史) */
+    @Override
+    public void onEpisodeSelected(int index) {
+        if (vodInfo == null || vodInfo.seriesMap == null) return;
+        Object seriesList = vodInfo.seriesMap.get(vodInfo.playFlag);
+        if (seriesList == null || index < 0) return;
+        for (int j = 0; j < vodInfo.seriesMap.get(vodInfo.playFlag).size(); j++) {
+            seriesAdapter.getData().get(j).selected = false;
+            seriesAdapter.notifyItemChanged(j);
         }
+        if (index >= vodInfo.seriesMap.get(vodInfo.playFlag).size()) return;
+        seriesAdapter.getData().get(index).selected = true;
+        seriesAdapter.notifyItemChanged(index);
+        vodInfo.playIndex = index;
+        insertVod(sourceKey, vodInfo);
+    }
+
+    /** PlaySyncHost:播放配置变更回写(详情页缓存配置并保存历史) */
+    @Override
+    public void onPlayerCfgChanged(JSONObject cfg) {
+        if (vodInfo == null || cfg == null) return;
+        vodInfo.playerCfg = cfg.toString();
+        insertVod(sourceKey, vodInfo);
     }
 
     private void insertVod(String sourceKey, VodInfo vodInfo) {
@@ -786,18 +777,16 @@ public class DetailActivity extends BaseVbActivity<ActivityDetailBinding>
         com.github.tvbox.osc.repo.HistoryRepositories.history().save(sourceKey, vodInfo);
     }
 
-    /** 详情页是 RefreshEvent(TYPE_REFRESH)的真实订阅方,自行注册生命周期
-     * (BaseActivity 已移除"全 Activity 自动注册 + 空壳订阅",EventBus 只投给真正需要的页面) */
+    /** 详情页不再注册 EventBus:选集/配置经 PlayFragment.PlaySyncHost 屏内直调,快搜批次经监听直调 */
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        EventBus.getDefault().register(this);
     }
 
     @Override
     protected void onDestroy() {
-        EventBus.getDefault().unregister(this);
         sourceViewModel.setQuickSearchBatchListener(null); // 断开 quick 结果直调,防悬垂
+        if (playFragment != null) playFragment.setPlaySyncHost(null); // 断开屏内直调
         pipHelper.setReceiverEnabled(false);
         super.onDestroy();
         // 注销广播接收器
