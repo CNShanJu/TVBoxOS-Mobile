@@ -215,14 +215,36 @@ public class Path {
         if (dir.delete()) Log.d(TAG, "Deleted:" + dir.getAbsolutePath());
     }
 
+    /**
+     * 解压 target 到 path(可能被爬虫 jar 调用)。
+     * Zip Slip 防护:逐条目拒绝 ../ 目录穿越、绝对路径与 NUL,并对每个条目的最终落盘路径做
+     * canonical 包含性校验——任何越出目标目录的条目一律抛 SecurityException 整体失败,不落盘。
+     */
     public static void unzip(File target, File path) {
+        if (target == null || path == null) return;
         try (ZipFile zip = new ZipFile(target.getAbsolutePath())) {
+            if (!path.exists() && !path.mkdirs()) return;
+            String destCanonical = path.getCanonicalPath();
             Enumeration<?> entries = zip.entries();
             while (entries.hasMoreElements()) {
                 ZipEntry entry = (ZipEntry) entries.nextElement();
-                File out = new File(path, entry.getName());
-                if (entry.isDirectory()) out.mkdirs();
-                else copy(zip.getInputStream(entry), out);
+                String name = entry.getName();
+                if (name == null || name.indexOf('\0') >= 0) {
+                    throw new SecurityException("Invalid zip entry name");
+                }
+                File out = new File(path, name);
+                String outCanonical = out.getCanonicalPath();
+                if (!outCanonical.equals(destCanonical)
+                        && !outCanonical.startsWith(destCanonical + File.separator)) {
+                    throw new SecurityException("Zip entry escapes target directory: " + name);
+                }
+                if (entry.isDirectory()) {
+                    if (!out.exists()) out.mkdirs();
+                } else {
+                    File parent = out.getParentFile();
+                    if (parent != null && !parent.exists()) parent.mkdirs();
+                    copy(zip.getInputStream(entry), out);
+                }
             }
         } catch (Exception e) {
             e.printStackTrace();
