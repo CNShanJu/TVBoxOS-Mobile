@@ -272,6 +272,8 @@ Exo→Media3、EventBus→Flow/接口、Hawk→DataStore、Java→Kotlin 渐进�
   (if 恒不触发/赋值恒 false)连用法删除,清 Hashtable import。LiveActivity 815→746 行。(ede84aea)
 
 ## 9. 待真机回归后继续(播放器主线尾段,当前挂起)
+> 集中回归清单见 `doc/device-regression-checklist.md`(按功能域分组,门禁绿后逐项过)。
+
 - PlayerApi 会话内核**实验选项**:设置页加"播放器内核:PlayerApi 会话(实验)"开关(默认关);
   开启时点播走 PlayerFactory 创建的内核并驱动基础播放 + PlaybackSessions 会话观察,与 doikki 路径并行对比。
   需控制器/字幕/进度接线与真机调,决定先不做,待播放器相关批次(会话/内核统一/字幕装载/电量/网速/DataStore/
