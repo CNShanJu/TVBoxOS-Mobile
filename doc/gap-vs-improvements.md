@@ -284,6 +284,9 @@ Exo→Media3、EventBus→Flow/接口、Hawk→DataStore、Java→Kotlin 渐进�
 - ✅ "已播放剧集"键抽 util/player/PlayedVodKey(sourceKey|vodId):PlayFragment 写入与
   DownloadFragment 读取(episodeId 前两段)共用同一语义,消除两处重复拼接/截取;
   单测 3 例(null 归一/截取/畸形)。播放身份键域(进度/字幕/会话/播放记录)全部收敛。(047f2e0f)
+- ✅ 播放请求上下文抽 util/player/PlayRequest(of(vodInfo, series)):PlayFragment.play() 散参
+  (来源/线路/索引/集名/地址 + 进度/字幕键)聚合为不可变对象,reset 清历史与 VM.getPlay
+  调用经上下文取值;键与历史拼接一致。后续 PlayViewModel 化的请求载体。单测 1 例。(4b2a5df8)
 - ✅ 直播分组密码门禁抽离 `util/LiveChannelAuth`:isPasswordConfirmed/needInputPassword/
   visibleChannels 纯逻辑(组数据+确认集合传参),LiveActivity 三方法改委托;单测 4 例。
   (9bdcc169)
