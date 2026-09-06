@@ -115,10 +115,30 @@ tasks.register('checkModuleDependencies') {
                 }
             }
         }
+        // UI 层红线(app/ui 目录:禁具体播放内核 import / 禁页面自建线程池)
+        def uiSourceDirs = [new File(rootDir, 'app/src/main/java/com/github/tvbox/osc/ui')]
+        def uiRedLines = [
+                'UI 层内核 import(IJK/Exo)'          : ~/import\s+(tv\.danmaku|com\.google\.android\.exoplayer2)\./,
+                'UI 层自建线程池'                     : ~/(Executors\.new(Fixed|Single|Scheduled|Cached)ThreadPool|new\s+ThreadPoolExecutor)\s*\(/,
+        ]
+        uiSourceDirs.each { dir ->
+            if (!dir.exists()) return
+            dir.eachFileRecurse(groovy.io.FileType.FILES) { f ->
+                if (!(f.name.endsWith('.java') || f.name.endsWith('.kt'))) return
+                def lines = f.getText('UTF-8').readLines()
+                lines.eachWithIndex { line, idx ->
+                    uiRedLines.each { label, pat ->
+                        if (pat.matcher(line).find()) {
+                            violations << "UI 层红线[${label}]: ${f.path}:${idx + 1}"
+                        }
+                    }
+                }
+            }
+        }
         if (violations) {
             throw new GradleException("模块依赖方向/验收红线违规:\n  " + violations.join('\n  '))
         }
-        println 'checkModuleDependencies: 模块依赖方向与验收红线校验通过'
+        println 'checkModuleDependencies: 模块依赖方向与验收红线(含 UI 层)校验通过'
     }
 }
 // 说明:各 android 子工程自带 check,如需随构建自动校验可在 CI 中显式调用本任务
