@@ -58,6 +58,11 @@
   `app/build.gradle` 从环境变量(`KEYSTORE_FILE/KEYSTORE_PASSWORD/KEY_ALIAS/KEY_PASSWORD`)或
   `app/keystore.properties` 注入，缺失自动回退 debug 签名。
   ⚠️ 若仓库公开：旧 keystore+口令曾入库，需更换密钥并清理 git 历史；CI 请改用 secrets。
+- 换签+换包名（2025 落地，解决与开源 TVBox 应用安装冲突）：正式签名改用全新专属库 `mbox-release.jks`
+  （仓库根目录，不入库；本地 `app/keystore.properties` 读取，CI 经 GitHub Secrets `KEYSTORE_BASE64` 注入）；
+  `applicationId` 由 `com.github.tvbox.osc` 改为专属 `com.github.tvbox.osc.mbox`（namespace 不变，代码/资源引用不受影响）。
+  效果：与设备上其他同包名族系的开源 TVBox 应用互不冲突、可共存安装；旧 `TVBoxOSC.jks` 已成历史遗留（待删除）。
+  注意：换包名后新包不覆盖旧包名版本，属全新应用（旧应用数据不随迁移），发布前务必备份 `mbox-release.jks`+口令。
 - gradle.properties：`org.gradle.parallel=true`、`org.gradle.caching=true`；app 默认 `resConfigs 'zh-rCN','zh'`。
 
 ### 1.6 启动与运行性能
