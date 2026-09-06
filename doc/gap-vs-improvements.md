@@ -455,3 +455,4 @@ EventBus 订阅方已收敛 4 个真实方;仍剩多源结果流(TYPE_SEARCH_RES
 
 - ✅ 主搜索批次流直调化(改进.txt §五 试点):TYPE_SEARCH_RESULT 下线——SourceViewModel 增 SearchBatchListener,FastSearchActivity 注入/置空并主线程投递;refresh 订阅与常量删除。quick 结果流亦已直调化(TYPE_QUICK_SEARCH_RESULT 下线,8e1e8fa6)。详情选集/播放配置同步亦已直调化(PlayFragment.PlaySyncHost,TYPE_REFRESH 下线,702f24db)。EventBus 现仅剩:后台通知 TYPE_REFRESH_NOTIFY(PlayFragment/VodController→PlayService)、遥控 ServerEvent、DownloadFacade 模块内桥;DetailActivity/SourceViewModel 内 EventBus 已归零。
 - ✅ 死代码清扫:app 模块删除 14 个零引用类(旧 EPG/直播控制器/列表适配/旧控件/工具,-1099 行,06adec9c/504c77a6);其余模块全仓扫描仅 4 候选均判定保留(CaocInitProvider=crash Manifest auto-init Provider;SpiderDebug/SpiderJS/UTF8BOMFighter=QuickJS JS 桥按名反射,需 jar/真机确认后才可删)。
+- ✅ 静态审计追加:共享 DTO(Movie/VodInfo/Abs*/SourceBean/Subscription 等)确认单源在 :core-model,app/spider 仅存 UI 本地模型(Epginfo/VideoFolder/VideoInfo/Doh),无重复定义;app 移除重复 kotlin-stdlib 声明(依赖面未见其它零引用项)。
