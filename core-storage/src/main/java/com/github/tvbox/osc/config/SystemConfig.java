@@ -29,6 +29,7 @@ public final class SystemConfig {
     private static final String KEY_LOADING_ANIM = "loading_anim";
     private static final String KEY_HOME_REC = "home_rec";
     private static final String KEY_HISTORY_NUM = "history_num";
+    private static final String KEY_SEARCH_RESULT_LAYOUT = "search_result_layout";
     private static final String KEY_LIVE_URL = "live_url";
     private static final String KEY_PRIVATE_BROWSING = "private_browsing";
     // UI/功能偏好（同样沿用旧应用 key，历史设置兼容）
@@ -78,6 +79,15 @@ public final class SystemConfig {
     /** 保留历史记录数量选项，默认 0 */
     public static int getHistoryNum() {
         return PrefsDataStore.getInt(KEY_HISTORY_NUM, 0);
+    }
+
+    /**
+     * 搜索结果页展示布局：0 单列列表 1 宫格/网格 2 通栏卡片，默认 0（单列列表）。
+     * 仅记忆用户选择（切换布局由页面消费方应用）。
+     */
+    public static int getSearchResultLayout() {
+        int v = PrefsDataStore.getInt(KEY_SEARCH_RESULT_LAYOUT, 0);
+        return Math.max(0, Math.min(2, v));
     }
 
     /** 直播源地址，默认空 */
@@ -154,6 +164,15 @@ public final class SystemConfig {
         if (getHistoryNum() == v) return;
         PrefsDataStore.put(KEY_HISTORY_NUM, v);
         com.github.tvbox.osc.log.LogStore.log(com.github.tvbox.osc.log.Category.SYSTEM, "系统设置: 历史记录数=" + v);
+        fireChanged();
+    }
+
+    /** 搜索结果页展示布局（0 单列列表 1 宫格/网格 2 通栏卡片），越界值钳制到合法范围 */
+    public static void setSearchResultLayout(int mode) {
+        int v = Math.max(0, Math.min(2, mode));
+        if (getSearchResultLayout() == v) return;
+        PrefsDataStore.put(KEY_SEARCH_RESULT_LAYOUT, v);
+        com.github.tvbox.osc.log.LogStore.log(com.github.tvbox.osc.log.Category.SYSTEM, "搜索设置: 结果布局=" + v);
         fireChanged();
     }
 

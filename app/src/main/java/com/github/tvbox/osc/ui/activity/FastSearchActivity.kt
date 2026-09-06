@@ -1,5 +1,6 @@
 package com.github.tvbox.osc.ui.activity
 
+import android.content.res.Configuration
 import android.os.Bundle
 import android.text.Editable
 import android.text.TextUtils
@@ -11,8 +12,10 @@ import android.view.View
 import android.view.inputmethod.EditorInfo
 import android.widget.TextView
 import androidx.lifecycle.ViewModelProvider
+import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import androidx.recyclerview.widget.StaggeredGridLayoutManager
 import com.angcyo.tablayout.DslTabLayout
 import com.blankj.utilcode.util.GsonUtils
 import com.blankj.utilcode.util.KeyboardUtils
@@ -33,10 +36,13 @@ import com.github.tvbox.osc.log.Category
 import com.github.tvbox.osc.log.LogStore
 import com.github.tvbox.osc.ui.RefreshUiEnvFactory
 import com.github.tvbox.osc.ui.adapter.FastSearchAdapter
+import com.github.tvbox.osc.ui.adapter.SelectDialogAdapter
+import com.github.tvbox.osc.ui.adapter.SelectDialogAdapter.SelectDialogInterface
 import com.github.tvbox.osc.ui.kit.ListEndTipController
 import com.github.tvbox.osc.ui.dialog.DoubanSuggestDialog
 import com.github.tvbox.osc.ui.dialog.SearchCheckboxDialog
 import com.github.tvbox.osc.ui.dialog.SearchSuggestionsDialog
+import com.github.tvbox.osc.ui.dialog.SelectDialog
 import com.github.tvbox.osc.util.FastClickCheckUtil
 import com.github.tvbox.osc.util.HCallBack
 import com.github.tvbox.osc.util.HeavyTaskUtil
@@ -44,6 +50,7 @@ import com.github.tvbox.osc.util.HttpClient
 import com.github.tvbox.osc.util.SearchFilter
 import com.github.tvbox.osc.util.SearchHelper
 import com.github.tvbox.osc.util.SubscriptionConfig
+import com.github.tvbox.osc.util.Utils
 import com.github.tvbox.osc.config.SystemConfig
 import com.github.tvbox.osc.viewmodel.SourceViewModel
 import com.google.gson.JsonElement
@@ -121,6 +128,13 @@ class FastSearchActivity : BaseVbActivity<ActivityFastSearchBinding>(), TextWatc
         resumeSearches()
     }
 
+    /** 屏幕旋转(orientation/screenSize):重算宫格/通栏的并排列数(单卡最大宽不变,列数随新屏宽变) */
+    override fun onConfigurationChanged(newConfig: Configuration) {
+        super.onConfigurationChanged(newConfig)
+        // 仅宫格/通栏是自适应列数;单列列表列数为 1,重算无影响,统一走 applyResultLayout 即可
+        applyResultLayout(SystemConfig.getSearchResultLayout())
+    }
+
     private fun initView() {
         mBinding.etSearch.setOnEditorActionListener { _: TextView?, actionId: Int, _: KeyEvent? ->
             if (actionId == EditorInfo.IME_ACTION_SEARCH) {
@@ -135,6 +149,7 @@ class FastSearchActivity : BaseVbActivity<ActivityFastSearchBinding>(), TextWatc
         mBinding.ivSearch.setOnClickListener {
             search(mBinding.etSearch.text.toString())
         }
+        mBinding.ivMore.setOnClickListener { showMoreActions() }
         mBinding.tabLayout.configTabLayoutConfig {
             onSelectViewChange  = { _, selectViewList, _, _ ->
                     val tvItem: TextView = selectViewList.first() as TextView
@@ -143,44 +158,15 @@ class FastSearchActivity : BaseVbActivity<ActivityFastSearchBinding>(), TextWatc
                 }
         }
         mBinding.mGridView.setHasFixedSize(true)
-        mBinding.mGridView.setLayoutManager(LinearLayoutManager(this))
         mBinding.mGridView.adapter = searchAdapter
-        searchAdapter.setOnItemClickListener { _, view, position ->
-            FastClickCheckUtil.check(view)
-            val video = searchAdapter.data[position]
-            pauseSearch()
-            val bundle = Bundle()
-            bundle.putString("id", video.id)
-            bundle.putString("sourceKey", video.sourceKey)
-            bundle.putString("vodName", video.name)
-            jumpActivity(DetailActivity::class.java, bundle)
-        }
-        mBinding.mGridViewFilter.setLayoutManager(LinearLayoutManager(this))
-
         mBinding.mGridViewFilter.adapter = searchAdapterFilter
-        searchAdapterFilter.setOnItemClickListener { _, view, position ->
-            FastClickCheckUtil.check(view)
-            val video = searchAdapterFilter.data[position]
-            if (video != null) {
-                pauseSearch()
-                val bundle = Bundle()
-                bundle.putString("id", video.id)
-                bundle.putString("sourceKey", video.sourceKey)
-                bundle.putString("vodName", video.name)
-                jumpActivity(DetailActivity::class.java, bundle)
-            }
-        }
+        // 结果两个列表(普通/单来源过滤)共用一套点击/长按逻辑;适配器同时服务列表与宫格布局,
+        // 因此无论单列还是宫格,点击进详情、长按弹评分均生效
+        bindResultAdapter(searchAdapter)
+        bindResultAdapter(searchAdapterFilter)
 
-        searchAdapter.setOnItemLongClickListener { _, _, position ->
-            val video = searchAdapter.data[position]
-            getDoubanSuggest(video.name)
-            true
-        }
-        searchAdapterFilter.setOnItemLongClickListener { _, _, position ->
-            val video = searchAdapterFilter.data[position]
-            getDoubanSuggest(video.name)
-            true
-        }
+        // 按已保存布局(单列/宫格)初始化结果列表
+        applyResultLayout(SystemConfig.getSearchResultLayout())
 
         setLoadSir(mBinding.llLayout)
         // 来源列表(左页)与结果列表(右页)同容器并排;默认显示右页(结果全屏)
@@ -290,6 +276,117 @@ class FastSearchActivity : BaseVbActivity<ActivityFastSearchBinding>(), TextWatc
             mSearchCheckboxDialog.show()
         }
 
+    }
+
+    // ── 结果布局切换入口:三点→气泡列表→「切换布局」→三层选项(单列/宫格/通栏) ──
+    private val resultLayoutNames = arrayOf("单列列表", "宫格/网格", "通栏卡片")
+
+    /**
+     * 顶栏三点(⋮)入口:弹出气泡列表。当前仅一项「切换布局」,后续可继续加项。
+     */
+    private fun showMoreActions() {
+        XPopup.Builder(this@FastSearchActivity)
+            .isDarkTheme(Utils.isAppDarkTheme()) // 气泡列表跟随主题样式(直读 App 主题设置,避免 ROM 上 uiMode 不同步误判浅色→白底)
+            .atView(mBinding.ivMore)
+            .hasShadowBg(false)
+            .asAttachList(arrayOf("切换布局"), null) { index: Int, _: String? ->
+                if (index == 0) {
+                    showResultLayoutDialog()
+                }
+            }
+            .show()
+    }
+
+    /**
+     * 「切换布局」选项弹窗:单列列表 / 宫格网格 / 通栏卡片。
+     * 选中后立即按 new pos 应用布局。
+     */
+    private fun showResultLayoutDialog() {
+        val dialog = SelectDialog<String>(this@FastSearchActivity)
+        dialog.setTip("切换布局")
+        val current = SystemConfig.getSearchResultLayout().coerceIn(0, resultLayoutNames.size - 1)
+        dialog.setAdapter(object : SelectDialogInterface<String?> {
+            override fun click(value: String?, pos: Int) {
+                SystemConfig.setSearchResultLayout(pos)
+                applyResultLayout(pos)
+                AppBubble.toast("已切换为${resultLayoutNames.getOrElse(pos) { value ?: "" }}")
+                dialog.dismiss()
+            }
+
+            override fun getDisplay(value: String?): String {
+                return value ?: ""
+            }
+        }, SelectDialogAdapter.stringDiff, resultLayoutNames.toList(), current)
+        dialog.show()
+    }
+
+    /**
+     * 应用结果布局：0 单列列表(LinearLayoutManager+列表行)，1 宫格/网格(GridLayoutManager+3:4 宫格卡)，
+     * 2 通栏卡片(GridLayoutManager+2:1 横卡,多列并排)。仅作用于结果区中间布局，不动来源抽屉/刷新/到底了。
+     */
+    private fun applyResultLayout(mode: Int) {
+        when (mode) {
+            FastSearchAdapter.MODE_GRID -> {
+                // 瀑布流(StaggeredGridLayoutManager):3:4 图固定,但下方文字行数不同(有些隐藏),
+                // 卡片高度错落、按列自然堆叠;列数用与首页完全一致的「单卡最大宽 190dp 自适应」计算,
+                // 由最终可并排的卡片数决定(屏宽越宽列数越多),不写死、也不按自定义宽度反推
+                val span = Utils.getAdaptiveGridSpan(Utils.GRID_CARD_MAX_WIDTH_DP)
+                val lm = StaggeredGridLayoutManager(span, StaggeredGridLayoutManager.VERTICAL)
+                lm.gapStrategy = StaggeredGridLayoutManager.GAP_HANDLING_NONE
+                mBinding.mGridView.layoutManager = lm
+                val lm2 = StaggeredGridLayoutManager(span, StaggeredGridLayoutManager.VERTICAL)
+                lm2.gapStrategy = StaggeredGridLayoutManager.GAP_HANDLING_NONE
+                mBinding.mGridViewFilter.layoutManager = lm2
+            }
+            FastSearchAdapter.MODE_BANNER -> {
+                // 2:1 横卡:限高→单卡最大宽=2×限高;屏宽除以单卡最大宽得列数(四舍五入到整数列),
+                // 使多卡并排撑满屏宽,放不下就缩列宽(高度随之为列宽/2)
+                val banSpan = Utils.getAdaptiveGridSpan(bannerCardMaxWidthDp(), 1, 0)
+                mBinding.mGridView.layoutManager = GridLayoutManager(this, banSpan)
+                mBinding.mGridViewFilter.layoutManager = GridLayoutManager(this, banSpan)
+            }
+            else -> {
+                // 单列列表
+                mBinding.mGridView.layoutManager = LinearLayoutManager(this)
+                mBinding.mGridViewFilter.layoutManager = LinearLayoutManager(this)
+            }
+        }
+        searchAdapter.setMode(mode)
+        searchAdapterFilter.setMode(mode)
+        mEndTipController?.refresh()
+    }
+
+    /** 通栏 2:1 横卡最大显示高度(dp,变小即更矮) */
+    private fun bannerMaxHeightDp(): Int = 210
+
+    /** 通栏单卡最大宽 = 2×限高(保持 2:1) */
+    private fun bannerCardMaxWidthDp(): Float = 2f * bannerMaxHeightDp()
+
+    /**
+     * 绑一个结果列表适配器的点击/长按:统一「点击进详情、长按弹评分」。
+     * searchAdapter / searchAdapterFilter 为同一 FastSearchAdapter 实例,同时服务列表与宫格两种布局,
+     * 因此该逻辑对两种布局一致生效(组件复用:评分弹窗走 [showDoubanSuggest])。
+     */
+    private fun bindResultAdapter(adapter: FastSearchAdapter) {
+        adapter.setOnItemClickListener { _, view, position ->
+            FastClickCheckUtil.check(view)
+            openDetail(adapter.data.getOrNull(position))
+        }
+        adapter.setOnItemLongClickListener { _, _, position ->
+            showDoubanSuggest(adapter.data.getOrNull(position)?.name)
+            true
+        }
+    }
+
+    /** 点击结果项进详情(两类列表共用) */
+    private fun openDetail(video: Movie.Video?) {
+        if (video == null) return
+        pauseSearch()
+        val bundle = Bundle()
+        bundle.putString("id", video.id)
+        bundle.putString("sourceKey", video.sourceKey)
+        bundle.putString("vodName", video.name)
+        jumpActivity(DetailActivity::class.java, bundle)
     }
 
     private fun filterResult(spName: String) {
@@ -832,8 +929,10 @@ class FastSearchActivity : BaseVbActivity<ActivityFastSearchBinding>(), TextWatc
         }
     }
 
-    private fun getDoubanSuggest(text: String) {
-        HttpClient.get("https://movie.douban.com/j/subject_suggest?q="+text.trim(), null, object : HCallBack {
+    /** 长按弹评分弹窗(复用 DoubanSuggestDialog 组件);name 为空则忽略 */
+    private fun showDoubanSuggest(name: String?) {
+        if (name.isNullOrEmpty()) return
+        HttpClient.get("https://movie.douban.com/j/subject_suggest?q="+name.trim(), null, object : HCallBack {
                 override fun onSuccess(response: String) {
                     val list = GsonUtils.fromJson<List<DoubanSuggestBean>>(
                         response,
@@ -842,7 +941,7 @@ class FastSearchActivity : BaseVbActivity<ActivityFastSearchBinding>(), TextWatc
 
                     //暂时只保留第一个,分数查询接口有限制
                     val filterList = list.filter {
-                        it.title == text
+                        it.title == name
                     }
                     if (filterList.isEmpty()){
                         AppBubble.toast("暂无评分信息")

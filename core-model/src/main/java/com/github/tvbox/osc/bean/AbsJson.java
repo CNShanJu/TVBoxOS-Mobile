@@ -144,6 +144,16 @@ public class AbsJson implements Serializable {
             }
             video.urlBean = urlBean;
             video.des = vod_content;// <![CDATA[权来]
+            // 评分:优先豆瓣分,退到 vod_score;空或 0 视为无
+            String s;
+            if (vod_douban_score != null && !vod_douban_score.trim().isEmpty() && !"0".equals(vod_douban_score.trim())) {
+                s = vod_douban_score.trim();
+            } else if (vod_score != null && !vod_score.trim().isEmpty() && !"0".equals(vod_score.trim())) {
+                s = vod_score.trim();
+            } else {
+                s = null;
+            }
+            video.score = s;
             return video;
         }
     }

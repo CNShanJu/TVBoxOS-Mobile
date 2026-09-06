@@ -68,6 +68,9 @@ public class Movie implements Serializable {
         @XStreamAlias("tag")
         public String tag;
 
+        /** 评分(如豆瓣分;部分源接口 JSON 提供,无则空) */
+        public String score;
+
         @XStreamAlias("dl")
         public static class UrlBean implements Serializable {
             @XStreamImplicit(itemFieldName = "dd")
