@@ -5,7 +5,6 @@ import com.github.tvbox.osc.spiderapi.SourceConfigProviders;
 import com.github.tvbox.osc.ui.activity.FastSearchActivity;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 
@@ -52,12 +51,19 @@ public class SearchHelper {
         return mCheckSources;
     }
 
+    /**
+     * 词表来源:原文恒在首位;随后按 ASCII 词(\W+)拆分补候选词。
+     * 注:\w 为 ASCII 语义,中文/标点都被当作分隔符,拆分可能产出空串(如"中文 xxx"),
+     * 空串一律过滤,避免快速搜索词表出现空候选词。
+     */
     public static List<String> splitWords(String text) {
         List<String> result = new ArrayList<>();
         result.add(text);
         String[] parts = text.split("\\W+");
         if (parts.length > 1) {
-            result.addAll(Arrays.asList(parts));
+            for (String part : parts) {
+                if (!part.isEmpty()) result.add(part);
+            }
         }
         return result;
     }
