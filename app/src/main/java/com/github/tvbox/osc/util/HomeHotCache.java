@@ -1,6 +1,5 @@
 package com.github.tvbox.osc.util;
 
-import com.github.tvbox.osc.config.KeyValueStore;
 import com.github.tvbox.osc.config.PrefsDataStore;
 
 /**
@@ -17,19 +16,6 @@ public final class HomeHotCache {
     private HomeHotCache() {
     }
 
-    static {
-        try {
-            if (KeyValueStore.contains(KEY_DAY)) {
-                PrefsDataStore.put(KEY_DAY, KeyValueStore.getString(KEY_DAY, ""));
-                KeyValueStore.delete(KEY_DAY);
-            }
-            if (KeyValueStore.contains(KEY_JSON)) {
-                PrefsDataStore.put(KEY_JSON, KeyValueStore.getString(KEY_JSON, ""));
-                KeyValueStore.delete(KEY_JSON);
-            }
-        } catch (Throwable ignored) {
-        }
-    }
 
     /** 缓存写入日（未缓存返回空串） */
     public static String getDay() {

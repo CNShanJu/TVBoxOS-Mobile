@@ -109,17 +109,6 @@ public class RemoteTVBox {
         return;
     }
 
-    static {
-        // 旧 Hawk 存量一次性迁移(REMOTE_TVBOX)
-        try {
-            if (com.github.tvbox.osc.config.KeyValueStore.contains(HawkConfig.REMOTE_TVBOX)) {
-                String v = (String) com.github.tvbox.osc.config.KeyValueStore.get(HawkConfig.REMOTE_TVBOX, null);
-                if (v != null) com.github.tvbox.osc.config.PrefsDataStore.put(HawkConfig.REMOTE_TVBOX, v);
-                com.github.tvbox.osc.config.KeyValueStore.delete(HawkConfig.REMOTE_TVBOX);
-            }
-        } catch (Throwable ignored) {
-        }
-    }
 
     public static String getAvalible() {
         return com.github.tvbox.osc.config.PrefsDataStore.getString(HawkConfig.REMOTE_TVBOX, null);

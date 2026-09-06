@@ -2,7 +2,6 @@ package com.github.tvbox.osc.util;
 
 import com.github.tvbox.osc.bean.Subscription;
 import com.github.tvbox.osc.config.HawkConfig;
-import com.github.tvbox.osc.config.KeyValueStore;
 import com.github.tvbox.osc.config.PrefsDataStore;
 import com.google.gson.reflect.TypeToken;
 
@@ -32,49 +31,6 @@ public final class SubscriptionConfig {
     private SubscriptionConfig() {
     }
 
-    static {
-        migrateLegacy();
-    }
-
-    /** 旧 Hawk 存量一次性迁移到 PrefsDataStore(DataStore 化;类加载时执行,PrefsDataStore 已由 App 启动早期 init) */
-    private static volatile boolean migratedLegacy = false;
-
-    private static synchronized void migrateLegacy() {
-        if (migratedLegacy) return;
-        migratedLegacy = true;
-        try {
-            if (KeyValueStore.contains(HawkConfig.API_URL)) {
-                PrefsDataStore.put(HawkConfig.API_URL, KeyValueStore.getString(HawkConfig.API_URL, ""));
-                KeyValueStore.delete(HawkConfig.API_URL);
-            }
-            if (KeyValueStore.contains(HawkConfig.SUBSCRIPTIONS)) {
-                PrefsDataStore.putJson(HawkConfig.SUBSCRIPTIONS,
-                        KeyValueStore.get(HawkConfig.SUBSCRIPTIONS, new ArrayList<Subscription>()));
-                KeyValueStore.delete(HawkConfig.SUBSCRIPTIONS);
-            }
-            if (KeyValueStore.contains(HawkConfig.DEFAULT_SUBS)) {
-                PrefsDataStore.putJson(HawkConfig.DEFAULT_SUBS,
-                        KeyValueStore.get(HawkConfig.DEFAULT_SUBS, new ArrayList<Subscription>()));
-                KeyValueStore.delete(HawkConfig.DEFAULT_SUBS);
-            }
-            if (KeyValueStore.contains(HawkConfig.HISTORY_SEARCH)) {
-                PrefsDataStore.putJson(HawkConfig.HISTORY_SEARCH,
-                        KeyValueStore.get(HawkConfig.HISTORY_SEARCH, new ArrayList<String>()));
-                KeyValueStore.delete(HawkConfig.HISTORY_SEARCH);
-            }
-            if (KeyValueStore.contains(HawkConfig.SOURCES_FOR_SEARCH)) {
-                PrefsDataStore.putJson(HawkConfig.SOURCES_FOR_SEARCH,
-                        KeyValueStore.get(HawkConfig.SOURCES_FOR_SEARCH,
-                                new HashMap<String, HashMap<String, String>>()));
-                KeyValueStore.delete(HawkConfig.SOURCES_FOR_SEARCH);
-            }
-            if (KeyValueStore.contains(KEY_IMPORT_DIR)) {
-                PrefsDataStore.put(KEY_IMPORT_DIR, KeyValueStore.getString(KEY_IMPORT_DIR, ""));
-                KeyValueStore.delete(KEY_IMPORT_DIR);
-            }
-        } catch (Throwable ignored) {
-        }
-    }
 
     // ── 订阅地址(当前启用接口地址)──
 
