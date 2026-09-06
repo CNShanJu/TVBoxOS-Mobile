@@ -206,6 +206,56 @@ public final class PrefsDataStore {
         }
     }
 
+    // ── 备份/恢复(BackupDialog 聚合;DataStore 为全部配置域的唯一权威)──
+
+    /** 导出全部键值为 JSON 文本(标量 + putJson 的 JSON 文本原样往返;备份写盘用) */
+    public static String exportJson() {
+        try {
+            return GSON.toJson(cache);
+        } catch (Throwable th) {
+            th.printStackTrace();
+            return "{}";
+        }
+    }
+
+    /** 从 JSON 文本恢复全部键值(与 {@link #exportJson()} 对称;写后内存/磁盘立即生效) */
+    public static void importJson(String json) {
+        if (json == null) return;
+        try {
+            java.lang.reflect.Type type = new com.google.gson.reflect.TypeToken<java.util.LinkedHashMap<String, Object>>() {
+            }.getType();
+            java.util.Map<String, Object> map = GSON.fromJson(json, type);
+            importAll(map);
+        } catch (Throwable th) {
+            th.printStackTrace();
+        }
+    }
+
+    /** 写入全部键值(未经 JSON 的类型原样写回);数值做整/浮点归一,避免 Gson Object 化后变 Double 而丢失类型 */
+    public static void importAll(java.util.Map<String, Object> cfg) {
+        if (cfg == null) return;
+        for (java.util.Map.Entry<String, Object> e : cfg.entrySet()) {
+            String key = e.getKey();
+            Object v = e.getValue();
+            if (key == null || v == null) continue;
+            try {
+                if (v instanceof Boolean || v instanceof String) {
+                    put(key, v);
+                } else if (v instanceof Number) {
+                    double d = ((Number) v).doubleValue();
+                    if (d == Math.rint(d) && !Double.isInfinite(d) && Math.abs(d) <= Integer.MAX_VALUE) {
+                        put(key, (int) d);
+                    } else {
+                        put(key, (float) d);
+                    }
+                } else {
+                    // 不支持的运行时类型跳过(不影响其余键)
+                }
+            } catch (Throwable ignored) {
+            }
+        }
+    }
+
     private static void write(java.util.function.Function<Preferences, MutablePreferences> fn) {
         RxDataStore<Preferences> s = store;
         if (s == null) return; // init 前 put 丢弃(装配先 init)
