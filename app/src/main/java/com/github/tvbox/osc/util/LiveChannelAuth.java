@@ -41,4 +41,13 @@ public final class LiveChannelAuth {
         }
         return authorizedChannels;
     }
+
+    /** 第一个无密码分组(启动/回退目标);全加密返回 -1 */
+    public static int firstOpenGroup(List<LiveChannelGroup> groups) {
+        if (groups == null) return -1;
+        for (LiveChannelGroup g : groups) {
+            if (g.getGroupPassword().isEmpty()) return g.getGroupIndex();
+        }
+        return -1;
+    }
 }

@@ -29,6 +29,7 @@ import com.github.tvbox.osc.bean.LiveChannelGroup;
 import com.github.tvbox.osc.bean.LiveChannelItem;
 import com.github.tvbox.osc.player.controller.LiveNewController;
 import com.github.tvbox.osc.util.LiveChannelAuth;
+import com.github.tvbox.osc.util.LiveChannelNav;
 import com.github.tvbox.osc.util.LivePlayerManager;
 import com.github.tvbox.osc.ui.adapter.LiveChannelGroupNewAdapter;
 import com.github.tvbox.osc.ui.adapter.LiveChannelItemNewAdapter;
@@ -708,49 +709,19 @@ public class LiveActivity extends BaseActivity {
     }
 
     private Integer[] getNextChannel(int direction) {
-        int channelGroupIndex = currentChannelGroupIndex;
-        int liveChannelIndex = currentLiveChannelIndex;
-
-        //跨选分组模式下跳过加密频道分组（遥控器上下键换台/超时换源）
-        if (direction > 0) {
-            liveChannelIndex++;
-            if (liveChannelIndex >= getLiveChannels(channelGroupIndex).size()) {
-                liveChannelIndex = 0;
-                if (LiveConfig.crossGroup()) {
-                    do {
-                        channelGroupIndex++;
-                        if (channelGroupIndex >= liveChannelGroupList.size())
-                            channelGroupIndex = 0;
-                    } while (!liveChannelGroupList.get(channelGroupIndex).getGroupPassword().isEmpty() || channelGroupIndex == currentChannelGroupIndex);
-                }
-            }
-        } else {
-            liveChannelIndex--;
-            if (liveChannelIndex < 0) {
-                if (LiveConfig.crossGroup()) {
-                    do {
-                        channelGroupIndex--;
-                        if (channelGroupIndex < 0)
-                            channelGroupIndex = liveChannelGroupList.size() - 1;
-                    } while (!liveChannelGroupList.get(channelGroupIndex).getGroupPassword().isEmpty() || channelGroupIndex == currentChannelGroupIndex);
-                }
-                liveChannelIndex = getLiveChannels(channelGroupIndex).size() - 1;
-            }
-        }
-
-        Integer[] groupChannelIndex = new Integer[2];
-        groupChannelIndex[0] = channelGroupIndex;
-        groupChannelIndex[1] = liveChannelIndex;
-
-        return groupChannelIndex;
+        // 跨组/加密跳过/回卷决策已抽到 LiveChannelNav(纯逻辑,防死循环兜底)
+        int[] next = LiveChannelNav.next(direction,
+                liveChannelGroupList.size(),
+                group -> getLiveChannels(group).size(),
+                group -> !liveChannelGroupList.get(group).getGroupPassword().isEmpty(),
+                currentChannelGroupIndex,
+                currentLiveChannelIndex,
+                LiveConfig.crossGroup());
+        return new Integer[]{next[0], next[1]};
     }
 
     private int getFirstNoPasswordChannelGroup() {
-        for (LiveChannelGroup liveChannelGroup : liveChannelGroupList) {
-            if (liveChannelGroup.getGroupPassword().isEmpty())
-                return liveChannelGroup.getGroupIndex();
-        }
-        return -1;
+        return LiveChannelAuth.firstOpenGroup(liveChannelGroupList);
     }
 
     private boolean isCurrentLiveChannelValid() {
