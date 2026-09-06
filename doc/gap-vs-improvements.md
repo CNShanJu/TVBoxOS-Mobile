@@ -142,8 +142,36 @@ Exo→Media3、EventBus→Flow/接口、Hawk→DataStore、Java→Kotlin 渐进�
   core-network→core-storage,spider→core-storage(无环、通过 checkModuleDependencies)。
 - ✅ 订阅页本地导入改系统 SAF(替代 hedzr 反射 StorageVolume 兼容性问题):`SubscriptionActivity.pickFile`
   改用 `ActivityResultContracts.OpenDocument`(*/* + 扩展名校验),仅接受 ExternalStorageProvider 主卷并转真实
-  路径后仍以 clan:// 订阅源加入(保留记忆导入目录/去重/权限门禁);hedzr 选择器在字幕本地字幕导入
-  (SubtitleCoordinator)仍使用,真机回归见 9/5 订阅导入日志噪音是否消失。
+  路径后仍以 clan:// 订阅源加入(保留记忆导入目录/去重/权限门禁)。
+- ✅ 字幕本地导入同步去 hedzr:`SubtitleCoordinator.openLocalFileChooserDialog` 原用
+  `com.github.hedzr:android-file-chooser` 的 ChooserDialog(反射 StorageVolume.getPath,在 Android 11+/targetSdk 34
+  被 hiddenapi 拒收,见 9/5 日志 NoSuchMethodException)改为自研 `SubtitleFileChooserDialog`(标准 File API 列目录/
+  按字幕后缀过滤/上级导航,配合 MANAGE_EXTERNAL_STORAGE 全文件访问授权);已移除 hedzr 依赖与其
+  FileChooser 主题。同步修复本地视频字幕:`LocalPlayActivity` 接通 SubtitleCoordinator(经 `SubtitleController` 契约复用,
+  在线/本地控制器共同实现),"字幕"按钮不再无响应。修复后真机回归:在线/本地"字幕-本地"选 .srt 是否正常装载。
+- ✅ 字幕设置弹窗开关不关弹窗:`SubtitleDialog` 的"打开/关闭字幕"不再 `dismiss()`(原来一点开关就把整个字幕设置弹窗
+  关了,得重新进设置),改为原地切换状态并仅显隐选项区(字号/延迟/样式/本地/内置/搜索在开启时展示),可在同一弹窗内继续调整。
+- ✅ 数据备份/还原改为 DataStore + Room DB(修复"备份不生效"):`BackupDialog` 原只读写已退役的 `Hawk2` SharedPreferences
+  + `sqlite`(Room DB),配置已迁 DataStore 后它只存到空壳 hawk、恢复也写回无人读的 Hawk2,故"备份/导入完全不生效"。
+  改为:`backup` 写 `config.json`(`PrefsDataStore.exportJson` 全量导出 System/播放/订阅/直播/主页热播/下载等配置域)+
+  `sqlite`(Room DB 历史/收藏/缓存);`restore` 经 `PrefsDataStore.importJson`(数值整/浮点归一)写回配置域 + 恢复 Room DB 后重启。
+  另修 `allBackup()` 对 `listFiles()`=null 的潜在 NPE。真机回归:设置→数据备份还原→立即备份,改配置后还原是否恢复。
+- ✅ 更新下载优化与全局悬浮圈:下载逻辑从 `Updater` 实现抽出为 `update/UpdateManager`(应用级单例 +
+  HeavyTaskUtil 线程,断点续传/暂停/继续/取消、复用已下载同名完整 APK、安装完成后启动清理本地 APK),
+  任何页面不因关闭下载弹窗而中断;新增 `update/UpdateFloatIndicator` 全局悬浮圆圈(仿首页直播钮,
+  附着当前 Activity 窗口,经 `BaseActivity` onResume/onPause 挂载/卸载),点击弹出 `UpdateIndicatorDialog`
+  查看进度并手动 暂停/继续/不再更新/安装。`GithubReleaseUpdater.downloadAndInstall` 改为委托 UpdateManager,
+  后续切换其他更新源只实现各自 checkUpdate。真机回归:检查更新→立即下载→关掉弹窗仍继续→悬浮圈控制→安装后首启清 APK。
+- ✅ 错误日志日期抽屉跟随主题:`LogActivity` 错误日志 Tab 的点"选择日期"底部抽屉(asBottomList)未传
+  `isDarkTheme`,暗色主题下仍是浅色底;补 `.isDarkTheme(Utils.isAppDarkTheme())`(直读 App 主题设置,避免 ROM uiMode
+  不同步误判浅色→白底)。同步给本次新增的 `UpdateIndicatorDialog`/`SubtitleFileChooserDialog` 的 `show()` 补了
+  `.isDarkTheme(Utils.isAppDarkTheme())`。
+- ✅ 爬虫 JS 异步桥空对象 NPE 修复:`JsSpider.call` 在 `jsObject==null`(JS 模块内容缺失/未导出 __JS_SPIDER__)
+  时直接返回 null;`Async.call` 对 null object 防御,不再抛 `getJSFunction on null` 的 NPE(避免一条源挂掉刷爆错误日志)。
+- ✅ 详情折叠/展开文案修正:`InlineExpandableText.buildCollapsed` 不再把前导省略号“… ”上链接色(只“展开”蓝),
+  “收回”改为内联在展开文本行末(新增 `buildExpanded`),不再单独换行;`VideoDetailDialog` 同步改用内联“收回”。
+- ✅ 本地字幕显隐加固:`SubtitleCoordinator.setSubtitlePath` 在用户显式选字幕时,先用<b>当前</b>播放内核重新绑定
+  字幕引擎(prepared 时绑定的 player 实例可能被重建),并强制字幕可见+开启(此前依赖 PlayConfig 状态,若开关未开则 GONE 不显示)。
 - ✅ :download 持久化收口:`internal/{DownloadManager,DownloadStore,DownloadArchive,DownloadPolicy}` 的 Hawk 直存
   (任务列表/档案/并发/WiFi 策略)改走 `config.KeyValueStore`,:download 新增依赖 :core-storage、移除 hawk 库依赖。
 - ✅ js 运行时缓存文件化:spider `util/js/local`(JS localStorage 桥)改存 `filesDir/js_runtime/*.txt`(ApiConfig
