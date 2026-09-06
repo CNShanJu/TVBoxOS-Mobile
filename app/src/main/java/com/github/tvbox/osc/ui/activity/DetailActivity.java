@@ -710,13 +710,6 @@ public class DetailActivity extends BaseVbActivity<ActivityDetailBinding>
         });
     }
 
-    private String getHtml(String label, String content) {
-        if (content == null) {
-            content = "";
-        }
-        return label + "<font color=\"#FFFFFF\">" + content + "</font>";
-    }
-
     private void initData() {
         Intent intent = getIntent();
         if (intent != null && intent.getExtras() != null) {
