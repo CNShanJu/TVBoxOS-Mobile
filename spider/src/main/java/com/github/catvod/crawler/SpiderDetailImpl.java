@@ -1,24 +1,21 @@
 package com.github.catvod.crawler;
 
 import com.github.tvbox.osc.api.ApiConfig;
-import com.github.tvbox.osc.bean.AbsJson;
 import com.github.tvbox.osc.bean.AbsXml;
 import com.github.tvbox.osc.bean.SourceBean;
+import com.github.tvbox.osc.spiderapi.AbsXmlParser;
 import com.github.tvbox.osc.spiderapi.SpiderDetailApi;
-
-import com.google.gson.Gson;
-import com.google.gson.reflect.TypeToken;
 
 import java.util.Collections;
 
 /**
  * 强类型详情实现(type=3 JS/JAR):内容串由 spider-api 契约取得后,在此解析为 AbsXml。
- * 说明:解析规则与 app 侧 json() 一致(Gson → AbsJson → AbsXml);app 只做 enrichment+post。
+ * 说明:解析与 VM 共用同一权威实现 AbsXmlParser.parseJson(与 SourceViewModel.json() 同源,
+ * 消除双实现漂移);app 只做 enrichment+post。
  */
 public final class SpiderDetailImpl implements SpiderDetailApi {
 
     private static final SpiderDetailImpl INSTANCE = new SpiderDetailImpl();
-    private final Gson gson = new Gson();
 
     public static SpiderDetailImpl get() {
         return INSTANCE;
@@ -40,9 +37,7 @@ public final class SpiderDetailImpl implements SpiderDetailApi {
                 android.util.Log.w("SpiderBridge", "detail(typed): 内容为空 key=" + sourceKey + " id=" + vodId);
                 return null;
             }
-            AbsJson absJson = gson.fromJson(content, new TypeToken<AbsJson>() {
-            }.getType());
-            AbsXml xml = absJson == null ? null : absJson.toAbsXml();
+            AbsXml xml = AbsXmlParser.parseJson(content, sourceKey);
             if (xml == null || xml.movie == null) {
                 android.util.Log.w("SpiderBridge", "detail(typed): 解析为空 key=" + sourceKey + " id=" + vodId);
                 return null;

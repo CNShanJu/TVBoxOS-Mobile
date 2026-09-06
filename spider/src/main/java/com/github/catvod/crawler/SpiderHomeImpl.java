@@ -1,27 +1,24 @@
 package com.github.catvod.crawler;
 
 import com.github.tvbox.osc.api.ApiConfig;
-import com.github.tvbox.osc.bean.AbsJson;
 import com.github.tvbox.osc.bean.AbsSortXml;
 import com.github.tvbox.osc.bean.AbsXml;
 import com.github.tvbox.osc.bean.SourceBean;
+import com.github.tvbox.osc.spiderapi.AbsXmlParser;
 import com.github.tvbox.osc.spiderapi.SortParser;
 import com.github.tvbox.osc.spiderapi.SpiderHomeApi;
-
-import com.google.gson.Gson;
-import com.google.gson.reflect.TypeToken;
 
 import java.util.HashMap;
 import java.util.Map;
 
 /**
  * 强类型首页/分类实现(type=3 JS/JAR):内容经 spider-api 契约取得后解析为 AbsSortXml/AbsXml。
- * 解析规则与 app 的 sortJson()/json() 一致(SortParser + Gson → AbsJson → AbsXml)。
+ * 解析与 VM 共用同一权威实现:homeContent→SortParser.parseSortJson;分类/首页推荐→
+ * AbsXmlParser.parseJson(与 SourceViewModel.json() 同源,消除双实现漂移)。
  */
 public final class SpiderHomeImpl implements SpiderHomeApi {
 
     private static final SpiderHomeImpl INSTANCE = new SpiderHomeImpl();
-    private final Gson gson = new Gson();
 
     public static SpiderHomeImpl get() {
         return INSTANCE;
@@ -33,9 +30,8 @@ public final class SpiderHomeImpl implements SpiderHomeApi {
             return null;
         }
         try {
-            AbsJson absJson = gson.fromJson(content, new TypeToken<AbsJson>() {
-            }.getType());
-            AbsXml xml = absJson == null ? null : absJson.toAbsXml();
+            // 与 VM json() 同一权威解析(AbsJson → AbsXml + normalize 回填 sourceKey/拆 beanList)
+            AbsXml xml = AbsXmlParser.parseJson(content, sourceKey);
             if (xml == null || xml.movie == null) {
                 android.util.Log.w("SpiderBridge", tag + " 解析为空 key=" + sourceKey);
                 return null;

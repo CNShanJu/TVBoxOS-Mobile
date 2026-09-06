@@ -175,4 +175,25 @@ public class AbsXmlParserTest {
         noList.movie = new Movie();
         AbsXmlParser.normalize(noList, "src");
     }
+
+    /**
+     * typed 收口回归:typed 实现将复用 AbsXmlParser.parseJson(含 normalize),
+     * VM 收到 typed 产物后再 absXml()=normalize 一次——normalize 必须幂等,
+     * 二次归一不得改变 sourceKey/beanList/线路结构(防 double-normalize 破坏)。
+     */
+    @Test
+    public void normalize_isIdempotent() throws Exception {
+        AbsXml once = AbsXmlParser.parseJson(SAMPLE_JSON, "src-key");
+        AbsXmlParser.normalize(once, "src-key"); // 模拟 VM 收到 typed 后二次 normalize
+
+        Movie.Video v = once.movie.videoList.get(0);
+        assertEquals("src-key", v.sourceKey);
+        Movie.Video.UrlBean.UrlInfo line =
+                v.urlBean.infoList.get(0);
+        assertNotNull(line.beanList);
+        assertEquals(2, line.beanList.size());
+        assertEquals("第1集", line.beanList.get(0).name);
+        assertEquals("第2集", line.beanList.get(1).name);
+        assertEquals("http://example.com/2.mp4", line.beanList.get(1).url);
+    }
 }
