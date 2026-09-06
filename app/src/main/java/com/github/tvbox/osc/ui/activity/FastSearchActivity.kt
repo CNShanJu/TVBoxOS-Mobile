@@ -471,8 +471,8 @@ class FastSearchActivity : BaseVbActivity<ActivityFastSearchBinding>(), TextWatc
         //fenci();
         mBinding.mGridView.visibility = View.INVISIBLE
         mBinding.mGridViewFilter.visibility = View.GONE
-        searchAdapter!!.setNewData(ArrayList())
-        searchAdapterFilter!!.setNewData(ArrayList())
+        searchAdapter.setNewData(ArrayList())
+        searchAdapterFilter.setNewData(ArrayList())
         resultVods.clear()
         searchFilterKey = ""
         isFilterMode = false
