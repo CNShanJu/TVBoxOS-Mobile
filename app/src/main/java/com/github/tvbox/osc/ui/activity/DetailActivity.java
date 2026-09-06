@@ -4,16 +4,11 @@ import android.annotation.SuppressLint;
 import android.content.BroadcastReceiver;
 import android.content.ComponentName;
 import android.content.Context;
-import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.IntentFilter;
-import android.content.pm.PackageManager;
-import android.content.pm.ResolveInfo;
 import android.content.res.Configuration;
-import android.net.Uri;
 import android.os.Bundle;
 import android.text.TextUtils;
-import android.util.Log;
 import android.view.KeyEvent;
 import android.view.View;
 import android.view.ViewGroup;
@@ -21,13 +16,9 @@ import android.view.animation.DecelerateInterpolator;
 import android.widget.FrameLayout;
 import android.widget.Toast;
 
-import androidx.appcompat.app.AlertDialog;
 import androidx.lifecycle.Observer;
 import androidx.lifecycle.ViewModelProvider;
 
-import com.blankj.utilcode.util.AppUtils;
-import com.blankj.utilcode.util.ConvertUtils;
-import com.blankj.utilcode.util.LogUtils;
 import com.blankj.utilcode.util.NotificationUtils;
 import com.blankj.utilcode.util.ScreenUtils;
 import com.blankj.utilcode.util.ServiceUtils;
@@ -36,15 +27,12 @@ import com.chad.library.adapter.base.BaseQuickAdapter;
 import com.github.tvbox.osc.R;
 import com.github.tvbox.osc.base.App;
 import com.github.tvbox.osc.base.BaseVbActivity;
-import com.github.tvbox.osc.download.DownloadFacade;
 import com.github.tvbox.osc.bean.AbsXml;
 import com.github.tvbox.osc.bean.CastVideo;
 import com.github.tvbox.osc.bean.Movie;
-import com.github.tvbox.osc.bean.ParseBean;
 import com.github.tvbox.osc.bean.SourceBean;
 import com.github.tvbox.osc.bean.VodInfo;
 import com.github.tvbox.osc.repo.HistoryRepositories;
-import com.github.tvbox.osc.constant.IntentKey;
 import com.github.tvbox.osc.databinding.ActivityDetailBinding;
 import com.github.tvbox.osc.event.RefreshEvent;
 import com.github.tvbox.osc.player.api.PlayConfig;
@@ -55,38 +43,26 @@ import com.github.tvbox.osc.ui.adapter.SeriesFlagAdapter;
 import com.github.tvbox.osc.ui.dialog.AllVodSeriesBottomDialog;
 import com.github.tvbox.osc.ui.dialog.AllVodSeriesRightDialog;
 import com.github.tvbox.osc.ui.dialog.CastListDialog;
-import com.github.tvbox.osc.ui.dialog.ConfirmDialog;
 import com.github.tvbox.osc.ui.dialog.DialogCoordinator;
-import com.github.tvbox.osc.ui.dialog.DownloadSeriesDialog;
-import com.github.tvbox.osc.ui.dialog.DownloadSeriesRightDialog;
+import com.github.tvbox.osc.ui.dialog.DownloadDialogCoordinator;
 import com.github.tvbox.osc.ui.dialog.QuickSearchDialog;
 import com.github.tvbox.osc.ui.dialog.VideoDetailDialog;
 import com.github.tvbox.osc.ui.fragment.PlayFragment;
 import com.github.tvbox.osc.ui.kit.LinearSpacingItemDecoration;
 import com.github.tvbox.osc.util.BroadcastUtils;
-import com.github.tvbox.osc.util.DownloadSeriesModel;
 import com.github.tvbox.osc.util.DetailQuickSearchHelper;
-import com.github.tvbox.osc.util.EpisodeDownloadBatch;
 import com.github.tvbox.osc.ui.activity.DownloadActivity;
 import com.github.tvbox.osc.util.FastClickCheckUtil;
-import com.github.tvbox.osc.util.HCallBack;
 import com.github.tvbox.osc.util.HttpClient;
 import com.github.tvbox.osc.util.PipHelper;
-import com.github.catvod.crawler.PlayUrlResolver;
 import com.github.tvbox.osc.util.ScreenShotListenManager;
-import com.github.tvbox.osc.util.SearchHelper;
 import com.github.tvbox.osc.util.SubtitleHelper;
 import com.github.tvbox.osc.config.SystemConfig;
 import com.github.tvbox.osc.util.Utils;
 import com.github.tvbox.osc.viewmodel.SourceViewModel;
-import com.google.gson.Gson;
-import com.google.gson.JsonArray;
-import com.google.gson.JsonElement;
 import com.gyf.immersionbar.ImmersionBar;
 import com.lxj.xpopup.XPopup;
 import com.lxj.xpopup.core.BasePopupView;
-import com.lxj.xpopup.enums.PopupPosition;
-import com.lxj.xpopup.interfaces.OnSelectListener;
 import com.owen.tvrecyclerview.widget.V7LinearLayoutManager;
 
 import org.greenrobot.eventbus.Subscribe;
@@ -97,15 +73,8 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
-import java.net.URLEncoder;
 import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 
 /**
  * @author pj567
@@ -113,13 +82,17 @@ import java.util.concurrent.Executors;
  * @description:
  */
 
-public class DetailActivity extends BaseVbActivity<ActivityDetailBinding> {
+public class DetailActivity extends BaseVbActivity<ActivityDetailBinding>
+        implements DownloadDialogCoordinator.Host {
     private PlayFragment playFragment = null;
     private SourceViewModel sourceViewModel;
     /** 详情页"快速搜索"请求编排(共享线程池 + epoch 去重/暂停;UI 只负责弹窗展示与直喂数据) */
     private DetailQuickSearchHelper quickSearchHelper;
     /** 快速搜索弹窗(当前打开的实例;宿主直调喂数据/收回调,不再经 EventBus) */
     private QuickSearchDialog mQuickSearchDialog;
+    /** 下载选择弹窗协调器(底部弹窗 + 全屏右侧抽屉编排;宿主只提供数据/全屏时序/跳转能力) */
+    private final DownloadDialogCoordinator downloadDialogCoordinator =
+            new DownloadDialogCoordinator(this, this);
     private Movie.Video mVideo;
     private VodInfo vodInfo;
     public SeriesFlagAdapter seriesFlagAdapter;
@@ -882,9 +855,6 @@ public class DetailActivity extends BaseVbActivity<ActivityDetailBinding> {
     private boolean pipExitByBack = false;
     /** 应用内跳转(如打开下载管理/设置等)标记:onUserLeaveHint 里排除,避免"应用内导航"被当成"切后台"触发小窗/后台播放 */
     private boolean navigatingAway = false;
-    /** 下载选择弹窗防重入:短时间内多次点"下载"只弹一个抽屉(延迟链 + 弹窗引用双重保护) */
-    private boolean isDownloadDialogShowing = false;
-    private BasePopupView mDownloadDialog = null;
     /** 画中画(小窗)通用辅助器,封装进入/退出小窗逻辑,详情页与本地播放器复用 */
     private PipHelper pipHelper;
 
@@ -924,301 +894,17 @@ public class DetailActivity extends BaseVbActivity<ActivityDetailBinding> {
         }
     }
 
-    /**
-     * 打开"选择下载剧集"弹窗:网格多选 + 开始下载/下载管理。
-     * 不要求必须先播放成功(未播放时所有集统一走后台解析);全屏时先退出全屏再弹窗,避免小屏叠加。
-     */
-    public void showDownloadSeriesDialog() {
-        // 防重入:弹窗已在显示或延迟链已排队,直接忽略(详情页"下载"按钮连点也不会叠抽屉)
-        if (isDownloadDialogShowing || mDownloadDialog != null && mDownloadDialog.isShow()) {
-            return;
-        }
-        if (vodInfo == null || vodInfo.seriesMap.get(vodInfo.playFlag) == null
-                || vodInfo.seriesMap.get(vodInfo.playFlag).size() <= 0) {
-            isDownloadDialogShowing = false;
-            AppBubble.toast("资源异常,请稍后重试");
-            return;
-        }
-        // 全屏播放下发起下载:先退出全屏回到详情页布局,再弹窗(手机小屏上避免播放器与抽屉叠加)
-        if (fullWindows) {
-            toggleFullPreview();
-            // 等退全屏布局稳定后再弹窗,避免弹窗与全屏切换动画叠加(修复:返回时全屏/抽屉残留)
-            mBinding.previewPlayer.postDelayed(this::showDownloadSeriesDialogInner, 250);
-            return;
-        }
-        showDownloadSeriesDialogInner();
+    // ------------------------------------------------------------------
+    // 下载弹窗协调器 Host 实现 + 兼容入口(编排已下沉 DownloadDialogCoordinator)
+    // ------------------------------------------------------------------
+
+    @Override
+    public VodInfo currentVodInfo() {
+        return vodInfo;
     }
 
-    /**
-     * 全屏控制栏"下载"按钮:立即弹出右侧下载抽屉(内容先 loading),数据后台准备完成后填充,不退出全屏。
-     * 仅全屏状态调用(由播放器控制栏触发);非全屏走底部弹窗 showDownloadSeriesDialog。
-     */
-    public void showDownloadDialogInFullscreen() {
-        // 防重入:下载抽屉已显示或底部弹窗在排队中,忽略重复点击
-        if (isDownloadDialogShowing || mDownloadDialog != null && mDownloadDialog.isShow()) {
-            return;
-        }
-        if (vodInfo == null || vodInfo.seriesMap.get(vodInfo.playFlag) == null
-                || vodInfo.seriesMap.get(vodInfo.playFlag).size() <= 0) {
-            AppBubble.toast("资源异常,请稍后重试");
-            return;
-        }
-        // 竖屏(含竖屏全窗):与设置/选集一致,改为底部弹窗(限高2/3),仅横屏才用右侧下载抽屉
-        if (!ScreenUtils.isLandscape()) {
-            showDownloadSeriesDialogInner();
-            return;
-        }
-        // 立即弹抽屉(空数据 + loading),避免主线程构建选集/状态造成卡顿
-        isDownloadDialogShowing = true;
-        mDownloadDialog = DialogCoordinator.right(this,
-                new DownloadSeriesRightDialog(this, new DownloadSeriesRightDialog.OnDownloadActionListener() {
-                    @Override
-                    public void onStartDownload(List<VodInfo.VodSeries> selected) {
-                        startDownloads(selected);
-                    }
-
-                    @Override
-                    public void onOpenDownloadManager() {
-                        navigatingAway = true;
-                        jumpActivity(DownloadActivity.class);
-                    }
-
-                    @Override
-                    public void onSortSeries() {
-                        sortSeries(); // 与选集抽屉一致:反转全集列表(副本随正表重建)
-                        refreshDownloadDialogStates();
-                    }
-                }, this::isSeriesReversed),
-                360, false, downloadDialogCallback());
-        mDownloadDialog.show();
-        // 后台准备数据(选集副本 + 下载状态批量查询),完成后主线程填充抽屉
-        final String sourceName = getDownloadSourceName();
-        final String vodName = getDownloadVodName();
-        SourceViewModel.spThreadPool.execute(() -> {
-            List<VodInfo.VodSeries> copy = buildDownloadSeriesCopy();
-            int[] states = buildDownloadStates(copy, sourceName, vodName);
-            runOnUiThread(() -> {
-                if (mDownloadDialog instanceof DownloadSeriesRightDialog && mDownloadDialog.isShow()) {
-                    ((DownloadSeriesRightDialog) mDownloadDialog).setData(copy, states);
-                }
-            });
-        });
-    }
-
-    /** 构建下载选择弹窗的选集副本(带统一剧集标识),供底部弹窗与全屏右侧抽屉复用;
-        保留弹窗当前已勾选的集(按集名匹配, 排序/刷新均不丢选中)。纯逻辑见 DownloadSeriesModel */
-    private List<VodInfo.VodSeries> buildDownloadSeriesCopy() {
-        List<VodInfo.VodSeries> shown = null;
-        if (mDownloadDialog != null) {
-            if (mDownloadDialog instanceof DownloadSeriesDialog) {
-                shown = ((DownloadSeriesDialog) mDownloadDialog).getCurrentList();
-            } else if (mDownloadDialog instanceof DownloadSeriesRightDialog) {
-                shown = ((DownloadSeriesRightDialog) mDownloadDialog).getCurrentList();
-            }
-        }
-        java.util.Set<String> selectedNames = DownloadSeriesModel.collectSelectedNames(shown);
-        List<VodInfo.VodSeries> master = vodInfo.seriesMap.get(vodInfo.playFlag);
-        return DownloadSeriesModel.rebuildCopy(master, selectedNames,
-                idx -> DownloadFacade.get().buildEpisodeId(vodInfo.sourceKey, vodInfo.id, vodInfo.playFlag, idx));
-    }
-
-    /** 构建下载状态数组:0=可下载,1=已下载,2=下载中/排队(批量查询,一次快照避免逐集拷贝任务列表) */
-    private int[] buildDownloadStates(List<VodInfo.VodSeries> copy, String sourceName, String vodName) {
-        return DownloadFacade.get().getEpisodeStates(
-                DownloadSeriesModel.episodeIdsOf(copy), sourceName, vodName, DownloadSeriesModel.episodeNamesOf(copy));
-    }
-
-    /** 下载弹窗统一关闭回调:关闭后清除防重入标记,允许再次打开 */
-    private com.lxj.xpopup.interfaces.XPopupCallback downloadDialogCallback() {
-        return new com.lxj.xpopup.interfaces.XPopupCallback() {
-            @Override
-            public void onCreated(BasePopupView popupView) {
-            }
-
-            @Override
-            public void beforeShow(BasePopupView popupView) {
-            }
-
-            @Override
-            public void onShow(BasePopupView popupView) {
-            }
-
-            @Override
-            public void onDismiss(BasePopupView popupView) {
-                isDownloadDialogShowing = false;
-                mDownloadDialog = null;
-                // 实时刷新: 弹窗关闭后注销下载状态订阅
-                com.github.tvbox.osc.download.DownloadFacade.get().unregister(downloadStatusListener);
-            }
-
-            @Override
-            public void beforeDismiss(BasePopupView popupView) {
-            }
-
-            @Override
-            public boolean onBackPressed(BasePopupView popupView) {
-                return false;
-            }
-
-            @Override
-            public void onKeyBoardStateChanged(BasePopupView popupView, int height) {
-            }
-
-            @Override
-            public void onDrag(BasePopupView popupView, int value, float fraction, boolean isScrollShadow) {
-            }
-
-            @Override
-            public void onClickOutside(BasePopupView popupView) {
-            }
-        };
-    }
-
-    /** 弹窗主体(退全屏完成后调用):立即弹窗(loading),数据后台准备完成后填充 */
-    private void showDownloadSeriesDialogInner() {
-        // 防重入:延迟回调已触发过(弹窗已创建),跳过重复创建
-        if (isDownloadDialogShowing && mDownloadDialog != null && mDownloadDialog.isShow()) {
-            return;
-        }
-        isDownloadDialogShowing = true;
-        // 底部弹窗封顶 2/3 屏,列表吃满剩余+滚动,按钮固定底部;
-        // 弹窗关闭(确认/取消/点外部/返回键)后清除防重入标记,允许再次打开
-        mDownloadDialog = DialogCoordinator.bottomMaxHeight(this,
-                new DownloadSeriesDialog(this, new DownloadSeriesDialog.OnDownloadActionListener() {
-                    @Override
-                    public void onStartDownload(List<VodInfo.VodSeries> selected) {
-                        startDownloads(selected);
-                    }
-
-                    @Override
-                    public void onOpenDownloadManager() {
-                        // 应用内跳转:标记避免 onUserLeaveHint 误判为"切后台"触发小窗/后台播放(修复:返回时全屏播放)
-                        navigatingAway = true;
-                        jumpActivity(DownloadActivity.class);
-                    }
-
-                    @Override
-                    public void onSortSeries() {
-                        sortSeries(); // 与选集抽屉一致:反转全集列表(副本随正表重建)
-                        refreshDownloadDialogStates();
-                    }
-                }, this::isSeriesReversed),
-                ScreenUtils.getScreenHeight() * 2 / 3,
-                downloadDialogCallback());
-        mDownloadDialog.show();
-        // 实时刷新: 订阅下载状态变化(下载中进度/完成/失败 → 弹窗实时更新勾选态)
-        com.github.tvbox.osc.download.DownloadFacade.get().register(downloadStatusListener);
-        // 后台准备数据(选集副本 + 下载状态批量查询),完成后主线程填充弹窗
-        refreshDownloadDialogStates();
-    }
-
-    /** 下载状态变化监听(DownloadFacade 去抖 500ms 回调,主线程): 弹窗仍显示则重查并填充 */
-    private final com.github.tvbox.osc.download.DownloadFacade.DownloadStatusListener downloadStatusListener = () -> {
-        if (mDownloadDialog instanceof DownloadSeriesDialog && mDownloadDialog.isShow()) {
-            refreshDownloadDialogStates();
-        }
-    };
-
-    /** 后台准备弹窗数据(选集副本 + 下载状态批量查询),完成后主线程填充弹窗 */
-    private void refreshDownloadDialogStates() {
-        final String sourceName = getDownloadSourceName();
-        final String vodName = getDownloadVodName();
-        SourceViewModel.spThreadPool.execute(() -> {
-            // 先清理该剧的文件不存在档案(本地删文件后, 打开抽屉立即恢复"未下载")
-            com.github.tvbox.osc.download.DownloadFacade.get().removeArchiveOrphansByVod(vodName, sourceName);
-            List<VodInfo.VodSeries> copy = buildDownloadSeriesCopy();
-            int[] states = buildDownloadStates(copy, sourceName, vodName);
-            runOnUiThread(() -> {
-                if (mDownloadDialog instanceof DownloadSeriesDialog && mDownloadDialog.isShow()) {
-                    ((DownloadSeriesDialog) mDownloadDialog).setData(copy, states);
-                }
-            });
-        });
-    }
-
-    /**
-     * 批量加入下载任务:先解析每集真实地址(后台线程),再入队;区分空选择与重复下载
-     *
-     * @param selected 已勾选的剧集列表
-     */
-    private void startDownloads(List<VodInfo.VodSeries> selected) {
-        if (selected == null || selected.isEmpty()) {
-            AppBubble.toast("请先选择要下载的剧集");
-            return;
-        }
-        // 网络控制:默认仅 WiFi 下载;移动网络下强提醒流量风险,确认后才继续(统一走 DownloadConfig)
-        if (DownloadFacade.get().isWifiOnly() && DownloadFacade.get().isMobileNetwork()) {
-            // 统一主题化确认弹窗(替代 XPopup 默认 asConfirm)
-            ConfirmDialog.show(this, "流量提醒", "当前为移动网络,继续下载将消耗手机流量,是否继续?",
-                    "继续下载", () -> doStartDownloads(selected));
-            return;
-        }
-        doStartDownloads(selected);
-    }
-
-    private void doStartDownloads(List<VodInfo.VodSeries> selected) {
-        List<VodInfo.VodSeries> seriesList = vodInfo.seriesMap == null
-                ? null : vodInfo.seriesMap.get(vodInfo.playFlag);
-        if (seriesList == null || seriesList.isEmpty()) {
-            AppBubble.toast("资源异常,请稍后重试");
-            return;
-        }
-        final String sourceName = getDownloadSourceName();
-        final String vodName = getDownloadVodName();
-        final String sourceKey = vodInfo.sourceKey;
-        final String playFlag = vodInfo.playFlag;
-        final String vodId = vodInfo.id;
-        final int playIndex = vodInfo.playIndex;
-        final String currentName = playIndex >= 0 && playIndex < seriesList.size()
-                ? seriesList.get(playIndex).name : null;
-        // 当前播放视频的分辨率标签(由播放器画面尺寸归类),不可用则不拼分辨率
-        final String resLabel = (playFragment != null && playFragment.getPlayer() != null)
-                ? EpisodeDownloadBatch.resolutionLabel(playFragment.getPlayer().getVideoSize()) : null;
-        Log.i("TVBox-Download", "startDownloads: 已选 " + selected.size() + " 集, 来源=" + sourceName
-                + ", 剧名=" + vodName + ", 当前集=" + currentName + ", 分辨率=" + resLabel);
-        AppBubble.toast("正在解析下载地址,请稍候...");
-        // 用与播放一致的爬虫单线程池解析地址,避免 quickjs 并发;解析/入队/计数/文案收敛到 EpisodeDownloadBatch
-        SourceViewModel.spThreadPool.execute(() -> {
-            EpisodeDownloadBatch.Outcome r = EpisodeDownloadBatch.enqueue(selected, vodInfo, sourceName,
-                    vodName, currentName, resLabel, playFragment == null ? null : new EpisodeDownloadBatch.CurrentEpisode() {
-                        @Override
-                        public String finalUrl() {
-                            return playFragment.getFinalUrl();
-                        }
-
-                        @Override
-                        public Map<String, String> playHeaders() {
-                            return playFragment.getPlayHeaders();
-                        }
-                    });
-            final String msg = EpisodeDownloadBatch.toastMessage(r);
-            runOnUiThread(() -> {
-                if (msg != null) {
-                    AppBubble.toast(msg);
-                } else {
-                    AppBubble.toast("所选剧集地址无效,无法下载");
-                }
-            });
-        });
-    }
-
-    /** 来源名(一级目录,如 饭太硬) */
-    private String getDownloadSourceName() {
-        String sourceName = "未分类";
-        try {
-            SourceBean sb = com.github.tvbox.osc.spiderapi.SourceConfigProviders.get().getSource(vodInfo.sourceKey);
-            if (sb != null && !TextUtils.isEmpty(sb.getName())) {
-                sourceName = sb.getName();
-            } else if (!TextUtils.isEmpty(vodInfo.sourceKey)) {
-                sourceName = vodInfo.sourceKey;
-            }
-        } catch (Throwable ignored) {
-        }
-        return sourceName;
-    }
-
-    /** 剧名:优先详情接口的名称,其次入口(搜索/列表)传入的名称,最后用页面 tvName 兜底 */
-    private String getDownloadVodName() {
+    @Override
+    public String downloadVodName() {
         String vodName = vodInfo.name;
         if (TextUtils.isEmpty(vodName)) {
             vodName = mPassedName;
@@ -1231,6 +917,55 @@ public class DetailActivity extends BaseVbActivity<ActivityDetailBinding> {
         return vodName;
     }
 
+    @Override
+    public PlayFragment currentPlayFragment() {
+        return playFragment;
+    }
+
+    @Override
+    public boolean isFullscreen() {
+        return fullWindows;
+    }
+
+    @Override
+    public boolean isLandscape() {
+        return ScreenUtils.isLandscape();
+    }
+
+    /** 全屏下先退全屏,再延迟打开底部下载弹窗(宿主负责退全屏 + postDelayed 时序) */
+    @Override
+    public void exitFullscreenThenOpenBottom() {
+        toggleFullPreview();
+        // 等退全屏布局稳定后再弹窗,避免弹窗与全屏切换动画叠加(修复:返回时全屏/抽屉残留)
+        mBinding.previewPlayer.postDelayed(downloadDialogCoordinator::showDownloadSeriesDialogInner, 250);
+    }
+
+    @Override
+    public void openDownloadManager() {
+        // 应用内跳转:标记避免 onUserLeaveHint 误判为"切后台"触发小窗/后台播放(修复:返回时全屏播放)
+        navigatingAway = true;
+        jumpActivity(DownloadActivity.class);
+    }
+
+    @Override
+    public void toast(String msg) {
+        AppBubble.toast(msg);
+    }
+
+    @Override
+    public void runOnUi(Runnable action) {
+        runOnUiThread(action);
+    }
+
+    /** 打开"选择下载剧集"弹窗:网格多选 + 开始下载/下载管理(编排见协调器) */
+    public void showDownloadSeriesDialog() {
+        downloadDialogCoordinator.showDownloadSeriesDialog();
+    }
+
+    /** 全屏控制栏"下载"按钮:右侧下载抽屉(编排见协调器;仅全屏触发) */
+    public void showDownloadDialogInFullscreen() {
+        downloadDialogCoordinator.showDownloadDialogInFullscreen();
+    }
     /**
      * 画中画模式(小窗):进入小窗。逻辑封装在 PipHelper,详情页/本地播放器复用。
      */
