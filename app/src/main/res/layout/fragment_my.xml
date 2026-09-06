@@ -33,7 +33,8 @@
         android:layout_marginHorizontal="20dp"
         android:background="@drawable/bg_large_round_gray">
 
-        <ScrollView
+        <!-- 选项行超出时在卡片内部滚动;拖到顶/底可越界跟手回弹(iOS 橡皮筋,见 RubberBandScrollView) -->
+        <com.github.tvbox.osc.ui.kit.RubberBandScrollView
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:scrollbars="none"
@@ -436,7 +437,7 @@
             </LinearLayout>
 
                 </LinearLayout>
-            </ScrollView>
+            </com.github.tvbox.osc.ui.kit.RubberBandScrollView>
         </LinearLayout>
 
         <TextView
