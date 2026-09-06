@@ -13,7 +13,6 @@ import com.github.tvbox.osc.R;
 import com.github.tvbox.osc.bean.VodInfo;
 import com.github.tvbox.osc.databinding.DialogVideoDetailBinding;
 import com.github.tvbox.osc.picasso.RoundTransformation;
-import com.github.tvbox.osc.ui.activity.DetailActivity;
 import com.github.tvbox.osc.util.DefaultConfig;
 import com.github.tvbox.osc.util.MD5;
 import com.lxj.xpopup.XPopup;
@@ -26,14 +25,22 @@ import me.jessyan.autosize.utils.AutoSizeUtils;
 
 public class VideoDetailDialog extends AppBottomPopupView {
 
+    /**
+     * 宿主窄接口(替代原 (DetailActivity) context 强转):弹窗只依赖"当前选中集直链"这一个能力。
+     * 避免 UI 组件强依赖具体 Activity 类型(改进.txt §七/AGENTS §六)。
+     */
+    public interface Host {
+        /** 当前详情选中线路/剧集的播放直链(可能为空,由调用方决定语义) */
+        String getCurrentVodUrl();
+    }
 
     @NonNull
-    private final DetailActivity mActivity;
-    private VodInfo mVideo;
+    private final Host mHost;
+    private final VodInfo mVideo;
 
-    public VideoDetailDialog(@NonNull Context context, VodInfo vodInfo) {
+    public VideoDetailDialog(@NonNull Context context, @NonNull Host host, VodInfo vodInfo) {
         super(context);
-        mActivity = (DetailActivity) context;
+        mHost = host;
         mVideo = vodInfo;
     }
 
@@ -59,9 +66,9 @@ public class VideoDetailDialog extends AppBottomPopupView {
         binding.tvActor.setText("演员："+getText(mVideo.actor));
         binding.tvDirector.setText("导演："+getText(mVideo.director));
         binding.tvDes.setContent("简介："+removeHtmlTag(mVideo.des));
-        binding.url.setText(mActivity.getCurrentVodUrl());
+        binding.url.setText(mHost.getCurrentVodUrl());
         binding.tvLinkCopy.setOnClickListener(view -> {
-            ClipboardUtils.copyText(mActivity.getCurrentVodUrl());
+            ClipboardUtils.copyText(mHost.getCurrentVodUrl());
             AppBubble.toastLong("已复制");
         });
         String picUrl = DefaultConfig.checkReplaceProxy(mVideo.pic);

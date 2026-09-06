@@ -83,7 +83,7 @@ import java.util.List;
  */
 
 public class DetailActivity extends BaseVbActivity<ActivityDetailBinding>
-        implements DownloadDialogCoordinator.Host {
+        implements DownloadDialogCoordinator.Host, VideoDetailDialog.Host {
     private PlayFragment playFragment = null;
     private SourceViewModel sourceViewModel;
     /** 详情页"快速搜索"请求编排(共享线程池 + epoch 去重/暂停;UI 只负责弹窗展示与直喂数据) */
@@ -296,7 +296,7 @@ public class DetailActivity extends BaseVbActivity<ActivityDetailBinding>
         }
 
         findViewById(R.id.ll_title).setOnClickListener(view -> {
-            DialogCoordinator.center(this, new VideoDetailDialog(this, vodInfo)).show();
+            DialogCoordinator.center(this, new VideoDetailDialog(this, this, vodInfo)).show();
         });
         findViewById(R.id.tvDownload).setOnClickListener(new View.OnClickListener() {
             @Override
