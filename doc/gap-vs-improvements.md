@@ -410,6 +410,9 @@ Exo→Media3、EventBus→Flow/接口、Hawk→DataStore、Java→Kotlin 渐进�
    PrefsDataStore/文件;AGENTS/评估文档同步。发布仍需 H 组旧版升级回归。
    (cea1160b/95efedf7/10e0ddbe/f6ff846a/910b02a0/03c6a0b6)
 - ✅ :core-network 杂项袋拆分 slice1:新增 :core-utils 承载纯算法 AES/MD5(纯搬移,包名不变;app/spider 接入,根门禁注册)。余 urlhttp/AESUtil、AdBlocker、LOG/AppLog 归位见评估 §G。(e3f997df/e3fd24a2)
+- ✅ 字幕时间模型 Time 由 Java 转 Kotlin(Java→Kotlin 现代化批次):保持 `@JvmField mseconds` 公开字段
+  (SRT/ASS/STL/SCC/TTML 等格式读写同址)与 Java 构造/`getTime(format)` 语义逐字等价;原有 TimeTest
+  (解析/往返格式化/补零)原地锁语义,门禁绿后提交。
 
 ## 9. 待真机回归后继续(播放器主线尾段,当前挂起)
 > 集中回归清单见 `doc/device-regression-checklist.md`(按功能域分组,门禁绿后逐项过)。
