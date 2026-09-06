@@ -954,8 +954,8 @@ public class PlayFragment extends BaseLazyFragment {
         initParseLoadFound();
         releasePlaybackSession(); // playback 会话原型:切换前释放上一会话(只停观察,不释放共享 mVideoView)
         if (mPlaySession != null) mPlaySession.release();
-        String subtitleCacheKey = mVodInfo.sourceKey + "-" + mVodInfo.id + "-" + mVodInfo.playFlag + "-" + mVodInfo.playIndex + "-" + vs.name + "-subt";
-        String progressKey = mVodInfo.sourceKey + mVodInfo.id + mVodInfo.playFlag + mVodInfo.playIndex + vs.name;
+        String subtitleCacheKey = com.github.tvbox.osc.util.player.PlaySessionKeys.subtitleCacheKey(mVodInfo, vs.name);
+        String progressKey = com.github.tvbox.osc.util.player.PlaySessionKeys.progressKey(mVodInfo, vs.name);
         //重新播放清除现有进度
         if (reset) {
             mPlayHistory.delete(progressKey);
