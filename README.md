@@ -54,8 +54,10 @@ export JAVA_HOME=/path/to/jdk17
 1. 推送代码到 GitHub(main 分支或 `v*` 标签自动触发;也可进 **Actions → Build APK → Run workflow** 手动触发)
 2. 构建完成后在本次运行的 **Artifacts** 区下载 APK
 
-签名说明:`TVBoxOSC.jks` 已随仓库提交,CI 与本地使用同一正式签名,产物可覆盖升级本地旧版本。
-(提醒:签名库与密码公开在仓库内,任何能访问仓库的人都能用该正式签名发包。)
+签名与包名说明:
+- **包名(applicationId)** 为专属包名 `com.github.tvbox.osc.mbox`,与 TVBox 系开源应用通用的 `com.github.tvbox.osc` 区分开,可与设备上已安装的其他开源 TVBox 应用**共存安装、互不冲突**。
+- **正式签名**为本项目专属 `mbox-release.jks`(2025 年新建,仓库根目录,**不入库**;不再使用 TVBox 开源圈流传/曾泄露的 `TVBoxOSC.jks`)。本地构建读取 `app/keystore.properties`(不入库);CI 通过 GitHub Secrets(`KEYSTORE_BASE64`/`KEYSTORE_PASSWORD`/`KEY_ALIAS`/`KEY_PASSWORD`)注入,未配置时产物退回 debug 签名(仅测试用)。
+- ⚠️ 换包名+换签名后,新包是"全新应用":不会覆盖/升级旧包名安装的版本(旧数据在新包内从零开始);请妥善备份 `mbox-release.jks` 与口令(存于 `app/keystore.properties`),丢失将无法再升级已发布的正式包。
 
 ## 目录结构与文档
 

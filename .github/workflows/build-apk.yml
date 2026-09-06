@@ -44,15 +44,34 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
 
+      # 正式签名经 GitHub Secrets 注入(mbox-release.jks 的 base64 内容 + 口令,
+      # 对应 build.gradle 的环境变量读取:KEYSTORE_FILE/KEYSTORE_PASSWORD/KEY_ALIAS/KEY_PASSWORD)。
+      # 未配置 Secrets 时跳过注入:产物自动退回 debug 签名,仅供 CI 自测,勿对外分发。
+      # 仓库内不存放任何正式签名文件(见 .gitignore:*.jks / keystore.properties)。
+      - name: Configure release signing (Secrets)
+        id: signing
+        env:
+          KEYSTORE_B64: ${{ secrets.KEYSTORE_BASE64 }}
+        run: |
+          if [ -n "$KEYSTORE_B64" ]; then
+            echo "$KEYSTORE_B64" | base64 -d > mbox-release.jks
+            echo "KEYSTORE_FILE=../mbox-release.jks" >> "$GITHUB_ENV"
+            echo "KEYSTORE_PASSWORD=${{ secrets.KEYSTORE_PASSWORD }}" >> "$GITHUB_ENV"
+            echo "KEY_ALIAS=${{ secrets.KEY_ALIAS }}" >> "$GITHUB_ENV"
+            echo "KEY_PASSWORD=${{ secrets.KEY_PASSWORD }}" >> "$GITHUB_ENV"
+            echo "signing=configured" >> "$GITHUB_OUTPUT"
+          else
+            echo "signing=fallback-debug" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Build Release APK
         run: |
           chmod +x gradlew
           ./gradlew assembleRelease --no-daemon --console=plain --stacktrace
-        # 说明:TVBoxOSC.jks 已随仓库提交,CI 使用与本地一致的正式签名,
-        # 产物 APK 可覆盖升级本地正式签名安装的旧版本。
-        # 安全提醒:签名库与密码(build.gradle 中硬编码)公开在仓库里,
-        # 任何能访问仓库的人都能用该正式签名发包;如介意请改用 GitHub Secrets
-        # 方式提供密钥,并重新生成一套签名库。
+        # 说明:正式包使用本项目专属包名 com.github.tvbox.osc.mbox 与专属签名
+        # (mbox-release.jks,2025 年新建),不再使用 TVBox 开源圈通用的
+        # com.github.tvbox.osc 包名与公开流传的 TVBoxOSC.jks,
+        # 因此可与设备上其他开源 TVBox 应用共存安装、互不覆盖。
 
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4

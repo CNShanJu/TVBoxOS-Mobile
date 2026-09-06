@@ -35,7 +35,10 @@ android {
     compileSdk 34
 
     defaultConfig {
-        applicationId 'com.github.tvbox.osc'
+        // 专属包名:与 TVBox 系开源应用通用的 com.github.tvbox.osc 区分开,
+        // 保证本包可与已安装的其他开源 TVBox 应用共存安装、互不冲突。
+        // (namespace 保持不变,代码包/资源引用均不受影响)
+        applicationId 'com.github.tvbox.osc.mbox'
         minSdk 24
         targetSdk 34
         versionCode cfgVersionCode
@@ -74,38 +77,48 @@ android {
     }
 
     // ------------------------------------------------------------------
-    // 签名:密钥不再入库(见 .gitignore:TVBoxOSC.jks 已移出版本控制)。
+    // 签名:密钥一律不入库(见 .gitignore:*.jks / keystore.properties 已忽略)。
+    // 本项目正式密钥:仓库根目录 mbox-release.jks(2025 年生成,全新建库,
+    //   不再使用 TVBox 开源圈流传/曾泄露的 TVBoxOSC.jks),
+    //   本地读取 app/keystore.properties(不入库,storeFile=../mbox-release.jks)。
     // 读取顺序:环境变量 > keystore.properties(不入库) > 默认占位。
-    // 任一密钥缺失时自动退回 debug 签名,保证本地/CI 都能出包。
-    // 正式发布请在 CI/本地通过 secret 注入:
-    //   KEYSTORE_FILE / KEYSTORE_PASSWORD / KEY_ALIAS / KEY_PASSWORD
+    // 任一密钥缺失时自动退回 debug 签名,保证本地/CI 都能出包;
+    // 正式发布请在 CI 通过 secret 注入(GitHub Secrets: KEYSTORE_BASE64 /
+    //   KEYSTORE_PASSWORD / KEY_ALIAS / KEY_PASSWORD,见 .github/workflows/build-apk.yml)。
     // ------------------------------------------------------------------
     def env = System.getenv()
-    def keyStoreFile = env['KEYSTORE_FILE'] ?: ''
-    def keyStorePassword = env['KEYSTORE_PASSWORD'] ?: ''
-    def keyAlias = env['KEY_ALIAS'] ?: ''
-    def keyPassword = env['KEY_PASSWORD'] ?: ''
+    // 变量刻意不与 signingConfig 属性(storeFile/storePassword/keyAlias/keyPassword)同名,
+    // 否则 Groovy DSL 下 `keyAlias keyAlias` 会把同名局部变量当方法调用而报错(曾踩坑)。
+    def ksFile = env['KEYSTORE_FILE'] ?: ''
+    def ksStorePassword = env['KEYSTORE_PASSWORD'] ?: ''
+    def ksKeyAlias = env['KEY_ALIAS'] ?: ''
+    def ksKeyPassword = env['KEY_PASSWORD'] ?: ''
     def keystoreProps = file('keystore.properties')
     if (keystoreProps.exists()) {
         def props = new Properties()
         keystoreProps.withInputStream { ins -> props.load(ins) }
-        if (keyStoreFile.isEmpty()) keyStoreFile = props.getProperty('storeFile', '')
-        if (keyStorePassword.isEmpty()) keyStorePassword = props.getProperty('storePassword', '')
-        if (keyAlias.isEmpty()) keyAlias = props.getProperty('keyAlias', '')
-        if (keyPassword.isEmpty()) keyPassword = props.getProperty('keyPassword', '')
+        if (ksFile.isEmpty()) ksFile = props.getProperty('storeFile', '')
+        if (ksStorePassword.isEmpty()) ksStorePassword = props.getProperty('storePassword', '')
+        if (ksKeyAlias.isEmpty()) ksKeyAlias = props.getProperty('keyAlias', '')
+        if (ksKeyPassword.isEmpty()) ksKeyPassword = props.getProperty('keyPassword', '')
     }
-    def hasSigning = !keyStoreFile.isEmpty() && !keyStorePassword.isEmpty()
-            && !keyAlias.isEmpty() && !keyPassword.isEmpty()
-    def signFile = hasSigning ? file(keyStoreFile) : null
+    def hasSigning = !ksFile.isEmpty() && !ksStorePassword.isEmpty()
+            && !ksKeyAlias.isEmpty() && !ksKeyPassword.isEmpty()
+    def signFile = hasSigning ? file(ksFile) : null
     def canSign = hasSigning && signFile != null && signFile.exists()
+
+    if (!canSign && gradle.startParameter.taskNames.any { it.toLowerCase().contains('release') }) {
+        println "WARN: 未检测到正式签名密钥(环境变量或 app/keystore.properties 缺失)," +
+                "本次 release 将退回 debug 签名(仅测试用,勿对外分发)!"
+    }
 
     signingConfigs {
         config {
             if (canSign) {
                 storeFile signFile
-                storePassword keyStorePassword
-                keyAlias keyAlias
-                keyPassword keyPassword
+                storePassword ksStorePassword
+                keyAlias ksKeyAlias
+                keyPassword ksKeyPassword
             }
         }
     }
