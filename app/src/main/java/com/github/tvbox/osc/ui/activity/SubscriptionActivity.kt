@@ -143,6 +143,7 @@ class SubscriptionActivity : BaseVbActivity<ActivitySubscriptionBinding>() {
                 XPopup.Builder(this)
                     .atView(view.findViewById(R.id.tv_name))
                     .hasShadowBg(false)
+                    .isDarkTheme(Utils.isAppDarkTheme()) // 气泡跟随主题(直读 App 主题,防 ROM uiMode 不同步误判浅色)
                     .asAttachList(
                         arrayOf(
                             if (item.isTop) "取消置顶" else "置顶",
