@@ -67,7 +67,7 @@ def forbiddenDownloadImports = ~/import\s+com\.github\.tvbox\.osc\.download\.int
 
 tasks.register('checkModuleDependencies') {
     group = 'verification'
-    description = '校验模块依赖方向 + app 源码不 import 下载内部实现(见改进.txt)'
+    description = '校验模块依赖方向 + app 验收红线(getCSP/hawk/DownloadManager.get/自建 OkHttpClient/下载内部实现)'
     doLast {
         def violations = []
         forbiddenModuleDeps.each { mod, forbidden ->
@@ -94,10 +94,31 @@ tasks.register('checkModuleDependencies') {
                 }
             }
         }
-        if (violations) {
-            throw new GradleException("模块依赖方向违规:\n  " + violations.join('\n  '))
+        // 验收红线自动化(改进.txt §六/AGENTS §六;app 层,含测试源码)
+        def appRedLines = [
+                'getCSP 爬虫直调'           : ~/\bgetCSP\s*\(/,
+                'Hawk 裸依赖(import)'       : ~/import\s+com\.orhanobut\.hawk\./,
+                'DownloadManager.get() 直调': ~/\bDownloadManager\.get\s*\(/,
+                '业务自建 OkHttpClient'      : ~/\bnew\s+OkHttpClient\.Builder\s*\(/,
+        ]
+        appSourceDirs.each { dir ->
+            if (!dir.exists()) return
+            dir.eachFileRecurse(groovy.io.FileType.FILES) { f ->
+                if (!(f.name.endsWith('.java') || f.name.endsWith('.kt'))) return
+                def lines = f.getText('UTF-8').readLines()
+                lines.eachWithIndex { line, idx ->
+                    appRedLines.each { label, pat ->
+                        if (pat.matcher(line).find()) {
+                            violations << "app 验收红线[${label}]: ${f.path}:${idx + 1}"
+                        }
+                    }
+                }
+            }
         }
-        println 'checkModuleDependencies: 依赖方向校验通过'
+        if (violations) {
+            throw new GradleException("模块依赖方向/验收红线违规:\n  " + violations.join('\n  '))
+        }
+        println 'checkModuleDependencies: 模块依赖方向与验收红线校验通过'
     }
 }
 // 说明:各 android 子工程自带 check,如需随构建自动校验可在 CI 中显式调用本任务
