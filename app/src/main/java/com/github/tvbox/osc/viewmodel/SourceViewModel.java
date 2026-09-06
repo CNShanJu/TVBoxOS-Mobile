@@ -14,7 +14,6 @@ import com.github.tvbox.osc.bean.AbsXml;
 import com.github.tvbox.osc.bean.Movie;
 import com.github.tvbox.osc.bean.MovieSort;
 import com.github.tvbox.osc.bean.SourceBean;
-import com.github.tvbox.osc.event.RefreshEvent;
 import com.github.tvbox.osc.util.DefaultConfig;
 import com.github.tvbox.osc.util.HCallBack;
 import com.github.tvbox.osc.util.HttpClient;
@@ -31,7 +30,6 @@ import com.thoughtworks.xstream.XStream;
 import com.thoughtworks.xstream.io.xml.DomDriver;
 import com.thoughtworks.xstream.security.NoTypePermission;
 
-import org.greenrobot.eventbus.EventBus;
 import org.json.JSONObject;
 
 import java.io.UnsupportedEncodingException;
@@ -586,6 +584,26 @@ public class SourceViewModel extends ViewModel {
         }
     }
     // searchContent
+    /**
+     * 快速搜索(详情页"来源"快搜弹窗)"每源一批"结果直调监听:替代历史 EventBus 快搜批次投递。
+     * 回调线程不保证主线程,宿主自行切主线程。
+     */
+    public interface QuickSearchBatchListener {
+        void onQuickSearchBatch(AbsXml data);
+    }
+
+    private volatile QuickSearchBatchListener quickSearchBatchListener;
+
+    /** 注入/清除快速搜索批次监听(宿主销毁前必须置 null 防悬垂) */
+    public void setQuickSearchBatchListener(QuickSearchBatchListener listener) {
+        this.quickSearchBatchListener = listener;
+    }
+
+    private void deliverQuickSearchBatch(AbsXml data) {
+        QuickSearchBatchListener listener = quickSearchBatchListener;
+        if (listener != null) listener.onQuickSearchBatch(data);
+    }
+
     public void getQuickSearch(String sourceKey, String wd) {
         SourceBean sourceBean = sourceConfig.getSource(sourceKey);
         int type = sourceBean.getType();
@@ -596,7 +614,7 @@ public class SourceViewModel extends ViewModel {
                         com.github.tvbox.osc.spiderapi.SpiderSearchProviders.get().search(sourceBean.getKey(), wd, true);
                 if (typed != null && typed.movie != null) {
                     absXml(typed, sourceBean.getKey());
-                    EventBus.getDefault().post(new RefreshEvent(RefreshEvent.TYPE_QUICK_SEARCH_RESULT, typed));
+                    deliverQuickSearchBatch(typed);
                     return;
                 }
                 android.util.Log.i("SpiderBridge", "quickSearch(typed) 不可用,回退字符串通道: key=" + sourceBean.getKey()
@@ -627,7 +645,7 @@ public class SourceViewModel extends ViewModel {
                         @Override
                         public void onError(Throwable e) {
                             // quickSearchResult.postValue(null);
-                            EventBus.getDefault().post(new RefreshEvent(RefreshEvent.TYPE_QUICK_SEARCH_RESULT, null));
+                            deliverQuickSearchBatch(null);
                         }
                     });
         }else if (type == 4) {
@@ -645,7 +663,7 @@ public class SourceViewModel extends ViewModel {
                     @Override
                     public void onError(Throwable e) {
                         // quickSearchResult.postValue(null);
-                        EventBus.getDefault().post(new RefreshEvent(RefreshEvent.TYPE_QUICK_SEARCH_RESULT, null));
+                        deliverQuickSearchBatch(null);
                     }
                 });
         } else {
@@ -816,7 +834,7 @@ public class SourceViewModel extends ViewModel {
     /**
      * typed/字符串通道统一归一:回填 sourceKey + 把线路串拆成 beanList
      * (typed 端即使只给 urls 文本,也能保证 checkThunder/选集可用)。
-     * 发布副作用(postValue/EventBus)仍由调用方各自完成。
+     * 发布副作用(postValue/直调监听)仍由调用方各自完成。
      */
     private void absXml(com.github.tvbox.osc.bean.AbsXml typed, String sourceKey) {
         if (typed != null) {
@@ -829,7 +847,7 @@ public class SourceViewModel extends ViewModel {
         if (searchResult == result) {
             deliverSearchBatch(data);
         } else if (quickSearchResult == result) {
-            EventBus.getDefault().post(new RefreshEvent(RefreshEvent.TYPE_QUICK_SEARCH_RESULT, data));
+            deliverQuickSearchBatch(data);
         } else if (result != null) {
             if (result == detailResult) {
                 if (data != null) {

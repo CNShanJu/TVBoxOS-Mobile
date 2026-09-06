@@ -638,6 +638,9 @@ public class DetailActivity extends BaseVbActivity<ActivityDetailBinding>
     private void initViewModel() {
         sourceViewModel = new ViewModelProvider(this).get(SourceViewModel.class);
         quickSearchHelper = new DetailQuickSearchHelper(sourceViewModel);
+        // quick 搜索批次结果直调(替代历史 EventBus 快搜批次通道;回调线程不保证主线程,切主线程喂快搜聚合)
+        sourceViewModel.setQuickSearchBatchListener(data ->
+                runOnUiThread(() -> quickSearchHelper.handleQuickSearchResult(data)));
         sourceViewModel.detailResult.observe(this, new Observer<AbsXml>() {
             @Override
             public void onChanged(AbsXml absXml) {
@@ -763,7 +766,6 @@ public class DetailActivity extends BaseVbActivity<ActivityDetailBinding>
                 }
 
             }
-        } else if (event.type == RefreshEvent.TYPE_QUICK_SEARCH_RESULT) {
             try {
                 quickSearchHelper.handleQuickSearchResult(event.obj == null ? null : (AbsXml) event.obj);
             } catch (Exception e) {
@@ -784,7 +786,7 @@ public class DetailActivity extends BaseVbActivity<ActivityDetailBinding>
         com.github.tvbox.osc.repo.HistoryRepositories.history().save(sourceKey, vodInfo);
     }
 
-    /** 详情页是 RefreshEvent(TYPE_REFRESH/TYPE_QUICK_SEARCH_RESULT)的真实订阅方,自行注册生命周期
+    /** 详情页是 RefreshEvent(TYPE_REFRESH)的真实订阅方,自行注册生命周期
      * (BaseActivity 已移除"全 Activity 自动注册 + 空壳订阅",EventBus 只投给真正需要的页面) */
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
@@ -795,6 +797,7 @@ public class DetailActivity extends BaseVbActivity<ActivityDetailBinding>
     @Override
     protected void onDestroy() {
         EventBus.getDefault().unregister(this);
+        sourceViewModel.setQuickSearchBatchListener(null); // 断开 quick 结果直调,防悬垂
         pipHelper.setReceiverEnabled(false);
         super.onDestroy();
         // 注销广播接收器
