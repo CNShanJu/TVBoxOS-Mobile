@@ -409,6 +409,7 @@ Exo→Media3、EventBus→Flow/接口、Hawk→DataStore、Java→Kotlin 渐进�
    Store/Policy/Archive、app 订阅-直播-热播-遥控、spider ApiConfig/local),运行权威统一
    PrefsDataStore/文件;AGENTS/评估文档同步。发布仍需 H 组旧版升级回归。
    (cea1160b/95efedf7/10e0ddbe/f6ff846a/910b02a0/03c6a0b6)
+- ✅ :core-network 杂项袋拆分 slice1:新增 :core-utils 承载纯算法 AES/MD5(纯搬移,包名不变;app/spider 接入,根门禁注册)。余 urlhttp/AESUtil、AdBlocker、LOG/AppLog 归位见评估 §G。(e3f997df/e3fd24a2)
 
 ## 9. 待真机回归后继续(播放器主线尾段,当前挂起)
 > 集中回归清单见 `doc/device-regression-checklist.md`(按功能域分组,门禁绿后逐项过)。
@@ -430,7 +431,7 @@ Exo→Media3、EventBus→Flow/接口、Hawk→DataStore、Java→Kotlin 渐进�
 | 项 | 状态 | 前置/说明 |
 |---|---|---|
 | :playback / feature-* 模块 | ❌ 未建 | 阶段三/四;需真机回归环境 |
-| :core-network 杂项袋拆分 | ⚠️ | util 20 文件(AES/MD5 被 app+spider 共用,需新共享纯模块) |
+| :core-network 杂项袋拆分 | ⚠️→✅ slice1 | 新增 :core-utils(AES/MD5 已迁,e3f997df/e3fd24a2);余 urlhttp/AESUtil、AdBlocker、LOG/AppLog 归位评估 |
 | 字符串通道 SpiderContentApi 下线 | ⚠️ | 仍有 4 处引用;先补 FakeSpiderService 单测背书 |
 | 播放器内核收口 | ⚠️ | MyVideoView 仍 7 文件 import(PlayFragment/LocalPlay/PlayService/PlayingControl*/PlayerSession) |
 | Exo→Media3 | ❌ | player 仍 exoplayer 2.18.7,media3 import 0 |
