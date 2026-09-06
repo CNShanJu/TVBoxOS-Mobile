@@ -37,6 +37,8 @@ import okhttp3.Response;
  * A {@link Downloader} which uses OkHttp to download images.
  */
 public final class MyOkhttpDownLoader implements Downloader {
+    /** Gson 线程安全可复用:图片请求热路径(@Headers= 解析)不再每请求 new Gson(AGENTS:解析器复用实例) */
+    private static final Gson GSON = new Gson();
     @VisibleForTesting
     final Call.Factory client;
     private final Cache cache;
@@ -80,7 +82,7 @@ public final class MyOkhttpDownLoader implements Downloader {
         url = url.split("@")[0];
         Request.Builder mRequestBuilder = request.newBuilder().url(url);
         if(!TextUtils.isEmpty(header)) {
-            JsonObject jsonInfo = new Gson().fromJson(header, JsonObject.class);
+            JsonObject jsonInfo = GSON.fromJson(header, JsonObject.class);
             for (String key : jsonInfo.keySet()) {
                 String val = jsonInfo.get(key).getAsString();
                 mRequestBuilder.addHeader(key.toUpperCase(), removeDuplicateSlashes(val));

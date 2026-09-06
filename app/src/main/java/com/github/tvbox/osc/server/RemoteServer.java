@@ -68,6 +68,8 @@ public class RemoteServer extends NanoHTTPD {
      */
     private final String accessToken = generateToken();
 
+    private static final Gson GSON = new Gson();
+
     private static String generateToken() {
         byte[] bytes = new byte[16];
         new SecureRandom().nextBytes(bytes);
@@ -159,7 +161,7 @@ public class RemoteServer extends NanoHTTPD {
                 }
                 Map<String, String> params = session.getParms();
                 params.putAll(session.getHeaders());
-                params.put("request-headers", new Gson().toJson(session.getHeaders()));
+                params.put("request-headers", GSON.toJson(session.getHeaders()));
                 if (params.containsKey("do")) {
                     Object[] rs = com.github.catvod.crawler.SpiderApi.proxyLocal(params);
                     // jar 代理方法缺失/未加载时 proxyLocal 返回 null(还有异常吞掉的情况),
