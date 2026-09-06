@@ -54,12 +54,18 @@
 > Java 侧无静态引用故编译不报错)→ 选 IJK 播放器 ClassNotFoundException 后静默回退 Exo;
 > 已从 v3.2.0 恢复(f9bd27d6),重装后 IJK `onNativeInvoke` 正常输出。以下逐项待完整人工比对
 > (真机观感/操作项,本轮只完成"能起播"级冒烟):
-- [ ] IJK(play_type=1):play/pause/seek/进度回传、切集、播放完成、出错,与 doikki 直驱路径并行一致(起播已验证 ✓)
+- [ ] IJK(play_type=1):play/pause/seek/进度回传、切集、播放完成、出错,与 doikki 直驱路径并行一致(起播已验证 ✓;暂停经 play_status 生效——事件流归零 ✓;恢复/seek/切集/完成/出错待人工观感)
 - [ ] Exo(play_type=2):同上(起播已验证 ✓)
 - [ ] 后台播放/通知栏切集;断点续播(PlayHistoryRepository)与播放会话键配对
+  - 注:详情页**预览小窗** Home 后由 onStop 兜底暂停,不产生后台通知(预期);通知栏后台播放需
+    全屏播放路径验证,本轮未驱动到,待人工
 - [ ] 会话 bind/release 无泄漏(进出详情/连续切集/页面销毁),共享 mVideoView 不被会话误释放
   - 首轮冒烟:连续进出详情 2 次,IJK 每次重新起流(线程 21024→21593,onNativeInvoke 正常),
     无崩溃/ClassNotFound/FATAL,共享视图可复用 ✓;bind/unbind 精确配对需业务日志核对(见下注)
+  - 全屏切换(预览→全屏)后播放正常、无异常日志 ✓;IJK 释放竞态噪音记录:特殊时序
+    (暂停→切全屏→退出)下 SDL_AMediaCodec "Invalid to call at Released state" 报错数条,
+    干净播放直接退出/单步切全屏均不出现——疑似 IJK 原生层释放与渲染线程收尾竞态,播放不受
+    影响、无崩溃,标注待观感轮确认是否影响真实操作
   - 注:本机型 logcat 全局滤掉 D 级,PlaybackSession 的 `Log.d` bind/unbind 不可见;核对须
     看 app 业务日志(PLAYER 类)或换带 D 级机型,不能以 logcat 无输出判否。
 
