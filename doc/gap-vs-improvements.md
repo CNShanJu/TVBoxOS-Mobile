@@ -279,6 +279,11 @@ Exo→Media3、EventBus→Flow/接口、Hawk→DataStore、Java→Kotlin 渐进�
 - ✅ PlayFragment 前置步骤:会话键(progressKey/subtitleCacheKey)纯构造抽
   util/player/PlaySessionKeys(与历史拼接逐字一致),作为后续 PlayViewModel 化的数据键来源;
   单测 3 例(格式/确定性/索引敏感)。(fe9be382)
+- ✅ PlaySessionKeys 补 playbackSessionKey(vod|来源|剧id|线路|索引,PlaybackSessions 登记语义),
+  PlayFragment.bindPlaybackSession 复用;单测补 2 例。(4d7c0d93)
+- ✅ "已播放剧集"键抽 util/player/PlayedVodKey(sourceKey|vodId):PlayFragment 写入与
+  DownloadFragment 读取(episodeId 前两段)共用同一语义,消除两处重复拼接/截取;
+  单测 3 例(null 归一/截取/畸形)。播放身份键域(进度/字幕/会话/播放记录)全部收敛。(047f2e0f)
 - ✅ 直播分组密码门禁抽离 `util/LiveChannelAuth`:isPasswordConfirmed/needInputPassword/
   visibleChannels 纯逻辑(组数据+确认集合传参),LiveActivity 三方法改委托;单测 4 例。
   (9bdcc169)
