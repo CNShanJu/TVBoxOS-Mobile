@@ -501,8 +501,10 @@ public class DetailActivity extends BaseVbActivity<ActivityDetailBinding>
         // 按当前方向决定形态: 横屏用右侧抽屉, 竖屏用底部弹层并限制高度(与详情页一致)
         if (ScreenUtils.isLandscape()) {
             // 右侧抽屉:固定宽度 360,与下载右侧抽屉一致,避免线路列表把弹窗撑开;内部有横向 rv 禁拖拽
+            // 复用宿主线路/选集 adapter(同一实例共享数据与选中态),倒序经回调共用宿主状态
             mAllSeriesRightDialog = DialogCoordinator.right(this,
-                    new AllVodSeriesRightDialog(this), 360, false);
+                    new AllVodSeriesRightDialog(this, seriesFlagAdapter, seriesAdapter,
+                            this::sortSeries, this::isSeriesReversed), 360, false);
             mAllSeriesRightDialog.show();
         } else {
             mAllSeriesBottomDialog = DialogCoordinator.bottomMaxHeight(this,
