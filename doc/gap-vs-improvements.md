@@ -375,6 +375,10 @@ Exo→Media3、EventBus→Flow/接口、Hawk→DataStore、Java→Kotlin 渐进�
    (Java \W 为 ASCII 语义,中文标题如"你好 world"拆分出空串);现过滤空串,原文恒在首位、
    仅补 ASCII 词。补 SearchHelperTest(纯中文/中英混排/纯 ASCII/空串)与 HistoryHelper
    历史条数档位单测(越界回退首档)。(d5a046af/c0bed35a)
+- ✅ 搜索结果命中判定抽纯函数:FastSearchActivity.matchSearchResult 逐字等价抽取为
+   `util/SearchFilter.matches`(消除 Activity 内嵌判定与 searchTitle 参数遮蔽),补
+   SearchFilterTest 锁定语义(空名/空词不命中、多词 AND、中文部分命中、首尾空白、
+   纯空白查询词命中全部)。(e0787051)
 
 ## 9. 待真机回归后继续(播放器主线尾段,当前挂起)
 > 集中回归清单见 `doc/device-regression-checklist.md`(按功能域分组,门禁绿后逐项过)。
