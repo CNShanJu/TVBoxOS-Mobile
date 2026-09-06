@@ -27,7 +27,6 @@ android {
 
 dependencies {
     implementation project(':core-model') // IJKCode 解码配置 DTO(播放契约返回值)
-    implementation project(':core-storage') // KeyValueStore(播放偏好/播放器选择持久化)
+    implementation project(':core-storage') // PrefsDataStore(DataStore)播放偏好/播放器选择持久化
     implementation project(':log') // 配置变更业务日志(LogStore 便捷方法)
-    implementation 'com.google.code.gson:gson:2.10.1' // hawk 传递依赖 gson,显式覆盖版本
 }
