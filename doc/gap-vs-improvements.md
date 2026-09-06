@@ -287,6 +287,10 @@ Exo→Media3、EventBus→Flow/接口、Hawk→DataStore、Java→Kotlin 渐进�
 - ✅ 播放请求上下文抽 util/player/PlayRequest(of(vodInfo, series)):PlayFragment.play() 散参
   (来源/线路/索引/集名/地址 + 进度/字幕键)聚合为不可变对象,reset 清历史与 VM.getPlay
   调用经上下文取值;键与历史拼接一致。后续 PlayViewModel 化的请求载体。单测 1 例。(4b2a5df8)
+- ✅ playResult 回填消费 PlayRequest:progressKey/subtitleCacheKey 改由 play() 经 PlayRequest
+  落字段(单一来源),mObserverPlayResult 删除 proKey/subtKey 回写(仅消费真实结果
+  subt/parse/jx/url/header);VM 透传保留。快速切集时序更稳。真机回归点:断点/切集清进度、
+  字幕缓存配对。(d2467f25)
 - ✅ 直播分组密码门禁抽离 `util/LiveChannelAuth`:isPasswordConfirmed/needInputPassword/
   visibleChannels 纯逻辑(组数据+确认集合传参),LiveActivity 三方法改委托;单测 4 例。
   (9bdcc169)
