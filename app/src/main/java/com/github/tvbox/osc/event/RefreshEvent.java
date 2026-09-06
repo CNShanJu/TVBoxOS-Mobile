@@ -6,7 +6,6 @@ package com.github.tvbox.osc.event;
  * @description:
  */
 public class RefreshEvent {
-    public static final int TYPE_REFRESH = 0;
     public static final int TYPE_REFRESH_NOTIFY = 15;
     /** 遥控/局域网推送:订阅接口地址变更 */
     public static final int TYPE_API_URL_CHANGE = 16;
