@@ -61,6 +61,9 @@ public class JsSpider extends Spider {
     }
 
     private Object call(String func, Object... args) throws Exception {
+        // JS 模块未正确初始化(内容缺失/加载失败导致 jsObject==null)时直接返回 null,
+        // 而不是走进 Async.run 抛 NPE(一条源挂掉不再波及整次调用)。
+        if (jsObject == null) return null;
         //return executor.submit((FunCall.call(jsObject, func, args))).get();
         return CompletableFuture.supplyAsync(() -> Async.run(jsObject, func, args), executor).join().get();
     }
