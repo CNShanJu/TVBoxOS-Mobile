@@ -38,6 +38,7 @@ import com.github.tvbox.osc.ui.dialog.SearchCheckboxDialog
 import com.github.tvbox.osc.ui.dialog.SearchSuggestionsDialog
 import com.github.tvbox.osc.util.FastClickCheckUtil
 import com.github.tvbox.osc.util.HCallBack
+import com.github.tvbox.osc.util.HeavyTaskUtil
 import com.github.tvbox.osc.util.HttpClient
 import com.github.tvbox.osc.util.SearchHelper
 import com.github.tvbox.osc.util.SubscriptionConfig
@@ -54,8 +55,6 @@ import com.zhy.view.flowlayout.FlowLayout
 import com.zhy.view.flowlayout.TagAdapter
 import org.greenrobot.eventbus.Subscribe
 import org.greenrobot.eventbus.ThreadMode
-import java.util.concurrent.ExecutorService
-import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicInteger
 
 class FastSearchActivity : BaseVbActivity<ActivityFastSearchBinding>(), TextWatcher {
@@ -75,7 +74,6 @@ class FastSearchActivity : BaseVbActivity<ActivityFastSearchBinding>(), TextWatc
     private var isFilterMode = false
     private var searchFilterKey: String? = "" // 过滤的key
     private var resultVods = HashMap<String, MutableList<Movie.Video>>()
-    private var pauseRunnable: MutableList<Runnable>? = null
     private var mSearchSuggestionsDialog: SearchSuggestionsDialog? = null
 
     /** 是否已勾选订阅(以订阅管理写入的接口地址为准) */
@@ -95,15 +93,7 @@ class FastSearchActivity : BaseVbActivity<ActivityFastSearchBinding>(), TextWatc
 
     override fun onResume() {
         super.onResume()
-        if (pauseRunnable != null && pauseRunnable!!.size > 0) {
-            searchExecutorService = Executors.newFixedThreadPool(10)
-            allRunCount.set(pauseRunnable!!.size)
-            for (runnable: Runnable? in pauseRunnable!!) {
-                searchExecutorService!!.execute(runnable)
-            }
-            pauseRunnable!!.clear()
-            pauseRunnable = null
-        }
+        resumeSearches()
     }
 
     private fun initView() {
@@ -134,15 +124,7 @@ class FastSearchActivity : BaseVbActivity<ActivityFastSearchBinding>(), TextWatc
         searchAdapter.setOnItemClickListener { _, view, position ->
             FastClickCheckUtil.check(view)
             val video = searchAdapter.data[position]
-            try {
-                if (searchExecutorService != null) {
-                    pauseRunnable = searchExecutorService!!.shutdownNow()
-                    searchExecutorService = null
-                    JsLoader.stopAll()
-                }
-            } catch (th: Throwable) {
-                th.printStackTrace()
-            }
+            pauseSearch()
             val bundle = Bundle()
             bundle.putString("id", video.id)
             bundle.putString("sourceKey", video.sourceKey)
@@ -157,15 +139,7 @@ class FastSearchActivity : BaseVbActivity<ActivityFastSearchBinding>(), TextWatc
             FastClickCheckUtil.check(view)
             val video = searchAdapterFilter.data[position]
             if (video != null) {
-                try {
-                    if (searchExecutorService != null) {
-                        pauseRunnable = searchExecutorService!!.shutdownNow()
-                        searchExecutorService = null
-                        JsLoader.stopAll()
-                    }
-                } catch (th: Throwable) {
-                    th.printStackTrace()
-                }
+                pauseSearch()
                 val bundle = Bundle()
                 bundle.putString("id", video.id)
                 bundle.putString("sourceKey", video.sourceKey)
@@ -502,7 +476,12 @@ class FastSearchActivity : BaseVbActivity<ActivityFastSearchBinding>(), TextWatc
         searchResult()
     }
 
-    private var searchExecutorService: ExecutorService? = null
+    /** 搜索编排状态:epoch=当前轮次;暂停后未发起的源进 pending,页面回前台续跑(替代页面自建 10 线程池) */
+    private val searchLock = Object()
+    private var searchEpoch = 0L
+    private var searchPaused = false
+    private var searchSessionActive = false
+    private val pendingSearchKeys = ArrayList<String>()
     private val allRunCount = AtomicInteger(0)
     private fun getSiteTextView(text: String): TextView {
         val textView = TextView(this)
@@ -519,20 +498,19 @@ class FastSearchActivity : BaseVbActivity<ActivityFastSearchBinding>(), TextWatc
     }
 
     private fun searchResult() {
-        try {
-            if (searchExecutorService != null) {
-                searchExecutorService!!.shutdownNow()
-                searchExecutorService = null
-                JsLoader.stopAll()
-            }
-        } catch (th: Throwable) {
-            th.printStackTrace()
-        } finally {
-            searchAdapter.setNewData(ArrayList())
-            searchAdapterFilter.setNewData(ArrayList())
-            allRunCount.set(0)
+        synchronized(searchLock) {
+            searchEpoch++
+            searchPaused = false
+            pendingSearchKeys.clear()
         }
-        searchExecutorService = Executors.newFixedThreadPool(10)
+        if (searchSessionActive) {
+            // 旧实现每轮 shutdownNow 上一轮页面线程池并停 jar 引擎;共享池下由 epoch 让过期任务自弃
+            searchSessionActive = false
+            JsLoader.stopAll()
+        }
+        searchAdapter.setNewData(ArrayList())
+        searchAdapterFilter.setNewData(ArrayList())
+        allRunCount.set(0)
         val searchRequestList: MutableList<SourceBean> = ArrayList()
         searchRequestList.addAll(SourceConfigProviders.get().sourceBeanList)
         val home = SourceConfigProviders.get().homeSourceBean
@@ -552,13 +530,60 @@ class FastSearchActivity : BaseVbActivity<ActivityFastSearchBinding>(), TextWatc
             spNames[bean.name] = bean.key
             allRunCount.incrementAndGet()
         }
+        if (siteKey.isNotEmpty()) {
+            searchSessionActive = true
+        }
         for (key: String in siteKey) {
-            searchExecutorService!!.execute {
-                try {
-                    sourceViewModel.getSearch(key, searchTitle)
-                } catch (_: Exception) {
-                }
+            launchSearch(key)
+        }
+    }
+
+    /** 提交单个源搜索到应用级共享大池;真正发起前校验轮次/暂停,暂停任务进 pending(续跑再派) */
+    private fun launchSearch(key: String) {
+        val epoch = searchEpoch
+        HeavyTaskUtil.getBigTaskExecutorService().execute {
+            launchSearchTask(key, epoch)
+        }
+    }
+
+    private fun launchSearchTask(key: String, epoch: Long) {
+        synchronized(searchLock) {
+            if (epoch != searchEpoch) return // 新一轮已发起:过期任务自弃(等价旧 shutdownNow)
+            if (searchPaused) {
+                pendingSearchKeys.add(key) // 跳详情暂停:未发起的源进 pending,onResume 续跑
+                return
             }
+        }
+        try {
+            sourceViewModel.getSearch(key, searchTitle)
+        } catch (_: Exception) {
+        }
+    }
+
+    /** 暂停:不再发起新的源搜索(旧实现 shutdownNow 收集未启动任务;共享池下由 launchSearch 自检暂存) */
+    private fun pauseSearch() {
+        synchronized(searchLock) {
+            searchPaused = true
+        }
+        if (searchSessionActive) {
+            searchSessionActive = false
+            JsLoader.stopAll()
+        }
+    }
+
+    /** 页面回前台:续跑被暂停未发起的源搜索(旧实现 onResume 重建 10 线程池重放 pauseRunnable) */
+    private fun resumeSearches() {
+        val keys: ArrayList<String>
+        synchronized(searchLock) {
+            searchPaused = false
+            if (pendingSearchKeys.isEmpty()) return
+            keys = ArrayList(pendingSearchKeys)
+            pendingSearchKeys.clear()
+        }
+        allRunCount.set(keys.size)
+        searchSessionActive = true
+        for (key in keys) {
+            launchSearch(key)
         }
     }
 
@@ -640,14 +665,14 @@ class FastSearchActivity : BaseVbActivity<ActivityFastSearchBinding>(), TextWatc
     override fun onDestroy() {
         super.onDestroy()
         cancel()
-        try {
-            if (searchExecutorService != null) {
-                searchExecutorService!!.shutdownNow()
-                searchExecutorService = null
-                JsLoader.load()
-            }
-        } catch (th: Throwable) {
-            th.printStackTrace()
+        synchronized(searchLock) {
+            searchEpoch++
+            searchPaused = false
+            pendingSearchKeys.clear()
+        }
+        if (searchSessionActive) {
+            searchSessionActive = false
+            JsLoader.load()
         }
     }
 
