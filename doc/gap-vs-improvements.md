@@ -379,6 +379,9 @@ Exo→Media3、EventBus→Flow/接口、Hawk→DataStore、Java→Kotlin 渐进�
    `util/SearchFilter.matches`(消除 Activity 内嵌判定与 searchTitle 参数遮蔽),补
    SearchFilterTest 锁定语义(空名/空词不命中、多词 AND、中文部分命中、首尾空白、
    纯空白查询词命中全部)。(e0787051)
+- ✅ FormatASS 解析样例单测(与 FormatSRT 并列覆盖字幕纯解析链路):两条 Dialogue 的
+   起始/结束毫秒与内联覆盖标签({\\i1}...)剥离;样例保持 ASCII 以规避 JVM 测试环境
+   平台字符集不可移植。(2ad86b20)
 
 ## 9. 待真机回归后继续(播放器主线尾段,当前挂起)
 > 集中回归清单见 `doc/device-regression-checklist.md`(按功能域分组,门禁绿后逐项过)。
