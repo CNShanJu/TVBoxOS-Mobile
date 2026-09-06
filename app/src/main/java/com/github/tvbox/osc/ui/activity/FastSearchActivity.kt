@@ -40,6 +40,7 @@ import com.github.tvbox.osc.util.FastClickCheckUtil
 import com.github.tvbox.osc.util.HCallBack
 import com.github.tvbox.osc.util.HeavyTaskUtil
 import com.github.tvbox.osc.util.HttpClient
+import com.github.tvbox.osc.util.SearchFilter
 import com.github.tvbox.osc.util.SearchHelper
 import com.github.tvbox.osc.util.SubscriptionConfig
 import com.github.tvbox.osc.config.SystemConfig
@@ -618,24 +619,12 @@ class FastSearchActivity : BaseVbActivity<ActivityFastSearchBinding>(), TextWatc
         }
     }
 
-    private fun matchSearchResult(name: String, searchTitle: String?): Boolean {
-        var searchTitle = searchTitle
-        if (TextUtils.isEmpty(name) || TextUtils.isEmpty(searchTitle)) return false
-        searchTitle = searchTitle!!.trim { it <= ' ' }
-        val arr = searchTitle.split("\\s+".toRegex()).dropLastWhile { it.isEmpty() }.toTypedArray()
-        var matchNum = 0
-        for (one: String in arr) {
-            if (name.contains(one)) matchNum++
-        }
-        return if (matchNum == arr.size) true else false
-    }
-
     private fun searchData(absXml: AbsXml?) {
         var lastSourceKey = ""
         if ((absXml != null) && (absXml.movie != null) && (absXml.movie.videoList != null) && (absXml.movie.videoList.size > 0)) {
             val data: MutableList<Movie.Video> = ArrayList()
             for (video: Movie.Video in absXml.movie.videoList) {
-                if (!matchSearchResult(video.name, searchTitle)) continue
+                if (!SearchFilter.matches(video.name, searchTitle)) continue
                 data.add(video)
                 if (!resultVods.containsKey(video.sourceKey)) {
                     resultVods[video.sourceKey] = ArrayList()
