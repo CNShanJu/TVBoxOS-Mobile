@@ -6,7 +6,7 @@ import android.util.Log;
  * 统一日志门面(android.util.Log 包装)。
  * <p>
  * 历史说明:曾向 EventBus 空投 {@code LogEvent}(无任何订阅者),已随 LogEvent 清理移除,
- * 本类保持纯 Logcat 输出。运行日志文件由 :log 模块 AppLog 承担。
+ * 本类保持纯 Logcat 输出。文件级运行日志见 AppLog(与其同驻 core-storage util)。
  *
  * @author pj567
  * @date :2020/12/18
