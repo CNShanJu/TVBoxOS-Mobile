@@ -306,6 +306,20 @@ Exo→Media3、EventBus→Flow/接口、Hawk→DataStore、Java→Kotlin 渐进�
   LiveActivity 815→705 行;导航/门禁单测累计 9 例。(afccb330)
 - ✅ LiveActivity 死字段清理:hsEpg(Hashtable)/imgLiveIcon 零使用、isSHIYI 恒假开关
   (if 恒不触发/赋值恒 false)连用法删除,清 Hashtable import。LiveActivity 815→746 行。(ede84aea)
+- ✅ 直播弹窗 Activity 强转清零(改进.txt §7 收尾,接管并行批):LiveLineSelect*/LiveSetting*/
+  AllChannels 弹窗不再 `(LiveActivity) context` 强转;新增宿主窄接口 `LiveLineSelectHost`/
+  `LiveSettingHost`(LiveActivity implements 后以 this 注入),AllChannels 构造注入两个列表适配器,
+  线路弹窗共用 `bind` 装载逻辑。gate 绿后随并行控制条批次提交。(73060c3a)
+- ✅ PlayFragment 线程池收口(改进.txt §六"页面不得自建线程池"):记录已播放剧集的
+  `PLAYED_RECORD_EXECUTOR` → `HeavyTaskUtil.getSerialExecutorService()`(新增应用级共享串行执行器,
+  保同 key SP 读改写不交错);doParse type2/3 每轮 `parseThreadPool` → 共享大池 + epoch 自检
+  (stopParse/新一轮解析递增,排队/在途任务过期即丢弃,同 DetailQuickSearchHelper 先例)。(97aadf32)
+- ✅ 解析/嗅探引擎抽 `util/player/PlayParseCoordinator`(改进.txt §三 PlayCoordinator 方向;行为等价搬移):
+  initParse(默认/内联 json/parse: 解析源选择)+ doParse(嗅探/json/json 扩展/json 聚合)+ 无头 WebView
+  引擎(SysWebClient 拦截/广告过滤/SSL 拒绝默认/cookie/已发现队列)+ 20s 嗅探超时 + 解析上下文
+  (parseFlag/webUrl/UA/headers)全部收口,PlayFragment 只实现宿主回调(提示/播放/错误重试/解析源展示/
+  主线程投递)与 setSourceBean;PlayFragment 1607→997 行。startPlayUrl 仍留宿主(播放器会话接线,属
+  PlayerApi 全驱动长线)。(待提交)
 
 ## 9. 待真机回归后继续(播放器主线尾段,当前挂起)
 > 集中回归清单见 `doc/device-regression-checklist.md`(按功能域分组,门禁绿后逐项过)。

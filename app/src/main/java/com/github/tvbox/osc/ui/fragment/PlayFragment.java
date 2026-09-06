@@ -1,42 +1,16 @@
 package com.github.tvbox.osc.ui.fragment;
 
 import android.annotation.SuppressLint;
-import android.annotation.TargetApi;
-import android.app.Activity;
-import android.content.Context;
 import android.content.pm.ActivityInfo;
-import android.graphics.Bitmap;
-import android.graphics.Color;
-import android.net.http.SslError;
-import android.os.Build;
 import android.os.Bundle;
-import android.os.Handler;
-import android.os.Message;
 import android.text.TextUtils;
 import android.view.KeyEvent;
 import android.view.View;
-import android.view.ViewGroup;
-import android.view.ViewParent;
-import android.webkit.ConsoleMessage;
-import android.webkit.CookieManager;
-import android.webkit.JsPromptResult;
-import android.webkit.JsResult;
-import android.webkit.SslErrorHandler;
-import android.webkit.WebChromeClient;
-import android.webkit.WebResourceRequest;
-import android.webkit.WebResourceResponse;
-import android.webkit.WebSettings;
-import android.webkit.WebView;
-import android.webkit.WebViewClient;
 import android.widget.ImageView;
 import android.widget.TextView;
-import android.widget.Toast;
 
-import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
 import androidx.lifecycle.Observer;
 import androidx.lifecycle.ViewModelProvider;
-import androidx.recyclerview.widget.DiffUtil;
 
 import com.blankj.utilcode.util.ColorUtils;
 import com.blankj.utilcode.util.LogUtils;
@@ -51,7 +25,6 @@ import com.github.tvbox.osc.base.BaseLazyFragment;
 import com.github.tvbox.osc.bean.ParseBean;
 import com.github.tvbox.osc.bean.SourceBean;
 import com.github.tvbox.osc.bean.VodInfo;
-import com.github.tvbox.osc.cache.CacheManager;
 import com.github.tvbox.osc.constant.CacheConst;
 import com.github.tvbox.osc.event.RefreshEvent;
 import com.github.tvbox.osc.player.MyVideoView;
@@ -63,19 +36,14 @@ import com.github.tvbox.osc.ui.adapter.ParseAdapter;
 import com.github.tvbox.osc.ui.dialog.DialogCoordinator;
 import com.github.tvbox.osc.ui.dialog.PlayingControlDialog;
 import com.github.tvbox.osc.ui.dialog.PlayingControlRightDialog;
-import com.github.tvbox.osc.util.AdBlocker;
-import com.github.tvbox.osc.util.DefaultConfig;
 import com.github.tvbox.osc.util.HCallBack;
 import com.github.tvbox.osc.util.HttpClient;
 import com.github.tvbox.osc.util.LOG;
 import com.github.tvbox.osc.util.LoadingAnim;
 import com.github.tvbox.osc.util.PlayerHelper;
-import com.github.tvbox.osc.util.ParseBeanUrls;
-import com.github.tvbox.osc.config.SystemConfig;
-import com.github.tvbox.osc.util.VideoParseRuler;
 import com.github.tvbox.osc.util.player.PlayHistoryRepository;
+import com.github.tvbox.osc.util.player.PlayParseCoordinator;
 import com.github.tvbox.osc.util.thunder.Jianpian;
-import com.github.tvbox.osc.spiderapi.ParseConfigProviders;
 import com.github.tvbox.osc.spiderapi.SourceConfigProviders;
 import com.github.tvbox.osc.util.thunder.Thunder;
 import com.github.tvbox.osc.viewmodel.SourceViewModel;
@@ -83,25 +51,16 @@ import com.gyf.immersionbar.BarHide;
 import com.gyf.immersionbar.ImmersionBar;
 import com.lxj.xpopup.core.BasePopupView;
 
-import org.apache.commons.lang3.StringUtils;
 import org.greenrobot.eventbus.EventBus;
-import org.jetbrains.annotations.NotNull;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import java.io.File;
-import java.net.URLEncoder;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
-import java.util.LinkedHashMap;
-import java.util.LinkedList;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.atomic.AtomicInteger;
 
-import me.jessyan.autosize.AutoSize;
 import xyz.doikki.videoplayer.player.ProgressManager;
 
 public class PlayFragment extends BaseLazyFragment {
@@ -115,7 +74,8 @@ public class PlayFragment extends BaseLazyFragment {
     private View mPlayLoading;
     private VodController mController;
     private SourceViewModel sourceViewModel;
-    private Handler mHandler;
+    /** 解析/嗅探引擎(解析编排 + 无头 WebView 嗅探 + json/聚合解析;见 util/player/PlayParseCoordinator) */
+    private com.github.tvbox.osc.util.player.PlayParseCoordinator mParseEngine;
     /** 字幕协调器(字幕装载/音轨与内置字幕切换/设置弹窗;见 util/player/SubtitleCoordinator) */
     private com.github.tvbox.osc.util.player.SubtitleCoordinator mSubtitleCoordinator;
     /** 播放进度持久化(key→MD5→CacheRepository,见 util/player/PlayHistoryRepository) */
@@ -175,18 +135,6 @@ public class PlayFragment extends BaseLazyFragment {
     }
 
     private void initView() {
-        mHandler = new Handler(new Handler.Callback() {
-            @Override
-            public boolean handleMessage(@NonNull Message msg) {
-                switch (msg.what) {
-                    case 100:
-                        stopParse();
-                        errorWithRetry("嗅探错误", false);
-                        break;
-                }
-                return false;
-            }
-        });
         mVideoView = findViewById(R.id.mVideoView);
         mPlayLoadTip = findViewById(R.id.play_load_tip);
         mPlayLoading = findViewById(R.id.play_loading);
@@ -234,7 +182,7 @@ public class PlayFragment extends BaseLazyFragment {
             @Override
             public void changeParse(ParseBean pb) {
                 autoRetryCount = 0;
-                doParse(pb);
+                mParseEngine.doParse(pb);
             }
 
             @Override
@@ -242,7 +190,6 @@ public class PlayFragment extends BaseLazyFragment {
                 mVodInfo.playerCfg = mVodPlayerCfg.toString();
                 EventBus.getDefault().post(new RefreshEvent(RefreshEvent.TYPE_REFRESH, mVodPlayerCfg));
             }
-
             @Override
             public void replay(boolean replay) {
                 autoRetryCount = 0;
@@ -332,6 +279,36 @@ public class PlayFragment extends BaseLazyFragment {
         mVideoView.setVideoController(mController);
         mPlaySession = new com.github.tvbox.osc.player.PlayerSession(mVideoView);
         mSubtitleCoordinator = new com.github.tvbox.osc.util.player.SubtitleCoordinator(mActivity, mController, mPlaySession);
+        // 解析/嗅探引擎(宿主薄委托;解析编排与无头 WebView 收口 util/player)
+        mParseEngine = new com.github.tvbox.osc.util.player.PlayParseCoordinator(mActivity, this,
+                new com.github.tvbox.osc.util.player.PlayParseCoordinator.Callback() {
+                    @Override
+                    public void onShowTip(String msg, boolean loading, boolean err) {
+                        PlayFragment.this.setTip(msg, loading, err);
+                    }
+
+                    @Override
+                    public void onPlayUrl(String url, HashMap<String, String> headers) {
+                        PlayFragment.this.playUrl(url, headers);
+                    }
+
+                    @Override
+                    public void onErrorRetry(String err, boolean finish) {
+                        PlayFragment.this.errorWithRetry(err, finish);
+                    }
+
+                    @Override
+                    public void onShowParseRoot(boolean show) {
+                        if (mController != null) mController.showParse(show);
+                    }
+
+                    @Override
+                    public boolean postOnUiThread(Runnable r) {
+                        if (!isAdded()) return false;
+                        requireActivity().runOnUiThread(r);
+                        return true;
+                    }
+                });
         // 电池图标:经 SystemStateMonitor 订阅百分比变化(替代 EventBus 广播;主线程回调)
         com.github.tvbox.osc.state.SystemStateMonitor monitor = com.github.tvbox.osc.state.SystemStateMonitor.get();
         if (monitor != null) {
@@ -601,7 +578,7 @@ public class PlayFragment extends BaseLazyFragment {
         String finalUrl = url;
         if (mActivity == null || !isAdded()) return;
         requireActivity().runOnUiThread(() -> {
-            stopParse();
+            if (mParseEngine != null) mParseEngine.stopParse();
             if (mPlaySession != null) mPlaySession.release();
 
                 if (finalUrl != null) {
@@ -730,8 +707,9 @@ public class PlayFragment extends BaseLazyFragment {
                     String flag = info.optString("flag");
                     String url = info.getString("url");
                     HashMap<String, String> headers = null;
-                    webUserAgent = null;
-                    webHeaderMap = null;
+                    String resultUserAgent = null;
+                    // 播放结果 header 上下文收口到解析引擎(嗅探 WebView 加载/下载回退 UA 用)
+                    mParseEngine.resetWebRequestContext();
                     if (info.has("header")) {
                         try {
                             JSONObject hds = new JSONObject(info.getString("header"));
@@ -743,17 +721,17 @@ public class PlayFragment extends BaseLazyFragment {
                                 }
                                 headers.put(key, hds.getString(key));
                                 if (key.equalsIgnoreCase("user-agent")) {
-                                    webUserAgent = hds.getString(key).trim();
+                                    resultUserAgent = hds.getString(key).trim();
                                 }
                             }
-                            webHeaderMap = headers;
+                            mParseEngine.setWebRequestContext(headers, resultUserAgent);
                         } catch (Throwable th) {
 
                         }
                     }
                     if (parse || jx) {
                         boolean userJxList = (playUrl.isEmpty() && SourceConfigProviders.get().getVipParseFlags().contains(flag)) || jx;
-                        initParse(flag, userJxList, playUrl, url);
+                        mParseEngine.initParse(flag, userJxList, playUrl, url);
                     } else {
                         mController.showParse(false);
                         playUrl(playUrl + url, headers);
@@ -775,6 +753,7 @@ public class PlayFragment extends BaseLazyFragment {
         mVodInfo = App.getInstance().getVodInfo();
         sourceKey = bundle.getString("sourceKey");
         sourceBean = SourceConfigProviders.get().getSource(sourceKey);
+        if (mParseEngine != null) mParseEngine.setSourceBean(sourceBean);
         initPlayerCfg();
         play(false);
     }
@@ -865,8 +844,10 @@ public class PlayFragment extends BaseLazyFragment {
         }
         if (mPlaySession != null) mPlaySession.release();
         mVideoView = null;
-        stopLoadWebView(true);
-        stopParse();
+        if (mParseEngine != null) {
+            mParseEngine.destroy(); // 取消解析任务/嗅探超时/HTTP 并销毁无头 WebView(原 stopLoadWebView(true)+stopParse)
+            mParseEngine = null;
+        }
         Thunder.stop(true);//停止磁力下载
         Jianpian.finish();//停止p2p下载
     }
@@ -910,7 +891,7 @@ public class PlayFragment extends BaseLazyFragment {
     private int autoRetryCount = 0;
 
     boolean autoRetry() {
-        if (loadFoundVideoUrls != null && loadFoundVideoUrls.size() > 0) {
+        if (mParseEngine != null && mParseEngine.hasFoundVideo()) {
             autoRetryFromLoadFoundVideoUrls();
             return true;
         }
@@ -925,15 +906,13 @@ public class PlayFragment extends BaseLazyFragment {
     }
 
     void autoRetryFromLoadFoundVideoUrls() {
-        String videoUrl = loadFoundVideoUrls.poll();
-        HashMap<String, String> header = loadFoundVideoUrlsHeader.get(videoUrl);
+        String videoUrl = mParseEngine.pollFoundVideoUrl();
+        HashMap<String, String> header = mParseEngine.getFoundVideoHeaders(videoUrl);
         playUrl(videoUrl, header);
     }
 
     void initParseLoadFound() {
-        loadFoundCount.set(0);
-        loadFoundVideoUrls = new LinkedList<String>();
-        loadFoundVideoUrlsHeader = new HashMap<String, HashMap<String, String>>();
+        if (mParseEngine != null) mParseEngine.resetFoundQueue();
     }
 
     public void play(boolean reset) {
@@ -945,7 +924,7 @@ public class PlayFragment extends BaseLazyFragment {
         setTip("正在获取播放信息", true, false);
         mController.setTitle(playTitleInfo);
 
-        stopParse();
+        if (mParseEngine != null) mParseEngine.stopParse();
         initParseLoadFound();
         releasePlaybackSession(); // playback 会话原型:切换前释放上一会话(只停观察,不释放共享 mVideoView)
         if (mPlaySession != null) mPlaySession.release();
@@ -997,605 +976,16 @@ public class PlayFragment extends BaseLazyFragment {
     private String playSubtitle;
     private String subtitleCacheKey;
     private String progressKey;
-    private String parseFlag;
-    private String webUrl;
-    private String webUserAgent;
-    private Map<String, String> webHeaderMap;
-
-    private void initParse(String flag, boolean useParse, String playUrl, final String url) {
-        parseFlag = flag;
-        webUrl = url;
-        ParseBean parseBean = null;
-        mController.showParse(useParse);
-        if (useParse) {
-            parseBean = ParseConfigProviders.get().getDefaultParse();
-        } else {
-            if (playUrl.startsWith("json:")) {
-                parseBean = new ParseBean();
-                parseBean.setType(1);
-                parseBean.setUrl(playUrl.substring(5));
-            } else if (playUrl.startsWith("parse:")) {
-                String parseRedirect = playUrl.substring(6);
-                for (ParseBean pb : ParseConfigProviders.get().getParseBeanList()) {
-                    if (pb.getName().equals(parseRedirect)) {
-                        parseBean = pb;
-                        break;
-                    }
-                }
-            }
-            if (parseBean == null) {
-                parseBean = new ParseBean();
-                parseBean.setType(0);
-                parseBean.setUrl(playUrl);
-            }
-        }
-        doParse(parseBean);
-    }
-
-    JSONObject jsonParse(String input, String json) throws JSONException {
-        JSONObject jsonPlayData = new JSONObject(json);
-        //小窗版解析方法改到这了  之前那个位置data解析无效
-        String url;
-        if (jsonPlayData.has("data")) {
-            url = jsonPlayData.getJSONObject("data").getString("url");
-        } else {
-            url = jsonPlayData.getString("url");
-        }
-        if (url.startsWith("//")) {
-            url = "http:" + url;
-        }
-        if (!url.startsWith("http")) {
-            return null;
-        }
-        JSONObject headers = new JSONObject();
-        String ua = jsonPlayData.optString("user-agent", "");
-        if (ua.trim().length() > 0) {
-            headers.put("User-Agent", " " + ua);
-        }
-        String referer = jsonPlayData.optString("referer", "");
-        if (referer.trim().length() > 0) {
-            headers.put("Referer", " " + referer);
-        }
-        JSONObject taskResult = new JSONObject();
-        taskResult.put("header", headers);
-        taskResult.put("url", url);
-        return taskResult;
-    }
-
-    /** 解析任务代数:每次 stopParse/新一轮 doParse 自增;排队/在途任务自行核对,过期即丢弃。
-     *  (共享执行器不可 shutdown,同 DetailQuickSearchHelper epoch 语义) */
-    private final java.util.concurrent.atomic.AtomicInteger parseTaskEpoch = new java.util.concurrent.atomic.AtomicInteger();
-
-    void stopParse() {
-        mHandler.removeMessages(100);
-        parseTaskEpoch.incrementAndGet(); // 作废排队/在途解析任务(替代原 parseThreadPool.shutdown)
-        stopLoadWebView(false);
-        HttpClient.cancel("json_jx");
-    }
-
-    private void doParse(ParseBean pb) {
-        stopParse();
-        initParseLoadFound();
-        if (pb.getType() == 0) {
-            setTip("正在嗅探播放地址", true, false);
-            mHandler.removeMessages(100);
-            mHandler.sendEmptyMessageDelayed(100, 20 * 1000);
-            if (pb.getExt() != null) {
-                // 解析ext
-                try {
-                    HashMap<String, String> reqHeaders = new HashMap<>();
-                    JSONObject jsonObject = new JSONObject(pb.getExt());
-                    if (jsonObject.has("header")) {
-                        JSONObject headerJson = jsonObject.optJSONObject("header");
-                        Iterator<String> keys = headerJson.keys();
-                        while (keys.hasNext()) {
-                            String key = keys.next();
-                            if (key.equalsIgnoreCase("user-agent")) {
-                                webUserAgent = headerJson.getString(key).trim();
-                            } else {
-                                reqHeaders.put(key, headerJson.optString(key, ""));
-                            }
-                        }
-                        if (reqHeaders.size() > 0) webHeaderMap = reqHeaders;
-                    }
-                } catch (Throwable e) {
-                    e.printStackTrace();
-                }
-            }
-            loadWebView(ParseBeanUrls.url(pb) + webUrl);
-
-        } else if (pb.getType() == 1) { // json 解析
-            setTip("正在解析播放地址", true, false);
-            // 解析ext
-            Map<String, String> reqHeaders = new HashMap<>();
-            try {
-                JSONObject jsonObject = new JSONObject(pb.getExt());
-                if (jsonObject.has("header")) {
-                    JSONObject headerJson = jsonObject.optJSONObject("header");
-                    Iterator<String> keys = headerJson.keys();
-                    while (keys.hasNext()) {
-                        String key = keys.next();
-                        reqHeaders.put(key, headerJson.optString(key, ""));
-                    }
-                }
-            } catch (Throwable e) {
-                e.printStackTrace();
-            }
-            HttpClient.get(ParseBeanUrls.url(pb) + encodeUrl(webUrl), reqHeaders, "json_jx", new HCallBack() {
-                        @Override
-                        public void onSuccess(String json) {
-                            try {
-                                JSONObject rs = jsonParse(webUrl, json);
-                                HashMap<String, String> headers = null;
-                                if (rs.has("header")) {
-                                    try {
-                                        JSONObject hds = rs.getJSONObject("header");
-                                        Iterator<String> keys = hds.keys();
-                                        while (keys.hasNext()) {
-                                            String key = keys.next();
-                                            if (headers == null) {
-                                                headers = new HashMap<>();
-                                            }
-                                            headers.put(key, hds.getString(key));
-                                        }
-                                    } catch (Throwable th) {
-
-                                    }
-                                }
-                                playUrl(rs.getString("url"), headers);
-                            } catch (Throwable e) {
-                                e.printStackTrace();
-                                errorWithRetry("解析错误", false);
-//                                setTip("解析错误", false, true);
-                            }
-                        }
-
-                        @Override
-                        public void onError(Throwable e) {
-                            errorWithRetry("解析错误", false);
-//                            setTip("解析错误", false, true);
-                        }
-                    });
-        } else if (pb.getType() == 2) { // json 扩展
-            setTip("正在解析播放地址", true, false);
-            final long parseEpoch = parseTaskEpoch.get();
-            LinkedHashMap<String, String> jxs = new LinkedHashMap<>();
-            for (ParseBean p : ParseConfigProviders.get().getParseBeanList()) {
-                if (p.getType() == 1) {
-                    jxs.put(p.getName(), ParseBeanUrls.mixUrl(p));
-                }
-            }
-            com.github.tvbox.osc.util.HeavyTaskUtil.getBigTaskExecutorService().execute(new Runnable() {
-                @Override
-                public void run() {
-                    // 已被新一轮解析/停止取代:直接丢弃(共享线程池不可 shutdown,epoch 自检)
-                    if (parseEpoch != parseTaskEpoch.get()) return;
-                    JSONObject rs = ParseConfigProviders.get().jsonExt(ParseBeanUrls.url(pb), jxs, webUrl);
-                    if (parseEpoch != parseTaskEpoch.get()) return;
-                    if (rs == null || !rs.has("url") || rs.optString("url").isEmpty()) {
-//                        errorWithRetry("解析错误", false);
-                        setTip("解析错误", false, true);
-                    } else {
-                        HashMap<String, String> headers = null;
-                        if (rs.has("header")) {
-                            try {
-                                JSONObject hds = rs.getJSONObject("header");
-                                Iterator<String> keys = hds.keys();
-                                while (keys.hasNext()) {
-                                    String key = keys.next();
-                                    if (headers == null) {
-                                        headers = new HashMap<>();
-                                    }
-                                    headers.put(key, hds.getString(key));
-                                }
-                            } catch (Throwable th) {
-
-                            }
-                        }
-                        if (parseEpoch != parseTaskEpoch.get()) return;
-                        if (rs.has("jxFrom")) {
-                            AppBubble.toast("解析来自:" + rs.optString("jxFrom"));
-                        }
-                        boolean parseWV = rs.optInt("parse", 0) == 1;
-                        if (parseWV) {
-                            String wvUrl = DefaultConfig.checkReplaceProxy(rs.optString("url", ""));
-                            loadUrl(wvUrl);
-                        } else {
-                            playUrl(rs.optString("url", ""), headers);
-                        }
-                    }
-                }
-            });
-        } else if (pb.getType() == 3) { // json 聚合
-            setTip("正在解析播放地址", true, false);
-            final long parseEpoch = parseTaskEpoch.get();
-            LinkedHashMap<String, HashMap<String, String>> jxs = new LinkedHashMap<>();
-            String extendName = "";
-            for (ParseBean p : ParseConfigProviders.get().getParseBeanList()) {
-                HashMap data = new HashMap<String, String>();
-                data.put("url", ParseBeanUrls.url(p));
-                if (ParseBeanUrls.url(p).equals(ParseBeanUrls.url(pb))) {
-                    extendName = p.getName();
-                }
-                data.put("type", p.getType() + "");
-                data.put("ext", p.getExt());
-                jxs.put(p.getName(), data);
-            }
-            String finalExtendName = extendName;
-            com.github.tvbox.osc.util.HeavyTaskUtil.getBigTaskExecutorService().execute(new Runnable() {
-                @Override
-                public void run() {
-                    if (parseEpoch != parseTaskEpoch.get()) return;
-                    JSONObject rs = ParseConfigProviders.get().jsonExtMix(parseFlag + "111", ParseBeanUrls.url(pb), finalExtendName, jxs, webUrl);
-                    if (parseEpoch != parseTaskEpoch.get()) return;
-                    if (rs == null || !rs.has("url") || rs.optString("url").isEmpty()) {
-//                        errorWithRetry("解析错误", false);
-                        setTip("解析错误", false, true);
-                    } else {
-                        if (rs.has("parse") && rs.optInt("parse", 0) == 1) {
-                            if (rs.has("ua")) {
-                                webUserAgent = rs.optString("ua").trim();
-                            }
-                            if (parseEpoch != parseTaskEpoch.get()) return;
-                            if (!isAdded()) return;
-                            requireActivity().runOnUiThread(new Runnable() {
-                                @Override
-                                public void run() {
-                                    String mixParseUrl = DefaultConfig.checkReplaceProxy(rs.optString("url", ""));
-                                    stopParse();
-                                    setTip("正在嗅探播放地址", true, false);
-                                    mHandler.removeMessages(100);
-                                    mHandler.sendEmptyMessageDelayed(100, 20 * 1000);
-                                    loadWebView(mixParseUrl);
-                                }
-                            });
-                        } else {
-                            HashMap<String, String> headers = null;
-                            if (rs.has("header")) {
-                                try {
-                                    JSONObject hds = rs.getJSONObject("header");
-                                    Iterator<String> keys = hds.keys();
-                                    while (keys.hasNext()) {
-                                        String key = keys.next();
-                                        if (headers == null) {
-                                            headers = new HashMap<>();
-                                        }
-                                        headers.put(key, hds.getString(key));
-                                    }
-                                } catch (Throwable th) {
-                                    th.printStackTrace();
-                                }
-                            }
-                            if (parseEpoch != parseTaskEpoch.get()) return;
-                            if (rs.has("jxFrom")) {
-                                AppBubble.toast("解析来自:" + rs.optString("jxFrom"));
-                            }
-                            playUrl(rs.optString("url", ""), headers);
-                        }
-                    }
-                }
-            });
-        }
-    }
-
-    private String encodeUrl(String url) {
-        try {
-            return URLEncoder.encode(url, "UTF-8");
-        } catch (Exception e) {
-            return url;
-        }
-    }
-
-    private WebView mSysWebView;
-    private final Map<String, Boolean> loadedUrls = new HashMap<>();
-    private LinkedList<String> loadFoundVideoUrls = new LinkedList<>();
-    private HashMap<String, HashMap<String, String>> loadFoundVideoUrlsHeader = new HashMap<>();
-    private final AtomicInteger loadFoundCount = new AtomicInteger(0);
-
-    void loadWebView(String url) {
-        if (mSysWebView == null) {
-            mSysWebView = new MyWebView(mContext);
-            configWebViewSys(mSysWebView);
-            loadUrl(url);
-        } else {
-            loadUrl(url);
-        }
-    }
-
-    void loadUrl(String url) {
-        if (!isAdded()) return;
-        requireActivity().runOnUiThread(() -> {
-            if (mSysWebView != null) {
-                mSysWebView.stopLoading();
-                if (webUserAgent != null) {
-                    mSysWebView.getSettings().setUserAgentString(webUserAgent);
-                }
-                //mSysWebView.clearCache(true);
-                if (webHeaderMap != null) {
-                    mSysWebView.loadUrl(url, webHeaderMap);
-                } else {
-                    mSysWebView.loadUrl(url);
-                }
-            }
-        });
-    }
-
-    void stopLoadWebView(boolean destroy) {
-        if (mActivity == null || !isAdded()) return;
-        requireActivity().runOnUiThread(() -> {
-
-            if (mSysWebView != null) {
-                mSysWebView.stopLoading();
-                mSysWebView.loadUrl("about:blank");
-                if (destroy) {
-                    // 先摘除父容器,再 destroy,避免 "WebView.destroy() called while still attached" 警告与渲染进程崩溃
-                    ViewParent parent = mSysWebView.getParent();
-                    if (parent instanceof ViewGroup) {
-                        ((ViewGroup) parent).removeView(mSysWebView);
-                    }
-                    mSysWebView.removeAllViews();
-                    mSysWebView.destroy();
-                    mSysWebView = null;
-                }
-            }
-        });
-    }
-
+    /** 记录当前播放url(供 DetailActivity/下载回退取址) */
     public String getFinalUrl(){
         return TextUtils.isEmpty(mCurrentUrl) || !RegexUtils.isURL(mCurrentUrl) ?"":mCurrentUrl;
     }
 
-    /** 当前播放所用请求头(WebView 嗅探/解析时收集的 UA/Referer 等);
-        下载回退播放地址时必须携带, 否则防盗链源"能播不能下"。
-        优先完整 header, 缺失时用爬虫返回的 webUserAgent(代理可能按此 UA 放行) */
+    /** 当前播放所用请求头:经解析引擎(嗅探 WebView 收集 UA/Referer 等)取,下载回退播放地址必须携带 */
     public Map<String, String> getPlayHeaders() {
-        if (webHeaderMap != null && !webHeaderMap.isEmpty()) return webHeaderMap;
-        if (webUserAgent != null && !webUserAgent.isEmpty()) {
-            java.util.HashMap<String, String> h = new java.util.HashMap<>();
-            h.put("User-Agent", webUserAgent);
-            return h;
-        }
-        return null;
+        return mParseEngine != null ? mParseEngine.getPlayHeaders() : null;
     }
 
-    boolean checkVideoFormat(String url) {
-        try {
-            if (url.contains("url=http") || url.contains(".html")) {
-                return false;
-            }
-            if (sourceBean != null && sourceBean.getType() == 3) {
-                // 手动视频判定经 spider-api 契约,不直接拿具体 Spider
-                Boolean r = com.github.tvbox.osc.spiderapi.SpiderManualCheckProviders.get()
-                        .manualVideoCheck(sourceBean.getKey(), url);
-                if (r != null) {
-                    return r;
-                }
-            }
-            return VideoParseRuler.checkIsVideoForParse(webUrl, url);
-        } catch (Exception e) {
-            return false;
-        }
-    }
-
-    class MyWebView extends WebView {
-        public MyWebView(@NonNull Context context) {
-            super(context);
-        }
-
-        @Override
-        public void setOverScrollMode(int mode) {
-            super.setOverScrollMode(mode);
-            if (mContext instanceof Activity)
-                AutoSize.autoConvertDensityOfCustomAdapt((Activity) mContext, PlayFragment.this);
-        }
-
-        @Override
-        public boolean dispatchKeyEvent(KeyEvent event) {
-            return false;
-        }
-    }
-
-    @SuppressLint("SetJavaScriptEnabled")
-    private void configWebViewSys(WebView webView) {
-        if (webView == null) {
-            return;
-        }
-        ViewGroup.LayoutParams layoutParams = SystemConfig.isDebugOpen()
-                ? new ViewGroup.LayoutParams(800, 400) :
-                new ViewGroup.LayoutParams(1, 1);
-        webView.setFocusable(false);
-        webView.setFocusableInTouchMode(false);
-        webView.clearFocus();
-        webView.setOverScrollMode(View.OVER_SCROLL_ALWAYS);
-        requireActivity().addContentView(webView, layoutParams);
-        /* 添加webView配置 */
-        final WebSettings settings = webView.getSettings();
-        settings.setNeedInitialFocus(false);
-        settings.setAllowContentAccess(true);
-        settings.setAllowFileAccess(true);
-        settings.setAllowUniversalAccessFromFileURLs(true);
-        settings.setAllowFileAccessFromFileURLs(true);
-        settings.setDatabaseEnabled(true);
-        settings.setDomStorageEnabled(true);
-        settings.setJavaScriptEnabled(true);
-
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR1) {
-            settings.setMediaPlaybackRequiresUserGesture(false);
-        }
-        if (SystemConfig.isDebugOpen()) {
-            settings.setBlockNetworkImage(false);
-        } else {
-            settings.setBlockNetworkImage(true);
-        }
-        settings.setUseWideViewPort(true);
-        settings.setDomStorageEnabled(true);
-        settings.setJavaScriptCanOpenWindowsAutomatically(true);
-        settings.setSupportMultipleWindows(false);
-        settings.setLoadWithOverviewMode(true);
-        settings.setBuiltInZoomControls(true);
-        settings.setSupportZoom(false);
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-            settings.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
-        }
-//        settings.setCacheMode(WebSettings.LOAD_NO_CACHE);
-        settings.setCacheMode(WebSettings.LOAD_DEFAULT);
-        /* 添加webView配置 */
-        //设置编码
-        settings.setDefaultTextEncodingName("utf-8");
-        settings.setUserAgentString(webView.getSettings().getUserAgentString());
-//         settings.setUserAgentString(ANDROID_UA);
-
-        webView.setWebChromeClient(new WebChromeClient() {
-            @Override
-            public boolean onConsoleMessage(ConsoleMessage consoleMessage) {
-                return false;
-            }
-
-            @Override
-            public boolean onJsAlert(WebView view, String url, String message, JsResult result) {
-                return true;
-            }
-
-            @Override
-            public boolean onJsConfirm(WebView view, String url, String message, JsResult result) {
-                return true;
-            }
-
-            @Override
-            public boolean onJsPrompt(WebView view, String url, String message, String defaultValue, JsPromptResult result) {
-                return true;
-            }
-        });
-        SysWebClient mSysWebClient = new SysWebClient();
-        webView.setWebViewClient(mSysWebClient);
-        webView.setBackgroundColor(Color.BLACK);
-    }
-
-    private class SysWebClient extends WebViewClient {
-
-        @SuppressLint("WebViewClientOnReceivedSslError")
-        @Override
-        public void onReceivedSslError(WebView webView, SslErrorHandler sslErrorHandler, SslError sslError) {
-            // 默认拒绝:只有用户显式开启"忽略证书错误"才放行,防止中间人篡改(同 WebSniffResolver 策略)
-            if (SystemConfig.isIgnoreSslError()) {
-                sslErrorHandler.proceed();
-            } else {
-                sslErrorHandler.cancel();
-            }
-        }
-
-        @Override
-        public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
-            return false;
-        }
-
-        @Override
-        public boolean shouldOverrideUrlLoading(WebView view, String url) {
-            return false;
-        }
-
-        @Override
-        public void onPageStarted(WebView view, String url, Bitmap favicon) {
-            super.onPageStarted(view, url, favicon);
-        }
-
-        @Override
-        public void onPageFinished(WebView view, String url) {
-            super.onPageFinished(view, url);
-            // 防御:sourceBean 可能为空(源切换/重试期间),避免取点击选择器 NPE
-            String click = sourceBean == null ? null : sourceBean.getClickSelector();
-            LOG.i("onPageFinished url:" + url);
-
-            if (click != null && !click.isEmpty()) {
-                String selector;
-                if (click.contains(";")) {
-                    if (!url.contains(click.split(";")[0])) return;
-                    selector = click.split(";")[1];
-                } else {
-                    selector = click.trim();
-                }
-                String js = "$(\"" + selector + "\").click();";
-                LOG.i("javascript:" + js);
-                mSysWebView.loadUrl("javascript:" + js);
-            }
-        }
-
-        WebResourceResponse checkIsVideo(String url, HashMap<String, String> headers) {
-            if (url.endsWith("/favicon.ico")) {
-                if (url.startsWith("http://127.0.0.1")) {
-                    return new WebResourceResponse("image/x-icon", "UTF-8", null);
-                }
-                return null;
-            }
-
-            boolean isFilter = VideoParseRuler.isFilter(webUrl, url);
-            if (isFilter) {
-                LOG.i("shouldInterceptLoadRequest filter:" + url);
-                return null;
-            }
-
-            boolean ad;
-            if (!loadedUrls.containsKey(url)) {
-                ad = AdBlocker.isAd(url);
-                loadedUrls.put(url, ad);
-            } else {
-                ad = Boolean.TRUE.equals(loadedUrls.get(url));
-            }
-
-            if (!ad) {
-                if (checkVideoFormat(url)) {
-                    loadFoundVideoUrls.add(url);
-                    loadFoundVideoUrlsHeader.put(url, headers);
-                    LOG.i("loadFoundVideoUrl:" + url);
-                    if (loadFoundCount.incrementAndGet() == 1) {
-                        url = loadFoundVideoUrls.poll();
-                        mHandler.removeMessages(100);
-                        String cookie = CookieManager.getInstance().getCookie(url);
-                        if (!TextUtils.isEmpty(cookie))
-                            headers.put("Cookie", " " + cookie);//携带cookie
-                        playUrl(url, headers);
-                        stopLoadWebView(false);
-                    }
-                }
-            }
-
-            return ad || loadFoundCount.get() > 0 ?
-                    AdBlocker.createEmptyResource() :
-                    null;
-        }
-
-        @Nullable
-        @Override
-        public WebResourceResponse shouldInterceptRequest(WebView view, String url) {
-//            WebResourceResponse response = checkIsVideo(url, new HashMap<>());
-            return null;
-        }
-
-        @Nullable
-        @Override
-        @TargetApi(Build.VERSION_CODES.LOLLIPOP)
-        public WebResourceResponse shouldInterceptRequest(WebView view, WebResourceRequest request) {
-            String url = request.getUrl().toString();
-            LOG.i("shouldInterceptRequest url:" + url);
-            HashMap<String, String> webHeaders = new HashMap<>();
-            Map<String, String> hds = request.getRequestHeaders();
-            if (hds != null && hds.keySet().size() > 0) {
-                for (String k : hds.keySet()) {
-                    if (k.equalsIgnoreCase("user-agent")
-                            || k.equalsIgnoreCase("referer")
-                            || k.equalsIgnoreCase("origin")) {
-                        webHeaders.put(k, " " + hds.get(k));
-                    }
-                }
-            }
-            return checkIsVideo(url, webHeaders);
-        }
-
-        @Override
-        public void onLoadResource(WebView webView, String url) {
-            super.onLoadResource(webView, url);
-        }
-    }
 
     public MyVideoView getPlayer() {
         return mVideoView;
