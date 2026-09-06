@@ -265,6 +265,12 @@ Exo→Media3、EventBus→Flow/接口、Hawk→DataStore、Java→Kotlin 渐进�
   宿主只弹 toast + null 兜底;单测覆盖各分支。DetailActivity 下载弹窗状态层数据/文案面
   已纯化;剩余为 UI 弹窗实例/生命周期编排(全屏退出、抽屉/底部弹窗分派、Facade 订阅),
   与宿主强耦合,深拆需真机背书。(2f7149d1)
+- ✅ DetailActivity 下载弹窗协调器等值搬移 `ui/dialog/DownloadDialogCoordinator`:
+  弹窗实例/防重入、DownloadFacade 状态订阅注销、数据后台准备、Wi-Fi 确认+批量入队+文案
+  全部下沉;DetailActivity 只实现 Host(数据/全屏退出时序/postDelayed/跳转/toast/runOnUi),
+  public 入口转发协调器;同步清理 30+ 失效 import。DetailActivity 1244→993 行。
+  (013f9c15)真机回归点:详情"下载"底部弹窗、全屏控制栏右侧抽屉、选集勾选/排序保留、
+  批量下载文案、下载状态实时刷新。
 - ✅ 直播分组密码门禁抽离 `util/LiveChannelAuth`:isPasswordConfirmed/needInputPassword/
   visibleChannels 纯逻辑(组数据+确认集合传参),LiveActivity 三方法改委托;单测 4 例。
   (9bdcc169)
