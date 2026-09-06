@@ -459,3 +459,4 @@ EventBus 订阅方已收敛 4 个真实方;仍剩多源结果流(TYPE_SEARCH_RES
 - ✅ 门禁硬化(改进.txt §六/AGENTS §六 落地):checkModuleDependencies 现自动扫描 app(含测试)的 getCSP 直调/Hawk import/DownloadManager.get() 直调/业务自建 OkHttpClient,违规即抛错;此前仅靠人工 grep。
 - ✅ 门禁再硬化:UI 层红线自动化(app/ui 禁 IJK/Exo 内核 import 与自建线程池),与验收红线扫描一并入 checkModuleDependencies。
 - ✅ 门禁再硬化:app 层「具体 Activity 强转」静态检查入 checkModuleDependencies(命中按文件行号报错)。
+- ✅ CI 门禁:build-apk workflow 在 assembleRelease 前新增 Verify 步骤(unit tests + checkModuleDependencies),验收红线随 CI 强制。
