@@ -1,6 +1,7 @@
 # MBox(TVBoxOS-Mobile)项目规则(AGENTS)
 
-> 本文件将仓库根目录《改进.txt》的限制与要求固化为**项目级规则**,所有代码改动(人工与 AI)必须遵守。
+> 本文件将仓库根目录《改进.txt》的限制与要求固化为**项目级规则**,所有代码改动(人工与 AI)必须遵守;
+> 并沉淀安全审计中的**持续约束型**红线(见「七、安全与工程红线」,一次性修复明细不入本文件)。
 > 原始文档见仓库根 `改进.txt`(未跟踪,不提交);本文件是其在版本库中的权威落地,随 git 一起跟踪与演进。
 
 ---
@@ -75,7 +76,33 @@ app / feature
 5. 模块依赖只增公开契约接口;Gradle 依赖默认 `implementation`,谨慎 `api`。
 6. 业务/后台任务必须用模块级共享执行器(如 `HeavyTaskUtil`),且带取消/过期自检语义(epoch),不得每轮 new 线程池后 shutdown 了事。
 
-## 七、推荐推进顺序(供排期参考)
+## 七、安全与工程红线(持续约束)
+
+**网络与 TLS**
+- 禁止全局关闭 HTTPS/TLS 校验(如 WebView `onReceivedSslError` 一律 proceed、HttpClient 全信任);确需忽略证书只允许"按域 + 用户显式开关"且默认拒绝(cancel)。
+- 局域网/回环服务(RemoteServer 等)按需启动、用毕即停;对外暴露最小化,敏感操作必须带鉴权/令牌,禁止无鉴权读写。
+
+**输入与文件安全**
+- 本地路径一律防目录穿越:拼接前校验并规范化,拒绝 `..`/绝对路径逃逸出目标目录。
+- 解压(压缩包/归档)防 Zip Slip:每个条目的最终落盘路径必须位于目标目录内,解压前校验。
+- HLS/代理分片等高频落盘必须节流/限频,禁止无界写盘。
+
+**数据、并发与性能**
+- Room/DB 查询禁止主线程执行;需即异步(协程/执行器)或缓存预热。
+- Gson 等解析器复用实例并建索引/缓存,禁止热路径重复构建;UA 等常量数组化,避免每请求新建数组。
+- 启动阶段不做阻塞式删缓存/重 IO;大资源懒加载,页面销毁即释放。
+- 列表更新用 DiffUtil 时保证差量正确(LocalVideoAdapter/下载列表等禁止 O(n²)/整表 notify);页面/Adapter 不得把视图/Activity 持有到生命周期外(视图泄漏)。
+
+**Android 暴露面**
+- Manifest 权限最小化:只声明实际使用权限;组件(Activity/Service/Receiver/Provider)按需 `exported`,不对外暴露者一律 `android:exported="false"`,敏感暴露组件配权限保护。
+
+**依赖、构建与资源**
+- 依赖升级与版本对齐走显式批次(Room/exo 等跨模块依赖版本一致),禁止引入冗余/重复依赖;同步清理死源码与无效 import。
+- Gradle 开启/维护缓存与并行构建,避免本地与 CI 行为漂移。
+- 图片加载统一单一图片库,不复用多套;网络状态/电量等系统状态统一经 SystemStateMonitor 单点订阅。
+- 多语言资源按需裁剪(`resConfigs`),禁止无界塞入语言包。
+
+## 八、推荐推进顺序(供排期参考)
 
 1. **第一阶段(补边界)**:SourceViewModel→SpiderApi;DownloadFragment→DownloadFacade;DetailActivity 不直调 DownloadManager;注册并使用 PlayerFactory;禁止新增 Hawk/EventBus/具体 Manager 直调。
 2. **第二阶段(抽基础)**:core-model → spider-api → core-network → core-storage。
@@ -83,14 +110,14 @@ app / feature
 4. **第四阶段**:feature-* 按需模块化(不要在依赖未稳时先搬目录)。
 5. **第五阶段(现代化)**:Exo→Media3、EventBus→Flow/接口、Hawk→DataStore、Java→Kotlin、Hilt(按需)、依赖检查与测试门禁。
 
-## 八、开发与提交纪律
+## 九、开发与提交纪律
 
 - 全量门禁:改动后必须跑 `:app:assembleDebug :app:assembleRelease :app:testDebugUnitTest checkModuleDependencies` 全绿再提交。
 - 提交信息遵循 `doc/Git提交规范.md`(type[scope]: 描述 ≤50 字;一次提交一件事;提交前 git status 确认无多余文件)。
 - 文件级提交:按范围 `git add`,不混入无关改动;本规则文件(AGENTS.md)与各 doc/ 状态文档随对应批次同步更新并提交。
 - 改进.txt 本身与 release-notes-v3.0.1.md 不入库;其要求以上方章节为准。
 
-## 九、常用基础设施速查
+## 十、常用基础设施速查
 
 - 配置:core-storage `config.PrefsDataStore`(DataStore,运行权威)+ `KeyValueStore`(兼容/迁移);各业务 Config 门面见 `com.github.tvbox.osc.config`(SystemConfig)与各模块 config 包。
 - 契约 Providers(app 侧桥接 :spider 实现):`spider-api.SourceConfigProviders/ParseConfigProviders/LiveChannelConfigApi/SourceLoaderApi/IjkCodecConfigProviders` 等,业务/UI 一律经它们取源元信息,禁止直触 ApiConfig。
