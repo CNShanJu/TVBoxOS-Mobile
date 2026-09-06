@@ -363,6 +363,10 @@ Exo→Media3、EventBus→Flow/接口、Hawk→DataStore、Java→Kotlin 渐进�
    FastSearchActivity(TYPE_SEARCH_RESULT/ServerEvent)、VideoListActivity(本地列表重扫)。
    全仓 EventBus 订阅方收敛为:DetailActivity/FastSearchActivity/PlayService/
    DownloadFacade(模块内桥),零空壳订阅。(27315f4f)
+- ✅ UnicodeReader/CharsetUtils JVM 单测补充(字幕文件装载链路,不需真机):
+   UnicodeReader BOM 识别与解码(UTF-8/UTF-16LE/UTF-16BE)、无 BOM 回退默认编码、空输入安全;
+   CharsetUtils.detect 以"检测编码可无损还原原文"为准覆盖 UTF-8(含/不含 BOM)、ASCII、
+   GBK 中文回退路径。(2aaaa8af)
 
 ## 9. 待真机回归后继续(播放器主线尾段,当前挂起)
 > 集中回归清单见 `doc/device-regression-checklist.md`(按功能域分组,门禁绿后逐项过)。
