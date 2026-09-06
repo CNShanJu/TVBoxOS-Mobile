@@ -382,6 +382,9 @@ Exo→Media3、EventBus→Flow/接口、Hawk→DataStore、Java→Kotlin 渐进�
 - ✅ FormatASS 解析样例单测(与 FormatSRT 并列覆盖字幕纯解析链路):两条 Dialogue 的
    起始/结束毫秒与内联覆盖标签({\\i1}...)剥离;样例保持 ASCII 以规避 JVM 测试环境
    平台字符集不可移植。(2ad86b20)
+- ✅ FastSearch 非空断言警告清理(searchAdapter!! 等多余 !!)。Kotlin 编译告警清点:
+   本轮触及文件内告警已清零(HomeFragment/SettingActivity/SubscriptionActivity 等告警属并行批改动范围)。
+   (307073a1)
 
 ## 9. 待真机回归后继续(播放器主线尾段,当前挂起)
 > 集中回归清单见 `doc/device-regression-checklist.md`(按功能域分组,门禁绿后逐项过)。
