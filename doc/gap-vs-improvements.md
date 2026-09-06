@@ -273,6 +273,12 @@ Exo→Media3、EventBus→Flow/接口、Hawk→DataStore、Java→Kotlin 渐进�
   批量下载文案、下载状态实时刷新。
 - ✅ DetailActivity 再清理零调用死方法 getHtml;同时并行侧提交搜索卡片/全屏控制样式批
   (9bb20a51),整仓门禁复绿。DetailActivity →987 行。(254bb13d)
+- ✅ 选集弹窗右侧抽屉去 Activity 强依赖:AllVodSeriesRightDialog 不再把 Context 强转
+  DetailActivity,改为构造注入 seriesFlagAdapter/seriesAdapter + sortAction/isSeriesReversed
+  (与底部弹窗一致的回调风格,行为不变)。DetailActivity 调用点同步。(bc9c2d97)
+- ✅ PlayFragment 前置步骤:会话键(progressKey/subtitleCacheKey)纯构造抽
+  util/player/PlaySessionKeys(与历史拼接逐字一致),作为后续 PlayViewModel 化的数据键来源;
+  单测 3 例(格式/确定性/索引敏感)。(fe9be382)
 - ✅ 直播分组密码门禁抽离 `util/LiveChannelAuth`:isPasswordConfirmed/needInputPassword/
   visibleChannels 纯逻辑(组数据+确认集合传参),LiveActivity 三方法改委托;单测 4 例。
   (9bdcc169)
