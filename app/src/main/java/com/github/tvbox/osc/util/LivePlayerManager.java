@@ -66,22 +66,8 @@ public class LivePlayerManager {
     public int getLivePlayerType() {
         int playerTypeIndex = 0;
         try {
-            int playerType = currentPlayerConfig.getInt("pl");
-            String ijkCodec = currentPlayerConfig.getString("ijk");
-            switch (playerType) {
-                case 0:
-                    playerTypeIndex = 0;
-                    break;
-                case 1:
-                    if (ijkCodec.equals("硬解码"))
-                        playerTypeIndex = 1;
-                    else
-                        playerTypeIndex = 2;
-                    break;
-                case 2:
-                    playerTypeIndex = 3;
-                    break;
-            }
+            playerTypeIndex = LivePlayerTypes.typeIndex(
+                    currentPlayerConfig.getInt("pl"), currentPlayerConfig.getString("ijk"));
         } catch (JSONException e) {
             e.printStackTrace();
         }
@@ -100,24 +86,8 @@ public class LivePlayerManager {
     public void changeLivePlayerType(VideoView videoView, int playerType, String channelName) {
         JSONObject playerConfig = currentPlayerConfig;
         try {
-            switch (playerType) {
-                case 0:
-                    playerConfig.put("pl", 0);
-                    playerConfig.put("ijk", "软解码");
-                    break;
-                case 1:
-                    playerConfig.put("pl", 1);
-                    playerConfig.put("ijk", "硬解码");
-                    break;
-                case 2:
-                    playerConfig.put("pl", 1);
-                    playerConfig.put("ijk", "软解码");
-                    break;
-                case 3:
-                    playerConfig.put("pl", 2);
-                    playerConfig.put("ijk", "软解码");
-                    break;
-            }
+            playerConfig.put("pl", LivePlayerTypes.playerTypeOf(playerType));
+            playerConfig.put("ijk", LivePlayerTypes.ijkCodecOf(playerType));
         } catch (JSONException e) {
             e.printStackTrace();
         }
