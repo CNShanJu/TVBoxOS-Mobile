@@ -4,7 +4,6 @@ import android.util.Log;
 
 import android.content.Context;
 import com.github.tvbox.osc.bean.DownloadTask;
-import com.github.tvbox.osc.config.KeyValueStore;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 
@@ -77,18 +76,10 @@ public class DownloadStore {
         }
     }
 
-    /** 启动加载:读文件(旧版 Hawk 存量一次性迁移)+ 进程重启状态归位(下载中/等待/调度暂停 -> 用户暂停,待手动继续) */
+    /** 启动加载:读任务文件+ 进程重启状态归位(下载中/等待/调度暂停 -> 用户暂停,待手动继续) */
     void load() {
         try {
             List<DownloadTask> saved = readTasksFile();
-            if (saved == null) {
-                // 旧版(Hawk 键)存量一次性迁移:读后写文件并删除旧键
-                saved = KeyValueStore.get(DownloadManager.HAWK_KEY, new ArrayList<DownloadTask>());
-                if (saved != null) {
-                    writeTasksFile(saved);
-                }
-                KeyValueStore.delete(DownloadManager.HAWK_KEY);
-            }
             if (saved != null) dm.tasks.addAll(saved);
         } catch (Throwable th) {
             th.printStackTrace(); // 存储损坏时兜底为空列表,不阻塞下载器启动

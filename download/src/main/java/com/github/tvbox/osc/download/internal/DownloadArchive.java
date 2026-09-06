@@ -2,7 +2,6 @@ package com.github.tvbox.osc.download.internal;
 
 import com.github.tvbox.osc.bean.DownloadTask;
 import com.github.tvbox.osc.download.ArchiveItem;
-import com.github.tvbox.osc.config.KeyValueStore;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 
@@ -32,15 +31,10 @@ public final class DownloadArchive {
     private DownloadArchive() {
     }
 
-    /** App init 注入 appContext 后由 DownloadManager.boot 调用:文件加载(旧 Hawk 存量一次性迁移)+ 对账 */
+    /** App init 注入 appContext 后由 DownloadManager.boot 调用:文件加载 + 对账 */
     synchronized void load() {
         try {
             List<ArchiveItem> saved = readArchiveFile();
-            if (saved == null) {
-                saved = KeyValueStore.get(HAWK_KEY, new ArrayList<ArchiveItem>());
-                if (saved != null) writeArchiveFile(saved);
-                KeyValueStore.delete(HAWK_KEY);
-            }
             if (saved != null) {
                 items.addAll(saved);
             }

@@ -28,7 +28,7 @@ android {
 dependencies {
     implementation project(':core-model')
     implementation project(':core-network')
-    implementation project(':core-storage') // KeyValueStore(任务/档案/策略持久化)
+    implementation project(':core-storage') // PrefsDataStore(任务/档案/策略持久化)
     implementation project(':log')
     implementation project(':state')
     implementation project(':spider-api')
