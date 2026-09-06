@@ -29,13 +29,13 @@ import com.github.tvbox.osc.ui.activity.FastSearchActivity;
 import com.github.tvbox.osc.ui.adapter.GridAdapter;
 import com.github.tvbox.osc.ui.dialog.GridFilterDialog;
 import com.github.tvbox.osc.ui.tv.widget.LoadMoreView;
-import com.github.tvbox.osc.ui.widget.ListSwipeRefreshLayout;
+import com.github.tvbox.osc.ui.RefreshUiEnvFactory;
+import com.github.tvbox.osc.ui.kit.ListRefreshSupport;
+import com.github.tvbox.osc.ui.kit.RubberBandSwipeRefreshLayout;
 import com.github.tvbox.osc.util.FastClickCheckUtil;
-import com.github.tvbox.osc.util.StackBlurBlur;
 import com.github.tvbox.osc.config.SystemConfig;
 import com.github.tvbox.osc.util.Utils;
 import com.github.tvbox.osc.viewmodel.SourceViewModel;
-import eightbitlab.com.blurview.BlurView;
 import com.owen.tvrecyclerview.widget.V7GridLayoutManager;
 import com.owen.tvrecyclerview.widget.V7LinearLayoutManager;
 import java.util.List;
@@ -57,18 +57,16 @@ public class GridFragment extends BaseLazyFragment {
     private int page = 1;
     private int maxPage = 1;
     private boolean isLoad = false;
-    /** 底部悬浮"到底了"(布局中默认隐藏,滚到列表最底且确认无更多时显示,贴近底部导航栏) */
-    private View mEndTip = null;
     /** 是否已确认"没有更多"(loadmore 判 end 后置真;恢复快照/刷新时按层复位) */
     private boolean mEndReached = false;
+    /** 是否正在加载更多(到底部 Lottie 显示依据) */
+    private boolean mLoadMoreBusy = false;
+    /** 下拉刷新 + 到底了 装配门面 */
+    private ListRefreshSupport mRefreshSupport = null;
     /** 筛选按钮毛玻璃是否已 setup(initView 会被多次调用, 只装一次) */
     private boolean filterBlurSetup = false;
     private boolean isTop = true;
     private View focusedView = null;
-    /** 下拉刷新容器(列表页根布局) */
-    private ListSwipeRefreshLayout mSwipeRefresh = null;
-    /** 下拉刷新监听只绑定一次(initView 会被多次调用) */
-    private boolean swipeRefreshBound = false;
     /** 层级快照:每深入一层只把上一层的轻量状态(数据引用/分页/滚动)入栈;
      *  全 fragment 只保留一套 RecyclerView + GridAdapter,不再逐层新建/隐藏视图(避免深目录内存累积) */
     private static class GridInfo{
@@ -185,7 +183,7 @@ public class GridFragment extends BaseLazyFragment {
             }
             restoreScroll(info.scrollPos, info.scrollOffset);
             mGridView.requestFocus();
-            updateEndTip();
+            if (mRefreshSupport != null) mRefreshSupport.updateEndTip();
         }
         return true;
     }
@@ -214,7 +212,7 @@ public class GridFragment extends BaseLazyFragment {
         this.maxPage = 1;
         this.isLoad = false;
         this.mEndReached = false;
-        updateEndTip(); // 清掉旧层残留的"到底了"
+        if (mRefreshSupport != null) mRefreshSupport.updateEndTip(); // 清掉旧层残留的"到底了"
     }
 
     private void initView() {
@@ -230,6 +228,8 @@ public class GridFragment extends BaseLazyFragment {
             @Override
             public void onLoadMoreRequested() {
                 gridAdapter.setEnableLoadMore(true);
+                mLoadMoreBusy = true;
+                if (mRefreshSupport != null) mRefreshSupport.updateEndTip();
                 sourceViewModel.getList(sortData, page);
             }
         }, mGridView);
@@ -280,41 +280,53 @@ public class GridFragment extends BaseLazyFragment {
         });
         gridAdapter.setLoadMoreView(new LoadMoreView());
 
-        // 底部悬浮"到底了"(共享组件,布局中默认隐藏):滚到列表最底且确认无更多时才显示
-        mEndTip = findViewById(R.id.end_tip);
-        if (mEndTip != null) mEndTip.setVisibility(View.GONE);
-        mGridView.addOnScrollListener(new RecyclerView.OnScrollListener() {
-            @Override
-            public void onScrolled(@NonNull RecyclerView recyclerView, int dx, int dy) {
-                refreshEndTip();
-            }
-        });
-
+        // 下拉刷新 + 到底了:一键装配(门面统一主题色/onRefresh/打断守卫/到底控制器与滚动绑定)
+        attachRefreshAndEndTip();
         findViewById(R.id.btn_filter).setOnClickListener(view -> showFilter());
         setupFilterBlur();
-        setupSwipeRefresh();
         setLoadSir2(mGridView);
     }
 
     /**
-     * 首页下拉刷新:从第 1 页重新拉取当前分类(不清空旧列表,数据到达后整体替换,避免刷新瞬间白屏);
-     * 返回时调用方负责结束刷新动画
+     * 下拉刷新 + 到底了:一键装配(两个首页 fragment 共用同一门面)
      */
-    private void setupSwipeRefresh() {
-        if (swipeRefreshBound) return;
-        swipeRefreshBound = true;
-        mSwipeRefresh = findViewById(R.id.swipe_refresh);
-        if (mSwipeRefresh == null) return;
-        // 刷新指示器跟随主题: 暗色用组件底色+亮色圈, 亮色用白底+深色圈
-        mSwipeRefresh.setProgressBackgroundColorSchemeResource(
-                Utils.isAppDarkTheme() ? R.color.bg_component : R.color.white);
-        mSwipeRefresh.setColorSchemeResources(R.color.text_highlight);
-        mSwipeRefresh.setOnRefreshListener(() -> onPullRefresh());
+    private void attachRefreshAndEndTip() {
+        RubberBandSwipeRefreshLayout container = findViewById(R.id.swipe_refresh);
+        View endTip = findViewById(R.id.end_tip);
+        if (container == null) return;
+        mRefreshSupport = ListRefreshSupport.attach(container, endTip, new ListRefreshSupport.Callback() {
+            @Override
+            public void onRefresh() {
+                onPullRefresh();
+            }
+
+            @Override
+            public RecyclerView list() {
+                return mGridView;
+            }
+
+            @Override
+            public boolean hasData() {
+                return gridAdapter != null && !gridAdapter.getData().isEmpty();
+            }
+
+            @Override
+            public boolean endReached() {
+                return mEndReached;
+            }
+
+            @Override
+            public boolean busy() {
+                // 正在加载更多 / 下拉刷新进行中
+                return mLoadMoreBusy || (mRefreshSupport != null && mRefreshSupport.isRefreshing());
+            }
+        }, RefreshUiEnvFactory.create());
     }
 
     private void onPullRefresh() {
+        if (mRefreshSupport != null) mRefreshSupport.onRefreshStarted(); // 新一轮刷新
         if (sourceViewModel == null) {
-            finishSwipeRefresh();
+            if (mRefreshSupport != null) mRefreshSupport.finishRefreshing();
             return;
         }
         page = 1;
@@ -324,55 +336,22 @@ public class GridFragment extends BaseLazyFragment {
         // 复位 footer: 重新开启加载更多并清除旧的"到底了"状态, 下一页请求期间显示"加载中"
         gridAdapter.loadMoreComplete();
         gridAdapter.setEnableLoadMore(true);
-        updateEndTip();
+        if (mRefreshSupport != null) mRefreshSupport.updateEndTip();
         sourceViewModel.getList(sortData, page);
     }
 
-    /** 刷新完成(数据到达/异常后调用;非下拉刷新期间调用为无操作) */
-    private void finishSwipeRefresh() {
-        if (mSwipeRefresh != null && mSwipeRefresh.isRefreshing()) {
-            mSwipeRefresh.setRefreshing(false);
-        }
-    }
-
     /**
-     * 同步刷新底部悬浮"到底了"(滚动监听中调用):数据非空、已确认无更多(mEndReached)、
-     * 列表确实滚到最底(不能再向下滚)且曾有多屏内容(能向上滚回)才显示;
-     * 一屏看完/空数据不显示,避免"到底了"常驻噪音。
-     */
-    private void refreshEndTip() {
-        if (mEndTip == null || mGridView == null || gridAdapter == null) return;
-        boolean hasData = !gridAdapter.getData().isEmpty();
-        boolean atBottom = !mGridView.canScrollVertically(1);
-        boolean scrolledUp = mGridView.canScrollVertically(-1);
-        mEndTip.setVisibility(mEndReached && hasData && atBottom && scrolledUp ? View.VISIBLE : View.GONE);
-    }
-
-    /** 数据/滚动变化后调度刷新:列表可能尚未完成布局,post 到下一帧再判 */
-    private void updateEndTip() {
-        if (mGridView == null) return;
-        mGridView.post(this::refreshEndTip);
-    }
-
-    /**
-     * 筛选悬浮按钮毛玻璃:模糊其后方(列表)内容, 与底栏同一套 StackBlur 算法; 只初始化一次
+     * 筛选悬浮按钮:移除毛玻璃采样(该 ROM(API36/Flyme)上 BlurView 会把包含它自己的整棵
+     * decor 递归重绘,撞框架 dispatchDraw 有序子视图竞态而崩溃);按钮退回纯色圆底遮罩;
+     * 只初始化一次。
      */
     private void setupFilterBlur() {
         if (filterBlurSetup) return;
         filterBlurSetup = true;
         try {
-            BlurView blur = findViewById(R.id.blur_filter);
-            ViewGroup root = mActivity.getWindow().getDecorView()
-                    .findViewById(android.R.id.content);
-            blur.setupWith(root)
-                    .setFrameClearDrawable(mActivity.getWindow().getDecorView().getBackground())
-                    .setBlurAlgorithm(new StackBlurBlur())
-                    .setBlurRadius(14f)
-                    .setBlurAutoUpdate(true);
-        } catch (Throwable th) {
-            // 模糊失败降级:按钮保留纯色遮罩,不影响功能
             View blur = findViewById(R.id.blur_filter);
             if (blur != null) blur.setVisibility(View.GONE);
+        } catch (Throwable ignored) {
         }
     }
 
@@ -382,6 +361,13 @@ public class GridFragment extends BaseLazyFragment {
         sourceViewModel.listResult.observe(this, new Observer<AbsXml>() {
             @Override
             public void onChanged(AbsXml absXml) {
+                // 刷新被用户打断:丢弃在途的第一页结果,维持下拉前旧列表
+                if (page == 1 && mRefreshSupport != null && mRefreshSupport.shouldDiscardArrival()) {
+                    mLoadMoreBusy = false;
+                    mRefreshSupport.updateEndTip();
+                    mRefreshSupport.finishRefreshing();
+                    return;
+                }
 //                if(mGridView != null) mGridView.requestFocus();
                 if (absXml != null && absXml.movie != null && absXml.movie.videoList != null && absXml.movie.videoList.size() > 0) {
                     if (page == 1) {
@@ -410,7 +396,11 @@ public class GridFragment extends BaseLazyFragment {
                     }
                 } else {
                     if(page == 1){
-                        showEmpty();
+                        if (gridAdapter != null && !gridAdapter.getData().isEmpty()) {
+                            // 刷新返回空但已有旧内容:保留旧列表(反复下拉/打断时序下避免被误清成"暂无数据")
+                        } else {
+                            showEmpty();
+                        }
                     }else{
                         AppBubble.toast("没有更多了");
                         mEndReached = true;
@@ -418,8 +408,11 @@ public class GridFragment extends BaseLazyFragment {
                         gridAdapter.setEnableLoadMore(false);
                     }
                 }
-                updateEndTip();
-                finishSwipeRefresh();
+                mLoadMoreBusy = false; // 本轮请求结束(成功/空/到底),底部回到文字判定
+                if (mRefreshSupport != null) {
+                    mRefreshSupport.updateEndTip();
+                    mRefreshSupport.finishRefreshing();
+                }
             }
         });
     }

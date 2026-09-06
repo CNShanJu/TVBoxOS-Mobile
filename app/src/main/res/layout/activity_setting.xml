@@ -13,9 +13,11 @@
         app:title="设置"
         app:titleStyle="bold"/>
 
-    <ScrollView
+    <!-- 越界跟手回弹(rubber_target=container:整个容器一起回弹,拖到顶/底松手弹回) -->
+    <com.github.tvbox.osc.ui.kit.RubberBandScrollView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        app:rubber_target="container"
         android:scrollbars="none"
         >
 
@@ -921,5 +923,5 @@
             </LinearLayout>
 
         </LinearLayout>
-    </ScrollView>
+    </com.github.tvbox.osc.ui.kit.RubberBandScrollView>
 </LinearLayout>

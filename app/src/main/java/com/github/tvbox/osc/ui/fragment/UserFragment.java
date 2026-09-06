@@ -14,7 +14,6 @@ import androidx.recyclerview.widget.GridLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.github.tvbox.osc.util.AppBubble;
-import com.github.tvbox.osc.util.StackBlurBlur;
 import com.chad.library.adapter.base.BaseQuickAdapter;
 import com.github.tvbox.osc.R;
 import com.github.tvbox.osc.base.BaseLazyFragment;
@@ -28,7 +27,9 @@ import com.github.tvbox.osc.ui.activity.LiveActivity;
 
 import com.github.tvbox.osc.ui.activity.SettingActivity;
 import com.github.tvbox.osc.ui.adapter.GridAdapter;
-import com.github.tvbox.osc.ui.widget.ListSwipeRefreshLayout;
+import com.github.tvbox.osc.ui.RefreshUiEnvFactory;
+import com.github.tvbox.osc.ui.kit.ListRefreshSupport;
+import com.github.tvbox.osc.ui.kit.RubberBandSwipeRefreshLayout;
 import com.github.tvbox.osc.util.FastClickCheckUtil;
 import com.github.tvbox.osc.util.HCallBack;
 import com.github.tvbox.osc.util.HomeHotCache;
@@ -43,7 +44,6 @@ import com.google.gson.JsonObject;
 import com.owen.tvrecyclerview.widget.TvRecyclerView;
 import com.owen.tvrecyclerview.widget.V7GridLayoutManager;
 import com.owen.tvrecyclerview.widget.V7LinearLayoutManager;
-import eightbitlab.com.blurview.BlurView;
 
 import java.util.ArrayList;
 import java.util.Calendar;
@@ -61,11 +61,8 @@ public class UserFragment extends BaseLazyFragment {
     private GridAdapter homeHotVodAdapter;
     private List<Movie.Video> homeSourceRec;
     RecyclerView tvHotList1;
-    /** 下拉刷新容器(首页列表根布局),绑定一次 */
-    private ListSwipeRefreshLayout mSwipeRefresh = null;
-    private boolean swipeRefreshBound = false;
-    /** 列表末尾"到底了"提示(共享组件 item_view_end_tip):默认隐藏,仅列表可滚动(超过一屏)时显示 */
-    private View mEndTip = null;
+    /** 下拉刷新 + 到底了 装配门面(容器/打断守卫/到底控制器统一收口) */
+    private ListRefreshSupport mRefreshSupport = null;
 
     public static UserFragment newInstance(List<Movie.Video> recVod) {
         return new UserFragment().setArguments(recVod);
@@ -143,48 +140,61 @@ public class UserFragment extends BaseLazyFragment {
         });
 
         tvHotList1.setAdapter(homeHotVodAdapter);
-        // 底部悬浮"到底了"(共享组件 item_view_end_tip,布局中已默认隐藏):
-        // 滚到列表底部时才出现,贴底部导航栏;滚动联动显隐
-        mEndTip = findViewById(R.id.end_tip);
-        tvHotList1.addOnScrollListener(new RecyclerView.OnScrollListener() {
-            @Override
-            public void onScrolled(@NonNull RecyclerView recyclerView, int dx, int dy) {
-                refreshEndTip();
-            }
-        });
+        attachRefreshAndEndTip();
         setLoadSir2(tvHotList1);
-        setupSwipeRefresh();
         initHomeHotVod(homeHotVodAdapter);
     }
 
     /**
-     * 下拉刷新容器绑定:监听只设一次(init 只会调用一次);颜色用主题高亮色
+     * 下拉刷新 + 到底了:一键装配(门面统一主题色/onRefresh 接线/打断守卫/到底控制器与滚动绑定)
      */
-    private void setupSwipeRefresh() {
-        if (swipeRefreshBound) return;
-        swipeRefreshBound = true;
-        mSwipeRefresh = findViewById(R.id.swipe_refresh);
-        if (mSwipeRefresh == null) return;
-        // 刷新指示器跟随主题: 暗色用组件底色+亮色圈, 亮色用白底+深色圈
-        mSwipeRefresh.setProgressBackgroundColorSchemeResource(
-                Utils.isAppDarkTheme() ? R.color.bg_component : R.color.white);
-        mSwipeRefresh.setColorSchemeResources(R.color.text_highlight);
-        mSwipeRefresh.setOnRefreshListener(() -> onPullRefresh());
+    private void attachRefreshAndEndTip() {
+        RubberBandSwipeRefreshLayout container = findViewById(R.id.swipe_refresh);
+        View endTip = findViewById(R.id.end_tip);
+        if (container == null) return;
+        mRefreshSupport = ListRefreshSupport.attach(container, endTip, new ListRefreshSupport.Callback() {
+            @Override
+            public void onRefresh() {
+                onPullRefresh();
+            }
+
+            @Override
+            public RecyclerView list() {
+                return tvHotList1;
+            }
+
+            @Override
+            public boolean hasData() {
+                return homeHotVodAdapter != null && !homeHotVodAdapter.getData().isEmpty();
+            }
+
+            @Override
+            public boolean endReached() {
+                return true; // 主页数据一次拉完:到底即提示
+            }
+
+            @Override
+            public boolean busy() {
+                // 主页无分页;下拉刷新进行中且恰好停在底部时,底部也可显示加载 Lottie
+                return mRefreshSupport != null && mRefreshSupport.isRefreshing();
+            }
+        }, RefreshUiEnvFactory.create());
     }
 
     /**
      * 下拉刷新首页:站点推荐直接重设列表;豆瓣热门清掉当日缓存强制重新拉取(网络请求完成后收起动画)
      */
     private void onPullRefresh() {
+        if (mRefreshSupport != null) mRefreshSupport.onRefreshStarted(); // 新一轮刷新
         if (SystemConfig.getHomeRec() == 1) {
             if (homeSourceRec != null && homeSourceRec.size() > 0) {
                 homeHotVodAdapter.setNewData(homeSourceRec);
                 showSuccess();
-                updateEndTip();
+                if (mRefreshSupport != null) mRefreshSupport.updateEndTip();
             } else {
                 showEmpty();
             }
-            finishSwipeRefresh();
+            if (mRefreshSupport != null) mRefreshSupport.finishRefreshing();
             return;
         }
         try {
@@ -194,52 +204,17 @@ public class UserFragment extends BaseLazyFragment {
         initHomeHotVod(homeHotVodAdapter);
     }
 
-    /** 刷新完成(各加载路径收尾调用;非下拉刷新期间调用为无操作) */
-    private void finishSwipeRefresh() {
-        if (mSwipeRefresh != null && mSwipeRefresh.isRefreshing()) {
-            mSwipeRefresh.setRefreshing(false);
-        }
-    }
-
-    /**
-     * 同步刷新底部悬浮"到底了"(滚动监听中调用):
-     * 数据非空、列表确实滚到最底部(不能再向下滚)且曾有多屏内容(能向上滚回)才显示;
-     * 一屏即可看完或空数据不显示,避免"到底了"常驻造成假噪音。
-     */
-    private void refreshEndTip() {
-        if (mEndTip == null || tvHotList1 == null) return;
-        boolean hasData = !homeHotVodAdapter.getData().isEmpty();
-        boolean atBottom = !tvHotList1.canScrollVertically(1);
-        boolean scrolledUp = tvHotList1.canScrollVertically(-1);
-        mEndTip.setVisibility(hasData && atBottom && scrolledUp ? View.VISIBLE : View.GONE);
-    }
-
-    /**
-     * 数据/滚动变化后调度刷新:列表可能尚未完成布局(如刚 setNewData),
-     * post 到下一帧再判,保证 canScrollVertically 反映真实内容高度。
-     */
-    private void updateEndTip() {
-        if (tvHotList1 == null) return;
-        tvHotList1.post(this::refreshEndTip);
-    }
-
     /**
      * 直播悬浮按钮毛玻璃:模糊其后方(列表)内容, 与底栏同一套 StackBlur 算法
      */
     private void setupLiveBlur() {
+        // 移除毛玻璃采样:该 ROM(API36/Flyme)上 BlurView 采样会把包含它自己的整棵 decor
+        // 递归重绘,撞上框架 dispatchDraw 有序子视图竞态而崩溃(IndexOutOfBounds);
+        // 按钮退回纯色圆底遮罩(与模糊失败降级一致),稳定优先。
         try {
-            BlurView blur = findViewById(R.id.blur_live);
-            ViewGroup root = mActivity.getWindow().getDecorView()
-                    .findViewById(android.R.id.content);
-            blur.setupWith(root)
-                    .setFrameClearDrawable(mActivity.getWindow().getDecorView().getBackground())
-                    .setBlurAlgorithm(new StackBlurBlur())
-                    .setBlurRadius(14f)
-                    .setBlurAutoUpdate(true);
-        } catch (Throwable th) {
-            // 模糊失败降级:按钮保留纯色遮罩,不影响功能
             View blur = findViewById(R.id.blur_live);
             if (blur != null) blur.setVisibility(View.GONE);
+        } catch (Throwable ignored) {
         }
     }
 
@@ -248,11 +223,11 @@ public class UserFragment extends BaseLazyFragment {
             if (homeSourceRec != null && homeSourceRec.size() > 0) {
                 showSuccess();
                 adapter.setNewData(homeSourceRec);
-                updateEndTip();
+                if (mRefreshSupport != null) mRefreshSupport.updateEndTip();
             }else {
                 showEmpty();
             }
-            finishSwipeRefresh();
+            if (mRefreshSupport != null) mRefreshSupport.finishRefreshing();
             return;
         }
         try {
@@ -269,8 +244,8 @@ public class UserFragment extends BaseLazyFragment {
                     if (hotMovies != null && hotMovies.size() > 0) {
                         showSuccess();
                         adapter.setNewData(hotMovies);
-                        updateEndTip();
-                        finishSwipeRefresh();
+                        if (mRefreshSupport != null) mRefreshSupport.updateEndTip();
+                        if (mRefreshSupport != null) mRefreshSupport.finishRefreshing();
                         return;
                     }
                 }
@@ -289,15 +264,24 @@ public class UserFragment extends BaseLazyFragment {
                     mActivity.runOnUiThread(new Runnable() {
                         @Override
                         public void run() {
+                            // 刷新被用户打断:丢弃在途结果,维持下拉前旧列表
+                            if (mRefreshSupport != null && mRefreshSupport.shouldDiscardArrival()) {
+                                if (mRefreshSupport != null) mRefreshSupport.finishRefreshing();
+                                return;
+                            }
                             ArrayList<Movie.Video> videos = loadHots(netJson);
-                            if (videos.size()>0){
+                            if (videos.size() > 0) {
                                 showSuccess();
                                 adapter.setNewData(videos);
-                                updateEndTip();
-                            }else {
+                                if (mRefreshSupport != null) mRefreshSupport.updateEndTip();
+                            } else if (adapter.getData().isEmpty()) {
+                                // 无旧内容才进空态;已有内容时刷新拿到空结果保留旧列表,
+                                // 避免"反复下拉/打断"时序把已有内容误清成"暂无数据"
                                 showEmpty();
+                            } else {
+                                if (mRefreshSupport != null) mRefreshSupport.updateEndTip();
                             }
-                            finishSwipeRefresh();
+                            if (mRefreshSupport != null) mRefreshSupport.finishRefreshing();
                         }
                     });
                 }
@@ -311,7 +295,7 @@ public class UserFragment extends BaseLazyFragment {
                             if (adapter.getData().isEmpty()) {
                                 showEmpty();
                             }
-                            finishSwipeRefresh();
+                            if (mRefreshSupport != null) mRefreshSupport.finishRefreshing();
                         }
                     });
                 }
@@ -321,7 +305,7 @@ public class UserFragment extends BaseLazyFragment {
             if (adapter.getData().isEmpty()){
                 showEmpty();
             }
-            finishSwipeRefresh();
+            if (mRefreshSupport != null) mRefreshSupport.finishRefreshing();
         }
     }
 

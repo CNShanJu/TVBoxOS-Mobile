@@ -32,7 +32,9 @@ import com.github.tvbox.osc.event.RefreshEvent
 import com.github.tvbox.osc.event.ServerEvent
 import com.github.tvbox.osc.log.Category
 import com.github.tvbox.osc.log.LogStore
+import com.github.tvbox.osc.ui.RefreshUiEnvFactory
 import com.github.tvbox.osc.ui.adapter.FastSearchAdapter
+import com.github.tvbox.osc.ui.kit.ListEndTipController
 import com.github.tvbox.osc.ui.dialog.DoubanSuggestDialog
 import com.github.tvbox.osc.ui.dialog.SearchCheckboxDialog
 import com.github.tvbox.osc.ui.dialog.SearchSuggestionsDialog
@@ -77,6 +79,21 @@ class FastSearchActivity : BaseVbActivity<ActivityFastSearchBinding>(), TextWatc
     private var searchFilterKey: String? = "" // 过滤的key
     private var resultVods = HashMap<String, MutableList<Movie.Video>>()
     private var mSearchSuggestionsDialog: SearchSuggestionsDialog? = null
+
+    /** 搜索是否已全部完成(全部来源返回后置真;"到底了"仅完成态显示) */
+    private var searchFinished = false
+    /** "到底了"统一控制器 */
+    private var mEndTipController: ListEndTipController? = null
+
+    /**
+     * 顶部下拉"静默刷新":不动来源抽屉/历史热词/整页 loading,结果先暂存,
+     * 全部来源返回后一次性换列表(避免中途清屏/反复 relayout 造成抖动);
+     * 若用户正开着来源列,保持原样,只更新结果数据。
+     */
+    private var quietRefresh = false
+    private val refreshStaging = ArrayList<Movie.Video>()
+    /** 用户上拉打断刷新后置真:放弃本次结果替换,保留当前列表 */
+    private var quietRefreshCancelled = false
 
     /** 是否已勾选订阅(以订阅管理写入的接口地址为准) */
     private fun hasSubscription(): Boolean {
@@ -125,7 +142,6 @@ class FastSearchActivity : BaseVbActivity<ActivityFastSearchBinding>(), TextWatc
         mBinding.mGridView.setHasFixedSize(true)
         mBinding.mGridView.setLayoutManager(LinearLayoutManager(this))
         mBinding.mGridView.adapter = searchAdapter
-        addEndFooter(searchAdapter)
         searchAdapter.setOnItemClickListener { _, view, position ->
             FastClickCheckUtil.check(view)
             val video = searchAdapter.data[position]
@@ -139,7 +155,6 @@ class FastSearchActivity : BaseVbActivity<ActivityFastSearchBinding>(), TextWatc
         mBinding.mGridViewFilter.setLayoutManager(LinearLayoutManager(this))
 
         mBinding.mGridViewFilter.adapter = searchAdapterFilter
-        addEndFooter(searchAdapterFilter)
         searchAdapterFilter.setOnItemClickListener { _, view, position ->
             FastClickCheckUtil.check(view)
             val video = searchAdapterFilter.data[position]
@@ -167,22 +182,60 @@ class FastSearchActivity : BaseVbActivity<ActivityFastSearchBinding>(), TextWatc
         setLoadSir(mBinding.llLayout)
         // 来源列表(左页)与结果列表(右页)同容器并排;默认显示右页(结果全屏)
         mBinding.llSearchResult.setPages(mBinding.llWord, mBinding.llLayout)
+        setupResultRefreshAndEndTip()
     }
 
-    /** 搜索结果列表末尾"到底了"提示:占满整行居中,贴近底部 */
-    private fun addEndFooter(adapter: FastSearchAdapter) {
-        val footer = TextView(this)
-        footer.text = "—— 到底了 ——"
-        footer.setTextColor(getColor(R.color.text_sub_foreground))
-        footer.textSize = 12f
-        footer.gravity = Gravity.CENTER
-        footer.layoutParams = RecyclerView.LayoutParams(
-            RecyclerView.LayoutParams.MATCH_PARENT,
-            RecyclerView.LayoutParams.WRAP_CONTENT
-        )
-        val pad = (8 * resources.displayMetrics.density).toInt()
-        footer.setPadding(pad, pad, pad, pad)
-        adapter.addFooterView(footer)
+    /**
+     * 结果列表交互统一:顶部下拉 = 拉伸回弹+刷新转圈混合(重新搜索);
+     * 到底悬浮"到底了"(与首页/分类一致:仅完成态、确实到底且超一屏才显示,由列表自身承担上推回弹)。
+     */
+    private fun setupResultRefreshAndEndTip() {
+        // 环境注入:动画/toast/业务日志由 app 组合根组装,页面不直连 LoadingAnim/AppBubble/LogStore
+        val env = RefreshUiEnvFactory.create()
+        mBinding.llLayout.setEnv(env)
+        mBinding.llLayout.setOnRefreshListener {
+            pullRefreshSearch()
+        }
+        // 刷新中上拉打断:中止本轮并保留当前结果
+        mBinding.llLayout.setOnRefreshCancelListener {
+            cancelQuietRefresh()
+        }
+        // "到底了"统一控制器(普通/过滤两列表共用;按当前可见列表判定)
+        val tip = findViewById<View>(R.id.end_tip)
+        if (tip != null) {
+            mEndTipController = ListEndTipController(tip, object : ListEndTipController.State {
+                override fun list(): RecyclerView? = visibleResultList()
+                override fun hasData(): Boolean = visibleResultAdapter()?.data?.isNotEmpty() == true
+                override fun endReached(): Boolean = searchFinished
+                override fun busy(): Boolean = !searchFinished // 整轮搜索未完成=请求中
+            }, env)
+            mEndTipController!!.attach(mBinding.mGridView)
+            mEndTipController!!.attach(mBinding.mGridViewFilter)
+        }
+    }
+
+    /** 当前可见的结果列表(普通结果 或 单来源过滤结果) */
+    private fun visibleResultList(): RecyclerView? = when {
+        mBinding.mGridView.visibility == View.VISIBLE -> mBinding.mGridView
+        mBinding.mGridViewFilter.visibility == View.VISIBLE -> mBinding.mGridViewFilter
+        else -> null
+    }
+
+    /** 当前可见结果对应的 adapter(判定是否有数据) */
+    private fun visibleResultAdapter(): FastSearchAdapter? = when {
+        mBinding.mGridView.visibility == View.VISIBLE -> searchAdapter
+        mBinding.mGridViewFilter.visibility == View.VISIBLE -> searchAdapterFilter
+        else -> null
+    }
+
+    /** 同步刷新"到底了"(滚动由控制器监听触发;保留方法供调用点复用) */
+    private fun refreshEndTip() {
+        mEndTipController?.refresh()
+    }
+
+    /** 数据/滚动变化后调度刷新(列表可能尚未完成布局,post 到下一帧再判) */
+    private fun updateEndTip() {
+        mEndTipController?.update()
     }
 
     /** 翻到来源列表页(左页);结果页(右页)默认显示,横滑吸附由 HorizontalSlidePagesLayout 处理 */
@@ -240,6 +293,7 @@ class FastSearchActivity : BaseVbActivity<ActivityFastSearchBinding>(), TextWatc
         if (spName === "全部显示") {
             mBinding.mGridView.visibility = View.VISIBLE
             mBinding.mGridViewFilter.visibility = View.GONE
+            updateEndTip()
             return
         }
         mBinding.mGridView.visibility = View.GONE
@@ -250,6 +304,7 @@ class FastSearchActivity : BaseVbActivity<ActivityFastSearchBinding>(), TextWatc
         searchFilterKey = key
         val list: List<Movie.Video> = (resultVods[key])!!
         searchAdapterFilter.setNewData(list)
+        updateEndTip()
     }
 
     private fun initData() {
@@ -474,11 +529,86 @@ class FastSearchActivity : BaseVbActivity<ActivityFastSearchBinding>(), TextWatc
         searchAdapter.setNewData(ArrayList())
         searchAdapterFilter.setNewData(ArrayList())
         resultVods.clear()
+        quietRefresh = false // 普通搜索不受上一次下拉刷新模式影响
+        quietRefreshCancelled = false
+        refreshStaging.clear()
         searchFilterKey = ""
         isFilterMode = false
         spNames.clear()
         mBinding.tabLayout.removeAllViews()
+        searchFinished = false // 新轮搜索未完成:"到底了"先隐藏
+        updateEndTip()
         searchResult()
+    }
+
+    /**
+     * 顶部下拉刷新:仅重跑结果搜索,不动来源抽屉/历史热词/整页 loading;
+     * 不先清空可见结果,数据暂存,全部来源返回后一次性替换列表(避免抖动/白屏)。
+     * 结束后由数据回调收尾 {@link RubberBandSwipeRefreshLayout#setRefreshing(boolean)}。
+     */
+    private fun pullRefreshSearch() {
+        val word = searchTitle
+        if (word.isNullOrEmpty()) {
+            mBinding.llLayout.setRefreshing(false)
+            return
+        }
+        synchronized(searchLock) {
+            searchEpoch++
+            searchPaused = false
+            pendingSearchKeys.clear()
+        }
+        if (searchSessionActive) {
+            searchSessionActive = false
+            JsLoader.stopAll()
+        }
+        quietRefresh = true
+        quietRefreshCancelled = false
+        refreshStaging.clear()
+        searchFinished = false
+        resultVods.clear()
+        updateEndTip()
+        allRunCount.set(0)
+        val requestList: MutableList<SourceBean> = ArrayList()
+        requestList.addAll(SourceConfigProviders.get().sourceBeanList)
+        val home = SourceConfigProviders.get().homeSourceBean
+        requestList.remove(home)
+        requestList.add(0, home)
+        val siteKey = ArrayList<String>()
+        for (bean: SourceBean in requestList) {
+            if (!bean.isSearchable) continue
+            if (mCheckSources != null && !mCheckSources!!.containsKey(bean.key)) continue
+            siteKey.add(bean.key)
+            allRunCount.incrementAndGet()
+        }
+        if (siteKey.isEmpty()) {
+            // 无可搜来源:直接收尾,避免刷新转圈永远挂着
+            quietRefresh = false
+            searchFinished = true
+            mBinding.llLayout.setRefreshing(false)
+            updateEndTip()
+            return
+        }
+        searchSessionActive = true
+        for (key: String in siteKey) {
+            launchSearch(key)
+        }
+    }
+
+    /**
+     * 用户上拉打断下拉刷新:中止本轮搜索(不再发起新来源),保留当前结果列表,
+     * 已返回的暂存数据放弃;容器转圈与回弹由容器自己负责收起。
+     */
+    private fun cancelQuietRefresh() {
+        synchronized(searchLock) {
+            searchEpoch++
+            searchPaused = false
+            pendingSearchKeys.clear()
+        }
+        if (searchSessionActive) {
+            searchSessionActive = false
+            JsLoader.stopAll()
+        }
+        quietRefreshCancelled = true
     }
 
     /** 搜索编排状态:epoch=当前轮次;暂停后未发起的源进 pending,页面回前台续跑(替代页面自建 10 线程池) */
@@ -630,11 +760,14 @@ class FastSearchActivity : BaseVbActivity<ActivityFastSearchBinding>(), TextWatc
                     resultVods[video.sourceKey] = ArrayList()
                 }
                 resultVods[video.sourceKey]!!.add(video)
-                if (video.sourceKey !== lastSourceKey) { // 添加到最后面并记录最后一个key用于下次判断
+                // 静默刷新:不加新来源 tab,结果先暂存,完成后一次性替换
+                if (!quietRefresh && video.sourceKey !== lastSourceKey) { // 添加到最后面并记录最后一个key用于下次判断
                     lastSourceKey = addWordAdapterIfNeed(video.sourceKey)
                 }
             }
-            if (searchAdapter.data.size > 0) {
+            if (quietRefresh) {
+                refreshStaging.addAll(data)
+            } else if (searchAdapter.data.size > 0) {
                 searchAdapter.addData(data)
             } else {
                 showSuccess()
@@ -643,11 +776,35 @@ class FastSearchActivity : BaseVbActivity<ActivityFastSearchBinding>(), TextWatc
             }
         }
         val count = allRunCount.decrementAndGet()
-        if (count <= 0) {
-            if (searchAdapter.data.size <= 0) {
+        if (count <= 0 && !searchFinished) {
+            searchFinished = true // 全部来源已返回:进入"完成态"
+            if (quietRefresh) {
+                quietRefresh = false
+                if (quietRefreshCancelled) {
+                    // 用户上拉打断:放弃本次数据,保留当前列表不动
+                    quietRefreshCancelled = false
+                    refreshStaging.clear()
+                } else {
+                    // 一次性替换结果;空结果走空态
+                    if (refreshStaging.isNotEmpty()) {
+                        searchAdapter.setNewData(ArrayList(refreshStaging))
+                        showSuccess()
+                    } else {
+                        searchAdapter.setNewData(ArrayList())
+                        showEmpty()
+                    }
+                    refreshStaging.clear()
+                    searchAdapterFilter.setNewData(ArrayList())
+                    // 回到"全部显示"视图(刷新期间不感知过滤切换)
+                    mBinding.mGridView.visibility = View.VISIBLE
+                    mBinding.mGridViewFilter.visibility = View.GONE
+                }
+            } else if (searchAdapter.data.size <= 0) {
                 showEmpty()
             }
             cancel()
+            mBinding.llLayout.setRefreshing(false) // 收起顶部下拉刷新(若有)
+            updateEndTip()
         }
     }
 

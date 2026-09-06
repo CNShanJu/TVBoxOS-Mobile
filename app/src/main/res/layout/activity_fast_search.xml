@@ -139,37 +139,50 @@
         android:visibility="gone"
         tools:visibility="visible">
 
-        <LinearLayout
+        <!-- 结果区:顶部下拉=拉伸回弹+刷新转圈混合(重新搜索);到底=悬浮"到底了"+上推回弹 -->
+        <com.github.tvbox.osc.ui.kit.RubberBandSwipeRefreshLayout
             android:id="@+id/llLayout"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
-            android:orientation="vertical"
             android:paddingLeft="10dp"
             android:paddingRight="10dp">
 
-            <com.owen.tvrecyclerview.widget.TvRecyclerView
+            <com.github.tvbox.osc.ui.kit.RubberBandRecyclerView
                 android:id="@+id/mGridView"
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
+                app:rubber_top_enabled="false"
                 android:clipChildren="false"
                 android:clipToPadding="false"
+                android:paddingBottom="70dp"
                 android:visibility="invisible"
                 app:tv_horizontalSpacingWithMargins="@dimen/dp_5"
                 app:tv_selectedItemIsCentered="true"
                 app:tv_verticalSpacingWithMargins="@dimen/dp_12" />
 
-            <com.owen.tvrecyclerview.widget.TvRecyclerView
+            <com.github.tvbox.osc.ui.kit.RubberBandRecyclerView
                 android:id="@+id/mGridViewFilter"
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
+                app:rubber_top_enabled="false"
                 android:clipChildren="false"
                 android:clipToPadding="false"
+                android:paddingBottom="70dp"
                 android:visibility="invisible"
                 app:tv_horizontalSpacingWithMargins="@dimen/dp_5"
                 app:tv_selectedItemIsCentered="true"
                 app:tv_verticalSpacingWithMargins="@dimen/dp_12" />
 
-        </LinearLayout>
+            <!-- "到底了"悬浮提示:与首页/分类一致,仅"确实到最底且内容超一屏"时显示 -->
+            <include
+                android:id="@+id/end_tip"
+                layout="@layout/item_view_end_tip"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="bottom|center_horizontal"
+                android:layout_marginBottom="20dp"
+                android:visibility="gone" />
+        </com.github.tvbox.osc.ui.kit.RubberBandSwipeRefreshLayout>
 
         <!-- 来源列表(左页):固定 140dp,平时收在屏左外;内容区向右横滑整盒右移,松手吸附。
              无独立底色,与结果列表/页面背景一致,选中高亮由 DslTabLayout 自身绘制 -->
