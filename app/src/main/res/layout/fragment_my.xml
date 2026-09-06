@@ -444,7 +444,7 @@
             android:id="@+id/tv_version"
             android:textSize="13sp"
             tools:text="v3.0.0"
-            android:paddingVertical="12dp"
+            android:paddingVertical="5dp"
             android:layout_marginTop="10dp"
             android:layout_marginBottom="12dp"
             android:layout_gravity="center_horizontal"
