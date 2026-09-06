@@ -462,3 +462,4 @@ EventBus 订阅方已收敛 4 个真实方;仍剩多源结果流(TYPE_SEARCH_RES
 - ✅ CI 门禁:build-apk workflow 在 assembleRelease 前新增 Verify 步骤(unit tests + checkModuleDependencies),验收红线随 CI 强制。
 - ✅ Java→Kotlin 试点(§八 五阶段):HistoryHelper 转 Kotlin(object + @JvmStatic,旧 Java 静态调用与 HistoryHelperTest 不受影响)。
 - ✅ Java→Kotlin 试点续:SearchFilter 转 Kotlin(object + @JvmStatic,测试与 FastSearch 调用不变)。
+- ✅ Java→Kotlin 试点续:PlayedVodKey 转 Kotlin(object + @JvmStatic,播放/下载调用与测试不变)。
