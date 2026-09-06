@@ -11,12 +11,21 @@ import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 
-import javax.net.ssl.HttpsURLConnection;
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLSocket;
 import javax.net.ssl.SSLSocketFactory;
 import javax.net.ssl.X509TrustManager;
 
+/**
+ * TLS 兼容套接字工厂(旧 Android TLS1.0/1.1 升级)。
+ * <p>
+ * 安全约定:本工厂配 {@link #TM}(信任任意证书)只为在 Android 11+ 上对
+ * "忽略证书错误"场景放行自签名/证书错误站点;调用方必须在用户显式开启
+ * {@code SystemConfig.isIgnoreSslError()}(默认关)时才挂载本工厂,
+ * 默认必须使用 OkHttp 系统证书校验,禁止无条件全局关闭 TLS 校验。
+ * 本类不再改写 {@code HttpsURLConnection} 的全局默认 SSLSocketFactory,
+ * 避免构造函数副作用让全 App 的直连 HTTPS 静默信任任意证书。
+ */
 public class SSLCompat extends SSLSocketFactory {
 
     private static String[] cipherSuites;
@@ -44,7 +53,9 @@ public class SSLCompat extends SSLSocketFactory {
         try {
             SSLContext context = SSLContext.getInstance("TLS");
             context.init(null, new X509TrustManager[]{TM}, null);
-            HttpsURLConnection.setDefaultSSLSocketFactory(factory = context.getSocketFactory());
+            // 不再 setDefaultSSLSocketFactory:类实例只服务挂载它的 OkHttp 客户端,
+            // 不得借构造副作用全局放宽 HttpsURLConnection 的证书校验(安全红线)。
+            factory = context.getSocketFactory();
         } catch (Exception e) {
             e.printStackTrace();
         }

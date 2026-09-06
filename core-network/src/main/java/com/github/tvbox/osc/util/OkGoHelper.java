@@ -1,5 +1,4 @@
 package com.github.tvbox.osc.util;
-import com.github.tvbox.osc.config.HawkConfig;
 
 import static okhttp3.ConnectionSpec.CLEARTEXT;
 import static okhttp3.ConnectionSpec.COMPATIBLE_TLS;
@@ -162,13 +161,18 @@ public class OkGoHelper {
         noRedirectClient = builder.build();
     }
 
+    /**
+     * SSL 装配(安全红线):默认走 OkHttp 系统证书校验(校验证书链 + 默认主机名校验);
+     * 仅当用户显式开启"忽略证书错误"(SystemConfig.isIgnoreSslError,默认关)时,
+     * 才为个别自签名/证书错误站点挂载 SSLCompat(信任任意证书)放行。
+     * 放行覆盖 WebView(即时生效)与 OkHttp 网络请求(重启应用后按新值重建客户端生效)。
+     */
     private static synchronized void setOkHttpSsl(OkHttpClient.Builder builder) {
         try {
-            final SSLSocketFactory sslSocketFactory = new SSLCompat();
-            builder.sslSocketFactory(sslSocketFactory, SSLCompat.TM);
-            // 不设置 hostnameVerifier:保持 OkHttp 默认主机名校验。
-            // 原实现恒返回 true,任何证书(含攻击者自签/错域名证书)都会通过,流量易被中间人篡改。
-            // 如个别自签名站点需要放行,由用户显式开启 HawkConfig.IGNORE_SSL_ERROR 后再处理。
+            if (SystemConfig.isIgnoreSslError()) {
+                final SSLSocketFactory sslSocketFactory = new SSLCompat();
+                builder.sslSocketFactory(sslSocketFactory, SSLCompat.TM);
+            }
         } catch (Exception e) {
             throw new RuntimeException(e);
         }

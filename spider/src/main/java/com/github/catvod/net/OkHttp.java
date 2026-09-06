@@ -7,6 +7,7 @@ import java.util.HashMap;
 import com.github.catvod.utils.Path;
 import com.github.catvod.utils.Util;
 import com.github.tvbox.osc.bean.Doh;
+import com.github.tvbox.osc.config.SystemConfig;
 
 import java.util.Map;
 import java.util.Objects;
@@ -45,7 +46,12 @@ public class OkHttp {
     }
 
     public void setDoh(Doh doh) {
-        OkHttpClient dohClient = new OkHttpClient.Builder().cache(new Cache(Path.doh(), CACHE)).sslSocketFactory(new SSLCompat(), SSLCompat.TM).build();
+        // 安全红线:DoH 客户端默认走系统证书校验;仅用户显式开启"忽略证书错误"才信任任意证书
+        OkHttpClient.Builder dohBuilder = new OkHttpClient.Builder().cache(new Cache(Path.doh(), CACHE));
+        if (SystemConfig.isIgnoreSslError()) {
+            dohBuilder.sslSocketFactory(new SSLCompat(), SSLCompat.TM);
+        }
+        OkHttpClient dohClient = dohBuilder.build();
         dns = doh.getUrl().isEmpty() ? null : new DnsOverHttps.Builder().client(dohClient).url(HttpUrl.get(doh.getUrl())).bootstrapDnsHosts(doh.getHosts()).build();
         client = null;
     }
@@ -129,7 +135,12 @@ public class OkHttp {
     }
 
     private static OkHttpClient.Builder getBuilder() {
-        OkHttpClient.Builder builder = new OkHttpClient.Builder().addInterceptor(new OkhttpInterceptor()).connectTimeout(TIMEOUT, TimeUnit.MILLISECONDS).readTimeout(TIMEOUT, TimeUnit.MILLISECONDS).writeTimeout(TIMEOUT, TimeUnit.MILLISECONDS).dns(dns()).sslSocketFactory(new SSLCompat(), SSLCompat.TM);
+        OkHttpClient.Builder builder = new OkHttpClient.Builder().addInterceptor(new OkhttpInterceptor()).connectTimeout(TIMEOUT, TimeUnit.MILLISECONDS).readTimeout(TIMEOUT, TimeUnit.MILLISECONDS).writeTimeout(TIMEOUT, TimeUnit.MILLISECONDS).dns(dns());
+        // 安全红线:默认系统证书校验(证书链 + 主机名校验);仅用户显式开启"忽略证书错误"(默认关)
+        // 才为个别自签名源站点挂载 SSLCompat(信任任意证书)放行,禁止无条件全局关闭 TLS 校验。
+        if (SystemConfig.isIgnoreSslError()) {
+            builder.sslSocketFactory(new SSLCompat(), SSLCompat.TM);
+        }
         builder.proxySelector(selector());
         return builder;
     }
