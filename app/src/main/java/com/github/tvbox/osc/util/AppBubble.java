@@ -15,12 +15,18 @@ import com.github.tvbox.osc.base.App;
  * 两种样式并存观感不一；现统一为系统 Toast 样式（Android 13+ 自动为系统圆角胶囊样式）。
  * 用法:AppBubble.toast("xxx") / AppBubble.toastLong("xxx")
  * <p>
+ * 连续提示去重:系统 Toast 默认排队显示(前一条播完才播下一条),动作高频/连续触发时
+ * 会出现"动作早结束、toast 还在一条条补播"的延迟堆积;这里持有当前 Toast 引用,
+ * 每次弹新提示前 cancel 掉上一条(含正在显示/排队中的),后者直接顶掉前者,只保留最新。
+ * <p>
  * 调试辅助(仅 debug 构建):toast 触发时经 {@link ToastTracer} 打印调用栈到 logcat(tag=ToastTrace),
  * 定位"不知道哪里冒出来的 toast";release 构建 ToastTracer 为空实现,产物零残留。
  */
 public class AppBubble {
 
     private static final Handler MAIN = new Handler(Looper.getMainLooper());
+    /** 上一条 Toast(正在显示或仍在系统队列中);弹新提示前 cancel 实现"后到顶替" */
+    private static Toast sCurrentToast;
 
     private AppBubble() {
     }
@@ -48,11 +54,18 @@ public class AppBubble {
             @Override
             public void run() {
                 try {
+                    // 顶掉上一条仍在显示/排队的 toast,避免连续触发时延迟堆积
+                    if (sCurrentToast != null) {
+                        sCurrentToast.cancel();
+                        sCurrentToast = null;
+                    }
                     Context ctx = App.getInstance();
                     Toast toast = Toast.makeText(ctx, msg,
                             longDuration ? Toast.LENGTH_LONG : Toast.LENGTH_SHORT);
+                    sCurrentToast = toast;
                     toast.show();
                 } catch (Throwable ignored) {
+                    sCurrentToast = null;
                 }
             }
         });
