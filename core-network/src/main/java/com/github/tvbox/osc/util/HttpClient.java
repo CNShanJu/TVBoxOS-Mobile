@@ -8,17 +8,11 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.io.UnsupportedEncodingException;
-import java.net.IDN;
-import java.net.URLEncoder;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 import okhttp3.Call;
 import okhttp3.Callback;
-import okhttp3.HttpUrl;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.Response;
@@ -84,7 +78,7 @@ public class HttpClient {
 
     public static void get(String url, Map<String, String> params, Map<String, String> headers, Object tag, final HCallBack callback) {
         try {
-            final String fullUrl = normalizeUrl(buildUrl(url, params));
+            final String fullUrl = HttpUrls.normalizeUrl(HttpUrls.buildUrl(url, params));
             Request.Builder builder = new Request.Builder().url(fullUrl).tag(tag);
             if (headers != null) {
                 for (Map.Entry<String, String> entry : headers.entrySet()) {
@@ -126,7 +120,7 @@ public class HttpClient {
 
     public static Response getResponseSync(String url, Map<String, String> headers) throws IOException {
         try {
-            Request.Builder builder = new Request.Builder().url(normalizeUrl(url));
+            Request.Builder builder = new Request.Builder().url(HttpUrls.normalizeUrl(url));
             if (headers != null) {
                 for (Map.Entry<String, String> entry : headers.entrySet()) {
                     if (entry.getKey() != null && entry.getValue() != null) {
@@ -204,7 +198,7 @@ public class HttpClient {
     /** 异步下载到目标文件,成功/失败回调切主线程 */
     public static void download(final String url, final File dest, Map<String, String> headers, final Object tag, final FCallBack callback) {
         try {
-            Request.Builder builder = new Request.Builder().url(normalizeUrl(url)).tag(tag);
+            Request.Builder builder = new Request.Builder().url(HttpUrls.normalizeUrl(url)).tag(tag);
             if (headers != null) {
                 for (Map.Entry<String, String> entry : headers.entrySet()) {
                     if (entry.getKey() != null && entry.getValue() != null) {
@@ -280,56 +274,18 @@ public class HttpClient {
     // 工具
     // ---------------------------------------------------------------------
 
-    private static String buildUrl(String url, Map<String, String> params) {
-        if (params == null || params.isEmpty()) return url;
-        try {
-            HttpUrl.Builder builder = HttpUrl.get(normalizeUrl(url)).newBuilder();
-            for (Map.Entry<String, String> entry : params.entrySet()) {
-                if (entry.getKey() == null) continue;
-                if (entry.getValue() == null) continue;
-                builder.addQueryParameter(entry.getKey(), entry.getValue());
-            }
-            return builder.build().toString();
-        } catch (Throwable th) {
-            // 兼容旧 OkGo 的宽松拼接:HttpUrl 解析失败时降级为字符串拼接,避免抛异常
-            StringBuilder sb = new StringBuilder(url);
-            boolean first = url.indexOf('?') < 0;
-            for (Map.Entry<String, String> entry : params.entrySet()) {
-                if (entry.getKey() == null || entry.getValue() == null) continue;
-                try {
-                    sb.append(first ? '?' : '&');
-                    first = false;
-                    sb.append(URLEncoder.encode(entry.getKey(), "UTF-8")).append('=').append(URLEncoder.encode(entry.getValue(), "UTF-8"));
-                } catch (UnsupportedEncodingException ignored) {
-                }
-            }
-            return sb.toString();
-        }
+    // ---------------------------------------------------------------------
+    // 同步 GET(带参:供 HTTP 型源取数复用 HttpUrls 拼装语义;调用方自行保证非主线程)
+    // ---------------------------------------------------------------------
+
+    /** 同步 GET:参数按 {@link HttpUrls#buildUrl} 拼装;成功返回字符串,失败抛 IOException */
+    public static String getSync(String url, Map<String, String> params, Map<String, String> headers) throws IOException {
+        return getSync(HttpUrls.normalizeUrl(HttpUrls.buildUrl(url, params)), headers);
     }
 
-    private static final Pattern URL_HOST_PATTERN = Pattern.compile("^(https?://)([^/?#:]+)(:\\d+)?([/?#].*)?$");
-
-    /** 中文域名转 punycode(OkHttp 的 HttpUrl 不接收非 ASCII 域名),失败时原样返回 */
+    /** 中文域名转 punycode(语义见 {@link HttpUrls#normalizeUrl};保留兼容外部调用) */
     public static String normalizeUrl(String url) {
-        if (url == null) return null;
-        try {
-            Matcher m = URL_HOST_PATTERN.matcher(url);
-            if (m.matches() && isNonAscii(m.group(2))) {
-                String host = IDN.toASCII(m.group(2));
-                String port = m.group(3) != null ? m.group(3) : "";
-                String rest = m.group(4) != null ? m.group(4) : "";
-                return m.group(1) + host + port + rest;
-            }
-        } catch (Throwable ignored) {
-        }
-        return url;
-    }
-
-    private static boolean isNonAscii(String s) {
-        for (int i = 0; i < s.length(); i++) {
-            if (s.charAt(i) > 127) return true;
-        }
-        return false;
+        return HttpUrls.normalizeUrl(url);
     }
 
     private static void postSuccess(final HCallBack callback, final String content) {
