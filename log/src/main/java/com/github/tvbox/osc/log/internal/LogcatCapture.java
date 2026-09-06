@@ -44,6 +44,29 @@ public final class LogcatCapture {
     private static final int BATCH_LINES = 100;
     private static final long FLUSH_MS = 1500;
     /**
+     * 框架/系统"错误级"噪音特征(命中即不写入错误日志文件):
+     * 这些不是应用的真实错误——资源 id 误探测(Invalid resource ID)、
+     * hiddenapi 越权提示、ContentCapture/WebViewInfoPicker 视图探查、
+     * SELinux avc 拒绝、渲染器/GC/输入法噪音等。真正的崩溃/业务异常
+     * (FATAL/我们的异常栈)不含这些特征,仍会完整保留。
+     */
+    private static final List<String> SYSTEM_NOISE_MARKERS = java.util.Arrays.asList(
+            "Invalid resource ID ",
+            "Unable to find resource ID #0x",
+            "hiddenapi: Accessing hidden",
+            "ContentCapture",
+            "WebViewInfoPicker",
+            "Access denied finding property",
+            "type=1400 audit(",
+            "Image decoding logging dropped!",
+            "Compiler allocated ",
+            "Waiting for a blocking GC",
+            "WaitForGcToComplete blocked",
+            "ImeTracker",
+            "Multicast lock",
+            "JIT profile"
+    );
+    /**
      * 单个 logcat 文件大小上限(字节)。超过后滚动成 logcat-yyyy-MM-dd.1.log 等分段文件,
      * 避免某一天日志量爆炸时单个文件无限增长(曾导致应用占用存储激增)。
      */
@@ -152,6 +175,7 @@ public final class LogcatCapture {
                     String line;
                     while ((line = reader.readLine()) != null) {
                         if (process != current) break; // 已停止
+                        if (isSystemNoise(line)) continue; // 过滤框架/系统噪音
                         batch.add(line);
                         long now = System.currentTimeMillis();
                         if (batch.size() >= BATCH_LINES || now - lastFlush > FLUSH_MS) {
@@ -322,6 +346,15 @@ public final class LogcatCapture {
     // ------------------------------------------------------------------
     // 按天文件（写侧）
     // ------------------------------------------------------------------
+
+    /** 框架/系统"错误级"噪音判定:命中任一特征即整行丢弃,不进错误日志文件 */
+    private static boolean isSystemNoise(String line) {
+        if (line == null) return true;
+        for (String marker : SYSTEM_NOISE_MARKERS) {
+            if (line.contains(marker)) return true;
+        }
+        return false;
+    }
 
     private static void appendLines(List<String> lines) {
         if (lines == null || lines.isEmpty()) return;
