@@ -30,4 +30,37 @@ public class HttpSourceParamsTest {
         assertNull(HttpSourceParams.detail(2, "1001"));
         assertNull(HttpSourceParams.detail(0, null));
     }
+
+    @Test
+    public void search_type0_onlyHasWd() {
+        Map<String, String> p = HttpSourceParams.search(0, "测试", false);
+        assertEquals("测试", p.get("wd"));
+        assertEquals(1, p.size());
+        assertNull(p.get("ac"));
+    }
+
+    @Test
+    public void search_type1_addsDetailAc() {
+        Map<String, String> p = HttpSourceParams.search(1, "测试", false);
+        assertEquals("测试", p.get("wd"));
+        assertEquals("detail", p.get("ac"));
+        assertEquals(2, p.size());
+        assertNull(p.get("quick"));
+    }
+
+    @Test
+    public void search_type4_quickFlagDistinguishesSearchModes() {
+        Map<String, String> agg = HttpSourceParams.search(4, "测试", false);
+        assertEquals("detail", agg.get("ac"));
+        assertEquals("false", agg.get("quick"));
+        Map<String, String> quick = HttpSourceParams.search(4, "测试", true);
+        assertEquals("true", quick.get("quick"));
+    }
+
+    @Test
+    public void search_unsupportedTypeOrNullWordReturnsNull() {
+        assertNull(HttpSourceParams.search(3, "测试", false));
+        assertNull(HttpSourceParams.search(2, "测试", false));
+        assertNull(HttpSourceParams.search(0, null, false));
+    }
 }

@@ -28,4 +28,26 @@ public final class HttpSourceParams {
         params.put("ids", id);
         return params;
     }
+
+    /**
+     * 搜索参数(与 SourceViewModel getSearch/getQuickSearch 旧拼参逐字一致):
+     * type0 → wd;type1 → wd+ac=detail;type4 → wd+ac=detail+quick(主搜 false / 快搜 true)。
+     *
+     * @param type  源类型(0/1/4;其余返回 null)
+     * @param word  关键词
+     * @param quick true=快速搜索(detail 页快搜);false=聚合搜索
+     */
+    public static Map<String, String> search(int type, String word, boolean quick) {
+        if (type != 0 && type != 1 && type != 4) return null;
+        if (word == null) return null;
+        Map<String, String> params = new HashMap<>();
+        params.put("wd", word);
+        if (type == 1) {
+            params.put("ac", "detail");
+        } else if (type == 4) {
+            params.put("ac", "detail");
+            params.put("quick", quick ? "true" : "false");
+        }
+        return params;
+    }
 }

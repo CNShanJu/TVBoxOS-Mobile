@@ -564,40 +564,45 @@ public class SourceViewModel extends ViewModel {
                 th.printStackTrace();
                 json(searchResult, "", sourceBean.getKey());
             }
-        } else if (type == 0 || type == 1) {
-            Map<String, String> searchParams = new HashMap<>();
-            searchParams.put("wd", wd);
-            if (type == 1) {
-                searchParams.put("ac", "detail");
+        } else if (type == 0 || type == 1 || type == 4) {
+            // HTTP 源搜索契约化:typed 优先;失败/空结果回退旧 HttpClient 直连(行为兜底)
+            com.github.tvbox.osc.bean.AbsXml typed = null;
+            try {
+                typed = com.github.tvbox.osc.spiderapi.SpiderSearchProviders.get()
+                        .search(sourceBean.getKey(), wd, false);
+            } catch (Throwable th) {
+                th.printStackTrace();
             }
-            HttpClient.get(sourceBean.getApi(), searchParams, null, "search", new HCallBack() {
-                        @Override
-                        public void onSuccess(String content) {
-                            if (type == 0) {
-                                String xml = content;
-                                xml(searchResult, xml, sourceBean.getKey());
-                            } else {
-                                String json = content;
-                                json(searchResult, json, sourceBean.getKey());
-                            }
-                        }
+            if (typed != null && typed.movie != null) {
+                absXml(typed, sourceBean.getKey());
+                deliverSearchBatch(typed);
+                return;
+            }
+            android.util.Log.i("SpiderBridge", "search(typed/http) 不可用,回退旧路径: key=" + sourceBean.getKey()
+                    + " word=" + wd);
+            fetchSearchHttpLegacy(sourceBean, type, wd);
+        } else {
+            searchResult.postValue(null);
+        }
+    }
 
-                        @Override
-                        public void onError(Throwable e) {
-                            // searchResult.postValue(null);
-                            deliverSearchBatch(null);
-                        }
-                    });
-        }else if (type == 4) {
-            Map<String, String> search4Params = new HashMap<>();
-            search4Params.put("wd", wd);
-            search4Params.put("ac", "detail");
-            search4Params.put("quick", "false");
-            HttpClient.get(sourceBean.getApi(), search4Params, null, "search", new HCallBack() {
+    /** type0/1/4 聚合搜索旧路径:HttpClient 直连拼参(typed 失败时的行为兜底,与原实现逐字一致) */
+    private void fetchSearchHttpLegacy(final SourceBean sourceBean, final int type, final String wd) {
+        Map<String, String> searchParams = com.github.tvbox.osc.spiderapi.HttpSourceParams.search(type, wd, false);
+        if (searchParams == null) {
+            searchResult.postValue(null);
+            return;
+        }
+        HttpClient.get(sourceBean.getApi(), searchParams, null, "search", new HCallBack() {
                     @Override
-                    public void onSuccess(String json) {
-                        LOG.i(json);
-                        json(searchResult, json, sourceBean.getKey());
+                    public void onSuccess(String content) {
+                        if (type == 0) {
+                            String xml = content;
+                            xml(searchResult, xml, sourceBean.getKey());
+                        } else {
+                            String json = content;
+                            json(searchResult, json, sourceBean.getKey());
+                        }
                     }
 
                     @Override
@@ -606,9 +611,6 @@ public class SourceViewModel extends ViewModel {
                         deliverSearchBatch(null);
                     }
                 });
-        } else {
-            searchResult.postValue(null);
-        }
     }
     // searchContent
     /**
@@ -651,40 +653,47 @@ public class SourceViewModel extends ViewModel {
             } catch (Throwable th) {
                 th.printStackTrace();
             }
-        } else if (type == 0 || type == 1) {
-            Map<String, String> quickParams = new HashMap<>();
-            quickParams.put("wd", wd);
-            if (type == 1) {
-                quickParams.put("ac", "detail");
+        } else if (type == 0 || type == 1 || type == 4) {
+            // HTTP 源快速搜索契约化:typed 优先;失败/空结果回退旧 HttpClient 直连(行为兜底)
+            com.github.tvbox.osc.bean.AbsXml typed = null;
+            try {
+                typed = com.github.tvbox.osc.spiderapi.SpiderSearchProviders.get()
+                        .search(sourceBean.getKey(), wd, true);
+            } catch (Throwable th) {
+                th.printStackTrace();
             }
-            HttpClient.get(sourceBean.getApi(), quickParams, null, "quick_search", new HCallBack() {
-                        @Override
-                        public void onSuccess(String content) {
-                            if (type == 0) {
-                                String xml = content;
-                                xml(quickSearchResult, xml, sourceBean.getKey());
-                            } else {
-                                String json = content;
-                                json(quickSearchResult, json, sourceBean.getKey());
-                            }
-                        }
+            if (typed != null && typed.movie != null) {
+                absXml(typed, sourceBean.getKey());
+                deliverQuickSearchBatch(typed);
+                return;
+            }
+            android.util.Log.i("SpiderBridge", "quickSearch(typed/http) 不可用,回退旧路径: key=" + sourceBean.getKey()
+                    + " word=" + wd);
+            fetchQuickSearchHttpLegacy(sourceBean, type, wd);
+        } else {
+            quickSearchResult.postValue(null);
+        }
+    }
 
-                        @Override
-                        public void onError(Throwable e) {
-                            // quickSearchResult.postValue(null);
-                            deliverQuickSearchBatch(null);
-                        }
-                    });
-        }else if (type == 4) {
-            Map<String, String> quick4Params = new HashMap<>();
-            quick4Params.put("wd", wd);
-            quick4Params.put("ac", "detail");
-            quick4Params.put("quick", "true");
-            HttpClient.get(sourceBean.getApi(), quick4Params, null, "search", new HCallBack() {
+    /** type0/1/4 快速搜索旧路径:HttpClient 直连拼参(typed 失败时的行为兜底,与原实现逐字一致;
+     *  tag 与原实现一致——type4 用 "search",type0/1 用 "quick_search",保取消语义) */
+    private void fetchQuickSearchHttpLegacy(final SourceBean sourceBean, final int type, final String wd) {
+        Map<String, String> quickParams = com.github.tvbox.osc.spiderapi.HttpSourceParams.search(type, wd, true);
+        if (quickParams == null) {
+            quickSearchResult.postValue(null);
+            return;
+        }
+        HttpClient.get(sourceBean.getApi(), quickParams, null,
+                type == 4 ? "search" : "quick_search", new HCallBack() {
                     @Override
-                    public void onSuccess(String json) {
-                        LOG.i(json);
-                        json(quickSearchResult, json, sourceBean.getKey());
+                    public void onSuccess(String content) {
+                        if (type == 0) {
+                            String xml = content;
+                            xml(quickSearchResult, xml, sourceBean.getKey());
+                        } else {
+                            String json = content;
+                            json(quickSearchResult, json, sourceBean.getKey());
+                        }
                     }
 
                     @Override
@@ -693,9 +702,6 @@ public class SourceViewModel extends ViewModel {
                         deliverQuickSearchBatch(null);
                     }
                 });
-        } else {
-            quickSearchResult.postValue(null);
-        }
     }
     // playerContent
     public void getPlay(String sourceKey, String playFlag, String progressKey, String url, String subtitleKey) {
