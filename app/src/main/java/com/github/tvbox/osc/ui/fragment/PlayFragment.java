@@ -953,12 +953,11 @@ public class PlayFragment extends BaseLazyFragment {
         initParseLoadFound();
         releasePlaybackSession(); // playback 会话原型:切换前释放上一会话(只停观察,不释放共享 mVideoView)
         if (mPlaySession != null) mPlaySession.release();
-        String subtitleCacheKey = com.github.tvbox.osc.util.player.PlaySessionKeys.subtitleCacheKey(mVodInfo, vs.name);
-        String progressKey = com.github.tvbox.osc.util.player.PlaySessionKeys.progressKey(mVodInfo, vs.name);
+        com.github.tvbox.osc.util.player.PlayRequest playRequest = com.github.tvbox.osc.util.player.PlayRequest.of(mVodInfo, vs);
         //重新播放清除现有进度
         if (reset) {
-            mPlayHistory.delete(progressKey);
-            mPlayHistory.delete(subtitleCacheKey);
+            mPlayHistory.delete(playRequest.progressKey());
+            mPlayHistory.delete(playRequest.subtitleCacheKey());
         }
         if (Jianpian.isJpUrl(vs.url)) {//荐片地址特殊判断
             String jp_url = vs.url;
@@ -992,7 +991,8 @@ public class PlayFragment extends BaseLazyFragment {
             mController.showParse(false);
             return;
         }
-        sourceViewModel.getPlay(sourceKey, mVodInfo.playFlag, progressKey, vs.url, subtitleCacheKey);
+        sourceViewModel.getPlay(playRequest.sourceKey(), mVodInfo.playFlag,
+                playRequest.progressKey(), playRequest.url(), playRequest.subtitleCacheKey());
     }
 
     private String playSubtitle;
