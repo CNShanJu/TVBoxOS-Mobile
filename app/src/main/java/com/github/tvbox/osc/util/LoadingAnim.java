@@ -46,12 +46,16 @@ public class LoadingAnim {
     private static final String KEY_PLAYER = "size_player";
     /** 配置键:其他地方的尺寸(dp) */
     private static final String KEY_OTHER = "size_other";
+    /** 配置键:下拉刷新指示的尺寸(dp)(单独可调,避免默认偏大/鱼偏小) */
+    private static final String KEY_REFRESH = "size_refresh";
 
     /** 兼容旧版:Glowing Fish 的旧选择值 1 映射到文件夹名 */
     private static final String LEGACY_GLOWING_FISH_NAME = "glowing_fish_loader";
 
     /** 默认动画显示尺寸(dp),配置文件缺失/异常时兜底 */
     private static final int DEFAULT_SIZE_DP = 72;
+    /** 下拉刷新指示的兜底尺寸(dp) */
+    private static final int DEFAULT_REFRESH_SIZE_DP = 40;
 
     /** 配置读取缓存:文件夹名 -> 配置 JSON */
     private static final Map<String, JSONObject> configCache = new HashMap<>();
@@ -103,6 +107,11 @@ public class LoadingAnim {
         return getSizeDp(getAnimName(), KEY_OTHER);
     }
 
+    /** 当前配置动画在"下拉刷新指示"里的显示尺寸(dp),来自 config.json 的 size_refresh;缺失回退 40 */
+    public static int getRefreshSizeDp() {
+        return getSizeDp(getAnimName(), KEY_REFRESH, DEFAULT_REFRESH_SIZE_DP);
+    }
+
     /** 可用加载动画列表:loading/ 下的子目录(每个目录 = 一个动画),按目录名排序 */
     public static List<String> getAvailableAnimFiles() {
         List<String> list = new ArrayList<>();
@@ -140,9 +149,14 @@ public class LoadingAnim {
 
     /** 动画显示尺寸(dp):config.json 的对应键,缺失/异常返回默认 72 */
     private static int getSizeDp(String animName, String key) {
+        return getSizeDp(animName, key, DEFAULT_SIZE_DP);
+    }
+
+    /** 动画显示尺寸(dp):config.json 的对应键,缺失/异常返回传入的兜底值 */
+    private static int getSizeDp(String animName, String key, int fallback) {
         JSONObject cfg = readConfig(animName);
-        int size = cfg != null ? cfg.optInt(key, DEFAULT_SIZE_DP) : DEFAULT_SIZE_DP;
-        return size > 0 ? size : DEFAULT_SIZE_DP;
+        int size = cfg != null ? cfg.optInt(key, fallback) : fallback;
+        return size > 0 ? size : fallback;
     }
 
     /** 读取动画文件夹的 config.json(带缓存) */
