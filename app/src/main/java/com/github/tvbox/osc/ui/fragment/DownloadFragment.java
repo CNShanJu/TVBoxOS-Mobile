@@ -879,17 +879,16 @@ public class DownloadFragment extends BaseVbFragment<FragmentDownloadBinding> {
 
     private Set<String> playedIndicesOf(String episodeId) {
         if (episodeId == null) return null;
-        int first = episodeId.indexOf('|');
-        if (first < 0) return null;
-        int second = episodeId.indexOf('|', first + 1);
-        if (second < 0) return null;
-        String videoId = episodeId.substring(0, second);
+        String videoId = com.github.tvbox.osc.util.player.PlayedVodKey.fromEpisodeId(episodeId);
+        if (videoId == null) return null;
         Set<String> cached = playedCache.get(videoId);
         if (cached != null) return cached;
         Set<String> set = SPUtils.getInstance(CacheConst.VIDEO_PLAYED_SP).getStringSet(videoId, null);
         if (set == null) set = new LinkedHashSet<>();
         // 历史回填:观看记录里"上次看到"的集也算播放过(功能上线前的老数据)
         try {
+            int first = episodeId.indexOf('|');
+            int second = episodeId.indexOf('|', first + 1);
             com.github.tvbox.osc.bean.VodInfo rec = com.github.tvbox.osc.repo.HistoryRepositories.history().get(
                     episodeId.substring(0, first), episodeId.substring(first + 1, second));
             if (rec != null && rec.playIndex >= 0) set.add(String.valueOf(rec.playIndex));

@@ -574,7 +574,7 @@ public class PlayFragment extends BaseLazyFragment {
 
     private void recordPlayedEpisode() {
         if (mVodInfo == null || mVodInfo.id == null) return;
-        final String videoId = (sourceKey == null ? "" : sourceKey) + "|" + mVodInfo.id;
+        final String videoId = com.github.tvbox.osc.util.player.PlayedVodKey.of(sourceKey, mVodInfo.id);
         final int index = mVodInfo.playIndex;
         PLAYED_RECORD_EXECUTOR.execute(() -> {
             try {
