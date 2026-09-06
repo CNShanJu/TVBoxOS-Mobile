@@ -399,6 +399,8 @@ Exo→Media3、EventBus→Flow/接口、Hawk→DataStore、Java→Kotlin 渐进�
 - ✅ 疑似缺陷记录(不贸然改):FormatASS 样式段解析缺陷复现并登记(评估文档 §E)——外层循环
    段内读取会吞掉下一个段头,Styles 段不进入(.ass 样式丢失)。修复需真实 .ass 语料+真机
    渲染比对,暂缓。(b6c94a9b)
+- ✅ Time 时间模型单测(SRT/ASS/帧率三格式共用时间解析):解析毫秒、SRT 往返格式化、
+   ASS 补零行为锁定。(8eaed57e)
 
 ## 9. 待真机回归后继续(播放器主线尾段,当前挂起)
 > 集中回归清单见 `doc/device-regression-checklist.md`(按功能域分组,门禁绿后逐项过)。
