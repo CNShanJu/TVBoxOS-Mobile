@@ -468,3 +468,4 @@ EventBus 订阅方已收敛 4 个真实方;仍剩多源结果流(TYPE_SEARCH_RES
 - ✅ Java→Kotlin 试点续:LiveChannelAuth 转 Kotlin(object + @JvmStatic;visibleChannels 保持可空返回语义)。
 - ✅ Java→Kotlin 试点续:LivePlayerTypes 转 Kotlin(object + const + @JvmStatic,双向映射与解码语义等价)。
 - ✅ Java→Kotlin 试点续:DownloadSeriesModel 转 Kotlin(object + @JvmStatic;IntFunction 工厂参数与数组拆分语义等价)。
+- ✅ Java→Kotlin 试点续:LiveChannelNav 转 Kotlin(object + @JvmStatic;IntUnaryOperator/IntPredicate 参数与回卷/跳过锁定语义等价)。
