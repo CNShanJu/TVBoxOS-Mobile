@@ -1,40 +1,34 @@
 package com.github.tvbox.osc.ui.dialog;
 
 import android.content.Context;
-import android.view.View;
 
 import androidx.annotation.NonNull;
-import androidx.recyclerview.widget.GridLayoutManager;
-import androidx.recyclerview.widget.RecyclerView;
 
-import com.blankj.utilcode.util.ColorUtils;
-import com.chad.library.adapter.base.BaseQuickAdapter;
 import com.github.tvbox.osc.R;
-import com.github.tvbox.osc.bean.VodInfo;
 import com.github.tvbox.osc.databinding.DialogAllChannelBinding;
-import com.github.tvbox.osc.ui.activity.LiveActivity;
 import com.github.tvbox.osc.ui.adapter.LiveChannelGroupNewAdapter;
 import com.github.tvbox.osc.ui.adapter.LiveChannelItemNewAdapter;
-import com.github.tvbox.osc.ui.kit.GridSpacingItemDecoration;
-import com.github.tvbox.osc.util.FastClickCheckUtil;
-import com.github.tvbox.osc.util.Utils;
-import com.lxj.xpopup.XPopup;
-import com.lxj.xpopup.enums.PopupPosition;
-import com.lxj.xpopup.interfaces.OnSelectListener;
 import com.owen.tvrecyclerview.widget.V7LinearLayoutManager;
 
 import org.jetbrains.annotations.NotNull;
 
-import java.util.List;
-
+/**
+ * 全部频道抽屉(右侧样式,全屏"换台"入口)。
+ * 组/频道两个适配器经构造注入——它们的点击监听与状态由宿主 LiveActivity 统一注册维护,
+ * 本类只负责将适配器绑定到对话框网格,不依赖具体 Activity 类型。
+ */
 public class AllChannelsRightDialog extends AppDrawerPopupView {
 
-    private final LiveActivity mActivity;
-    private com.github.tvbox.osc.databinding.DialogAllChannelBinding mBinding;
+    private final LiveChannelGroupNewAdapter mGroupAdapter;
+    private final LiveChannelItemNewAdapter mItemAdapter;
+    private DialogAllChannelBinding mBinding;
 
-    public AllChannelsRightDialog(@NonNull @NotNull Context context) {
+    public AllChannelsRightDialog(@NonNull @NotNull Context context,
+                                  @NonNull LiveChannelGroupNewAdapter groupAdapter,
+                                  @NonNull LiveChannelItemNewAdapter itemAdapter) {
         super(context);
-        mActivity = (LiveActivity) context;
+        mGroupAdapter = groupAdapter;
+        mItemAdapter = itemAdapter;
     }
 
     @Override
@@ -53,18 +47,16 @@ public class AllChannelsRightDialog extends AppDrawerPopupView {
     private void initChannelGroupView() {
         mBinding.mGroupGridView.setHasFixedSize(true);
         mBinding.mGroupGridView.setLayoutManager(new V7LinearLayoutManager(getContext(), 1, false));
-
-        if (mActivity.liveChannelGroupAdapter!=null){
-            mBinding.mGroupGridView.setAdapter(mActivity.liveChannelGroupAdapter);
+        if (mGroupAdapter != null) {
+            mBinding.mGroupGridView.setAdapter(mGroupAdapter);
         }
-
     }
+
     private void initLiveChannelView() {
         mBinding.mChannelGridView.setHasFixedSize(true);
         mBinding.mChannelGridView.setLayoutManager(new V7LinearLayoutManager(getContext(), 1, false));
-
-        if (mActivity.liveChannelItemAdapter!=null){
-            mBinding.mChannelGridView.setAdapter(mActivity.liveChannelItemAdapter);
+        if (mItemAdapter != null) {
+            mBinding.mChannelGridView.setAdapter(mItemAdapter);
         }
     }
 

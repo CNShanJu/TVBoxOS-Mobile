@@ -91,7 +91,7 @@
 				android:id="@+id/tv_source"
 				android:layout_width="wrap_content"
 				android:layout_height="wrap_content"
-				android:text="源 1/1"
+				android:text="线路 1/1"
 				android:layout_marginHorizontal="14dp"
 				android:textSize="16sp"
 				android:textColor="@color/text_foreground"
@@ -107,6 +107,17 @@
 		</LinearLayout>
 
 		<ImageView
+			android:id="@+id/ic_refresh"
+			android:layout_width="34dp"
+			android:layout_height="34dp"
+			android:src="@drawable/dkplayer_ic_action_replay"
+			app:tint="@color/text_foreground"
+			android:padding="4dp"
+			android:layout_marginTop="10dp"
+			android:layout_toLeftOf="@+id/ic_cast"
+			android:layout_marginRight="10dp"
+			/>
+		<ImageView
 			android:id="@+id/ic_cast"
 			android:layout_width="34dp"
 			android:layout_height="34dp"
@@ -115,7 +126,7 @@
 			android:padding="4dp"
 			android:layout_marginTop="10dp"
 			android:layout_toLeftOf="@+id/ic_setting"
-			android:layout_marginRight="14dp"
+			android:layout_marginRight="10dp"
 			/>
 		<ImageView
 			android:id="@+id/ic_setting"

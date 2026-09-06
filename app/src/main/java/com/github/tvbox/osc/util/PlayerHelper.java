@@ -206,4 +206,39 @@ public class PlayerHelper {
         else
             return "0Kb/s"; // 缓冲暂停瞬间速度=0:稳定占位,避免文字内容忽空造成"网速时显时不显"
     }
+
+    // ---- 全局下载网速(与内核无关) ----
+    // 原理与 ExoMediaPlayer 一致:用 TrafficStats 统计本应用(Uid)接收字节差分,
+    // 无论 系统/ijk/exo 哪个内核,只要在播放,应用整体流量即真实下载速度。
+    private static long sRxBaseline = -1;
+    private static long sSampleTime = 0;
+    private static long sSmoothSpeed = -1;
+
+    /** 采样一次本应用实时下载速度(bytes/s),内核无关;约 1s 调一次 */
+    public static long sampleNetworkSpeed() {
+        Context ctx = com.github.tvbox.osc.base.App.getInstance();
+        if (ctx == null) return 0;
+        long total;
+        try {
+            long uidRx = android.net.TrafficStats.getUidRxBytes(ctx.getApplicationInfo().uid);
+            total = uidRx == android.net.TrafficStats.UNSUPPORTED
+                    ? android.net.TrafficStats.getTotalRxBytes() : uidRx;
+        } catch (Throwable th) {
+            total = android.net.TrafficStats.getTotalRxBytes();
+        }
+        long time = System.currentTimeMillis();
+        if (sRxBaseline < 0 || sSampleTime == 0) {
+            sRxBaseline = total;
+            sSampleTime = time;
+            return 0;
+        }
+        long dt = time - sSampleTime;
+        long diff = total - sRxBaseline;
+        if (diff < 0) diff = 0;
+        sRxBaseline = total;
+        sSampleTime = time;
+        long sample = dt <= 0 ? 0 : diff * 1000 / dt;
+        sSmoothSpeed = sSmoothSpeed < 0 ? sample : (sSmoothSpeed + sample) / 2;
+        return sSmoothSpeed;
+    }
 }

@@ -36,12 +36,16 @@ import com.github.tvbox.osc.ui.adapter.LiveChannelItemNewAdapter;
 import com.github.tvbox.osc.ui.dialog.AllChannelsRightDialog;
 import com.github.tvbox.osc.ui.dialog.CastListDialog;
 import com.github.tvbox.osc.ui.dialog.DialogCoordinator;
+import com.github.tvbox.osc.ui.dialog.LiveLineSelectDialog;
+import com.github.tvbox.osc.ui.dialog.LiveLineSelectHost;
+import com.github.tvbox.osc.ui.dialog.LiveLineSelectRightDialog;
 import com.github.tvbox.osc.ui.dialog.LivePasswordDialog;
 import com.github.tvbox.osc.ui.dialog.LiveSettingDialog;
+import com.github.tvbox.osc.ui.dialog.LiveSettingHost;
 import com.github.tvbox.osc.ui.dialog.LiveSettingRightDialog;
 import com.github.tvbox.osc.ui.kit.LinearSpacingItemDecoration;
-import com.github.tvbox.osc.ui.widget.PlayerMenuView;
-import com.github.tvbox.osc.ui.widget.PlayerTitleView;
+import com.github.tvbox.osc.ui.widget.LiveNormalControlView;
+import com.github.tvbox.osc.ui.widget.LiveSideControlView;
 import com.github.tvbox.osc.util.FastClickCheckUtil;
 import com.github.tvbox.osc.util.HCallBack;
 import com.github.tvbox.osc.util.AppLog;
@@ -61,7 +65,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 
-import xyz.doikki.videocontroller.component.LiveControlView;
+
 import xyz.doikki.videocontroller.component.TitleView;
 import xyz.doikki.videoplayer.player.VideoView;
 
@@ -70,7 +74,7 @@ import xyz.doikki.videoplayer.player.VideoView;
  * @date :2021/1/12
  * @description:
  */
-public class LiveActivity extends BaseActivity {
+public class LiveActivity extends BaseActivity implements LiveLineSelectHost, LiveSettingHost {
     public static Context context;
     private VideoView mVideoView;
     private TextView tvChannelInfo;
@@ -99,7 +103,8 @@ public class LiveActivity extends BaseActivity {
     public String epgStringAddress ="";
 
     private boolean isBack = false;
-    private PlayerTitleView mPlayerTitleView;
+    private LiveSideControlView mSideControlView;
+    private LiveNormalControlView mNormalControlView;
     private BasePopupView mSettingRightDialog;
     private BasePopupView mSettingBottomDialog;
     private BasePopupView mAllChannelRightDialog;
@@ -148,10 +153,17 @@ public class LiveActivity extends BaseActivity {
         //源切换
         findViewById(R.id.ic_pre_source).setOnClickListener(view -> playPreSource());
         findViewById(R.id.ic_next_source).setOnClickListener(view -> playNextSource());
-        tv_srcinfo.setOnClickListener(view -> playNextSource());
+        tv_srcinfo.setOnClickListener(view -> showLineSelectDialog(false));
         //投屏/设置
         findViewById(R.id.ic_setting).setOnClickListener(view -> showSettingDialog(false));
         findViewById(R.id.ic_cast).setOnClickListener(view -> showCastDialog());
+        View refreshBtn = findViewById(R.id.ic_refresh);
+        if (refreshBtn != null) {
+            refreshBtn.setOnClickListener(view -> {
+                if (!isCurrentLiveChannelValid()) return;
+                playChannel(currentChannelGroupIndex, currentLiveChannelIndex, true);
+            });
+        }
 
         initVideoView();
         initChannelGroupView();
@@ -162,17 +174,23 @@ public class LiveActivity extends BaseActivity {
     //显示底部EPG
     private void showBottomEpg() {
         if (channel_Name.getChannelName() != null) {
-            mPlayerTitleView.setTitle(channel_Name.getChannelName());
+            mSideControlView.setTitle(channel_Name.getChannelName());
+            if (mNormalControlView != null) mNormalControlView.setTitle(channel_Name.getChannelName());
             tip_chname.setText(channel_Name.getChannelName());
             tv_channelnum.setText("" + channel_Name.getChannelNum());
             //todo 上一/下一/当前节目信息
-
-            if (channel_Name == null || channel_Name.getSourceNum() <= 0) {
-                tv_srcinfo.setText("1/1");
-            } else {
-                tv_srcinfo.setText("线路" + (channel_Name.getSourceIndex() + 1) + "/" + channel_Name.getSourceNum());
-            }
         }
+        updateLineText();
+    }
+
+    /** 同步线路文字(页面 tv_srcinfo 与全屏线路标签),只显示当前线路序号 */
+    private void updateLineText() {
+        String info = "线路1";
+        if (channel_Name != null && channel_Name.getSourceNum() > 0) {
+            info = "线路" + (channel_Name.getSourceIndex() + 1);
+        }
+        tv_srcinfo.setText(info);
+        mSideControlView.setLineInfo(info);
     }
 
 
@@ -351,12 +369,14 @@ public class LiveActivity extends BaseActivity {
         if (!isCurrentLiveChannelValid()) return;
         currentLiveChannelItem.preSource();
         playChannel(currentChannelGroupIndex, currentLiveChannelIndex, true);
+        updateLineText();
     }
 
     public void playNextSource() {
         if (!isCurrentLiveChannelValid()) return;
         currentLiveChannelItem.nextSource();
         playChannel(currentChannelGroupIndex, currentLiveChannelIndex, true);
+        updateLineText();
     }
 
 //    private void initVideoView() {
@@ -370,12 +390,55 @@ public class LiveActivity extends BaseActivity {
 
     private void initVideoView() {
         LiveNewController controller = new LiveNewController(this);
-        PlayerMenuView playerMenuView = getPlayerMenuView();
-        controller.addControlComponent(playerMenuView); //菜单栏,设置投屏等
-        controller.addControlComponent(new LiveControlView(this)); //直播控制条
-        //标题栏
-        mPlayerTitleView = new PlayerTitleView(this);
-        controller.addControlComponent(mPlayerTitleView);
+        // 单条右缘垂直居中控制栏(返回/台名/时间/播放暂停/刷新/投屏/换台/设置)
+        mSideControlView = new LiveSideControlView(this);
+        mSideControlView.setOnLiveSideListener(new LiveSideControlView.OnLiveSideListener() {
+            @Override
+            public void onExpand() {
+                showAllChannelDialog();
+            }
+
+            @Override
+            public void onSetting() {
+                showSettingDialog(true);
+            }
+
+            @Override
+            public void onCast() {
+                showCastDialog();
+            }
+
+            @Override
+            public void onBack() {
+                if (mVideoView != null && mVideoView.isFullScreen()) {
+                    mVideoView.stopFullScreen();
+                } else {
+                    finish();
+                }
+            }
+
+            @Override
+            public void onLineClick() {
+                showLineSelectDialog(true);
+            }
+
+            @Override
+            public void onRefresh() {
+                // 重播当前线路
+                playChannel(currentChannelGroupIndex, currentLiveChannelIndex, true);
+            }
+        });
+        controller.addControlComponent(mSideControlView);
+        // 非全屏小窗横向控制条(频道名/时间/暂停/刷新/全屏)
+        LiveNormalControlView normalControlView = new LiveNormalControlView(this);
+        normalControlView.setOnNormalListener(new LiveNormalControlView.OnNormalListener() {
+            @Override
+            public void onRefresh() {
+                playChannel(currentChannelGroupIndex, currentLiveChannelIndex, true);
+            }
+        });
+        controller.addControlComponent(normalControlView);
+        mNormalControlView = normalControlView;
         controller.setListener(new LiveNewController.LiveControlListener() {
 
             @Override
@@ -426,27 +489,6 @@ public class LiveActivity extends BaseActivity {
     }
 
     @NonNull
-    private PlayerMenuView getPlayerMenuView() {
-        PlayerMenuView playerMenuView = new PlayerMenuView(this);
-        playerMenuView.setOnPlayerMenuClickListener(new PlayerMenuView.OnPlayerMenuClickListener() {
-            @Override
-            public void expand() {
-                showAllChannelDialog();
-            }
-
-            @Override
-            public void onSetting() {
-                showSettingDialog(true);
-            }
-
-            @Override
-            public void onCast() {
-                showCastDialog();
-            }
-        });
-        return playerMenuView;
-    }
-
     private Runnable mConnectTimeoutChangeSourceRun = new Runnable() {
         @Override
         public void run() {
@@ -734,7 +776,8 @@ public class LiveActivity extends BaseActivity {
 
     public void showAllChannelDialog() {
         mAllChannelRightDialog = DialogCoordinator.right(this,
-                new AllChannelsRightDialog(this), 0, true, false, null);
+                new AllChannelsRightDialog(this, liveChannelGroupAdapter, liveChannelItemAdapter),
+                0, true, false, null);
         mAllChannelRightDialog.show();
     }
 
@@ -749,6 +792,17 @@ public class LiveActivity extends BaseActivity {
         return livePlayerManager;
     }
 
+    @Override
+    public int getLivePlayerScale() {
+        return livePlayerManager.getLivePlayerScale();
+    }
+
+    @Override
+    public int getLivePlayerType() {
+        return livePlayerManager.getLivePlayerType();
+    }
+
+    @Override
     public LiveChannelItem getCurrentLiveChannelItem(){
         return currentLiveChannelItem;
     }
@@ -757,15 +811,18 @@ public class LiveActivity extends BaseActivity {
      * 切换某个线路播放
      * @param position
      */
+    @Override
     public void switchingLine2Replay(int position){
         currentLiveChannelItem.setSourceIndex(position);
         playChannel(currentChannelGroupIndex, currentLiveChannelIndex,true);
+        updateLineText();
     }
 
     /**
      * 切换缩放比例
      * @param position
      */
+    @Override
     public void changeScale(int position){
         livePlayerManager.changeLivePlayerScale(mVideoView, position, currentLiveChannelItem.getChannelName());
     }
@@ -774,6 +831,7 @@ public class LiveActivity extends BaseActivity {
      * 更换播放解码
      * @param position
      */
+    @Override
     public void changePlayer(int position){
         mVideoView.release();
         livePlayerManager.changeLivePlayerType(mVideoView, position, currentLiveChannelItem.getChannelName());
@@ -785,6 +843,26 @@ public class LiveActivity extends BaseActivity {
      * 设置弹窗
      * @param fullScreenStyle 全屏显示侧边弹窗
      */
+    /** 偏好设置即时应用到两套控制条(时间/网速显示开关) */
+    @Override
+    public void refreshPreferenceUi() {
+        if (mSideControlView != null) mSideControlView.refreshPreferenceUi();
+        if (mNormalControlView != null) mNormalControlView.refreshPreferenceUi();
+    }
+
+    /** 线路入口:全屏用右侧抽屉(与设置抽屉同尺寸),非全屏用底部抽屉 */
+    private void showLineSelectDialog(boolean fullScreenStyle) {
+        if (!isCurrentLiveChannelValid()) {
+            AppBubble.toast("当前频道未加载");
+            return;
+        }
+        if (fullScreenStyle) {
+            DialogCoordinator.right(this, new LiveLineSelectRightDialog(this, this), 300, true).show();
+        } else {
+            DialogCoordinator.bottom(this, new LiveLineSelectDialog(this, this), ScreenUtils.getScreenHeight() / 3).show();
+        }
+    }
+
     private void showSettingDialog(boolean fullScreenStyle) {
         if (!isCurrentLiveChannelValid()){
             AppBubble.toast("当前频道未加载");
@@ -792,11 +870,11 @@ public class LiveActivity extends BaseActivity {
         }
         if (fullScreenStyle){
             mSettingRightDialog = DialogCoordinator.right(this,
-                    new LiveSettingRightDialog(this), 300, true);
+                    new LiveSettingRightDialog(this, this), 300, true);
             mSettingRightDialog.show();
         }else {
             mSettingBottomDialog = DialogCoordinator.bottom(this,
-                    new LiveSettingDialog(this), ScreenUtils.getScreenHeight() / 2);
+                    new LiveSettingDialog(this, this), ScreenUtils.getScreenHeight() / 2);
             mSettingBottomDialog.show();
         }
 

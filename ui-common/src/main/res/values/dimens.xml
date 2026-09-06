@@ -47,6 +47,9 @@
     <dimen name="dp_40">40dp</dimen>
     <dimen name="dp_45">45dp</dimen>
     <dimen name="dp_48">48dp</dimen>
+    <!-- 播放器控制条边距:左右贴边可调,上下独立保留呼吸间距;全屏/非全屏同一套 -->
+    <dimen name="player_control_edge_h">0dp</dimen>
+    <dimen name="player_control_edge_v">20dp</dimen>
     <dimen name="dp_50">50dp</dimen>
     <dimen name="dp_60">60dp</dimen>
     <dimen name="dp_70">70dp</dimen>
