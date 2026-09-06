@@ -419,3 +419,35 @@ Exo→Media3、EventBus→Flow/接口、Hawk→DataStore、Java→Kotlin 渐进�
   SAF)真机回归通过后,再按完整方案实现。
 - 回归通过后可继续:SourceViewModel `xml()/json()` 纯函数提取(type0/1 下沉前置,等值可单测);
   EventBus 跨页 refresh 逐类收口;core-storage hawk 依赖下线(一次性迁移通道退役)。
+
+## 11. 剩余项清单(对照 改进.txt,截至 2026-09-06 代码级审计)
+
+> 代码级可安全批次已基本收口(hawk 退役 N/N+1、EventBus 按需注册、死代码清理、Gson 复用、
+> 解析/词表/字幕纯函数化与单测等)。以下为仍未完成的项及前置条件,均可在本文件 §9/§10、
+> doc/后续改造评估.md F 表与 doc/device-regression-checklist.md 找到登记。
+
+### A. 模块与依赖边界(改进.txt §一/§二)
+| 项 | 状态 | 前置/说明 |
+|---|---|---|
+| :playback / feature-* 模块 | ❌ 未建 | 阶段三/四;需真机回归环境 |
+| :core-network 杂项袋拆分 | ⚠️ | util 20 文件(AES/MD5 被 app+spider 共用,需新共享纯模块) |
+| 字符串通道 SpiderContentApi 下线 | ⚠️ | 仍有 4 处引用;先补 FakeSpiderService 单测背书 |
+| 播放器内核收口 | ⚠️ | MyVideoView 仍 7 文件 import(PlayFragment/LocalPlay/PlayService/PlayingControl*/PlayerSession) |
+| Exo→Media3 | ❌ | player 仍 exoplayer 2.18.7,media3 import 0 |
+| ui-kit 拆模块 | ⚠️ | app 内 ui/kit 16 组件,成熟后再拆(符合规划) |
+
+### B. 大页面物理拆分(改进.txt §三,阶段三)
+PlayFragment 997 / DetailActivity 1097 / DownloadFragment 1082 / SourceViewModel 851 / LiveActivity 883。
+协调器与纯化已大量下沉;剩余宿主编排需真机回归背书后继续搬移。
+
+### C. 状态与事件(改进.txt §五)
+EventBus 订阅方已收敛 4 个真实方;仍剩多源结果流(TYPE_SEARCH_RESULT/TYPE_QUICK_SEARCH_RESULT)
+直调/注入化未做(行为敏感,建议随播放器收口批、真机回归)。
+
+### D. 现代化(改进.txt §八·第五阶段)
+✅ Hawk→DataStore(代码完成,发布前需 H 组旧版升级回归);❌ Media3;⚠️ Java→Kotlin 部分;
+❌ Hilt(组合根复杂化后再评估);✅ 依赖方向门禁 + JVM 测试。
+
+### E. 待修缺陷 / 待放行(已登记)
+- FormatASS 样式段解析缺陷 + Style 颜色十六进制错位(doc/后续改造评估.md §E):需真实 .ass 语料+真机渲染比对;
+- 播放器收口 P1–P4(清单 G 组)、hawk 版 N+1 发布放行(清单 H 组):均需设备回归。
