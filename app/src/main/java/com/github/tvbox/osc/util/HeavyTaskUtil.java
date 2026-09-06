@@ -1,6 +1,7 @@
 package com.github.tvbox.osc.util;
 
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.LinkedBlockingDeque;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
@@ -18,6 +19,9 @@ public class HeavyTaskUtil {
     private static ExecutorService executorService = new ThreadPoolExecutor(CORE_POOL_SIZE, 6,
             10L, TimeUnit.SECONDS, taskQueue);
 
+    /** 应用级共享串行执行器:适合"必须按提交顺序逐个执行"的后台小任务(如 SP 增量写) */
+    private static final ExecutorService serialExecutorService = Executors.newSingleThreadExecutor();
+
     public static void executeNewTask(Runnable command) {
 //        Log.d(TAG, "executeNewTask: CPU_COUNT=" + CPU_COUNT + ", CORE_POOL_SIZE=" + CORE_POOL_SIZE);
         executorService.execute(command);
@@ -29,6 +33,10 @@ public class HeavyTaskUtil {
 
     public static ExecutorService getBigTaskExecutorService() {
         return executorService;
+    }
+
+    public static ExecutorService getSerialExecutorService() {
+        return serialExecutorService;
     }
 
     public static LinkedBlockingDeque<Runnable> getBigTaskQueue() {

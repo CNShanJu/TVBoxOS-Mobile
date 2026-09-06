@@ -99,8 +99,6 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import me.jessyan.autosize.AutoSize;
@@ -569,14 +567,13 @@ public class PlayFragment extends BaseLazyFragment {
                 });
     }
 
-    /** 记录"播放过的剧集":key=sourceKey|vodId,value=已播放集索引集合(后台线程写 SP,避免主线程 IO) */
-    private static final ExecutorService PLAYED_RECORD_EXECUTOR = Executors.newSingleThreadExecutor();
-
+    /** 记录"播放过的剧集":key=sourceKey|vodId,value=已播放集索引集合(后台线程写 SP,避免主线程 IO)。
+     *  走应用级共享串行执行器(§六:页面不得自建线程池;串行保证同 key 读改写不交错丢更新) */
     private void recordPlayedEpisode() {
         if (mVodInfo == null || mVodInfo.id == null) return;
         final String videoId = com.github.tvbox.osc.util.player.PlayedVodKey.of(sourceKey, mVodInfo.id);
         final int index = mVodInfo.playIndex;
-        PLAYED_RECORD_EXECUTOR.execute(() -> {
+        com.github.tvbox.osc.util.HeavyTaskUtil.getSerialExecutorService().execute(() -> {
             try {
                 SPUtils sp = SPUtils.getInstance(CacheConst.VIDEO_PLAYED_SP);
                 Set<String> set = sp.getStringSet(videoId, null);
@@ -1065,21 +1062,16 @@ public class PlayFragment extends BaseLazyFragment {
         return taskResult;
     }
 
+    /** 解析任务代数:每次 stopParse/新一轮 doParse 自增;排队/在途任务自行核对,过期即丢弃。
+     *  (共享执行器不可 shutdown,同 DetailQuickSearchHelper epoch 语义) */
+    private final java.util.concurrent.atomic.AtomicInteger parseTaskEpoch = new java.util.concurrent.atomic.AtomicInteger();
+
     void stopParse() {
         mHandler.removeMessages(100);
+        parseTaskEpoch.incrementAndGet(); // 作废排队/在途解析任务(替代原 parseThreadPool.shutdown)
         stopLoadWebView(false);
         HttpClient.cancel("json_jx");
-        if (parseThreadPool != null) {
-            try {
-                parseThreadPool.shutdown();
-                parseThreadPool = null;
-            } catch (Throwable th) {
-                th.printStackTrace();
-            }
-        }
     }
-
-    ExecutorService parseThreadPool;
 
     private void doParse(ParseBean pb) {
         stopParse();
@@ -1166,17 +1158,20 @@ public class PlayFragment extends BaseLazyFragment {
                     });
         } else if (pb.getType() == 2) { // json 扩展
             setTip("正在解析播放地址", true, false);
-            parseThreadPool = Executors.newSingleThreadExecutor();
+            final long parseEpoch = parseTaskEpoch.get();
             LinkedHashMap<String, String> jxs = new LinkedHashMap<>();
             for (ParseBean p : ParseConfigProviders.get().getParseBeanList()) {
                 if (p.getType() == 1) {
                     jxs.put(p.getName(), ParseBeanUrls.mixUrl(p));
                 }
             }
-            parseThreadPool.execute(new Runnable() {
+            com.github.tvbox.osc.util.HeavyTaskUtil.getBigTaskExecutorService().execute(new Runnable() {
                 @Override
                 public void run() {
+                    // 已被新一轮解析/停止取代:直接丢弃(共享线程池不可 shutdown,epoch 自检)
+                    if (parseEpoch != parseTaskEpoch.get()) return;
                     JSONObject rs = ParseConfigProviders.get().jsonExt(ParseBeanUrls.url(pb), jxs, webUrl);
+                    if (parseEpoch != parseTaskEpoch.get()) return;
                     if (rs == null || !rs.has("url") || rs.optString("url").isEmpty()) {
 //                        errorWithRetry("解析错误", false);
                         setTip("解析错误", false, true);
@@ -1197,6 +1192,7 @@ public class PlayFragment extends BaseLazyFragment {
 
                             }
                         }
+                        if (parseEpoch != parseTaskEpoch.get()) return;
                         if (rs.has("jxFrom")) {
                             AppBubble.toast("解析来自:" + rs.optString("jxFrom"));
                         }
@@ -1212,7 +1208,7 @@ public class PlayFragment extends BaseLazyFragment {
             });
         } else if (pb.getType() == 3) { // json 聚合
             setTip("正在解析播放地址", true, false);
-            parseThreadPool = Executors.newSingleThreadExecutor();
+            final long parseEpoch = parseTaskEpoch.get();
             LinkedHashMap<String, HashMap<String, String>> jxs = new LinkedHashMap<>();
             String extendName = "";
             for (ParseBean p : ParseConfigProviders.get().getParseBeanList()) {
@@ -1226,10 +1222,12 @@ public class PlayFragment extends BaseLazyFragment {
                 jxs.put(p.getName(), data);
             }
             String finalExtendName = extendName;
-            parseThreadPool.execute(new Runnable() {
+            com.github.tvbox.osc.util.HeavyTaskUtil.getBigTaskExecutorService().execute(new Runnable() {
                 @Override
                 public void run() {
+                    if (parseEpoch != parseTaskEpoch.get()) return;
                     JSONObject rs = ParseConfigProviders.get().jsonExtMix(parseFlag + "111", ParseBeanUrls.url(pb), finalExtendName, jxs, webUrl);
+                    if (parseEpoch != parseTaskEpoch.get()) return;
                     if (rs == null || !rs.has("url") || rs.optString("url").isEmpty()) {
 //                        errorWithRetry("解析错误", false);
                         setTip("解析错误", false, true);
@@ -1238,6 +1236,7 @@ public class PlayFragment extends BaseLazyFragment {
                             if (rs.has("ua")) {
                                 webUserAgent = rs.optString("ua").trim();
                             }
+                            if (parseEpoch != parseTaskEpoch.get()) return;
                             if (!isAdded()) return;
                             requireActivity().runOnUiThread(new Runnable() {
                                 @Override
@@ -1267,6 +1266,7 @@ public class PlayFragment extends BaseLazyFragment {
                                     th.printStackTrace();
                                 }
                             }
+                            if (parseEpoch != parseTaskEpoch.get()) return;
                             if (rs.has("jxFrom")) {
                                 AppBubble.toast("解析来自:" + rs.optString("jxFrom"));
                             }
