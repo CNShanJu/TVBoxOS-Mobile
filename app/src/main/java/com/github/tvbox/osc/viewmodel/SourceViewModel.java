@@ -492,6 +492,26 @@ public class SourceViewModel extends ViewModel {
             detailResult.postValue(null);
         }
     }
+    /**
+     * 主搜索"每源一批"结果直调监听(改进.txt §五 收口):替代 FastSearch 场景的
+     * TYPE_SEARCH_RESULT EventBus 投递。回调线程不保证主线程,宿主自行切主线程。
+     */
+    public interface SearchBatchListener {
+        void onSearchBatch(AbsXml data);
+    }
+
+    private volatile SearchBatchListener searchBatchListener;
+
+    /** 注入/清除搜索批次监听(宿主销毁前必须置 null 防悬垂) */
+    public void setSearchBatchListener(SearchBatchListener listener) {
+        this.searchBatchListener = listener;
+    }
+
+    private void deliverSearchBatch(AbsXml data) {
+        SearchBatchListener listener = searchBatchListener;
+        if (listener != null) listener.onSearchBatch(data);
+    }
+
     // searchContent
     public void getSearch(String sourceKey, String wd) {
         SourceBean sourceBean = sourceConfig.getSource(sourceKey);
@@ -503,7 +523,7 @@ public class SourceViewModel extends ViewModel {
                         com.github.tvbox.osc.spiderapi.SpiderSearchProviders.get().search(sourceBean.getKey(), wd, false);
                 if (typed != null && typed.movie != null) {
                     absXml(typed, sourceBean.getKey());
-                    EventBus.getDefault().post(new RefreshEvent(RefreshEvent.TYPE_SEARCH_RESULT, typed));
+                    deliverSearchBatch(typed);
                     return;
                 }
                 android.util.Log.i("SpiderBridge", "search(typed) 不可用,回退字符串通道: key=" + sourceBean.getKey()
@@ -540,7 +560,7 @@ public class SourceViewModel extends ViewModel {
                         @Override
                         public void onError(Throwable e) {
                             // searchResult.postValue(null);
-                            EventBus.getDefault().post(new RefreshEvent(RefreshEvent.TYPE_SEARCH_RESULT, null));
+                            deliverSearchBatch(null);
                         }
                     });
         }else if (type == 4) {
@@ -558,7 +578,7 @@ public class SourceViewModel extends ViewModel {
                     @Override
                     public void onError(Throwable e) {
                         // searchResult.postValue(null);
-                        EventBus.getDefault().post(new RefreshEvent(RefreshEvent.TYPE_SEARCH_RESULT, null));
+                        deliverSearchBatch(null);
                     }
                 });
         } else {
@@ -807,7 +827,7 @@ public class SourceViewModel extends ViewModel {
     /** 解析结果发布(原 xml/json 尾部副作用统一;data=null 表示解析失败,按原语义发布 null) */
     private void publishDetailPayload(MutableLiveData<AbsXml> result, AbsXml data) {
         if (searchResult == result) {
-            EventBus.getDefault().post(new RefreshEvent(RefreshEvent.TYPE_SEARCH_RESULT, data));
+            deliverSearchBatch(data);
         } else if (quickSearchResult == result) {
             EventBus.getDefault().post(new RefreshEvent(RefreshEvent.TYPE_QUICK_SEARCH_RESULT, data));
         } else if (result != null) {

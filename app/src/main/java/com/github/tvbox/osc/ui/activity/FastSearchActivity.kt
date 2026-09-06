@@ -28,7 +28,6 @@ import com.github.tvbox.osc.bean.Movie
 import com.github.tvbox.osc.bean.SourceBean
 import com.github.tvbox.osc.databinding.ActivityFastSearchBinding
 import com.github.tvbox.osc.spiderapi.SourceConfigProviders
-import com.github.tvbox.osc.event.RefreshEvent
 import com.github.tvbox.osc.event.ServerEvent
 import com.github.tvbox.osc.log.Category
 import com.github.tvbox.osc.log.LogStore
@@ -101,10 +100,14 @@ class FastSearchActivity : BaseVbActivity<ActivityFastSearchBinding>(), TextWatc
     }
 
     override fun init() {
-        // 快速搜索页是 TYPE_SEARCH_RESULT/ServerEvent 真实订阅方,自行注册生命周期
-        // (BaseActivity 已移除"全 Activity 自动注册",EventBus 只投给真正需要的页面)
+        // 快速搜索页注册 EventBus 仅收 ServerEvent(遥控/局域网推送搜索)
+        // (BaseActivity 已移除"全 Activity 自动注册";搜索批次结果已直调,不再走 EventBus)
         EventBus.getDefault().register(this)
         sourceViewModel = ViewModelProvider(this).get(SourceViewModel::class.java)
+        // 主搜索批次结果直调:VM 回调线程不保证主线程,统一切主线程喂 searchData(替代 TYPE_SEARCH_RESULT 订阅)
+        sourceViewModel.setSearchBatchListener { data ->
+            runOnUiThread { searchData(data) }
+        }
         initView()
         initData()
         //历史搜索
@@ -483,17 +486,6 @@ class FastSearchActivity : BaseVbActivity<ActivityFastSearchBinding>(), TextWatc
         }
     }
 
-    @Subscribe(threadMode = ThreadMode.MAIN)
-    fun refresh(event: RefreshEvent) {
-        if (event.type == RefreshEvent.TYPE_SEARCH_RESULT) {
-            try {
-                searchData(if (event.obj == null) null else event.obj as AbsXml)
-            } catch (e: Exception) {
-                searchData(null)
-            }
-        }
-    }
-
     private fun search(title: String?) {
         if (title.isNullOrEmpty()) {
             AppBubble.toast("请输入搜索内容")
@@ -814,6 +806,7 @@ class FastSearchActivity : BaseVbActivity<ActivityFastSearchBinding>(), TextWatc
 
     override fun onDestroy() {
         super.onDestroy()
+        sourceViewModel.setSearchBatchListener(null) // 断开结果直调,防悬垂回调
         EventBus.getDefault().unregister(this)
         cancel()
         synchronized(searchLock) {
