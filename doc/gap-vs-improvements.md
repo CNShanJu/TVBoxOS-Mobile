@@ -291,6 +291,13 @@ Exo→Media3、EventBus→Flow/接口、Hawk→DataStore、Java→Kotlin 渐进�
   落字段(单一来源),mObserverPlayResult 删除 proKey/subtKey 回写(仅消费真实结果
   subt/parse/jx/url/header);VM 透传保留。快速切集时序更稳。真机回归点:断点/切集清进度、
   字幕缓存配对。(d2467f25)
+- ✅ 直播符合性审计(改进.txt 对照,非并行面):core-model 直播 bean 纯净、直播 adapter/
+  controller 无 Hawk/EventBus/DAO/线程池/Activity 强依赖、LiveConfig 仅走 DataStore 门面、
+  直播偏好/弹窗/密码/导航此前均已收口。调整:播放内核类型映射抽 `util/LivePlayerTypes`
+  (索引↔pl/软硬解码双向,round-trip 一致),单测 3 组。(db53ea93)
+  ⚠️ 并行直播重构(LiveActivity 控制栏)新增 LiveLineSelect*/AllChannels 等弹窗仍以
+  `(LiveActivity) context` 强转宿主(同 AllVodSeriesRightDialog 已修反模式),待并行批
+  提交后再统一构造注入化。
 - ✅ 直播分组密码门禁抽离 `util/LiveChannelAuth`:isPasswordConfirmed/needInputPassword/
   visibleChannels 纯逻辑(组数据+确认集合传参),LiveActivity 三方法改委托;单测 4 例。
   (9bdcc169)
