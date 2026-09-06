@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 全局更新悬浮圆圈背景:主题色实心 + 主文字描边,与 FAB 同一观感 -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="oval">
+    <solid android:color="@color/colorPrimary" />
+    <stroke
+        android:width="2dp"
+        android:color="@color/text_foreground" />
+</shape>

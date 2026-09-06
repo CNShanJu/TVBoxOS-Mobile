@@ -112,6 +112,11 @@ public class App extends MultiDexApplication {
         
         // 全局系统状态监控(网络/前后台/横竖屏/电量/磁盘, 基座层)
         SystemStateMonitor.init(this);
+        // 更新缓存清理:更新完成并安装后,首次启动删除"版本与当前一致"的本地 APK;并清半成品
+        try {
+            com.github.tvbox.osc.update.UpdateManager.cleanupOnAppStart(this);
+        } catch (Throwable ignored) {
+        }
     }
 
     /**

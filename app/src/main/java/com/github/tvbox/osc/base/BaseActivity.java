@@ -152,9 +152,32 @@ public abstract class BaseActivity extends AppCompatActivity implements CustomAd
     }
 
     @Override
+    protected void onResume() {
+        super.onResume();
+        // 全局更新悬浮圈:下载进行中时,当前页面顶部悬浮圆形进度钮(不依赖系统悬浮窗权限)
+        try {
+            com.github.tvbox.osc.update.UpdateFloatIndicator.get(this).attach(this);
+        } catch (Throwable ignored) {
+        }
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        try {
+            com.github.tvbox.osc.update.UpdateFloatIndicator.get(this).detach(this);
+        } catch (Throwable ignored) {
+        }
+    }
+
+    @Override
     protected void onDestroy() {
         super.onDestroy();
         AppManager.getInstance().finishActivity(this);
+        try {
+            com.github.tvbox.osc.update.UpdateFloatIndicator.get(this).detach(this);
+        } catch (Throwable ignored) {
+        }
     }
 
     public void jumpActivity(Class<? extends BaseActivity> clazz) {

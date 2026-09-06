@@ -1,16 +1,12 @@
 package com.github.tvbox.osc.update.github;
 
 import android.content.Context;
-import android.content.Intent;
-import android.net.Uri;
-import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
 
-import androidx.core.content.FileProvider;
-
 import com.blankj.utilcode.util.AppUtils;
 import com.github.tvbox.osc.di.AppCompositionRoot;
+import com.github.tvbox.osc.update.UpdateManager;
 import com.github.tvbox.osc.update.Updater;
 import com.github.tvbox.osc.update.UpdaterConfig;
 import com.github.tvbox.osc.update.UpdateInfo;
@@ -19,10 +15,6 @@ import com.github.tvbox.osc.util.HeavyTaskUtil;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -31,7 +23,8 @@ import okhttp3.OkHttpClient;
 import okhttp3.Request;
 
 /**
- * GitHub Releases 更新实现:从仓库 latest release 拉取版本信息、匹配 APK 资产并下载安装。
+ * GitHub Releases 更新实现:从仓库 latest release 拉取版本信息、匹配 APK 资产并交给
+ * {@link UpdateManager} 统一下载(断点续传/暂停继续/全局悬浮圈),安装完成后再触发系统安装器。
  * <p>
  * 网络请求经 {@link AppCompositionRoot#network()} 提供的共享客户端(不 self-new OkHttpClient),
  * 后台任务复用 {@link HeavyTaskUtil} 共享执行器,回调统一切回主线程。
@@ -129,106 +122,14 @@ public class GithubReleaseUpdater implements Updater {
     }
 
     // ------------------------------------------------------------------
-    // 下载 + 安装
+    // 下载 + 安装(统一下放 UpdateManager)
     // ------------------------------------------------------------------
 
     @Override
     public void downloadAndInstall(final Context context, final UpdateInfo info, final Callback cb) {
-        if (info == null) {
-            if (cb != null) cb.onError("更新信息为空");
-            return;
-        }
-        final String apkName = (info.apkName == null || info.apkName.isEmpty()) ? "update.apk" : info.apkName;
-        HeavyTaskUtil.getBigTaskExecutorService().execute(() -> {
-            File dest = null;
-            String err = null;
-            try {
-                File dir = new File(context.getCacheDir(), "update");
-                if (!dir.exists() && !dir.mkdirs()) {
-                    throw new IOException("无法创建下载目录");
-                }
-                dest = new File(dir, apkName);
-                OkHttpClient client = AppCompositionRoot.network().general();
-                Request req = new Request.Builder().url(info.downloadUrl).build();
-                okhttp3.Response resp = client.newCall(req).execute();
-                try {
-                    if (!resp.isSuccessful() || resp.body() == null) {
-                        throw new IOException("下载失败: HTTP " + resp.code());
-                    }
-                    long total = resp.body().contentLength();
-                    InputStream is = resp.body().byteStream();
-                    FileOutputStream fos = new FileOutputStream(dest);
-                    byte[] buf = new byte[8192];
-                    long done = 0;
-                    int len;
-                    try {
-                        while ((len = is.read(buf)) > 0) {
-                            fos.write(buf, 0, len);
-                            done += len;
-                            final long d = done;
-                            final long t = total;
-                            post(() -> {
-                                if (cb != null) cb.onDownloadProgress(d, t);
-                            });
-                        }
-                    } finally {
-                        try {
-                            is.close();
-                        } catch (IOException ignored) {
-                        }
-                        try {
-                            fos.close();
-                        } catch (IOException ignored) {
-                        }
-                    }
-                } finally {
-                    resp.close();
-                }
-            } catch (Throwable t) {
-                err = "下载失败: " + (t.getMessage() == null ? t.getClass().getSimpleName() : t.getMessage());
-            }
-            final File fdest = dest;
-            final String ferr = err;
-            post(() -> {
-                if (ferr != null) {
-                    if (cb != null) cb.onError(ferr);
-                    return;
-                }
-                if (installApk(context, fdest)) {
-                    if (cb != null) cb.onDownloadReady(info);
-                } else {
-                    if (cb != null) cb.onError("安装失败: 请允许安装未知应用后重试");
-                }
-            });
-        });
-    }
-
-    /** 通过系统安装器安装 APK(API 26+ 先校验"安装未知应用"授权) */
-    private boolean installApk(Context context, File apk) {
-        try {
-            if (Build.VERSION.SDK_INT >= 26) {
-                if (!context.getPackageManager().canRequestPackageInstalls()) {
-                    try {
-                        Intent intent = new Intent(
-                                android.provider.Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
-                                Uri.parse("package:" + context.getPackageName()));
-                        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                        context.startActivity(intent);
-                    } catch (Throwable ignored) {
-                    }
-                    return false;
-                }
-            }
-            Uri uri = FileProvider.getUriForFile(context, context.getPackageName() + ".fileprovider", apk);
-            Intent intent = new Intent(Intent.ACTION_VIEW);
-            intent.setDataAndType(uri, "application/vnd.android.package-archive");
-            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-            intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-            context.startActivity(intent);
-            return true;
-        } catch (Throwable t) {
-            return false;
-        }
+        // 下载/暂停/继续/取消/断点续传/复用缓存/安装全部收口到 UpdateManager,与 UI 无关,
+        // 关闭弹窗不中断;全局悬浮圈(UpdateFloatIndicator)自动展示进度与控制入口。
+        UpdateManager.get().start(context, info, cb);
     }
 
     // ------------------------------------------------------------------

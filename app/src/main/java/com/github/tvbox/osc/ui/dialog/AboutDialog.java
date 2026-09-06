@@ -58,8 +58,9 @@ public class AboutDialog extends AppBottomPopupView {
                     String msg = (note == null || note.trim().isEmpty())
                             ? "发现新版本 v" + newVersion.versionName + ",是否下载并安装?"
                             : "发现新版本 v" + newVersion.versionName + ":\n" + note.trim();
-                    ConfirmDialog.show(getContext(), "检查更新", msg, "立即更新", () ->
-                            updater.downloadAndInstall(getContext(), newVersion, new Updater.Callback() {
+                    ConfirmDialog.show(getContext(), "检查更新", msg, "立即更新", () -> {
+                        AppBubble.toast("已开始下载,进度可通过悬浮圆圈查看/控制");
+                        updater.downloadAndInstall(getContext(), newVersion, new Updater.Callback() {
                                 @Override
                                 public void onCheckStart() {
                                 }
@@ -80,7 +81,7 @@ public class AboutDialog extends AppBottomPopupView {
 
                                 @Override
                                 public void onDownloadReady(UpdateInfo info) {
-                                    tvStatus.setText("新版已下载,开始安装");
+                                    tvStatus.setText("下载完成,点悬浮圆圈安装");
                                     btn.setEnabled(true);
                                 }
 
@@ -90,7 +91,8 @@ public class AboutDialog extends AppBottomPopupView {
                                     btn.setEnabled(true);
                                     AppBubble.toast(message);
                                 }
-                            }));
+                            });
+                    });
                 }
 
                 @Override
