@@ -28,6 +28,7 @@ android {
 dependencies {
     implementation fileTree(dir: "libs", include: ['*.jar'])
     implementation project(':core-model')
+    implementation project(':core-utils')
     implementation project(':spider-api')
     implementation project(':core-network')
     implementation project(':core-storage') // 配置键常量/SystemConfig(ApiConfig/FileUtils 读取)

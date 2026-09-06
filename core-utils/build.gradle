@@ -1,0 +1,32 @@
+plugins {
+    id 'com.android.library'
+}
+
+// :core-utils —— 纯算法/工具承载模块(改进.txt §8 杂项袋拆分):从 :core-network util 迁入
+// 与 Android 无关或仅依赖平台 API 的算法工具(AES/MD5 等);各业务模块可直接依赖本模块,
+// 禁止本模块反向依赖任何业务/UI 模块(checkModuleDependencies 门禁)。
+android {
+    namespace 'com.github.tvbox.osc.coreutils'
+    compileSdk 34
+
+    defaultConfig {
+        minSdk 24
+        targetSdk 34
+        versionCode 1
+        versionName "1.0"
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+}
+
+dependencies {
+}

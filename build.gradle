@@ -35,6 +35,7 @@ task clean(type: Delete) {
 // 运行:./gradlew checkModuleDependencies(后续可挂到 check/CI)。
 // ------------------------------------------------------------------
 def forbiddenModuleDeps = [
+        ':core-utils' : [':core-storage',':core-network',':spider',':spider-api',':download',':player',':player-api',':app',':ui-common',':state',':log',':crash',':quickjs',':TabLayout',':ViewPager1Delegate'],
         ':core-model'  : [':core-storage', ':core-network', ':spider', ':spider-api', ':download', ':player', ':player-api', ':app', ':ui-common', ':state', ':log', ':crash', ':quickjs', ':TabLayout', ':ViewPager1Delegate'],
         ':spider-api'  : [':core-storage', ':core-network', ':spider', ':download', ':player', ':player-api', ':app', ':ui-common', ':state', ':log', ':crash', ':quickjs', ':TabLayout', ':ViewPager1Delegate'],
         ':core-storage': [':spider', ':spider-api', ':download', ':player', ':player-api', ':app', ':ui-common', ':state', ':crash', ':quickjs', ':TabLayout', ':ViewPager1Delegate'],
@@ -48,7 +49,7 @@ def forbiddenModuleDeps = [
         ':crash'       : [':app', ':download', ':spider', ':spider-api', ':core-storage', ':core-network', ':player', ':ui-common'],
 ]
 def moduleDir = [
-        ':core-model'  : 'core-model', ':spider-api'   : 'spider-api', ':core-storage': 'core-storage',
+        ':core-model'  : 'core-model', ':core-utils' : 'core-utils', ':spider-api'   : 'spider-api', ':core-storage': 'core-storage',
         ':core-network': 'core-network', ':spider'     : 'spider',      ':download'    : 'download',
         ':player'      : 'player',    ':player-api'   : 'player-api',  ':state'       : 'state',
         ':log'         : 'log',       ':ui-common'    : 'ui-common',   ':quickjs'     : 'quickjs',
