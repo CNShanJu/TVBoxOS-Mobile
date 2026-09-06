@@ -54,7 +54,7 @@ import xyz.doikki.videoplayer.util.PlayerUtils;
 
 import static xyz.doikki.videoplayer.util.PlayerUtils.stringForTime;
 
-public class VodController extends BaseController implements PlaybackSettingsController {
+public class VodController extends BaseController implements PlaybackSettingsController, SubtitleController {
 
     /** 是否成功播放过(详情页下载时用于复用当前集的 finalUrl;未播放过也能下载,走后台解析) */
     public volatile boolean hasPlayedOnce = false;
@@ -1193,6 +1193,12 @@ public class VodController extends BaseController implements PlaybackSettingsCon
     protected void onDetachedFromWindow() {
         super.onDetachedFromWindow();
         mHandler.removeCallbacks(myRunnable2);
+    }
+
+    /** {@link SubtitleController}: 字幕视图(在线全屏与本地播放共用字幕设置弹窗) */
+    @Override
+    public SimpleSubtitleView getSubtitleView() {
+        return mSubtitleView;
     }
 
     public void openSubtitle(boolean open) {

@@ -54,7 +54,7 @@ import java.util.List;
 import xyz.doikki.videoplayer.player.VideoView;
 import xyz.doikki.videoplayer.util.PlayerUtils;
 
-public class LocalVideoController extends BaseController implements PlaybackSettingsController {
+public class LocalVideoController extends BaseController implements PlaybackSettingsController, SubtitleController {
 
     private TextView mTvSpeedTip;
     private android.widget.FrameLayout mLlSpeed;
@@ -718,6 +718,26 @@ public class LocalVideoController extends BaseController implements PlaybackSett
     void initSubtitleInfo() {
         int subtitleTextSize = SubtitleHelper.getTextSize(mActivity);
         mSubtitleView.setTextSize(subtitleTextSize);
+    }
+
+    /** {@link SubtitleController}: 字幕视图(本地播放与在线全屏共用字幕设置弹窗) */
+    @Override
+    public SimpleSubtitleView getSubtitleView() {
+        return mSubtitleView;
+    }
+
+    /** {@link SubtitleController}: 字幕开关(持久化配置并显隐字幕视图;与在线 VodController 行为一致) */
+    @Override
+    public void openSubtitle(boolean open) {
+        PlayConfig.setSubtitleOpen(open);
+        if (open) {
+            mSubtitleView.setVisibility(VISIBLE);
+            AppBubble.toast("字幕已开启");
+        } else {
+            mSubtitleView.setVisibility(GONE);
+            AppBubble.toast("字幕已关闭");
+        }
+        hideBottom();
     }
 
     @Override

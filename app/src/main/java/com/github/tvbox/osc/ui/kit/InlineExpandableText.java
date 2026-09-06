@@ -68,8 +68,7 @@ public final class InlineExpandableText {
                 }
             }
         }
-        int nonClickLen = collapsed.length() - suffix.length();
-        // 保留 suffix 前部(如 “… ”)不可点,仅末尾字串可点 → 从最后一段可点词开始
+        // 仅末尾“展开”可点并可点色;前导省略号“… ”保持正文色(不随链接变蓝)
         int linkStart = collapsed.length() - trimClickableLen(suffix);
         SpannableString sp = new SpannableString(collapsed);
         sp.setSpan(new ClickableSpan() {
@@ -85,11 +84,31 @@ public final class InlineExpandableText {
                 ds.setUnderlineText(false);
             }
         }, linkStart, collapsed.length(), android.text.Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
-        // 视觉上整段后缀同色更贴近“内联按钮”;若只想要尾部字可点,可注释下一行
-        if (nonClickLen > 0 && linkStart > 0) {
-            sp.setSpan(new android.text.style.ForegroundColorSpan(linkColor),
-                    nonClickLen, linkStart, android.text.Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
-        }
+        return sp;
+    }
+
+    /**
+     * 生成展开态文本:全文 + 行末可点后缀(如 “ 收回”),后缀上链接色。
+     * 让“收回”跟在结束文本后面(内联),而不是落到独立一行。
+     */
+    public static CharSequence buildExpanded(String full, String suffix,
+                                             Runnable onSuffixClick, int linkColor) {
+        if (TextUtils.isEmpty(full)) return full;
+        SpannableString sp = new SpannableString(full + suffix);
+        int linkStart = full.length();
+        sp.setSpan(new ClickableSpan() {
+            @Override
+            public void onClick(View widget) {
+                if (onSuffixClick != null) onSuffixClick.run();
+            }
+
+            @Override
+            public void updateDrawState(TextPaint ds) {
+                super.updateDrawState(ds);
+                ds.setColor(linkColor);
+                ds.setUnderlineText(false);
+            }
+        }, linkStart, linkStart + suffix.length(), android.text.Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
         return sp;
     }
 

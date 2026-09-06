@@ -19,6 +19,7 @@ import com.github.tvbox.osc.bean.VodInfo;
 import com.github.tvbox.osc.constant.CacheConst;
 import com.github.tvbox.osc.databinding.ActivityLocalPlayBinding;
 import com.github.tvbox.osc.player.MyVideoView;
+import com.github.tvbox.osc.player.PlayerSession;
 import com.github.tvbox.osc.player.api.PlayConfig;
 import com.github.tvbox.osc.player.controller.LocalVideoController;
 import com.github.tvbox.osc.ui.dialog.AllLocalSeriesDialog;
@@ -28,6 +29,7 @@ import com.github.tvbox.osc.ui.dialog.PlayingControlRightDialog;
 import com.github.tvbox.osc.util.BroadcastUtils;
 import com.github.tvbox.osc.util.PipHelper;
 import com.github.tvbox.osc.util.PlayerHelper;
+import com.github.tvbox.osc.util.player.SubtitleCoordinator;
 import com.google.common.reflect.TypeToken;
 import com.lxj.xpopup.core.BasePopupView;
 
@@ -46,6 +48,8 @@ public class LocalPlayActivity extends BaseVbActivity<ActivityLocalPlayBinding> 
 
     private MyVideoView mVideoView;
     LocalVideoController mController;
+    private PlayerSession mPlaySession;
+    private SubtitleCoordinator mSubtitleCoordinator;
     JSONObject mVodPlayerCfg;
     private List<VideoInfo> mVideoList = new ArrayList<>();
     private int mPosition;
@@ -192,17 +196,17 @@ public class LocalPlayActivity extends BaseVbActivity<ActivityLocalPlayBinding> 
 
             @Override
             public void selectSubtitle() {
-
+                openLocalSubtitleDialog();
             }
 
             @Override
             public void selectAudioTrack() {
-
+                if (mSubtitleCoordinator != null) mSubtitleCoordinator.openAudioTrackDialog();
             }
 
             @Override
             public void prepared() {
-
+                initLocalSubtitleView();
             }
 
             @Override
@@ -235,6 +239,27 @@ public class LocalPlayActivity extends BaseVbActivity<ActivityLocalPlayBinding> 
             }
         });
 
+        // 本地字幕:与在线全屏共用 SubtitleCoordinator(依赖 SubtitleController 契约,不耦合具体控制器)
+        mPlaySession = new PlayerSession(mVideoView);
+        mSubtitleCoordinator = new SubtitleCoordinator(this, mController, mPlaySession);
+    }
+
+    /** 本地字幕设置弹窗:构造最小 VodInfo(取本地文件名作为搜索词)后交给协调器 */
+    private void openLocalSubtitleDialog() {
+        if (mSubtitleCoordinator == null) return;
+        VodInfo vodInfo = new VodInfo();
+        VideoInfo info = mVideoList.get(mPosition);
+        vodInfo.name = info.getDisplayName();
+        mSubtitleCoordinator.openSubtitleDialog(vodInfo);
+    }
+
+    /** 本地视频 prepared 后:更新字幕上下文并装载(缓存外挂字幕优先,其次内置字幕,显隐随开关) */
+    private void initLocalSubtitleView() {
+        if (mSubtitleCoordinator == null) return;
+        VideoInfo info = mVideoList.get(mPosition);
+        // 以本地文件路径作为字幕缓存键,便于记住为该文件选过的外挂字幕
+        mSubtitleCoordinator.updateSubtitleContext(null, info.getPath());
+        mSubtitleCoordinator.initSubtitleView();
     }
 
     /** 初始化画中画(小窗)辅助器:本地播放器复用详情页同一套逻辑 */

@@ -58,6 +58,7 @@ public class VideoDetailDialog extends SheetResizableBottomPopup {
     private int desc5H;             // 收起 5 行高度(px)
     private int headerToDescH;      // 抽屉顶到简介区顶的固定高度(px)
     private int mDescWidthPx;
+    private int mLinkColor;         // 内联展开/收回链接色
 
     public VideoDetailDialog(@NonNull Context context, @NonNull Host host, VodInfo vodInfo) {
         super(context);
@@ -156,10 +157,10 @@ public class VideoDetailDialog extends SheetResizableBottomPopup {
             // 长文本:预渲染汇总后进入“可展开”
             descFoldable = true;
             mDescWidthPx = width;
-            int linkColor = ContextCompat.getColor(getContext(), R.color.color_1890FF);
+            mLinkColor = ContextCompat.getColor(getContext(), R.color.color_1890FF);
             mCollapsedSpan = InlineExpandableText.buildCollapsed(
                     mDescText, paint, width, spacing, DESC_MIN_LINES,
-                    "… 展开", this::toggleFold, linkColor);
+                    "… 展开", this::toggleFold, mLinkColor);
             headerToDescH = mScroll.getTop();
             int bottomPad = Math.round(18 * density);
             int expandedPx = Math.round(ScreenUtils.getScreenHeight()
@@ -197,7 +198,7 @@ public class VideoDetailDialog extends SheetResizableBottomPopup {
 
     /** 应用简介展示态:
      *  收起 = 内联截断文本(第 5 行行末“… 展开”可点),不可滚动;
-     *  展开 = 全文 + 下方“收回”,超长才在区内滚动 */
+     *  展开 = 全文 + 行末内联“收回”,超长才在区内滚动 */
     private void applyDescMode(boolean expanded) {
         if (mTvDes == null || mScroll == null) return;
         if (!descFoldable) {
@@ -209,11 +210,12 @@ public class VideoDetailDialog extends SheetResizableBottomPopup {
             return;
         }
         if (expanded) {
-            mTvDes.setText(mDescText);
+            // 展开 = 全文 + 行末内联“ 收回”(紧跟结束文本,不再单独一行)
+            mTvDes.setText(InlineExpandableText.buildExpanded(
+                    mDescText, " 收回", this::toggleFold, mLinkColor));
             mTvDes.setMaxLines(Integer.MAX_VALUE);
             mTvDes.setEllipsize(null);
-            mTvFold.setText("收回");
-            mTvFold.setVisibility(View.VISIBLE);
+            mTvFold.setVisibility(View.GONE);   // 收回按钮内联在全文末尾
             mScroll.setEnabled(descLong);
             if (!descLong) mScroll.scrollTo(0, 0);
         } else {

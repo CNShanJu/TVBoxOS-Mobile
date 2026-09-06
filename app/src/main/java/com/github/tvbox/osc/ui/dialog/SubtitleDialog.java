@@ -210,13 +210,13 @@ public class SubtitleDialog extends AppCenterPopupView {
             }
         });
         findViewById(R.id.subtitleOpen).setOnClickListener(v -> {
+            // 只切换字幕开关,不关闭弹窗:用户可继续在同一个弹窗里调整字号/延迟/样式/选字幕
             updateSubtitleState(true);
-            dismiss();
             if (mSubtitleViewListener != null) mSubtitleViewListener.subtitleOpen(true);
         });
         findViewById(R.id.subtitleClose).setOnClickListener(v -> {
+            // 只切换字幕开关,不关闭弹窗
             updateSubtitleState(false);
-            dismiss();
             if (mSubtitleViewListener != null) mSubtitleViewListener.subtitleOpen(false);
         });
 
