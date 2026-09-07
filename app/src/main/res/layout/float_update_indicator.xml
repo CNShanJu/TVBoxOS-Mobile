@@ -1,23 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- 全局更新悬浮圆圈(54dp):仅显示下载进度百分点,点击弹出下载信息弹窗 -->
+<!-- 全局更新悬浮气泡:自绘圆底+环形进度+状态图标(下载箭头/暂停/失败/完成),无外围进度数字 -->
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/floatRoot"
     android:layout_width="54dp"
     android:layout_height="54dp"
-    android:background="@drawable/bg_update_float_circle"
-    android:elevation="8dp"
     android:clickable="true"
     android:focusable="true">
 
-    <androidx.appcompat.widget.AppCompatTextView
-        android:id="@+id/float_percent"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_gravity="center"
-        android:gravity="center"
-        android:textColor="@android:color/white"
-        android:textSize="13sp"
-        android:textStyle="bold"
-        tools:text="42%" />
+    <com.github.tvbox.osc.update.UpdateBubbleView
+        android:id="@+id/update_bubble"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent" />
 </FrameLayout>

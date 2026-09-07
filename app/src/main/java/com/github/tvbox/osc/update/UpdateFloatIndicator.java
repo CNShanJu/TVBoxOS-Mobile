@@ -77,7 +77,8 @@ public final class UpdateFloatIndicator implements UpdateManager.Listener {
         UpdateManager.State s = UpdateManager.get().getState();
         boolean show = (s == UpdateManager.State.DOWNLOADING
                 || s == UpdateManager.State.PAUSED
-                || s == UpdateManager.State.COMPLETED);
+                || s == UpdateManager.State.COMPLETED
+                || s == UpdateManager.State.FAILED);
         Activity a = currentActivity;
         if (!show || a == null || a.isFinishing() || a.isDestroyed()) {
             hide();
@@ -101,7 +102,7 @@ public final class UpdateFloatIndicator implements UpdateManager.Listener {
             decor.addView(floatView, lp);
             attachedParent = decor;
         }
-        updatePercent();
+        updateBubble();
     }
 
     /** 首次挂载/无记录位置:默认贴右下(距边 18dp、距底 76dp 避底栏);有记录位置则恢复 */
@@ -132,36 +133,44 @@ public final class UpdateFloatIndicator implements UpdateManager.Listener {
     }
 
     private void hide() {
-        // floatView 对象常驻(listener 在首次创建时已绑定),仅从父容器摘除
-        if (floatView != null && floatView.getParent() instanceof ViewGroup) {
-            ((ViewGroup) floatView.getParent()).removeView(floatView);
+        // floatView 对象常驻(listener 在首次创建时已绑定),仅从父容器摘除并暂停动画
+        if (floatView != null) {
+            UpdateBubbleView b = floatView.findViewById(R.id.update_bubble);
+            if (b != null) b.pauseAnimations();
+            if (floatView.getParent() instanceof ViewGroup) {
+                ((ViewGroup) floatView.getParent()).removeView(floatView);
+            }
         }
         attachedParent = null;
     }
 
-    private void updatePercent() {
+    /** 用 UpdateBubbleView 映射 UpdateManager 状态与真实进度(进度环/中心图标/动画) */
+    private void updateBubble() {
         if (floatView == null) return;
-        android.widget.TextView tv = floatView.findViewById(R.id.float_percent);
-        if (tv == null) return;
+        UpdateBubbleView b = floatView.findViewById(R.id.update_bubble);
+        if (b == null) return;
         UpdateManager m = UpdateManager.get();
         UpdateManager.State s = m.getState();
         long downloaded = m.getDownloaded();
         long total = m.getTotal();
-        int percent = total > 0 ? (int) (downloaded * 100 / total) : 0;
+        float progress = total > 0 ? (float) downloaded / (float) total : 0f;
+        UpdateBubbleView.BubbleState bs;
         switch (s) {
-            case DOWNLOADING:
-                tv.setText(percent + "%");
-                break;
             case PAUSED:
-                tv.setText("⏸");
+                bs = UpdateBubbleView.BubbleState.PAUSED;
                 break;
             case COMPLETED:
-                tv.setText("✓");
+                bs = UpdateBubbleView.BubbleState.COMPLETED;
                 break;
+            case FAILED:
+                bs = UpdateBubbleView.BubbleState.FAILED;
+                break;
+            case DOWNLOADING:
             default:
-                tv.setText("");
+                bs = UpdateBubbleView.BubbleState.DOWNLOADING;
                 break;
         }
+        b.setState(bs, progress);
     }
 
     private void showDialog() {
