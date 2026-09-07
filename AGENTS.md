@@ -103,8 +103,9 @@ app / feature
 - Gradle 开启/维护缓存与并行构建,避免本地与 CI 行为漂移。
 - 图片加载统一单一图片库,不复用多套;网络状态/电量等系统状态统一经 SystemStateMonitor 单点订阅。
 - **全局复用同一个图片占位符**:全 App 图片(海报/封面/缩略图等)占位与加载失败统一用
-  `placeholder_poster`(灰底+居中图标,主题感知);禁止各页面/适配器自行引入第二套占位图
-  (如 iv_load_fail / img_loading_placeholder 等),发现即收敛到统一占位。
+  `placeholder_poster`(灰底+居中图标,主题感知)。**占位图标固定只能用 `ic_image_placeholder.xml`**
+  (源文件 `D:\Code\Video\icon\图片加载失败.svg` 转的矢量);禁止各页面/适配器自行引入第二套占位图
+  (如 iv_load_fail / img_loading_placeholder / ic_img_placeholder / ic_poster_placeholder 等),发现即收敛到统一占位。
 - 多语言资源按需裁剪(`resConfigs`),禁止无界塞入语言包。
 
 ## 八、推荐推进顺序(供排期参考)
