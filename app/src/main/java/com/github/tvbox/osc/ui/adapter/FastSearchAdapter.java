@@ -191,18 +191,32 @@ public class FastSearchAdapter extends BaseQuickAdapter<Movie.Video, BaseViewHol
         // 切换布局/滚动复用均命中同一缓存,不再重复下载或拉原图。
         ivThumb.setImageDrawable(null);
         String url = item.pic == null ? "" : item.pic.trim();
-        if (url.isEmpty()) return;
+        if (url.isEmpty()) {
+            com.github.tvbox.osc.ui.kit.PicassoShimmer.stop(ivThumb);
+            return;
+        }
         int w = AutoSizeUtils.dp2px(mContext, 200);
         int h = AutoSizeUtils.dp2px(mContext, 267);
         int radius = AutoSizeUtils.dp2px(mContext, 12);
         String cacheKey = MD5.string2MD5(url + "_search_poster_200x267");
+        com.github.tvbox.osc.ui.kit.PicassoShimmer.start(ivThumb);
         Picasso.get()
                 .load(url)
                 .transform(new RoundTransformation(cacheKey)
                         .centerCorp(true)
                         .override(w, h)
                         .roundRadius(radius, RoundTransformation.RoundType.ALL))
-                .into(ivThumb);
+                .into(ivThumb, new com.squareup.picasso.Callback() {
+                    @Override
+                    public void onSuccess() {
+                        com.github.tvbox.osc.ui.kit.PicassoShimmer.stop(ivThumb);
+                    }
+
+                    @Override
+                    public void onError(Exception e) {
+                        com.github.tvbox.osc.ui.kit.PicassoShimmer.stop(ivThumb);
+                    }
+                });
     }
 
     private String safeSourceName(String sourceKey) {

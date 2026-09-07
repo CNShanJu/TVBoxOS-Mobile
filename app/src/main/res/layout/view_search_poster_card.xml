@@ -12,6 +12,7 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:background="@drawable/placeholder_poster"
+        android:clipToOutline="true"
         android:scaleType="centerCrop"/>
 
     <!-- 评分(左上角,橙色圆角徽标;贴齐图片左上缘,样式与播放历史一致) -->
