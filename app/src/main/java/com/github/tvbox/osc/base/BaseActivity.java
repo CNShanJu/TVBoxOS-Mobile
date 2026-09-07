@@ -29,7 +29,7 @@ import com.hjq.bar.TitleBar;
 import com.kingja.loadsir.callback.Callback;
 import com.kingja.loadsir.core.LoadService;
 import com.kingja.loadsir.core.LoadSir;
-import com.lxj.xpopup.impl.LoadingPopupView;
+import com.lxj.xpopup.core.BasePopupView;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -43,7 +43,7 @@ public abstract class BaseActivity extends AppCompatActivity implements CustomAd
 
     private ImmersionBar mImmersionBar;
     private TitleBar mTitleBar;
-    private LoadingPopupView loadingPopup;
+    private BasePopupView loadingPopup;
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {

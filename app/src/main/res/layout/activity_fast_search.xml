@@ -38,8 +38,8 @@
 
         <ImageView
             android:id="@+id/iv_filter"
-            android:layout_width="20dp"
-            android:layout_height="20dp"
+            android:layout_width="18dp"
+            android:layout_height="18dp"
             android:padding="1dp"
             android:src="@drawable/ic_filter_list"
             app:tint="@color/text_foreground"
@@ -47,33 +47,32 @@
 
         <View
             android:layout_width="1dp"
-            android:layout_height="18dp"
+            android:layout_height="16sp"
             android:background="@color/text_foreground"/>
 
         <ImageView
-            android:id="@+id/iv_search"
-            android:layout_width="20dp"
-            android:layout_height="20dp"
-            android:src="@drawable/ic_search_48"
-            android:padding="1dp"
-            app:tint="@color/text_foreground"
-            android:layout_marginLeft="4dp"
+                android:id="@+id/iv_search"
+                android:layout_width="20dp"
+                android:layout_height="20dp"
+                android:src="@drawable/ic_search"
+                app:tint="@color/text_foreground"
+                android:layout_marginLeft="5dp"
         />
 
         <View
             android:layout_width="1dp"
-            android:layout_height="18dp"
-            android:layout_marginLeft="8dp"
+            android:layout_height="16sp"
+            android:layout_marginLeft="4dp"
             android:background="@color/text_foreground"/>
 
         <ImageView
-            android:id="@+id/iv_more"
-            android:layout_width="20dp"
-            android:layout_height="20dp"
-            android:src="@drawable/ic_more_24"
-            android:padding="1dp"
-            app:tint="@color/text_foreground"
-            android:layout_marginLeft="4dp"
+                android:id="@+id/iv_more"
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:src="@drawable/ic_more_24"
+                android:padding="2dp"
+                app:tint="@color/text_foreground"
+                android:layout_marginLeft="1dp"
         />
 
     </LinearLayout>

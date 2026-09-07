@@ -173,12 +173,13 @@ public final class DialogCoordinator {
         ConfirmDialog.show(ctx, title, message, confirmText, onConfirm);
     }
 
-    /** 加载框（复用页面级 BaseActivity 语义，可直接挂在任意 Activity 上） */
-    public static com.lxj.xpopup.impl.LoadingPopupView loading(Activity activity) {
+    /** 加载框（替代 XPopup asLoading 默认转圈;统一走全局加载态 Lottie,可挂任意 Activity 上） */
+    public static BasePopupView loading(Activity activity) {
         return new XPopup.Builder(activity)
                 .isLightNavigationBar(true)
-                .hasShadowBg(false)
-                .asLoading();
+                .hasShadowBg(true)              // 暗色遮罩垫底(加载框无卡片背景)
+                .dismissOnTouchOutside(false)   // 加载框不点外关闭
+                .asCustom(new LoadingDialog(activity));
     }
 
     /** BaseActivity 加载框缓存/显示辅助（与既有 showLoadingDialog 行为一致） */
