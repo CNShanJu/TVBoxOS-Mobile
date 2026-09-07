@@ -105,19 +105,46 @@ class SubscriptionActivity : BaseVbActivity<ActivitySubscriptionBinding>() {
         mSubscriptionAdapter.setOnItemChildClickListener { _: BaseQuickAdapter<*, *>?, view: View, position: Int ->
             LogUtils.d("删除订阅")
             if (view.id == R.id.iv_del) {
-                if (mSubscriptions.get(position).isChecked) {
-                    AppBubble.toast("不能删除当前使用的订阅")
-                    return@setOnItemChildClickListener
+                if (position >= mSubscriptions.size) return@setOnItemChildClickListener
+                val target = mSubscriptions[position]
+                // 允许删除"当前勾选/正在使用"的订阅(如导入坏订阅也能清理):
+                // 删除后自动切换当前订阅(置顶优先,否则取首项;删光则清空)
+                val delMsg = if (target.isChecked) {
+                    if (mSubscriptions.size <= 1) {
+                        "该订阅为当前正在使用的订阅,删除后列表将清空,确定删除吗？"
+                    } else {
+                        "该订阅为当前正在使用的订阅,删除后将自动切换到其它订阅,确定删除吗？"
+                    }
+                } else {
+                    "确定删除订阅吗？"
                 }
-                com.github.tvbox.osc.ui.dialog.ConfirmDialog.show(this@SubscriptionActivity, "删除订阅", "确定删除订阅吗？", "删除", {
-                    val deleted = mSubscriptions.get(position)
+                com.github.tvbox.osc.ui.dialog.ConfirmDialog.show(
+                    this@SubscriptionActivity,
+                    "删除订阅",
+                    delMsg,
+                    "删除"
+                ) {
+                    if (position >= mSubscriptions.size) return@show
+                    val deleted = mSubscriptions.removeAt(position)
                     AppLog.log("订阅管理", "删除订阅: " + deleted.name + "  " + deleted.url)
                     LogStore.log(Category.SUBSCRIPTION, "订阅: 删除 " + deleted.name)
-                    mSubscriptions.removeAt(position)
+                    if (deleted.isChecked) {
+                        // 自动重选当前订阅:置顶优先,否则取首项;无订阅则清空当前
+                        val next = mSubscriptions.firstOrNull { it.isTop }
+                            ?: mSubscriptions.firstOrNull()
+                        for (s in mSubscriptions) s.setChecked(false)
+                        if (next != null) {
+                            next.setChecked(true)
+                            mSelectedUrl = next.url
+                            LogStore.log(Category.SUBSCRIPTION, "订阅: 删除后自动切换到 " + next.name)
+                        } else {
+                            mSelectedUrl = ""
+                        }
+                    }
                     //删除/选择只刷新,不触发重新排序
                     mSubscriptionAdapter.notifyDataSetChanged()
                     updateEmptyState()
-                })
+                }
             }
         }
 
@@ -272,6 +299,12 @@ class SubscriptionActivity : BaseVbActivity<ActivitySubscriptionBinding>() {
                 AppBubble.toast("暂不支持该存储位置,请选择内部存储中的 txt/json 订阅文件")
                 return
             }
+            // 订阅清单式文件(如 assets/config/default_subscriptions.json: [{name,url},...]):
+            // 读取内容解析为多条订阅加入;识别失败则回落为"单个 clan:// 文件源"加入
+            if (importSubscriptionList(importFile!!, name)) {
+                SubscriptionConfig.setLastImportDir(importFile!!.parent)
+                return
+            }
             // 记忆导入目录(与旧文件选择器一致:以父目录为准)
             SubscriptionConfig.setLastImportDir(importFile!!.parent)
             val clanPath = importPath.replace("/storage/emulated/0", "clan://localhost")
@@ -293,6 +326,60 @@ class SubscriptionActivity : BaseVbActivity<ActivitySubscriptionBinding>() {
         val dir = File(getExternalFilesDir(null), "subscription_import")
         if (!dir.exists()) dir.mkdirs()
         return dir
+    }
+
+    /**
+     * 订阅清单文件导入(形如 assets 默认订阅 [{name,url},...]):
+     * 读取内容识别为"清单数组"后逐条去重加入(不做网络校验,用户点选启用时才拉取);
+     * 识别失败/无有效条目返回 false,由调用方按"单个 clan:// 文件源"回落,不影响原有导入。
+     * @return true=已按清单处理(可能 0 条新增);false=非目标格式
+     */
+    private fun importSubscriptionList(file: File, displayName: String): Boolean {
+        val text = try {
+            file.readText(Charsets.UTF_8).trim()
+        } catch (t: Throwable) {
+            return false
+        }
+        if (text.isEmpty() || text[0] != '[') return false
+
+        val parsed = ArrayList<Subscription>()
+        try {
+            val arr = org.json.JSONArray(text)
+            for (i in 0 until arr.length()) {
+                val obj = arr.optJSONObject(i) ?: continue
+                val n = obj.optString("name", "").trim()
+                val u = obj.optString("url", "").trim()
+                if (n.isNotEmpty() && u.isNotEmpty()) parsed.add(Subscription(n, u))
+            }
+        } catch (t: Throwable) {
+            return false // 非目标格式(如单源配置 JSON 对象),回落旧逻辑
+        }
+        if (parsed.isEmpty()) return false
+
+        val hadChecked = mSubscriptions.any { it.isChecked }
+        var firstAdded: Subscription? = null
+        var added = 0
+        for (s in parsed) {
+            if (mSubscriptions.any { it.url == s.url }) continue // 与本机已有订阅去重
+            mSubscriptions.add(s.setChecked(false))
+            if (firstAdded == null) firstAdded = s
+            added++
+        }
+        if (added == 0) {
+            AppBubble.toastLong("清单中的订阅地址与本机已有订阅相同")
+            return true
+        }
+        // 勾选了"启用"且当前没有使用中的订阅 → 默认启用清单首条,避免导入后无可用的订阅
+        if (mPendingChecked && !hadChecked && firstAdded != null) {
+            firstAdded.isChecked = true
+            mSelectedUrl = firstAdded.url
+        }
+        AppLog.log("订阅管理", "导入订阅清单: " + added + " 条(文件 " + displayName + ")")
+        LogStore.log(Category.SUBSCRIPTION, "订阅: 清单导入 " + added + " 条")
+        mSubscriptionAdapter.setNewData(mSubscriptions)
+        updateEmptyState()
+        AppBubble.toast("已导入 $added 条订阅")
+        return true
     }
 
     /**
