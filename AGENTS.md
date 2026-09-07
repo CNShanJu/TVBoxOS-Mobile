@@ -75,6 +75,8 @@ app / feature
 4. UI 组件禁止发 EventBus 业务事件;新代码禁止新增 EventBus 事件。
 5. 模块依赖只增公开契约接口;Gradle 依赖默认 `implementation`,谨慎 `api`。
 6. 业务/后台任务必须用模块级共享执行器(如 `HeavyTaskUtil`),且带取消/过期自检语义(epoch),不得每轮 new 线程池后 shutdown 了事。
+7. 所有可滚动组件(RecyclerView/ScrollView/GridView/横向列表等)必须保留**内边距**并配合
+   `clipToPadding=false` 让首/末内容不贴到屏幕或容器边缘滚动;禁止内容贴边滚动影响视觉效果。
 
 ## 七、安全与工程红线(持续约束)
 
@@ -100,6 +102,9 @@ app / feature
 - 依赖升级与版本对齐走显式批次(Room/exo 等跨模块依赖版本一致),禁止引入冗余/重复依赖;同步清理死源码与无效 import。
 - Gradle 开启/维护缓存与并行构建,避免本地与 CI 行为漂移。
 - 图片加载统一单一图片库,不复用多套;网络状态/电量等系统状态统一经 SystemStateMonitor 单点订阅。
+- **全局复用同一个图片占位符**:全 App 图片(海报/封面/缩略图等)占位与加载失败统一用
+  `placeholder_poster`(灰底+居中图标,主题感知);禁止各页面/适配器自行引入第二套占位图
+  (如 iv_load_fail / img_loading_placeholder 等),发现即收敛到统一占位。
 - 多语言资源按需裁剪(`resConfigs`),禁止无界塞入语言包。
 
 ## 八、推荐推进顺序(供排期参考)
@@ -116,6 +121,30 @@ app / feature
 - 提交信息遵循 `doc/Git提交规范.md`(type[scope]: 描述 ≤50 字;一次提交一件事;提交前 git status 确认无多余文件)。
 - 文件级提交:按范围 `git add`,不混入无关改动;本规则文件(AGENTS.md)与各 doc/ 状态文档随对应批次同步更新并提交。
 - 改进.txt 本身与 release-notes-v3.0.1.md 不入库;其要求以上方章节为准。
+
+### 构建内存纪律(强制)
+
+1. **Gradle 堆固定,不因单次构建临时改动**:`gradle.properties` 的 `org.gradle.jvmargs` 固定为
+   `-Xmx2g -XX:MaxMetaspaceSize=512m -Djdk.tls.client.protocols=TLSv1.2`。禁止为了单次打包临时调大/调小 `-Xmx`
+   构建后还原——不同 `-Xmx` 会让 Gradle 各起一个常驻 Daemon(4g/2g/1g daemon 并存)互抢内存,
+   这正是"每次打包都内存不足/`mmap failed`/`hs_err_pid*.log`"的根因。
+2. **打包内存不足时的标准处理**:先 `gradlew --stop` 停 Daemon,仍不足再结束残留 jdk17 java 进程
+   (`Get-Process java` 排查含 `GradleDaemon`/`KotlinCompileDaemon` 的进程),然后以固定配置重新构建。
+   不要靠改堆绕行。
+3. 若确需为 CI/极端机器调堆,走显式批次讨论,完成后回写固定值,不得留下多个历史堆配置常驻进程。
+
+### 发布与版本纪律(强制)
+
+1. **Release 文案要归纳,不照搬**:发布 Release/发版说明时,禁止把 git commit 逐条照搬贴出;
+   必须基于本次变更做**用户可读的总结归纳**(主要新增/修复/改进及其影响),按「大.中.小」版本号对应版本写出。
+2. **debug 包严禁进 git**:永远不要提交/推送 debug 构建产物(如 *_debug.apk、build 产物);
+   除非用户**明确要求**,且即便如此也须先与用户**二次确认**后方可提交。
+3. **push 前自动升版本(用户未另行说明时)**:
+   - 每次 push 若用户没有指定版本,先按 **大版本号·中版本号·小版本号** 提升**小版本号**一次
+     (改 `app/app_config.properties` 的 `versionName` 末段 +1,并同步 `versionCode` 单调递增),再提交代码。
+   - 用户让**打 tag** 时:一律基于**最新的 versionName** 打(如 `v3.4.5`)。
+   - 用户让**发布 app(出正式包)**时:一律基于**最新 tag 对应的版本**构建。
+   - 用户有主动说明(指定版本号/tag/发布方式)时,以用户说明为准。
 
 ## 十、常用基础设施速查
 
