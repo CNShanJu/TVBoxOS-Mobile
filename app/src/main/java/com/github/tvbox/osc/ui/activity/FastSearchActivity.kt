@@ -100,6 +100,8 @@ class FastSearchActivity : BaseVbActivity<ActivityFastSearchBinding>(), TextWatc
     private val refreshStaging = ArrayList<Movie.Video>()
     /** 用户上拉打断刷新后置真:放弃本次结果替换,保留当前列表 */
     private var quietRefreshCancelled = false
+    /** 下拉刷新本轮是否已提前收起反馈圈(首批结果到达即收;慢源不再拖住下拉反馈) */
+    private var refreshSpinnerDismissed = false
 
     /** 是否已勾选订阅(以订阅管理写入的接口地址为准) */
     private fun hasSubscription(): Boolean {
@@ -633,6 +635,7 @@ class FastSearchActivity : BaseVbActivity<ActivityFastSearchBinding>(), TextWatc
     /**
      * 顶部下拉刷新:仅重跑结果搜索,不动来源抽屉/历史热词/整页 loading;
      * 不先清空可见结果,数据暂存,全部来源返回后一次性替换列表(避免抖动/白屏)。
+     * 反馈圈不等全部来源:收到首批有效结果即提前收起,其余来源后台继续收(见 searchData)。
      * 结束后由数据回调收尾 {@link RubberBandSwipeRefreshLayout#setRefreshing(boolean)}。
      */
     private fun pullRefreshSearch() {
@@ -652,6 +655,7 @@ class FastSearchActivity : BaseVbActivity<ActivityFastSearchBinding>(), TextWatc
         }
         quietRefresh = true
         quietRefreshCancelled = false
+        refreshSpinnerDismissed = false
         refreshStaging.clear()
         searchFinished = false
         resultVods.clear()
@@ -856,6 +860,12 @@ class FastSearchActivity : BaseVbActivity<ActivityFastSearchBinding>(), TextWatc
             }
             if (quietRefresh) {
                 refreshStaging.addAll(data)
+                // 首批有效结果已到:提前收起下拉反馈圈,其余慢源后台继续收;
+                // 避免"等全部来源返回才收圈"导致下拉反馈被最慢来源拖住。
+                if (!refreshSpinnerDismissed && mBinding.llLayout.isRefreshing) {
+                    refreshSpinnerDismissed = true
+                    mBinding.llLayout.setRefreshing(false)
+                }
             } else if (searchAdapter.data.size > 0) {
                 searchAdapter.addData(data)
             } else {
@@ -892,7 +902,10 @@ class FastSearchActivity : BaseVbActivity<ActivityFastSearchBinding>(), TextWatc
                 showEmpty()
             }
             cancel()
-            mBinding.llLayout.setRefreshing(false) // 收起顶部下拉刷新(若有)
+            // 全部来源已返回:若反馈圈尚未提前收起(如慢源先行返回、首批即完成),此处统一收尾
+            if (mBinding.llLayout.isRefreshing) {
+                mBinding.llLayout.setRefreshing(false)
+            }
             updateEndTip()
         }
     }
