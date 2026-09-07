@@ -38,6 +38,7 @@ import okhttp3.Response;
  */
 public final class UpdateManager {
 
+    private static final String TAG = "UpdateManager";
     private static final Handler MAIN = new Handler(Looper.getMainLooper());
     private static volatile UpdateManager instance;
 
@@ -98,6 +99,8 @@ public final class UpdateManager {
      */
     public void start(Context context, UpdateInfo info, Updater.Callback cb) {
         if (context == null) return;
+        LOG.i(TAG, "开始下载 version=" + (info == null ? "?" : info.versionName)
+                + " size=" + (info == null ? "?" : info.apkSize));
         synchronized (this) {
             if (state == State.DOWNLOADING || state == State.PAUSED) return;
             this.appContext = context.getApplicationContext();
@@ -130,6 +133,7 @@ public final class UpdateManager {
 
     /** 暂停下载(断点保留,可在{@link #resume()}继续) */
     public void pause() {
+        LOG.i(TAG, "暂停下载(断点保留)");
         pausedFlag = true;
         cancelCurrentCall();
         // 状态在 worker 结束处确认;若 worker 已在读,标志位使其退出
@@ -138,6 +142,7 @@ public final class UpdateManager {
     /** 继续下载(从断点 Range 续传) */
     public void resume() {
         if (state != State.PAUSED) return;
+        LOG.i(TAG, "继续下载(从断点续传)");
         pausedFlag = false;
         state = State.DOWNLOADING;
         notifyListeners();
@@ -146,6 +151,7 @@ public final class UpdateManager {
 
     /** 取消并清除(用户"不再更新"):删除半成品并回到空闲,同时隐藏悬浮圈 */
     public void cancel() {
+        LOG.i(TAG, "放弃更新,清除缓存");
         cancelFlag = true;
         pausedFlag = true; // 让 worker 读循环退出
         cancelCurrentCall();
@@ -167,8 +173,13 @@ public final class UpdateManager {
     public boolean installCurrent(Context context) {
         Context ctx = context != null ? context.getApplicationContext() : appContext;
         File apk = getApkFile();
-        if (ctx == null || apk == null) return false;
-        return installApk(ctx, apk);
+        if (ctx == null || apk == null) {
+            LOG.e(TAG, "安装失败:上下文或已下载 APK 缺失");
+            return false;
+        }
+        boolean ok = installApk(ctx, apk);
+        LOG.i(TAG, "安装已下载 APK 结果=" + ok + " path=" + apk.getAbsolutePath());
+        return ok;
     }
 
     /** 应用启动清理:删除"版本与当前安装一致"的本地 APK(更新完成后首次打开);并清讨厌半成品 */
@@ -258,7 +269,7 @@ public final class UpdateManager {
                 // 所有候选源均失败
                 state = State.FAILED;
                 errMsg = lastErr == null ? "下载失败" : ("下载失败: " + lastErr);
-                LOG.e("UpdateManager: " + errMsg);
+                LOG.e(TAG, "下载失败: " + errMsg);
                 notifyListeners();
                 fireError();
             }

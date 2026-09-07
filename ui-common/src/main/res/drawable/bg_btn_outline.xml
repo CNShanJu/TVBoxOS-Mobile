@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 通用描边按钮背景:圆角与 Material 按钮一致(common_corners),1dp 主题感知描边(fab_stroke),
+     底色透明(露出弹窗底色)。用于避开 Material OutlinedButton 在部分主题下描边走样(只显底部线)。 -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <solid android:color="@android:color/transparent" />
+    <stroke
+        android:width="1dp"
+        android:color="@color/fab_stroke" />
+    <corners android:radius="@dimen/common_corners" />
+</shape>

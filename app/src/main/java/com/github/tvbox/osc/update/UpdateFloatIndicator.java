@@ -11,6 +11,7 @@ import android.view.ViewGroup;
 import android.widget.FrameLayout;
 
 import com.github.tvbox.osc.R;
+import com.github.tvbox.osc.util.LOG;
 
 /**
  * 全局更新悬浮圈:任何下载中的时候,无论当前停留在哪个页面,都显示一个圆形进度圈
@@ -21,6 +22,7 @@ import com.github.tvbox.osc.R;
  */
 public final class UpdateFloatIndicator implements UpdateManager.Listener {
 
+    private static final String TAG = "UpdateBubble";
     private static volatile UpdateFloatIndicator instance;
 
     private final Context appContext;
@@ -56,20 +58,37 @@ public final class UpdateFloatIndicator implements UpdateManager.Listener {
     public void attach(Activity activity) {
         if (activity == null) return;
         this.currentActivity = activity;
+        LOG.i(TAG, "attach " + activity.getClass().getSimpleName()
+                + " state=" + UpdateManager.get().getState());
         syncView();
     }
 
     /** BaseActivity.onPause/onDestroy 调用:当前 Activity 离开前台即卸载悬浮圈(安装/切页时隐藏) */
     public void detach(Activity activity) {
         if (activity != null && activity == currentActivity) {
+            LOG.i(TAG, "detach " + activity.getClass().getSimpleName());
             hide();
         }
+    }
+
+    /** 当前前台 Activity:优先取 attach 值,兜底用全局 Activity 堆栈顶(避免下载开始时 onResume 未赶上) */
+    private Activity resolveActivity(Activity fallback) {
+        if (fallback != null && !fallback.isFinishing() && !fallback.isDestroyed()) return fallback;
+        try {
+            Activity top = com.github.tvbox.osc.util.AppManager.getInstance().currentActivity();
+            if (top != null && !top.isFinishing() && !top.isDestroyed()) return top;
+        } catch (Throwable ignored) {
+        }
+        return null;
     }
 
     // ── 状态回调 ──
 
     @Override
     public void onUpdate(UpdateManager.State state, long downloaded, long total, UpdateInfo info) {
+        LOG.i(TAG, "onUpdate state=" + state + " d=" + downloaded + "/" + total
+                + " floatView=" + (floatView != null) + " cur="
+                + (currentActivity == null ? "null" : currentActivity.getClass().getSimpleName()));
         syncView();
     }
 
@@ -79,14 +98,19 @@ public final class UpdateFloatIndicator implements UpdateManager.Listener {
                 || s == UpdateManager.State.PAUSED
                 || s == UpdateManager.State.COMPLETED
                 || s == UpdateManager.State.FAILED);
-        Activity a = currentActivity;
+        Activity a = resolveActivity(currentActivity);
+        LOG.i(TAG, "syncView state=" + s + " show=" + show + " act="
+                + (a == null ? "null" : a.getClass().getSimpleName())
+                + (a == null ? "" : (" fin=" + a.isFinishing() + " des=" + a.isDestroyed()))
+                + " attached=" + (floatView != null && floatView.getParent() != null));
         if (!show || a == null || a.isFinishing() || a.isDestroyed()) {
             hide();
             return;
         }
         if (floatView == null) {
-            floatView = LayoutInflater.from(a).inflate(R.layout.float_update_indicator, null);
-            floatView.setOnClickListener(v -> showDialog());
+            floatView = createFloatView(a);
+            floatView.setOnClickListener(v -> handleTap());
+            floatView.setOnLongClickListener(v -> { showDialog(); return true; });
             floatView.setOnTouchListener(new DragTouchListener());
         }
         if (floatView.getParent() != a.getWindow().getDecorView()) {
@@ -101,8 +125,27 @@ public final class UpdateFloatIndicator implements UpdateManager.Listener {
             placeInitial(lp, a, floatView);
             decor.addView(floatView, lp);
             attachedParent = decor;
+            LOG.i(TAG, "bubble mounted to decor(" + a.getClass().getSimpleName() + ")");
         }
         updateBubble();
+    }
+
+    /** 构造悬浮气泡:优先 XML inflate;若 inflate 异常(资源/类加载问题)打印堆栈并程序化兜底 */
+    private View createFloatView(Activity a) {
+        try {
+            return LayoutInflater.from(a).inflate(R.layout.float_update_indicator, null);
+        } catch (Throwable t) {
+            LOG.e(TAG, "inflate float_update_indicator FAILED, fallback programmatic: " + t);
+            LOG.e(TAG, t);
+            FrameLayout root = new FrameLayout(a);
+            root.setClickable(true);
+            root.setFocusable(true);
+            UpdateBubbleView b = new UpdateBubbleView(a);
+            b.setId(R.id.update_bubble);
+            int size = Math.round(54 * a.getResources().getDisplayMetrics().density);
+            root.addView(b, new FrameLayout.LayoutParams(size, size));
+            return root;
+        }
     }
 
     /** 首次挂载/无记录位置:默认贴右下(距边 18dp、距底 76dp 避底栏);有记录位置则恢复 */
@@ -135,6 +178,8 @@ public final class UpdateFloatIndicator implements UpdateManager.Listener {
     private void hide() {
         // floatView 对象常驻(listener 在首次创建时已绑定),仅从父容器摘除并暂停动画
         if (floatView != null) {
+            LOG.i(TAG, "hide: removing floatView, parent="
+                    + (floatView.getParent() == null ? "null" : floatView.getParent().getClass().getSimpleName()));
             UpdateBubbleView b = floatView.findViewById(R.id.update_bubble);
             if (b != null) b.pauseAnimations();
             if (floatView.getParent() instanceof ViewGroup) {
@@ -143,12 +188,17 @@ public final class UpdateFloatIndicator implements UpdateManager.Listener {
         }
         attachedParent = null;
     }
-
     /** 用 UpdateBubbleView 映射 UpdateManager 状态与真实进度(进度环/中心图标/动画) */
     private void updateBubble() {
-        if (floatView == null) return;
+        if (floatView == null) {
+            LOG.i(TAG, "updateBubble: floatView null, skipped");
+            return;
+        }
         UpdateBubbleView b = floatView.findViewById(R.id.update_bubble);
-        if (b == null) return;
+        if (b == null) {
+            LOG.i(TAG, "updateBubble: R.id.update_bubble not found in inflated layout!");
+            return;
+        }
         UpdateManager m = UpdateManager.get();
         UpdateManager.State s = m.getState();
         long downloaded = m.getDownloaded();
@@ -171,6 +221,19 @@ public final class UpdateFloatIndicator implements UpdateManager.Listener {
                 break;
         }
         b.setState(bs, progress);
+        LOG.i(TAG, "bubble.setState " + bs + " " + Math.round(progress * 100) + "%");
+    }
+
+    /** 短按气泡:下载中→暂停,暂停中→继续;失败/完成/空闲→打开控制弹窗 */
+    private void handleTap() {
+        UpdateManager.State s = UpdateManager.get().getState();
+        if (s == UpdateManager.State.DOWNLOADING) {
+            UpdateManager.get().pause();
+        } else if (s == UpdateManager.State.PAUSED) {
+            UpdateManager.get().resume();
+        } else {
+            showDialog();
+        }
     }
 
     private void showDialog() {
