@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- 3:4 海报卡片加载占位:灰底 + 居中固定比例图标(图标不随盒子缩放/裁剪,盒子怎么变都居中不变形) -->
+<!-- 3:4 海报卡片加载占位:主题感知灰底 + 居中透明描边图标(图标不随盒子缩放/裁剪,盒子怎么变都居中不变形;
+     用透明图标(ic_img_placeholder)而非盒底不透明图,明暗主题下都不会突兀的白块) -->
 <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
     <item>
         <shape android:shape="rectangle">
@@ -8,6 +9,6 @@
         </shape>
     </item>
     <item
-        android:drawable="@drawable/ic_poster_placeholder"
+        android:drawable="@drawable/ic_img_placeholder"
         android:gravity="center" />
 </layer-list>

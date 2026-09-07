@@ -202,11 +202,11 @@ public class FastSearchAdapter extends BaseQuickAdapter<Movie.Video, BaseViewHol
                             .centerCorp(true)
                             .override(AutoSizeUtils.dp2px(mContext, 93), AutoSizeUtils.dp2px(mContext, 144))
                             .roundRadius(AutoSizeUtils.dp2px(mContext, 12), RoundTransformation.RoundType.ALL))
-                    .placeholder(R.drawable.iv_load_fail)
-                    .error(R.drawable.iv_load_fail)
+                    .placeholder(R.drawable.img_loading_placeholder)
+                    .error(R.drawable.img_loading_placeholder)
                     .into(ivThumb);
         } else {
-            ivThumb.setImageResource(R.drawable.iv_load_fail);
+            ivThumb.setImageResource(R.drawable.img_loading_placeholder);
         }
     }
 
