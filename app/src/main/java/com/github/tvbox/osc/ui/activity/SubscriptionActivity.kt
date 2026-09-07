@@ -37,6 +37,7 @@ import com.hjq.permissions.XXPermissions
 import com.lxj.xpopup.XPopup
 
 import java.io.File
+import java.io.FileOutputStream
 import java.util.function.Consumer
 
 class SubscriptionActivity : BaseVbActivity<ActivitySubscriptionBinding>() {
@@ -229,7 +230,9 @@ class SubscriptionActivity : BaseVbActivity<ActivitySubscriptionBinding>() {
 
     /**
      * 本地导入(系统 SAF 文件选择器;替代 hedzr 反射 StorageVolume 的老实现):
-     * 选择 txt/json 后转"设备内部存储真实路径",再以 clan:// 订阅源加入列表。
+     * 选择 txt/json 后,主卷文件(clan 服务器可直接按路径读)转真实路径、以 clan:// 引用原文件;
+     * 其它存储提供方(下载/云盘/第三方文件管理器等,SAF 授权读取但无主卷路径)复制进应用专属目录后
+     * 再以 clan:// 引用副本——任何能在系统文件管理器里打开的文件均可导入。
      * @param checked 与showPermissionTipPopup一样,只记录并传递选中状态
      */
     private var mPendingChecked = true
@@ -244,15 +247,34 @@ class SubscriptionActivity : BaseVbActivity<ActivitySubscriptionBinding>() {
 
     private fun handleLocalDoc(uri: Uri) {
         try {
-            val name = queryDisplayName(uri)
-            val path = externalStoragePathOf(uri)
-            if (name.isNullOrEmpty() || path == null || !name.lowercase().endsWith(".txt") && !name.lowercase().endsWith(".json")) {
-                AppBubble.toast("请选择设备内部存储中的 txt/json 订阅文件")
+            val nameRaw = queryDisplayName(uri)
+            val name = nameRaw?.trim()
+            if (name.isNullOrEmpty() ||
+                !name.lowercase().endsWith(".txt") && !name.lowercase().endsWith(".json")
+            ) {
+                AppBubble.toast("请选择 txt/json 订阅文件")
+                return
+            }
+            // 1) 主卷真实路径:clan:// 直接引用原文件(用户后续编辑文件可即时生效)
+            var importPath: String? = externalStoragePathOf(uri)
+            var importFile = importPath?.let { File(it) }
+            if (importFile == null || !importFile.exists()) {
+                // 2) 其它提供方无主卷路径:复制到应用专属目录(SAF 授权期内读流;副本由 clan 服务器读取)
+                val copy = importCopyOf(uri, name!!)
+                if (copy == null) {
+                    AppBubble.toast("无法读取所选文件,请选择本机存储中的 txt/json 订阅文件")
+                    return
+                }
+                importFile = copy
+                importPath = copy.absolutePath
+            }
+            if (importPath == null || !importPath.startsWith("/storage/emulated/0")) {
+                AppBubble.toast("暂不支持该存储位置,请选择内部存储中的 txt/json 订阅文件")
                 return
             }
             // 记忆导入目录(与旧文件选择器一致:以父目录为准)
-            SubscriptionConfig.setLastImportDir(File(path).parent)
-            val clanPath = path.replace("/storage/emulated/0", "clan://localhost")
+            SubscriptionConfig.setLastImportDir(importFile!!.parent)
+            val clanPath = importPath.replace("/storage/emulated/0", "clan://localhost")
             for (item in mSubscriptions) {
                 if (item.url == clanPath) {
                     AppBubble.toastLong("订阅地址与" + item.name + "相同")
@@ -266,6 +288,49 @@ class SubscriptionActivity : BaseVbActivity<ActivitySubscriptionBinding>() {
         }
     }
 
+    /** 应用专属导入目录(外部存储根下,clan:// 副本可被本地文件服务器读取,无需额外存储权限) */
+    private fun importDir(): File {
+        val dir = File(getExternalFilesDir(null), "subscription_import")
+        if (!dir.exists()) dir.mkdirs()
+        return dir
+    }
+
+    /**
+     * 把 SAF 选中的文件内容复制进应用专属导入目录(同名已存在时追加序号,避免覆盖原文件)。
+     * 返回落盘文件;读流失败/不可读返回 null。
+     */
+    private fun importCopyOf(uri: Uri, displayName: String): File? {
+        return try {
+            val base = sanitizeImportName(displayName)
+            val dir = importDir()
+            var target = File(dir, base)
+            var i = 1
+            while (target.exists()) {
+                val dot = base.lastIndexOf('.')
+                val stem = if (dot > 0) base.substring(0, dot) else base
+                val ext = if (dot > 0) base.substring(dot) else ""
+                target = File(dir, stem + "_" + (i++) + ext)
+            }
+            contentResolver.openInputStream(uri)?.use { input ->
+                FileOutputStream(target).use { output -> input.copyTo(output) }
+            } ?: return null
+            target
+        } catch (t: Throwable) {
+            t.printStackTrace()
+            null
+        }
+    }
+
+    /** 清理文件名中不能出现在真实路径的字符,并确保带 txt/json 扩展名 */
+    private fun sanitizeImportName(displayName: String): String {
+        var n = displayName.replace(Regex("[/\\\\:*?\"<>|\\u0000\\s]"), "_").trim()
+        if (!n.lowercase().endsWith(".txt") && !n.lowercase().endsWith(".json")) {
+            n += ".txt"
+        }
+        if (n.length > 80) n = n.substring(0, 80)
+        return n
+    }
+
     /** 查询所选文档的显示名(取不到时用 uri 末段兜底) */
     private fun queryDisplayName(uri: Uri): String? {
         return try {
@@ -277,14 +342,24 @@ class SubscriptionActivity : BaseVbActivity<ActivitySubscriptionBinding>() {
         }
     }
 
-    /** 仅支持 ExternalStorageProvider 主卷("primary:...")转真实路径;其它提供方无法由 clan 服务器按路径读取,返回 null */
+    /** 支持更多存储提供方转真实路径;主要支持 primary/home 等可被 clan 服务器按路径读取的存储 */
     private fun externalStoragePathOf(uri: Uri): String? {
         if (uri.scheme != "content") return null
         return try {
             val docId = DocumentsContract.getDocumentId(uri)
             val sep = docId.indexOf(':')
-            if (sep <= 0 || docId.substring(0, sep) != "primary") return null
-            Environment.getExternalStorageDirectory().absolutePath + "/" + docId.substring(sep + 1)
+            if (sep <= 0) return null
+            
+            val volumeName = docId.substring(0, sep)
+            val pathWithinVolume = docId.substring(sep + 1)
+            
+            val basePath = when (volumeName) {
+                "primary" -> Environment.getExternalStorageDirectory().absolutePath
+                "home" -> "/storage/emulated/0"
+                else -> return null
+            }
+            
+            "$basePath/$pathWithinVolume"
         } catch (t: Throwable) {
             null
         }
