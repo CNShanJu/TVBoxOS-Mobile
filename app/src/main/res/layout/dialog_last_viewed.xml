@@ -18,7 +18,10 @@
         android:drawableTint="@color/text_foreground"
         android:drawableRight="@drawable/ic_play"
         android:singleLine="true"
-        android:ellipsize="end"
+        android:ellipsize="marquee"
+        android:marqueeRepeatLimit="marquee_forever"
+        android:focusable="false"
+        android:focusableInTouchMode="false"
         android:maxLines="1"
         tools:text="上次"/>
 </LinearLayout>

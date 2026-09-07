@@ -433,8 +433,8 @@ class HomeFragment : BaseVbFragment<FragmentHomeBinding>() {
                     .isDestroyOnDismiss(true)
                     .isCenterHorizontal(true)
                     .isTouchThrough(true)
-                    // 距屏幕底部约120dp(转px),不同密度设备位置一致;配合 maxLines=1 气泡高度固定不截断
-                    .offsetY(ScreenUtils.getAppScreenHeight() - ConvertUtils.dp2px(120f + 44f))
+                    // 距屏幕底部约155dp(转px),不同密度设备位置一致;配合 maxLines=1 气泡高度固定不截断
+                    .offsetY(ScreenUtils.getAppScreenHeight() - ConvertUtils.dp2px(155f + 44f))
                     .asCustom(LastViewedDialog(requireContext(), vodInfoList[0]))
                     .show()
                     .delayDismiss(4000)

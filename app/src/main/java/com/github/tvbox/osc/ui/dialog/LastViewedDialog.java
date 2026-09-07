@@ -33,6 +33,8 @@ public class LastViewedDialog extends PositionPopupView {
         super.onCreate();
         TextView textView = findViewById(R.id.tv);
         textView.setText("上次看到: "+vodInfo.name+" "+vodInfo.note);
+        // 触发跑马灯滚动(超出单行时不换行、循环滚动播放)
+        textView.setSelected(true);
         textView.setOnClickListener(view -> {
             FastClickCheckUtil.check(view);
             dismiss();
