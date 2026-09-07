@@ -50,11 +50,11 @@ public class FolderAdapter extends BaseQuickAdapter<VideoFolder, BaseViewHolder>
             }
             Picasso.get()
                     .load(firstPath == null ? "" : firstPath)
-                    .placeholder(R.drawable.img_loading_placeholder)
-                    .error(R.drawable.img_loading_placeholder)
+                    .placeholder(R.drawable.iv_load_fail)
+                    .error(R.drawable.iv_load_fail)
                     .into(iv);
         } else {
-            iv.setImageResource(R.drawable.img_loading_placeholder);
+            iv.setImageResource(R.drawable.iv_load_fail);
         }
     }
 }

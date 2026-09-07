@@ -924,12 +924,12 @@ public class DownloadFragment extends BaseVbFragment<FragmentDownloadBinding> {
             // 统一图片加载到 Picasso 单例(共享 OkHttp 连接池/缓存),移除 Glide 双依赖
             com.squareup.picasso.Picasso.get()
                     .load(pf)
-                    .placeholder(R.drawable.img_loading_placeholder)
-                    .error(R.drawable.img_loading_placeholder)
+                    .placeholder(R.drawable.iv_load_fail)
+                    .error(R.drawable.iv_load_fail)
                     .centerCrop()
                     .into(iv);
         } else {
-            iv.setImageResource(R.drawable.img_loading_placeholder);
+            iv.setImageResource(R.drawable.iv_load_fail);
             if (pic != null && !pic.isEmpty()) {
                 DownloadFacade.get().ensurePosterAsync(pic, vodName);
             }
