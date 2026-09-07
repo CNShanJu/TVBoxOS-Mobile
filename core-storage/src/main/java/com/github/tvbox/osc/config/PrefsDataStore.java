@@ -218,22 +218,26 @@ public final class PrefsDataStore {
         }
     }
 
-    /** 从 JSON 文本恢复全部键值(与 {@link #exportJson()} 对称;写后内存/磁盘立即生效) */
-    public static void importJson(String json) {
-        if (json == null) return;
+    /** 从 JSON 文本恢复全部键值(与 {@link #exportJson()} 对称;写后内存/磁盘立即生效)。
+     *  @return 实际恢复的键数量(-1 表示解析失败) */
+    public static int importJson(String json) {
+        if (json == null) return 0;
         try {
             java.lang.reflect.Type type = new com.google.gson.reflect.TypeToken<java.util.LinkedHashMap<String, Object>>() {
             }.getType();
             java.util.Map<String, Object> map = GSON.fromJson(json, type);
-            importAll(map);
+            return map == null ? 0 : importAll(map);
         } catch (Throwable th) {
             th.printStackTrace();
+            return -1;
         }
     }
 
-    /** 写入全部键值(未经 JSON 的类型原样写回);数值做整/浮点归一,避免 Gson Object 化后变 Double 而丢失类型 */
-    public static void importAll(java.util.Map<String, Object> cfg) {
-        if (cfg == null) return;
+    /** 写入全部键值(未经 JSON 的类型原样写回);数值做整/浮点归一,避免 Gson Object 化后变 Double 而丢失类型。
+     *  @return 实际写入的键数量 */
+    public static int importAll(java.util.Map<String, Object> cfg) {
+        if (cfg == null) return 0;
+        int count = 0;
         for (java.util.Map.Entry<String, Object> e : cfg.entrySet()) {
             String key = e.getKey();
             Object v = e.getValue();
@@ -241,6 +245,7 @@ public final class PrefsDataStore {
             try {
                 if (v instanceof Boolean || v instanceof String) {
                     put(key, v);
+                    count++;
                 } else if (v instanceof Number) {
                     double d = ((Number) v).doubleValue();
                     if (d == Math.rint(d) && !Double.isInfinite(d) && Math.abs(d) <= Integer.MAX_VALUE) {
@@ -248,12 +253,14 @@ public final class PrefsDataStore {
                     } else {
                         put(key, (float) d);
                     }
+                    count++;
                 } else {
                     // 不支持的运行时类型跳过(不影响其余键)
                 }
             } catch (Throwable ignored) {
             }
         }
+        return count;
     }
 
     private static void write(java.util.function.Function<Preferences, MutablePreferences> fn) {

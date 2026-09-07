@@ -113,27 +113,44 @@ public class BackupDialog extends AppBottomPopupView {
         try {
             String root = Environment.getExternalStorageDirectory().getAbsolutePath();
             File backup = new File(root + "/tvbox_backup/" + dir);
-            if (!backup.exists()) {
+            if (!backup.exists() || !backup.isDirectory()) {
                 AppBubble.toast("未找到备份目录");
                 return;
             }
-            // 1) 配置域(DataStore:系统/播放/订阅/直播/主页热播/下载配置...)先恢复,写后内存/磁盘立即生效
-            File cfgFile = new File(backup, "config.json");
-            byte[] cfgData = FileUtils.readSimple(cfgFile);
-            if (cfgData != null) {
-                com.github.tvbox.osc.config.PrefsDataStore.importJson(new String(cfgData, "UTF-8"));
-            }
-            // 2) Room DB(历史/收藏/缓存条目):旧备份可能只有 sqlite 没有 config.json,互不阻塞
+            int prefsCount = 0;
             boolean dbOk = false;
-            File db = new File(backup, "sqlite");
-            if (db.exists()) {
+
+            // 1) 配置域(DataStore:设置/订阅/搜索历史/源勾选记忆...):新格式 prefs.json,兼容旧格式 config.json
+            File cfgFile = firstExisting(backup, "prefs.json", "config.json");
+            if (cfgFile != null) {
+                byte[] cfgData = FileUtils.readSimple(cfgFile);
+                if (cfgData != null) {
+                    prefsCount = com.github.tvbox.osc.config.PrefsDataStore
+                            .importJson(new String(cfgData, "UTF-8"));
+                }
+            }
+            // 2) Room DB(播放历史/收藏/缓存):新格式 room.db,兼容旧格式 sqlite
+            File db = firstExisting(backup, "room.db", "sqlite");
+            if (db != null) {
                 try {
                     dbOk = AppDataManager.restore(db);
                 } catch (Throwable ignored) {
                 }
             }
-            AppBubble.toast("恢复成功,即将重启应用!");
-            new Handler().postDelayed(() -> AppUtils.relaunchApp(true), 2000);
+
+            if (prefsCount <= 0 && !dbOk) {
+                AppBubble.toast("未找到可恢复的数据,请先备份");
+                return;
+            }
+            StringBuilder msg = new StringBuilder();
+            if (prefsCount > 0) msg.append("设置/订阅/搜索历史");
+            if (dbOk) {
+                if (msg.length() > 0) msg.append("、");
+                msg.append("播放历史/收藏");
+            }
+            msg.append(" 已恢复,即将重启应用!");
+            AppBubble.toast(msg.toString());
+            restartApp();
         } catch (Throwable e) {
             e.printStackTrace();
             AppBubble.toast("恢复数据流异常");
@@ -146,24 +163,26 @@ public class BackupDialog extends AppBottomPopupView {
             File dir = new File(root + "/tvbox_backup/");
             if (!dir.exists())
                 dir.mkdirs();
-            Date now = new Date();
-            File backup = new File(dir, new SimpleDateFormat("yyyy-MM-dd-HHmmss").format(now));
+            File backup = new File(dir, new SimpleDateFormat("yyyy-MM-dd-HHmmss").format(new Date()));
             backup.mkdirs();
 
-            // 1) 配置域(DataStore:系统/播放/订阅/直播/主页热播/下载配置...)——修复前只存了已退役的 Hawk2,导致备份"不生效"
+            // 1) 配置域(DataStore:设置/订阅/搜索历史/源勾选记忆...)
             boolean cfgOk = FileUtils.writeSimple(
                     com.github.tvbox.osc.config.PrefsDataStore.exportJson().getBytes("UTF-8"),
-                    new File(backup, "config.json"));
-
-            // 2) Room DB(历史/收藏/缓存条目):新装可缺失,不阻塞整体备份
+                    new File(backup, "prefs.json"));
+            // 2) Room DB(播放历史/收藏/缓存条目):新装可缺失,不阻塞整体备份
             boolean dbOk = false;
             try {
-                dbOk = AppDataManager.backup(new File(backup, "sqlite"));
+                dbOk = AppDataManager.backup(new File(backup, "room.db"));
             } catch (Throwable ignored) {
             }
+            // 3) 归档清单:记录格式版本/应用版本,保证"后期改动后老备份仍可读、新字段可后向兼容"
+            FileUtils.writeSimple(buildManifest().getBytes("UTF-8"), new File(backup, "manifest.json"));
 
             if (cfgOk) {
-                AppBubble.toast(dbOk ? "备份成功!" : "备份成功!(无历史/缓存数据)");
+                AppBubble.toast(dbOk
+                        ? "备份成功(设置/订阅/搜索历史+播放历史/收藏)"
+                        : "备份成功(设置/订阅/搜索历史,暂无播放历史/收藏)");
             } else {
                 FileUtils.recursiveDelete(backup);
                 AppBubble.toast("备份失败!");
@@ -171,6 +190,62 @@ public class BackupDialog extends AppBottomPopupView {
         } catch (Throwable e) {
             e.printStackTrace();
             AppBubble.toast("备份失败!");
+        }
+    }
+
+    /** 归档清单:格式版本 schema + 来源应用信息 + 覆盖域,便于后续版本升级读取/校验 */
+    private String buildManifest() {
+        try {
+            com.google.gson.JsonObject o = new com.google.gson.JsonObject();
+            o.addProperty("schema", 1);
+            o.addProperty("createdAt", new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(new Date()));
+            o.addProperty("appVersion", AppUtils.getAppVersionName());
+            o.addProperty("versionCode", AppUtils.getAppVersionCode());
+            o.addProperty("domains", "prefs,room");
+            return o.toString();
+        } catch (Throwable ignored) {
+            return "{}";
+        }
+    }
+
+    /** 依序返回目录中第一个存在的文件(新格式优先,旧格式兜底),均不存在返回 null */
+    private static File firstExisting(File dir, String... names) {
+        for (String n : names) {
+            File f = new File(dir, n);
+            if (f.exists() && f.isFile()) return f;
+        }
+        return null;
+    }
+
+    /** 冷启动重启:先让旧进程退出,由 Alarm 到点后在新进程冷启动主界面,保证 App.onCreate 全量重读备份 */
+    private void restartApp() {
+        try {
+            android.content.Intent launch = getContext().getPackageManager()
+                    .getLaunchIntentForPackage(getContext().getPackageName());
+            if (launch != null) {
+                launch.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK
+                        | android.content.Intent.FLAG_ACTIVITY_CLEAR_TASK);
+                android.app.AlarmManager am = (android.app.AlarmManager) getContext()
+                        .getSystemService(Context.ALARM_SERVICE);
+                android.app.PendingIntent pi = android.app.PendingIntent.getActivity(
+                        getContext(), 0x5EEDB, launch,
+                        android.app.PendingIntent.FLAG_UPDATE_CURRENT
+                                | android.app.PendingIntent.FLAG_IMMUTABLE);
+                if (am != null) {
+                    am.set(android.app.AlarmManager.RTC,
+                            System.currentTimeMillis() + 1800L, pi);
+                    new Handler().postDelayed(() ->
+                            android.os.Process.killProcess(android.os.Process.myPid()), 300L);
+                    return;
+                }
+                getContext().startActivity(launch);
+            }
+        } catch (Throwable t) {
+            t.printStackTrace();
+        }
+        try {
+            AppUtils.relaunchApp(true);
+        } catch (Throwable ignored) {
         }
     }
 

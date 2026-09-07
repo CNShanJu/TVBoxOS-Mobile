@@ -231,14 +231,16 @@ public class FileUtils {
         return false;
     }
 
+    /** 稳健读取整个文件字节(读到 EOF;不用 available() 估长,避免截断) */
     public static byte[] readSimple(File src) {
-        try {
-            BufferedInputStream bis = new BufferedInputStream(new FileInputStream(src));
-            int len = bis.available();
-            byte[] data = new byte[len];
-            bis.read(data);
-            bis.close();
-            return data;
+        try (java.io.FileInputStream fis = new java.io.FileInputStream(src);
+             java.io.ByteArrayOutputStream bos = new java.io.ByteArrayOutputStream()) {
+            byte[] buf = new byte[8192];
+            int n;
+            while ((n = fis.read(buf)) > 0) {
+                bos.write(buf, 0, n);
+            }
+            return bos.toByteArray();
         } catch (IOException e) {
             e.printStackTrace();
         }
