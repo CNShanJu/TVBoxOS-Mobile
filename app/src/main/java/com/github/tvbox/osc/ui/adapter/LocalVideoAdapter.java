@@ -182,7 +182,7 @@ public class LocalVideoAdapter extends BaseQuickAdapter<VideoInfo, BaseViewHolde
                     frameCache.put(path, fb);
                     iv.setImageBitmap(fb);
                 } else {
-                    iv.setImageResource(R.drawable.iv_load_fail);
+                    iv.setImageResource(R.drawable.placeholder_poster);
                 }
                 // 时长补写 SP + 刷新该行时长文本/进度条
                 if (fdur > 0) {

@@ -139,7 +139,7 @@ public class FastSearchAdapter extends BaseQuickAdapter<Movie.Video, BaseViewHol
         setText(helper, R.id.tvName, item.name);
     }
 
-    /** 单列列表:时间(单独一行),类型 地区(一行),演员;集数已由海报卡渐变黑底处理 */
+    /** 单列列表:时间(单独一行),类型 地区(一行),集数;演员不展示,集数信息由文字行承载 */
     private void bindList(BaseViewHolder helper, Movie.Video item) {
         // 时间
         String year = item.year > 0 ? String.valueOf(item.year) : "";
@@ -151,12 +151,13 @@ public class FastSearchAdapter extends BaseQuickAdapter<Movie.Video, BaseViewHol
         setVisible(helper, R.id.tvMeta, !typeArea.isEmpty());
         setText(helper, R.id.tvMeta, typeArea);
 
-        // 演员
-        boolean hasActor = item.actor != null && !item.actor.isEmpty();
-        setVisible(helper, R.id.tvActor, hasActor);
-        if (hasActor) {
-            setText(helper, R.id.tvActor, item.actor.trim());
-        }
+        // 集数(原演员行;空则隐藏,内容上移)
+        String note = item.note == null ? "" : item.note.trim();
+        setVisible(helper, R.id.tvActor, !note.isEmpty());
+        setText(helper, R.id.tvActor, note);
+
+        // 集数已在文字行显示,隐藏海报角底部渐变黑底(避免重复)
+        setVisible(helper, R.id.llNoteBar, false);
     }
 
     /** 类型 空格 地区(空段跳过;整行为空则隐藏) */
@@ -193,20 +194,20 @@ public class FastSearchAdapter extends BaseQuickAdapter<Movie.Video, BaseViewHol
             return;
         }
         if (!TextUtils.isEmpty(item.pic)) {
-            // 列表:固定 16:9 竖图(高:宽) 93x144;圆角 12dp;缓存键区分尺寸避免旧缓存复用
+            // 列表:固定小图 113x144(宽113,高不变,拉宽20dp);圆角 12dp;缓存键区分尺寸避免旧缓存复用
             int pos = ivThumb.getTag() instanceof Integer ? (Integer) ivThumb.getTag() : -1;
-            String cacheKey = MD5.string2MD5(item.pic + "position=" + pos + "_t93x144");
+            String cacheKey = MD5.string2MD5(item.pic + "position=" + pos + "_t113x144");
             Picasso.get()
                     .load(item.pic)
                     .transform(new RoundTransformation(cacheKey)
                             .centerCorp(true)
-                            .override(AutoSizeUtils.dp2px(mContext, 93), AutoSizeUtils.dp2px(mContext, 144))
+                            .override(AutoSizeUtils.dp2px(mContext, 113), AutoSizeUtils.dp2px(mContext, 144))
                             .roundRadius(AutoSizeUtils.dp2px(mContext, 12), RoundTransformation.RoundType.ALL))
-                    .placeholder(R.drawable.iv_load_fail)
-                    .error(R.drawable.iv_load_fail)
+                    .placeholder(R.drawable.placeholder_poster)
+                    .error(R.drawable.placeholder_poster)
                     .into(ivThumb);
         } else {
-            ivThumb.setImageResource(R.drawable.iv_load_fail);
+            ivThumb.setImageResource(R.drawable.placeholder_poster);
         }
     }
 

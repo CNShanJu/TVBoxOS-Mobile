@@ -36,7 +36,7 @@
             android:layout_height="wrap_content"
             tools:text="《爱情公寓》第三季"
             android:textColor="@color/text_foreground"
-            android:textSize="15sp"
+            android:textSize="@dimen/search_card_title_size"
             android:textStyle="bold"
             android:ellipsize="end"
             android:singleLine="true"/>
@@ -49,7 +49,7 @@
             tools:text="电视剧 内地 普通话"
             android:layout_marginTop="4dp"
             android:textColor="@color/text_sub_foreground"
-            android:textSize="12sp"
+            android:textSize="@dimen/search_card_text_size"
             android:ellipsize="end"
             android:singleLine="true"/>
 
@@ -61,7 +61,7 @@
             tools:text="韦正 2012"
             android:layout_marginTop="3dp"
             android:textColor="@color/text_sub_foreground"
-            android:textSize="12sp"
+            android:textSize="@dimen/search_card_text_size"
             android:ellipsize="end"
             android:singleLine="true"/>
 
@@ -73,7 +73,7 @@
             tools:text="演员：娄艺潇 孙艺洲 邓家佳 王传君"
             android:layout_marginTop="3dp"
             android:textColor="@color/text_sub_foreground"
-            android:textSize="12sp"
+            android:textSize="@dimen/search_card_text_size"
             android:ellipsize="end"
             android:maxLines="1"/>
 
@@ -86,20 +86,13 @@
             android:orientation="horizontal"
             android:gravity="center_vertical">
 
-            <ImageView
-                android:layout_width="@dimen/dp_15"
-                android:layout_height="@dimen/dp_15"
-                android:src="@drawable/ic_play"
-                app:tint="@color/color_highlight"/>
-
             <TextView
                 android:id="@+id/tvSite"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 tools:text="爱奇艺播放"
-                android:layout_marginStart="5dp"
                 android:textColor="@color/color_highlight"
-                android:textSize="12sp"
+                android:textSize="@dimen/search_card_text_size"
                 android:ellipsize="end"
                 android:singleLine="true"/>
         </LinearLayout>

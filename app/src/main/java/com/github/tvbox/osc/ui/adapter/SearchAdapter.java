@@ -37,11 +37,11 @@ public class SearchAdapter extends BaseQuickAdapter<Movie.Video, BaseViewHolder>
                                 .centerCorp(true)
                                 .override(AutoSizeUtils.dp2px(mContext, 100), AutoSizeUtils.dp2px(mContext, 140))
                                 .roundRadius(AutoSizeUtils.dp2px(mContext, 20), RoundTransformation.RoundType.ALL))
-                        .placeholder(R.drawable.iv_load_fail)
-                        .error(R.drawable.iv_load_fail)
+                        .placeholder(R.drawable.placeholder_poster)
+                        .error(R.drawable.placeholder_poster)
                         .into(ivThumb);
             } else {
-                ivThumb.setImageResource(R.drawable.iv_load_fail);
+                ivThumb.setImageResource(R.drawable.placeholder_poster);
             }
     }
 }

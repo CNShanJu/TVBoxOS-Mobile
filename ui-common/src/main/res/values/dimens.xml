@@ -3,6 +3,10 @@
 
     <dimen name="common_corners">12dp</dimen>
 
+    <!-- 搜索结果卡片统一字号(改此处一处,全部搜索布局的对应文本一起生效) -->
+    <dimen name="search_card_title_size">16sp</dimen>
+    <dimen name="search_card_text_size">13sp</dimen>
+
 
     <dimen name="ts_16">16dp</dimen>
     <dimen name="ts_20">20dp</dimen>

@@ -1,13 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- 3:4 海报卡片加载占位:灰底 + 居中固定比例图标(图标不随盒子缩放/裁剪,盒子怎么变都居中不变形) -->
+<!-- 全 App 图片统一加载占位组件(改此处一处,所有图片占位符一起生效):
+     主题感知灰底 @color/bg_popup(= bg_component 80% 透明度) + 居中固定比例图标
+     图标用透明描边 ic_img_placeholder,不随盒子缩放/裁剪,明暗主题下居中不变形、不突兀白块 -->
 <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
     <item>
         <shape android:shape="rectangle">
-            <solid android:color="@color/bg_gray" />
+            <solid android:color="@color/bg_popup" />
             <corners android:radius="@dimen/radius_card" />
         </shape>
     </item>
     <item
-        android:drawable="@drawable/ic_poster_placeholder"
+        android:drawable="@drawable/ic_img_placeholder"
         android:gravity="center" />
 </layer-list>

@@ -89,11 +89,11 @@ public class VideoDetailDialog extends SheetResizableBottomPopup {
         });
         String picUrl = DefaultConfig.checkReplaceProxy(mVideo.pic);
         if (!TextUtils.isEmpty(picUrl)) {
-            // 占位/错误用与布局一致的主题感知占位(透明描边图标叠 bg_component),不再用 IV_FAIL 黑猫白底
+            // 占位/错误用全 App 统一占位组件 placeholder_poster(主题感知灰底+居中图标)
             Picasso.get()
                     .load(picUrl)
-                    .placeholder(R.drawable.img_loading_placeholder)
-                    .error(R.drawable.img_loading_placeholder)
+                    .placeholder(R.drawable.placeholder_poster)
+                    .error(R.drawable.placeholder_poster)
                     .into(binding.ivThum);
 
             binding.llThum.setOnClickListener(view -> {
