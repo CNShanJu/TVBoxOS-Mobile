@@ -33,13 +33,14 @@
         android:layout_marginHorizontal="20dp"
         android:background="@drawable/bg_large_round_gray">
 
-        <!-- 选项行超出时在卡片内部滚动;拖到顶/底可越界跟手回弹(iOS 橡皮筋,见 RubberBandScrollView) -->
+        <!-- 选项行超出时在卡片内部滚动;拖到顶/底可越界跟手回弹(iOS 橡皮筋,见 RubberBandScrollView)。
+             clipToPadding=true:滚动内容不越过 padding,首末行滚到顶/底时文字不会贴着圆角卡片上下边。 -->
         <com.github.tvbox.osc.ui.kit.RubberBandScrollView
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:scrollbars="none"
-            android:clipToPadding="false"
-            android:paddingVertical="12dp">
+            android:clipToPadding="true"
+            android:paddingVertical="20dp">
 
             <LinearLayout
                 android:layout_width="match_parent"
