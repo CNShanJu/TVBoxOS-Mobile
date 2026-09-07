@@ -41,6 +41,9 @@ public class FastSearchAdapter extends BaseQuickAdapter<Movie.Video, BaseViewHol
 
     private int mode = MODE_LIST;
 
+    /** 本次会话已成功加载过的海报 URL:刷新/滚动回显时命中缓存不再重闪 shimmer,减轻宫格/通栏图多时的卡顿 */
+    private final java.util.Set<String> loadedUrls = new java.util.HashSet<>();
+
     public FastSearchAdapter() {
         super(R.layout.item_search, new ArrayList<>());
         setMultiTypeDelegate(new MultiTypeDelegate<Movie.Video>() {
@@ -199,7 +202,11 @@ public class FastSearchAdapter extends BaseQuickAdapter<Movie.Video, BaseViewHol
         int h = AutoSizeUtils.dp2px(mContext, 267);
         int radius = AutoSizeUtils.dp2px(mContext, 12);
         String cacheKey = MD5.string2MD5(url + "_search_poster_200x267");
-        com.github.tvbox.osc.ui.kit.PicassoShimmer.start(ivThumb);
+        // 已成功加载过(会话内缓存命中)→ 不再闪骨架屏,直接出图;仅真正加载中才启动 shimmer
+        boolean cached = loadedUrls.contains(url);
+        if (!cached) {
+            com.github.tvbox.osc.ui.kit.PicassoShimmer.start(ivThumb);
+        }
         Picasso.get()
                 .load(url)
                 .transform(new RoundTransformation(cacheKey)
@@ -209,6 +216,7 @@ public class FastSearchAdapter extends BaseQuickAdapter<Movie.Video, BaseViewHol
                 .into(ivThumb, new com.squareup.picasso.Callback() {
                     @Override
                     public void onSuccess() {
+                        loadedUrls.add(url);
                         com.github.tvbox.osc.ui.kit.PicassoShimmer.stop(ivThumb);
                     }
 

@@ -96,10 +96,6 @@ class FastSearchActivity : BaseVbActivity<ActivityFastSearchBinding>(), TextWatc
      * 全部来源返回后一次性换列表(避免中途清屏/反复 relayout 造成抖动);
      * 若用户正开着来源列,保持原样,只更新结果数据。
      */
-    private var quietRefresh = false
-    private val refreshStaging = ArrayList<Movie.Video>()
-    /** 用户上拉打断刷新后置真:放弃本次结果替换,保留当前列表 */
-    private var quietRefreshCancelled = false
     /** 下拉刷新本轮是否已提前收起反馈圈(首批结果到达即收;慢源不再拖住下拉反馈) */
     private var refreshSpinnerDismissed = false
 
@@ -620,9 +616,7 @@ class FastSearchActivity : BaseVbActivity<ActivityFastSearchBinding>(), TextWatc
         searchAdapter.setNewData(ArrayList())
         searchAdapterFilter.setNewData(ArrayList())
         resultVods.clear()
-        quietRefresh = false // 普通搜索不受上一次下拉刷新模式影响
-        quietRefreshCancelled = false
-        refreshStaging.clear()
+        refreshSpinnerDismissed = false // 新一轮搜索:下拉刷新提前收圈状态复位
         searchFilterKey = ""
         isFilterMode = false
         spNames.clear()
@@ -633,10 +627,9 @@ class FastSearchActivity : BaseVbActivity<ActivityFastSearchBinding>(), TextWatc
     }
 
     /**
-     * 顶部下拉刷新:仅重跑结果搜索,不动来源抽屉/历史热词/整页 loading;
-     * 不先清空可见结果,数据暂存,全部来源返回后一次性替换列表(避免抖动/白屏)。
+     * 顶部下拉刷新 = 完整重刷:复用 {@link #searchResult()} 同一套结果编排
+     * (清空旧列表 → 来源逐批返回逐批上屏),三布局(单列/宫格/通栏)共用同一数据流。
      * 反馈圈不等全部来源:收到首批有效结果即提前收起,其余来源后台继续收(见 searchData)。
-     * 结束后由数据回调收尾 {@link RubberBandSwipeRefreshLayout#setRefreshing(boolean)}。
      */
     private fun pullRefreshSearch() {
         val word = searchTitle
@@ -653,43 +646,23 @@ class FastSearchActivity : BaseVbActivity<ActivityFastSearchBinding>(), TextWatc
             searchSessionActive = false
             JsLoader.stopAll()
         }
-        quietRefresh = true
-        quietRefreshCancelled = false
         refreshSpinnerDismissed = false
-        refreshStaging.clear()
-        searchFinished = false
+        // 完整重刷:清空结果(含当前"全部显示"列表),逐批上屏
+        searchAdapter.setNewData(ArrayList())
+        searchAdapterFilter.setNewData(ArrayList())
         resultVods.clear()
+        isFilterMode = false
+        searchFilterKey = ""
+        mBinding.mGridView.visibility = View.VISIBLE
+        mBinding.mGridViewFilter.visibility = View.GONE
+        searchFinished = false
         updateEndTip()
-        allRunCount.set(0)
-        val requestList: MutableList<SourceBean> = ArrayList()
-        requestList.addAll(SourceConfigProviders.get().sourceBeanList)
-        val home = SourceConfigProviders.get().homeSourceBean
-        requestList.remove(home)
-        requestList.add(0, home)
-        val siteKey = ArrayList<String>()
-        for (bean: SourceBean in requestList) {
-            if (!bean.isSearchable) continue
-            if (mCheckSources != null && !mCheckSources!!.containsKey(bean.key)) continue
-            siteKey.add(bean.key)
-            allRunCount.incrementAndGet()
-        }
-        if (siteKey.isEmpty()) {
-            // 无可搜来源:直接收尾,避免刷新转圈永远挂着
-            quietRefresh = false
-            searchFinished = true
-            mBinding.llLayout.setRefreshing(false)
-            updateEndTip()
-            return
-        }
-        searchSessionActive = true
-        for (key: String in siteKey) {
-            launchSearch(key)
-        }
+        searchResult()
     }
 
     /**
-     * 用户上拉打断下拉刷新:中止本轮搜索(不再发起新来源),保留当前结果列表,
-     * 已返回的暂存数据放弃;容器转圈与回弹由容器自己负责收起。
+     * 用户上拉打断下拉刷新:中止本轮搜索(不再发起新来源),保留已上屏的结果;
+     * 容器转圈与回弹由容器自己负责收起。epoch 递增让在途任务自弃。
      */
     private fun cancelQuietRefresh() {
         synchronized(searchLock) {
@@ -701,7 +674,6 @@ class FastSearchActivity : BaseVbActivity<ActivityFastSearchBinding>(), TextWatc
             searchSessionActive = false
             JsLoader.stopAll()
         }
-        quietRefreshCancelled = true
     }
 
     /** 搜索编排状态:epoch=当前轮次;暂停后未发起的源进 pending,页面回前台续跑(替代页面自建 10 线程池) */
@@ -853,56 +825,31 @@ class FastSearchActivity : BaseVbActivity<ActivityFastSearchBinding>(), TextWatc
                     resultVods[video.sourceKey] = ArrayList()
                 }
                 resultVods[video.sourceKey]!!.add(video)
-                // 静默刷新:不加新来源 tab,结果先暂存,完成后一次性替换
-                if (!quietRefresh && video.sourceKey !== lastSourceKey) { // 添加到最后面并记录最后一个key用于下次判断
+                if (video.sourceKey !== lastSourceKey) { // 添加到最后面并记录最后一个key用于下次判断
                     lastSourceKey = addWordAdapterIfNeed(video.sourceKey)
                 }
             }
-            if (quietRefresh) {
-                refreshStaging.addAll(data)
-                // 首批有效结果已到:提前收起下拉反馈圈,其余慢源后台继续收;
-                // 避免"等全部来源返回才收圈"导致下拉反馈被最慢来源拖住。
-                if (!refreshSpinnerDismissed && mBinding.llLayout.isRefreshing) {
-                    refreshSpinnerDismissed = true
-                    mBinding.llLayout.setRefreshing(false)
-                }
-            } else if (searchAdapter.data.size > 0) {
+            if (searchAdapter.data.size > 0) {
                 searchAdapter.addData(data)
             } else {
                 showSuccess()
                 if (!isFilterMode) mBinding.mGridView.visibility = View.VISIBLE
                 searchAdapter.setNewData(data)
+                // 首批有效结果已上屏:提前收起下拉反馈圈,其余慢源后台继续收
+                if (!refreshSpinnerDismissed && mBinding.llLayout.isRefreshing) {
+                    refreshSpinnerDismissed = true
+                    mBinding.llLayout.setRefreshing(false)
+                }
             }
         }
         val count = allRunCount.decrementAndGet()
         if (count <= 0 && !searchFinished) {
             searchFinished = true // 全部来源已返回:进入"完成态"
-            if (quietRefresh) {
-                quietRefresh = false
-                if (quietRefreshCancelled) {
-                    // 用户上拉打断:放弃本次数据,保留当前列表不动
-                    quietRefreshCancelled = false
-                    refreshStaging.clear()
-                } else {
-                    // 一次性替换结果;空结果走空态
-                    if (refreshStaging.isNotEmpty()) {
-                        searchAdapter.setNewData(ArrayList(refreshStaging))
-                        showSuccess()
-                    } else {
-                        searchAdapter.setNewData(ArrayList())
-                        showEmpty()
-                    }
-                    refreshStaging.clear()
-                    searchAdapterFilter.setNewData(ArrayList())
-                    // 回到"全部显示"视图(刷新期间不感知过滤切换)
-                    mBinding.mGridView.visibility = View.VISIBLE
-                    mBinding.mGridViewFilter.visibility = View.GONE
-                }
-            } else if (searchAdapter.data.size <= 0) {
+            if (searchAdapter.data.size <= 0) {
                 showEmpty()
             }
             cancel()
-            // 全部来源已返回:若反馈圈尚未提前收起(如慢源先行返回、首批即完成),此处统一收尾
+            // 全部来源已返回:若反馈圈尚未提前收起,此处统一收尾
             if (mBinding.llLayout.isRefreshing) {
                 mBinding.llLayout.setRefreshing(false)
             }
