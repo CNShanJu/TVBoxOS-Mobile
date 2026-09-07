@@ -93,7 +93,6 @@ public class GithubReleaseUpdater implements Updater {
             if (!isNewerVersion(version, current)) return null;
         }
         String note = root.optString("body", "");
-        String url = null;
         String apkName = null;
         long size = -1;
         JSONArray assets = root.optJSONArray("assets");
@@ -102,23 +101,38 @@ public class GithubReleaseUpdater implements Updater {
                 JSONObject a = assets.getJSONObject(i);
                 String n = a.optString("name", "");
                 if (!isApkAsset(n)) continue;
-                String u = a.optString("browser_download_url", a.optString("url", ""));
                 long s = a.optLong("size", -1);
                 if (!isDebugAsset(n)) {
                     apkName = n;
-                    url = u;
                     size = s;
                     break;
                 }
                 if (apkName == null) {
                     apkName = n;
-                    url = u;
                     size = s;
                 }
             }
         }
-        if (url == null) return null;
-        return new UpdateInfo(version, tag, -1, url, apkName, size, note);
+        if (apkName == null) return null;
+        List<String> candidates = buildDownloadCandidates(
+                String.format("https://github.com/%s/%s/releases/download/%s/%s",
+                        UpdaterConfig.getGithubOwner(), UpdaterConfig.getGithubRepo(), tag, apkName));
+        if (candidates.isEmpty()) return null;
+        return new UpdateInfo(version, tag, -1, candidates, apkName, size, note);
+    }
+
+    /** 构建下载候选地址:优先拼接 GitHub 加速代理,末尾保留直连作为兜底 */
+    private static List<String> buildDownloadCandidates(String directUrl) {
+        List<String> list = new ArrayList<>();
+        if (directUrl == null || directUrl.trim().isEmpty()) return list;
+        String direct = directUrl.trim();
+        String proxy = UpdaterConfig.getGithubDownloadProxy();
+        if (!proxy.isEmpty()) {
+            // 拼接形如 https://gh-proxy.org/https://github.com/...
+            list.add(proxy + direct);
+        }
+        list.add(direct);
+        return list;
     }
 
     // ------------------------------------------------------------------

@@ -16,7 +16,6 @@ import com.github.tvbox.osc.util.LOG;
 
 import java.io.File;
 import java.io.FileOutputStream;
-import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -200,11 +199,14 @@ public final class UpdateManager {
 
     // ── 内部 ──
 
+    /** 单次候选下载结果 */
+    private enum DownloadResult { COMPLETE, FAIL, STOPPED }
+
     private void startDownload() {
         final Context ctx = appContext;
         final UpdateInfo ui = info;
         final File dest = targetFile;
-        if (ctx == null || ui == null || ui.downloadUrl == null || dest == null) {
+        if (ctx == null || ui == null || ui.downloadUrls == null || ui.downloadUrls.isEmpty() || dest == null) {
             state = State.FAILED;
             errMsg = "更新信息不完整";
             notifyListeners();
@@ -212,73 +214,25 @@ public final class UpdateManager {
             return;
         }
         HeavyTaskUtil.getBigTaskExecutorService().execute(() -> {
-            final long startFrom = downloaded;
-            OutputStream fos = null;
-            InputStream is = null;
             boolean completes = false;
+            String lastErr = null;
             try {
                 OkHttpClient client = AppCompositionRoot.network().general();
-                Request.Builder rb = new Request.Builder().url(ui.downloadUrl);
-                if (startFrom > 0) {
-                    rb.header("Range", "bytes=" + startFrom + "-");
+                // 候选列表依序尝试:代理优先,直连兜底;某候选失败(网络/HTTP/流中断)自动切下一个,
+                // 已写字节保留(断点续传),若服务端支持 Range 则用 downloaded 偏移续下。
+                for (String url : ui.downloadUrls) {
+                    if (cancelFlag || pausedFlag) break;
+                    DownloadResult dr = downloadFromCandidate(client, url, dest, ui);
+                    if (dr == DownloadResult.COMPLETE) {
+                        completes = true;
+                        break;
+                    } else if (dr == DownloadResult.STOPPED) {
+                        break;
+                    }
+                    lastErr = errMsg; // FAIL:记录本次错误,切换下一候选
                 }
-                Request req = rb.build();
-                okhttp3.Call call = client.newCall(req);
-                currentCall = call;
-                Response resp = call.execute();
-                try {
-                    if (resp.code() == 416) {
-                        // Range 不被服务端支持,重来
-                        downloaded = 0;
-                        dest.delete();
-                    } else if (!resp.isSuccessful() || resp.body() == null) {
-                        throw new IOException("下载失败: HTTP " + resp.code());
-                    } else if (startFrom > 0 && resp.code() != 206) {
-                        // 服务端忽略 Range(返回 200):重新从头写
-                        downloaded = 0;
-                        dest.delete();
-                    }
-                    long bodyLen = resp.body() == null ? 0 : resp.body().contentLength();
-                    if (bodyLen > 0) {
-                        total = (downloaded == 0) ? bodyLen : downloaded + bodyLen;
-                    } else if (total <= 0) {
-                        total = -1;
-                    }
-                    boolean append = downloaded > 0;
-                    fos = new FileOutputStream(dest, append);
-                    is = resp.body() == null ? null : resp.body().byteStream();
-                    if (is != null) {
-                        byte[] buf = new byte[8192];
-                        int len;
-                        long lastPost = 0;
-                        while (!pausedFlag && !cancelFlag && (len = is.read(buf)) > 0) {
-                            fos.write(buf, 0, len);
-                            downloaded += len;
-                            // 进度节流:约 150ms 或跨 512KB 才上报一次,避免高频主线程回调
-                            long now = System.currentTimeMillis();
-                            if (now - lastPost >= 150) {
-                                lastPost = now;
-                                postProgress();
-                            }
-                        }
-                        postProgress();
-                    }
-                } finally {
-                    try { if (resp != null) resp.close(); } catch (Throwable ignored) {}
-                }
-                completes = !pausedFlag && !cancelFlag;
             } catch (Throwable t) {
-                if (cancelFlag || pausedFlag) {
-                    // 主动暂停/取消:不算失败
-                } else {
-                    state = State.FAILED;
-                    errMsg = "下载失败: " + (t.getMessage() == null ? t.getClass().getSimpleName() : t.getMessage());
-                    LOG.e("UpdateManager: " + errMsg);
-                }
-            } finally {
-                try { if (is != null) is.close(); } catch (Throwable ignored) {}
-                try { if (fos != null) fos.close(); } catch (Throwable ignored) {}
-                currentCall = null;
+                lastErr = t.getMessage() == null ? t.getClass().getSimpleName() : t.getMessage();
             }
 
             if (cancelFlag) {
@@ -301,11 +255,93 @@ public final class UpdateManager {
                     fireError();
                 }
             } else {
-                // 已经标记 FAILED,仅广播
+                // 所有候选源均失败
+                state = State.FAILED;
+                errMsg = lastErr == null ? "下载失败" : ("下载失败: " + lastErr);
+                LOG.e("UpdateManager: " + errMsg);
                 notifyListeners();
                 fireError();
             }
         });
+    }
+
+    /**
+     * 尝试从一个候选地址下载(支持断点续传)。
+     *
+     * @return COMPLETE 本候选已完整下载;FAIL 本候选失效(可切换下一候选);STOPPED 用户暂停/取消。
+     */
+    private DownloadResult downloadFromCandidate(OkHttpClient client, String url, File dest, UpdateInfo ui) {
+        final long startFrom = downloaded;
+        OutputStream fos = null;
+        InputStream is = null;
+        try {
+            Request.Builder rb = new Request.Builder().url(url);
+            if (startFrom > 0) {
+                rb.header("Range", "bytes=" + startFrom + "-");
+            }
+            Request req = rb.build();
+            okhttp3.Call call = client.newCall(req);
+            currentCall = call;
+            Response resp = call.execute();
+            try {
+                if (resp.code() == 416) {
+                    // Range 不被服务端支持,重来
+                    downloaded = 0;
+                    dest.delete();
+                } else if (!resp.isSuccessful() || resp.body() == null) {
+                    // 该候选失效(如代理不可用/限流/404):交外层切换下一候选
+                    return DownloadResult.FAIL;
+                } else if (startFrom > 0 && resp.code() != 206) {
+                    // 服务端忽略 Range(返回 200):重新从头写
+                    downloaded = 0;
+                    dest.delete();
+                }
+                long bodyLen = resp.body() == null ? 0 : resp.body().contentLength();
+                if (bodyLen > 0) {
+                    total = (downloaded == 0) ? bodyLen : downloaded + bodyLen;
+                } else if (total <= 0) {
+                    total = -1;
+                }
+                boolean append = downloaded > 0;
+                fos = new FileOutputStream(dest, append);
+                is = resp.body() == null ? null : resp.body().byteStream();
+                if (is != null) {
+                    byte[] buf = new byte[8192];
+                    int len;
+                    long lastPost = 0;
+                    while (!pausedFlag && !cancelFlag && (len = is.read(buf)) > 0) {
+                        fos.write(buf, 0, len);
+                        downloaded += len;
+                        // 进度节流:约 150ms 或跨 512KB 才上报一次,避免高频主线程回调
+                        long now = System.currentTimeMillis();
+                        if (now - lastPost >= 150) {
+                            lastPost = now;
+                            postProgress();
+                        }
+                    }
+                    postProgress();
+                }
+            } finally {
+                try { if (resp != null) resp.close(); } catch (Throwable ignored) {}
+            }
+
+            if (cancelFlag || pausedFlag) return DownloadResult.STOPPED;
+
+            // 体积校验:已知 apkSize 且下载大小不符(代理可能返回错误页/截断)→ 判本候选失败,换下一候选
+            if (ui.apkSize > 0 && dest.exists() && dest.length() != ui.apkSize) {
+                errMsg = "下载大小不符(" + dest.length() + " != " + ui.apkSize + ")";
+                return DownloadResult.FAIL;
+            }
+            return DownloadResult.COMPLETE;
+        } catch (Throwable t) {
+            if (cancelFlag || pausedFlag) return DownloadResult.STOPPED;
+            errMsg = t.getMessage() == null ? t.getClass().getSimpleName() : t.getMessage();
+            return DownloadResult.FAIL;
+        } finally {
+            try { if (is != null) is.close(); } catch (Throwable ignored) {}
+            try { if (fos != null) fos.close(); } catch (Throwable ignored) {}
+            currentCall = null;
+        }
     }
 
     private void cancelCurrentCall() {

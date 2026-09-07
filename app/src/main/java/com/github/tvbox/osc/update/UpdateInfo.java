@@ -1,5 +1,9 @@
 package com.github.tvbox.osc.update;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+
 /**
  * 一次更新检查得到的结果(不可变)。
  * <p>
@@ -17,8 +21,11 @@ public final class UpdateInfo {
     /** 版本号 code;实现未知时填 -1 */
     public final int versionCode;
 
-    /** APK 下载地址 */
+    /** 主 APK 下载地址(候选列表 {@link #downloadUrls} 的第一个;向后兼容) */
     public final String downloadUrl;
+
+    /** APK 下载候选地址列表(依序尝试:代理优先,直连兜底;下载失败自动切换到下一个) */
+    public final List<String> downloadUrls;
 
     /** APK 文件名(用于本地落盘与展示;可为空) */
     public final String apkName;
@@ -30,13 +37,24 @@ public final class UpdateInfo {
     public final String releaseNote;
 
     public UpdateInfo(String versionName, String versionTag, int versionCode,
-                      String downloadUrl, String apkName, long apkSize, String releaseNote) {
+                      List<String> downloadUrls, String apkName, long apkSize, String releaseNote) {
         this.versionName = versionName;
         this.versionTag = versionTag;
         this.versionCode = versionCode;
-        this.downloadUrl = downloadUrl;
+        this.downloadUrls = downloadUrls == null
+                ? Collections.<String>emptyList()
+                : Collections.unmodifiableList(new ArrayList<>(downloadUrls));
+        this.downloadUrl = this.downloadUrls.isEmpty() ? null : this.downloadUrls.get(0);
         this.apkName = apkName;
         this.apkSize = apkSize;
         this.releaseNote = releaseNote;
+    }
+
+    /** 兼容旧构造:单个下载地址(等价于仅一个候选) */
+    public UpdateInfo(String versionName, String versionTag, int versionCode,
+                      String downloadUrl, String apkName, long apkSize, String releaseNote) {
+        this(versionName, versionTag, versionCode,
+                downloadUrl == null ? Collections.<String>emptyList() : Collections.singletonList(downloadUrl),
+                apkName, apkSize, releaseNote);
     }
 }

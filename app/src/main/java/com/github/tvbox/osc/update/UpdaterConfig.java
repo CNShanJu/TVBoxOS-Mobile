@@ -17,9 +17,13 @@ public final class UpdaterConfig {
     public static final String DEFAULT_GITHUB_OWNER = "CNShanJu";
     public static final String DEFAULT_GITHUB_REPO = "TVBoxOS-Mobile";
 
+    /** 默认 GitHub 下载加速前缀(形如 https://gh-proxy.org/);空串=不使用代理,仅直连 */
+    public static final String DEFAULT_GITHUB_DOWNLOAD_PROXY = "https://gh-proxy.org/";
+
     private static final String KEY_SOURCE = "update_source";
     private static final String KEY_GITHUB_OWNER = "update_github_owner";
     private static final String KEY_GITHUB_REPO = "update_github_repo";
+    private static final String KEY_GITHUB_DOWNLOAD_PROXY = "update_github_download_proxy";
 
     private UpdaterConfig() {
     }
@@ -52,5 +56,16 @@ public final class UpdaterConfig {
 
     public static void setGithubRepo(String repo) {
         PrefsDataStore.put(KEY_GITHUB_REPO, repo == null || repo.trim().isEmpty() ? DEFAULT_GITHUB_REPO : repo.trim());
+    }
+
+    /** GitHub 下载加速前缀(默认 {@value #DEFAULT_GITHUB_DOWNLOAD_PROXY});空串/未配置=只用直连 */
+    public static String getGithubDownloadProxy() {
+        String v = PrefsDataStore.getString(KEY_GITHUB_DOWNLOAD_PROXY, DEFAULT_GITHUB_DOWNLOAD_PROXY);
+        return v == null ? "" : v.trim();
+    }
+
+    public static void setGithubDownloadProxy(String proxyPrefix) {
+        PrefsDataStore.put(KEY_GITHUB_DOWNLOAD_PROXY,
+                proxyPrefix == null ? "" : proxyPrefix.trim());
     }
 }
