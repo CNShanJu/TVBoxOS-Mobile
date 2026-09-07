@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 全 App 图片占位矢量图标(图片框 + 山 + 太阳,经典"加载图片"占位图形,语义中性)。
+     vector 任意尺寸等比清晰,替代早期位图 PNG(iv_load_fail 80px / ic_img_placeholder 250px
+     放到大卡片放大发糊)。换图标:替换本 path 或让 placeholder_poster.xml 改引其它 drawable。 -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="48dp"
+    android:height="48dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24"
+    android:tint="@color/text_highlight">
+    <path
+        android:fillColor="@android:color/white"
+        android:pathData="M21,19V5c0,-1.1 -0.9,-2 -2,-2H5c-1.1,0 -2,0.9 -2,2v14c0,1.1 0.9,2 2,2h14c1.1,0 2,-0.9 2,-2zM8.5,13.5l2.5,3.01L14.5,12l4.5,6H5l3.5,-4.5z" />
+</vector>

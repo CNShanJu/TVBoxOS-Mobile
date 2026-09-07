@@ -1,7 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- 全 App 图片统一加载占位组件(改此处一处,所有图片占位符一起生效):
-     主题感知灰底 @color/bg_popup(= bg_component 80% 透明度) + 居中固定比例图标
-     图标用透明描边 ic_img_placeholder,不随盒子缩放/裁剪,明暗主题下居中不变形、不突兀白块 -->
+     主题感知灰底 @color/bg_popup(= bg_component 80% 透明度) + 居中矢量图标
+     图标用 ic_image_placeholder(vector,任意尺寸清晰),透明底居中不随盒子缩放/裁剪,
+     明暗主题一致;禁止回退到位图 PNG 占位(放大发糊) -->
 <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
     <item>
         <shape android:shape="rectangle">
@@ -10,6 +11,6 @@
         </shape>
     </item>
     <item
-        android:drawable="@drawable/ic_img_placeholder"
+        android:drawable="@drawable/ic_image_placeholder"
         android:gravity="center" />
 </layer-list>
