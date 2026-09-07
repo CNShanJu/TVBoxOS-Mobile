@@ -1,9 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- 全局更新悬浮圆圈背景:主题色实心 + 主文字描边,与 FAB 同一观感 -->
+<!-- 全局更新悬浮圆钮背景:主题灰底(bg_popup,明暗自适应)+ 高亮描边(color_highlight),
+     与全 App 悬浮钮/强调风格一致,任何页面背景下都清晰;不再用纯色块突兀圆圈 -->
 <shape xmlns:android="http://schemas.android.com/apk/res/android"
     android:shape="oval">
-    <solid android:color="@color/colorPrimary" />
+    <solid android:color="@color/bg_popup" />
     <stroke
-        android:width="2dp"
-        android:color="@color/text_foreground" />
+        android:width="1.5dp"
+        android:color="@color/color_highlight" />
 </shape>

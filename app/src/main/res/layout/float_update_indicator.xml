@@ -6,6 +6,7 @@
     android:layout_width="54dp"
     android:layout_height="54dp"
     android:background="@drawable/bg_update_float_circle"
+    android:elevation="8dp"
     android:clickable="true"
     android:focusable="true">
 

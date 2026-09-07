@@ -1,12 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- 全 App 图片统一加载占位组件(改此处一处,所有图片占位符一起生效):
-     主题感知灰底 @color/bg_popup(= bg_component 80% 透明度) + 居中矢量图标
-     图标用 ic_image_placeholder(vector,任意尺寸清晰),透明底居中不随盒子缩放/裁剪,
-     明暗主题一致;禁止回退到位图 PNG 占位(放大发糊) -->
+     主题灰底 @color/bg_component + 居中矢量图标(ic_image_placeholder,任意尺寸清晰)。
+     底为不透明组件色、图标等比居中,不随盒子缩放裁剪;明暗主题一致。
+     若需换占位图形,替换 ic_image_placeholder.xml 的 pathData 即可。 -->
 <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
     <item>
         <shape android:shape="rectangle">
-            <solid android:color="@color/bg_popup" />
+            <solid android:color="@color/bg_component" />
             <corners android:radius="@dimen/radius_card" />
         </shape>
     </item>
