@@ -99,7 +99,6 @@ public class FastSearchAdapter extends BaseQuickAdapter<Movie.Video, BaseViewHol
         setText(helper, R.id.tvSite, sourceName);
 
         ImageView ivThumb = helper.getView(R.id.ivThumb);
-        if (ivThumb != null) ivThumb.setTag(helper.getLayoutPosition());
         loadPoster(ivThumb, item);
     }
 
@@ -187,28 +186,23 @@ public class FastSearchAdapter extends BaseQuickAdapter<Movie.Video, BaseViewHol
 
     private void loadPoster(ImageView ivThumb, Movie.Video item) {
         if (ivThumb == null) return;
-        if (mode == MODE_GRID || mode == MODE_BANNER) {
-            // 宫格/通栏:与首页 3:4 卡片一致(比例由 RatioShadowLayout 撑高,圆角由容器裁切,
-            // 占位为 placeholder_poster 灰底+居中图标),不固定 override,按卡片实际尺寸加载
-            com.github.tvbox.osc.util.PicassoLoad.into(ivThumb, item.pic);
-            return;
-        }
-        if (!TextUtils.isEmpty(item.pic)) {
-            // 列表:固定小图 113x144(宽113,高不变,拉宽20dp);圆角 12dp;缓存键区分尺寸避免旧缓存复用
-            int pos = ivThumb.getTag() instanceof Integer ? (Integer) ivThumb.getTag() : -1;
-            String cacheKey = MD5.string2MD5(item.pic + "position=" + pos + "_t113x144");
-            Picasso.get()
-                    .load(item.pic)
-                    .transform(new RoundTransformation(cacheKey)
-                            .centerCorp(true)
-                            .override(AutoSizeUtils.dp2px(mContext, 113), AutoSizeUtils.dp2px(mContext, 144))
-                            .roundRadius(AutoSizeUtils.dp2px(mContext, 12), RoundTransformation.RoundType.ALL))
-                    .placeholder(R.drawable.placeholder_poster)
-                    .error(R.drawable.placeholder_poster)
-                    .into(ivThumb);
-        } else {
-            ivThumb.setImageResource(R.drawable.placeholder_poster);
-        }
+        // 占位统一走 ImageView 背景层(placeholder_poster),src 只放实图:先清旧图露出占位,
+        // 三布局(列表/宫格/通栏)共用同一目标规格与稳定缓存键(不含 position),
+        // 切换布局/滚动复用均命中同一缓存,不再重复下载或拉原图。
+        ivThumb.setImageDrawable(null);
+        String url = item.pic == null ? "" : item.pic.trim();
+        if (url.isEmpty()) return;
+        int w = AutoSizeUtils.dp2px(mContext, 200);
+        int h = AutoSizeUtils.dp2px(mContext, 267);
+        int radius = AutoSizeUtils.dp2px(mContext, 12);
+        String cacheKey = MD5.string2MD5(url + "_search_poster_200x267");
+        Picasso.get()
+                .load(url)
+                .transform(new RoundTransformation(cacheKey)
+                        .centerCorp(true)
+                        .override(w, h)
+                        .roundRadius(radius, RoundTransformation.RoundType.ALL))
+                .into(ivThumb);
     }
 
     private String safeSourceName(String sourceKey) {
