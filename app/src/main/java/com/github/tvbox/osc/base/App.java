@@ -367,7 +367,8 @@ public class App extends MultiDexApplication {
             com.github.tvbox.osc.picasso.MyOkhttpDownLoader downloader = new com.github.tvbox.osc.picasso.MyOkhttpDownLoader(client);
             com.squareup.picasso.Picasso picasso = new com.squareup.picasso.Picasso.Builder(this)
                     .downloader(downloader)
-                    .executor(com.github.tvbox.osc.util.HeavyTaskUtil.getBigTaskExecutorService())
+                    // 图片解码专用池:与搜索/爬虫共享大池隔离,大量海报解码不拖慢各来源搜索请求
+                    .executor(com.github.tvbox.osc.util.HeavyTaskUtil.getImageExecutorService())
                     .defaultBitmapConfig(android.graphics.Bitmap.Config.RGB_565)
                     .build();
             com.squareup.picasso.Picasso.setSingletonInstance(picasso);
