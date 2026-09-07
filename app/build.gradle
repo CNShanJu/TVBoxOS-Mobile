@@ -24,6 +24,17 @@ def cfgVersionName = appConfig.getProperty('versionName', '2.2.0') ?: '2.2.0'
 def cfgAppName = appConfig.getProperty('appName', 'MBox') ?: 'MBox'
 def cfgAppIcon = appConfig.getProperty('appIcon', '@drawable/app_icon') ?: '@drawable/app_icon'
 
+/** debug 包用小一档的版本号(末段 -1,如 3.4.6 → 3.4.5),使 debug 内"检查更新"能检测到当前 release 并触发下载自测 */
+def debugVersionName(String releaseName) {
+    def parts = (releaseName ?: '').trim().split(/\./)
+    if (parts.length < 3) return releaseName
+    def last = parts[parts.length - 1].isInteger() ? parts[parts.length - 1].toInteger() : -1
+    if (last > 1) {
+        parts[parts.length - 1] = String.valueOf(last - 1)
+    }
+    return parts.join('.')
+}
+
 
 // ------------------------------------------------------------------
 // 主题颜色生成已迁移至 :ui-common 模块(3.7②):app 依赖 :ui-common 后自动获得
@@ -62,7 +73,13 @@ android {
 
         // Apk 输出配置
         variant.outputs.all { output ->
-            outputFileName = cfgAppName + '_v' + variant.versionName + '_' + variant.buildType.name
+            // debug 包版本号小一档(如 3.4.5):便于从 debug 包触发对 release(3.4.6)的"检查更新→下载"自测
+            String vn = cfgVersionName
+            if (variant.buildType.name == buildTypes.debug.getName()) {
+                vn = debugVersionName(cfgVersionName)
+                output.versionNameOverride = vn
+            }
+            outputFileName = cfgAppName + '_v' + vn + '_' + variant.buildType.name
             if (variant.buildType.name == buildTypes.release.getName()) {
                 outputFileName += '_' + new Date().format("yyyyMMdd")
             }

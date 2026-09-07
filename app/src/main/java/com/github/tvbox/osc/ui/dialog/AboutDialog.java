@@ -54,11 +54,8 @@ public class AboutDialog extends AppBottomPopupView {
                         return;
                     }
                     tvStatus.setText("发现新版本 v" + newVersion.versionName);
-                    String note = newVersion.releaseNote;
-                    String msg = (note == null || note.trim().isEmpty())
-                            ? "发现新版本 v" + newVersion.versionName + ",是否下载并安装?"
-                            : "发现新版本 v" + newVersion.versionName + ":\n" + note.trim();
-                    ConfirmDialog.show(getContext(), "检查更新", msg, "立即更新", () -> {
+                    // 更新确认弹窗:版本说明 Markdown 渲染、左对齐可滚动(替代旧纯文本居中拼接)
+                    UpdateNoteDialog.show(getContext(), newVersion, () -> {
                         AppBubble.toast("已开始下载,进度可通过悬浮圆圈查看/控制");
                         updater.downloadAndInstall(getContext(), newVersion, new Updater.Callback() {
                                 @Override
