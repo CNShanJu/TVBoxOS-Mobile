@@ -31,13 +31,11 @@ import com.github.tvbox.osc.util.SubscriptionConfig
 import com.github.tvbox.osc.util.Utils
 import com.google.gson.JsonObject
 import com.google.gson.JsonParser
-import com.hjq.permissions.OnPermissionCallback
-import com.hjq.permissions.Permission
-import com.hjq.permissions.XXPermissions
 import com.lxj.xpopup.XPopup
 
 import java.io.File
 import java.io.FileOutputStream
+import java.security.MessageDigest
 import java.util.function.Consumer
 
 class SubscriptionActivity : BaseVbActivity<ActivitySubscriptionBinding>() {
@@ -88,15 +86,7 @@ class SubscriptionActivity : BaseVbActivity<ActivitySubscriptionBinding>() {
                             }
 
                             override fun chooseLocal(checked: Boolean) { //本地导入
-                                if (!XXPermissions.isGranted(
-                                        mContext,
-                                        Permission.MANAGE_EXTERNAL_STORAGE
-                                    )
-                                ) {
-                                    showPermissionTipPopup(checked)
-                                } else {
-                                    pickFile(checked)
-                                }
+                                pickFile(checked)
                             }
                         })
                 ).show()
@@ -225,42 +215,12 @@ class SubscriptionActivity : BaseVbActivity<ActivitySubscriptionBinding>() {
         mBinding.llEmpty.root.visibility = if (empty) View.VISIBLE else View.GONE
     }
 
-    private fun showPermissionTipPopup(checked: Boolean) {
-        com.github.tvbox.osc.ui.dialog.ConfirmDialog.show(this@SubscriptionActivity, "提示", "这将访问您设备文件的读取权限", "去授权", {
-            XXPermissions.with(this@SubscriptionActivity)
-                .permission(Permission.MANAGE_EXTERNAL_STORAGE)
-                .request(object : OnPermissionCallback {
-                    override fun onGranted(permissions: List<String>, all: Boolean) {
-                        if (all) {
-                            pickFile(checked)
-                        } else {
-                            AppBubble.toastLong("部分权限未正常授予,请授权")
-                        }
-                    }
-
-                    override fun onDenied(permissions: List<String>, never: Boolean) {
-                        if (never) {
-                            AppBubble.toastLong("读写文件权限被永久拒绝，请手动授权")
-                            // 如果是被永久拒绝就跳转到应用权限系统设置页面
-                            XXPermissions.startPermissionActivity(
-                                this@SubscriptionActivity,
-                                permissions
-                            )
-                        } else {
-                            AppBubble.toast("获取权限失败")
-                            showPermissionTipPopup(checked)
-                        }
-                    }
-                })
-        })
-    }
-
     /**
      * 本地导入(系统 SAF 文件选择器;替代 hedzr 反射 StorageVolume 的老实现):
      * 选择 txt/json 后,主卷文件(clan 服务器可直接按路径读)转真实路径、以 clan:// 引用原文件;
      * 其它存储提供方(下载/云盘/第三方文件管理器等,SAF 授权读取但无主卷路径)复制进应用专属目录后
      * 再以 clan:// 引用副本——任何能在系统文件管理器里打开的文件均可导入。
-     * @param checked 与showPermissionTipPopup一样,只记录并传递选中状态
+     * @param checked 是否在导入成功后默认启用该订阅(导入菜单勾选状态,先记录后使用)
      */
     private var mPendingChecked = true
     private val pickLocalDoc = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
@@ -295,7 +255,7 @@ class SubscriptionActivity : BaseVbActivity<ActivitySubscriptionBinding>() {
                 importFile = copy
                 importPath = copy.absolutePath
             }
-            if (importPath == null || !importPath.startsWith("/storage/emulated/0")) {
+            if (importPath == null || !isUnderPrimaryStorage(importFile!!)) {
                 AppBubble.toast("暂不支持该存储位置,请选择内部存储中的 txt/json 订阅文件")
                 return
             }
@@ -307,7 +267,7 @@ class SubscriptionActivity : BaseVbActivity<ActivitySubscriptionBinding>() {
             }
             // 记忆导入目录(与旧文件选择器一致:以父目录为准)
             SubscriptionConfig.setLastImportDir(importFile!!.parent)
-            val clanPath = importPath.replace("/storage/emulated/0", "clan://localhost")
+            val clanPath = "clan://localhost" + importPath.removePrefix("/storage/emulated/0")
             for (item in mSubscriptions) {
                 if (item.url == clanPath) {
                     AppBubble.toastLong("订阅地址与" + item.name + "相同")
@@ -387,21 +347,17 @@ class SubscriptionActivity : BaseVbActivity<ActivitySubscriptionBinding>() {
     }
 
     /**
-     * 把 SAF 选中的文件内容复制进应用专属导入目录(同名已存在时追加序号,避免覆盖原文件)。
-     * 返回落盘文件;读流失败/不可读返回 null。
+     * 把 SAF 选中的文件内容复制进应用专属导入目录。
+     * 使用 URI 摘要作为副本名,重复选择同一文件时复用已有副本。
      */
     private fun importCopyOf(uri: Uri, displayName: String): File? {
         return try {
             val base = sanitizeImportName(displayName)
-            val dir = importDir()
-            var target = File(dir, base)
-            var i = 1
-            while (target.exists()) {
-                val dot = base.lastIndexOf('.')
-                val stem = if (dot > 0) base.substring(0, dot) else base
-                val ext = if (dot > 0) base.substring(dot) else ""
-                target = File(dir, stem + "_" + (i++) + ext)
-            }
+            val dot = base.lastIndexOf('.')
+            val stem = if (dot > 0) base.substring(0, dot) else base
+            val ext = if (dot > 0) base.substring(dot) else ""
+            val target = File(importDir(), stem + "_" + uriDigest(uri) + ext)
+            if (target.exists()) return target
             contentResolver.openInputStream(uri)?.use { input ->
                 FileOutputStream(target).use { output -> input.copyTo(output) }
             } ?: return null
@@ -410,6 +366,12 @@ class SubscriptionActivity : BaseVbActivity<ActivitySubscriptionBinding>() {
             t.printStackTrace()
             null
         }
+    }
+
+    private fun uriDigest(uri: Uri): String {
+        val digest = MessageDigest.getInstance("SHA-256")
+            .digest(uri.toString().toByteArray(Charsets.UTF_8))
+        return digest.joinToString("") { "%02x".format(it) }.take(16)
     }
 
     /** 清理文件名中不能出现在真实路径的字符,并确保带 txt/json 扩展名 */
@@ -433,6 +395,16 @@ class SubscriptionActivity : BaseVbActivity<ActivitySubscriptionBinding>() {
         }
     }
 
+    private fun isUnderPrimaryStorage(file: File): Boolean {
+        return try {
+            val root = Environment.getExternalStorageDirectory().canonicalFile
+            val candidate = file.canonicalFile
+            candidate == root || candidate.path.startsWith(root.path + File.separator)
+        } catch (t: Throwable) {
+            false
+        }
+    }
+
     /** 支持更多存储提供方转真实路径;主要支持 primary/home 等可被 clan 服务器按路径读取的存储 */
     private fun externalStoragePathOf(uri: Uri): String? {
         if (uri.scheme != "content") return null
@@ -440,17 +412,22 @@ class SubscriptionActivity : BaseVbActivity<ActivitySubscriptionBinding>() {
             val docId = DocumentsContract.getDocumentId(uri)
             val sep = docId.indexOf(':')
             if (sep <= 0) return null
-            
+
             val volumeName = docId.substring(0, sep)
             val pathWithinVolume = docId.substring(sep + 1)
-            
+            if (pathWithinVolume.isEmpty()) return null
+
             val basePath = when (volumeName) {
-                "primary" -> Environment.getExternalStorageDirectory().absolutePath
-                "home" -> "/storage/emulated/0"
+                "primary" -> Environment.getExternalStorageDirectory().canonicalPath
+                "home" -> Environment.getExternalStorageDirectory().canonicalPath
                 else -> return null
             }
-            
-            "$basePath/$pathWithinVolume"
+            val root = File(basePath).canonicalFile
+            val candidate = File(root, pathWithinVolume).canonicalFile
+            if (candidate != root && !candidate.path.startsWith(root.path + File.separator)) {
+                return null
+            }
+            candidate.path
         } catch (t: Throwable) {
             null
         }
