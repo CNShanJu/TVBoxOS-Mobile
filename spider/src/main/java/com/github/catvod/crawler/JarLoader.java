@@ -47,6 +47,7 @@ public class JarLoader {
     private boolean loadClassLoader(String jar, String key) {
         boolean success = false;
         try {
+            ensureSpiderDb();
             File cacheDir = new File(context.getCacheDir().getAbsolutePath() + "/catvod_csp");
             if (!cacheDir.exists())
                 cacheDir.mkdirs();
@@ -90,6 +91,35 @@ public class JarLoader {
             th.printStackTrace();
         }
         return success;
+    }
+
+    /**
+     * 部分第三方爬虫 jar 的 Init(类加载期)会打开本应用私有库 databases/tv
+     * (CatVod 系主应用才有该库;本 App Room 库名为 tvbox.v3.db,不存在 "tv")。
+     * 缺失文件 → 刷 SQLite CANTOPEN;只有空库 → 刷 no such table Config。
+     * 预置一个带 Config(url/type/time) 空表的 SQLite 文件,使其查询成功返回空,消除两类噪音。
+     */
+    private void ensureSpiderDb() {
+        try {
+            if (context == null) return;
+            File dbFile = context.getDatabasePath("tv");
+            File dir = dbFile.getParentFile();
+            if (dir != null && !dir.exists()) dir.mkdirs();
+            android.database.sqlite.SQLiteDatabase db = null;
+            try {
+                db = android.database.sqlite.SQLiteDatabase.openOrCreateDatabase(dbFile, null);
+                db.execSQL("CREATE TABLE IF NOT EXISTS Config(url TEXT, type INTEGER, time INTEGER)");
+            } catch (Throwable ignored) {
+            } finally {
+                if (db != null) {
+                    try {
+                        db.close();
+                    } catch (Throwable ignored) {
+                    }
+                }
+            }
+        } catch (Throwable ignored) {
+        }
     }
 
     private DexClassLoader loadJarInternal(String jar, String md5, String key) {
