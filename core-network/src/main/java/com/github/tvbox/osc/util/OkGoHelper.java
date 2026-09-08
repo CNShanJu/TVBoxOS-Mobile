@@ -96,6 +96,11 @@ public class OkGoHelper {
 
     static OkHttpClient defaultClient = null;
     static OkHttpClient noRedirectClient = null;
+    /** 图片专用客户端(带磁盘缓存):仅给 Picasso 等图片加载用,与 API/搜索流量隔离 */
+    private static volatile OkHttpClient imageClient = null;
+
+    /** 图片磁盘缓存上限(字节)。海报多为几十~几百 KB,100MB 可长期覆盖各页面海报回看 */
+    private static final long IMAGE_CACHE_MAX_BYTES = 100L * 1024 * 1024;
 
     /**
      * 根据当前 Hawk 配置重建 DnsOverHttps(替代原 DnsOverHttps.setUrl 原地修改)
@@ -111,6 +116,57 @@ public class OkGoHelper {
 
     public static OkHttpClient getNoRedirectClient() {
         return noRedirectClient;
+    }
+
+    /**
+     * 图片专用 OkHttpClient(懒建,与默认客户端共享连接池/UA/日志等基础配置):
+     * <ul>
+     *   <li>挂 100MB 磁盘缓存——滑走再滑回/重进页面时,海报即使被 Picasso 内存 LRU 挤出,
+     *       也能命中本地磁盘,不再回源重新下载(修:搜索结果页"已加载图滑回又加载");</li>
+     *   <li>缓存头兜底拦截器:多数图床响应不带 Cache-Control/Expires,OkHttp 默认不会落盘;
+     *       仅对图片客户端把"无缓存头的成功 GET"补成可缓存,使磁盘缓存真正生效;</li>
+     *   <li>仅图片客户端生效,API/搜索/下载等流量不受影响(那些请求仍走各自无磁盘缓存的客户端)。</li>
+     * </ul>
+     */
+    public static OkHttpClient getImageClient() {
+        OkHttpClient c = imageClient;
+        if (c == null) {
+            synchronized (OkGoHelper.class) {
+                c = imageClient;
+                if (c == null) {
+                    c = buildImageClient();
+                    imageClient = c;
+                }
+            }
+        }
+        return c;
+    }
+
+    private static OkHttpClient buildImageClient() {
+        if (defaultClient == null || appContext == null) return defaultClient;
+        try {
+            File dir = new File(appContext.getCacheDir(), "image_http_cache");
+            if (!dir.exists() && !dir.mkdirs()) {
+                return defaultClient; // 缓存目录创建失败:退回默认客户端(无磁盘缓存,功能不受影响)
+            }
+            return defaultClient.newBuilder()
+                    .cache(new Cache(dir, IMAGE_CACHE_MAX_BYTES))
+                    // 兜底缓存头:仅本客户端(图片)生效——OkHttp 依据响应缓存头决定是否落盘,
+                    // 很多图床不带缓存头,补一个公共 max-age 使其可被磁盘缓存
+                    .addNetworkInterceptor(chain -> {
+                        okhttp3.Request req = chain.request();
+                        okhttp3.Response resp = chain.proceed(req);
+                        if (!"GET".equals(req.method()) || !resp.isSuccessful()) return resp;
+                        if (resp.header("Cache-Control") != null || resp.header("Expires") != null) return resp;
+                        return resp.newBuilder()
+                                .header("Cache-Control", "public, max-age=86400")
+                                .removeHeader("Pragma")
+                                .build();
+                    })
+                    .build();
+        } catch (Throwable th) {
+            return defaultClient; // 构建失败:退回默认客户端,不阻塞图片加载
+        }
     }
 
     /**

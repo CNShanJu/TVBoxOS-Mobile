@@ -362,7 +362,10 @@ public class App extends MultiDexApplication {
     /** Picasso 全局单例（原 OkGoHelper.initPicasso 拆回 app 侧） */
     private void initPicasso() {
         try {
-            OkHttpClient client = OkGoHelper.getDefaultClient();
+            // 图片专用客户端:共享默认连接池 + 100MB 磁盘缓存 + 缓存头兜底(OkGoHelper.getImageClient);
+            // 修:搜索结果等长列表滑走再滑回时,海报不再因无磁盘缓存而回源重下
+            OkHttpClient client = OkGoHelper.getImageClient();
+            if (client == null) client = OkGoHelper.getDefaultClient();
             if (client == null) return;
             client.dispatcher().setMaxRequestsPerHost(32);
             com.github.tvbox.osc.picasso.MyOkhttpDownLoader downloader = new com.github.tvbox.osc.picasso.MyOkhttpDownLoader(client);
