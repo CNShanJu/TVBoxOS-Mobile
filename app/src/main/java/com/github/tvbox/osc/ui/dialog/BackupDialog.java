@@ -140,6 +140,9 @@ public class BackupDialog extends AppBottomPopupView {
 
             if (prefsCount <= 0 && !dbOk) {
                 AppBubble.toast("未找到可恢复的数据,请先备份");
+                com.github.tvbox.osc.log.LogStore.fail(com.github.tvbox.osc.log.Category.SYSTEM,
+                        "备份还原: 未找到可恢复的数据(目录 " + backup.getName() + ")");
+                com.github.tvbox.osc.util.AppLog.log("备份", "还原失败: 备份目录无有效数据");
                 return;
             }
             StringBuilder msg = new StringBuilder();
@@ -150,10 +153,16 @@ public class BackupDialog extends AppBottomPopupView {
             }
             msg.append(" 已恢复,即将重启应用!");
             AppBubble.toast(msg.toString());
+            com.github.tvbox.osc.log.LogStore.success(com.github.tvbox.osc.log.Category.SYSTEM,
+                    "备份还原: 恢复成功 " + msg + " (键数=" + prefsCount + ",db=" + dbOk + ")");
+            com.github.tvbox.osc.util.AppLog.log("备份", "还原成功: " + msg);
             restartApp();
         } catch (Throwable e) {
             e.printStackTrace();
             AppBubble.toast("恢复数据流异常");
+            com.github.tvbox.osc.log.LogStore.fail(com.github.tvbox.osc.log.Category.SYSTEM,
+                    "备份还原: 数据流异常 " + e);
+            com.github.tvbox.osc.util.AppLog.log("备份", "还原异常: " + e);
         }
     }
 
@@ -180,16 +189,26 @@ public class BackupDialog extends AppBottomPopupView {
             FileUtils.writeSimple(buildManifest().getBytes("UTF-8"), new File(backup, "manifest.json"));
 
             if (cfgOk) {
-                AppBubble.toast(dbOk
+                String tip = dbOk
                         ? "备份成功(设置/订阅/搜索历史+播放历史/收藏)"
-                        : "备份成功(设置/订阅/搜索历史,暂无播放历史/收藏)");
+                        : "备份成功(设置/订阅/搜索历史,暂无播放历史/收藏)";
+                AppBubble.toast(tip);
+                com.github.tvbox.osc.log.LogStore.success(com.github.tvbox.osc.log.Category.SYSTEM,
+                        "数据备份: 备份成功 " + backup.getName() + " (cfg=" + cfgOk + ",db=" + dbOk + ")");
+                com.github.tvbox.osc.util.AppLog.log("备份", "备份成功: " + backup.getName());
             } else {
                 FileUtils.recursiveDelete(backup);
                 AppBubble.toast("备份失败!");
+                com.github.tvbox.osc.log.LogStore.fail(com.github.tvbox.osc.log.Category.SYSTEM,
+                        "数据备份: 写配置失败,已清理备份目录");
+                com.github.tvbox.osc.util.AppLog.log("备份", "备份失败: 写配置失败");
             }
         } catch (Throwable e) {
             e.printStackTrace();
             AppBubble.toast("备份失败!");
+            com.github.tvbox.osc.log.LogStore.fail(com.github.tvbox.osc.log.Category.SYSTEM,
+                    "数据备份: 异常 " + e);
+            com.github.tvbox.osc.util.AppLog.log("备份", "备份异常: " + e);
         }
     }
 
@@ -255,8 +274,14 @@ public class BackupDialog extends AppBottomPopupView {
             File backup = new File(root + "/tvbox_backup/" + dir);
             FileUtils.recursiveDelete(backup);
             AppBubble.toast("删除成功");
+            com.github.tvbox.osc.log.LogStore.log(com.github.tvbox.osc.log.Category.SYSTEM,
+                    "备份: 删除备份目录 " + dir);
+            com.github.tvbox.osc.util.AppLog.log("备份", "删除备份: " + dir);
         } catch (Throwable e) {
             e.printStackTrace();
+            com.github.tvbox.osc.log.LogStore.fail(com.github.tvbox.osc.log.Category.SYSTEM,
+                    "备份: 删除失败 " + dir + " " + e);
+            com.github.tvbox.osc.util.AppLog.log("备份", "删除备份异常: " + dir);
         }
     }
 }

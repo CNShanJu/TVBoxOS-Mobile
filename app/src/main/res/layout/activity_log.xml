@@ -10,6 +10,15 @@
         android:layout_width="match_parent"
         android:layout_height="60dp"
         app:title="运行日志">
+        <!-- 搜索按钮:在当前日志全文内查找关键词(类浏览器 Ctrl+F) -->
+        <ImageView
+            android:id="@+id/btn_search"
+            android:layout_width="20dp"
+            android:layout_height="20dp"
+            android:layout_gravity="end|center_vertical"
+            android:layout_marginEnd="56dp"
+            android:contentDescription="搜索日志"
+            android:src="@drawable/ic_search" />
 
         <!-- 复制按钮:子 View 方式,与左侧返回图标保持同一水平线 -->
         <ImageView
@@ -22,15 +31,82 @@
             android:src="@drawable/ic_copy" />
     </com.github.tvbox.osc.ui.kit.AppTitleBar>
 
-    <TextView
-        android:id="@+id/tv_tip"
-        android:layout_width="wrap_content"
+    <!-- 全文搜索行:输入即高亮全部命中,▲/▼ 跳上一处/下一处,计数 n/N,✕ 关闭 -->
+    <LinearLayout
+        android:id="@+id/search_bar"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginStart="20dp"
-        android:layout_marginTop="6dp"
-        android:text="仅显示最近 1000 行"
-        android:textColor="@color/text_sub_foreground"
-        android:textSize="12sp" />
+        android:layout_marginHorizontal="14dp"
+        android:layout_marginTop="8dp"
+        android:background="@drawable/bg_large_round_gray"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingStart="14dp"
+        android:paddingEnd="8dp"
+        android:paddingVertical="4dp"
+        android:visibility="gone">
+
+        <EditText
+            android:id="@+id/et_search"
+            android:layout_width="0dp"
+            android:layout_height="36dp"
+            android:layout_weight="1"
+            android:background="@null"
+            android:hint="搜索当前日志,回车跳下一处"
+            android:imeOptions="actionSearch"
+            android:inputType="text"
+            android:maxLines="1"
+            android:selectAllOnFocus="true"
+            android:singleLine="true"
+            android:textColor="@color/text_foreground"
+            android:textColorHint="@color/text_sub_foreground"
+            android:textSize="13sp" />
+
+        <TextView
+            android:id="@+id/tv_match"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:paddingHorizontal="6dp"
+            android:textColor="@color/text_sub_foreground"
+            android:textSize="11sp" />
+
+        <ImageView
+            android:id="@+id/btn_prev"
+            android:layout_width="32dp"
+            android:layout_height="32dp"
+            android:background="?android:selectableItemBackgroundBorderless"
+            android:clickable="true"
+            android:contentDescription="上一处"
+            android:focusable="true"
+            android:padding="6dp"
+            android:rotation="180"
+            android:src="@drawable/ic_arrow_down"
+            app:tint="@color/text_foreground" />
+
+        <ImageView
+            android:id="@+id/btn_next"
+            android:layout_width="32dp"
+            android:layout_height="32dp"
+            android:background="?android:selectableItemBackgroundBorderless"
+            android:clickable="true"
+            android:contentDescription="下一处"
+            android:focusable="true"
+            android:padding="6dp"
+            android:src="@drawable/ic_arrow_down"
+            app:tint="@color/text_foreground" />
+
+        <ImageView
+            android:id="@+id/btn_search_close"
+            android:layout_width="32dp"
+            android:layout_height="32dp"
+            android:background="?android:selectableItemBackgroundBorderless"
+            android:clickable="true"
+            android:contentDescription="关闭搜索"
+            android:focusable="true"
+            android:padding="7dp"
+            android:src="@drawable/ic_close_24"
+            app:tint="@color/text_foreground" />
+    </LinearLayout>
 
     <!-- Tab 切换:业务日志(结构化可筛选) / 错误日志(logcat 本应用 E 级错误流) -->
     <LinearLayout

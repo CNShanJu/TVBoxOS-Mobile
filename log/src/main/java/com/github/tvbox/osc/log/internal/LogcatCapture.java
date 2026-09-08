@@ -64,7 +64,15 @@ public final class LogcatCapture {
             "WaitForGcToComplete blocked",
             "ImeTracker",
             "Multicast lock",
-            "JIT profile"
+            "JIT profile",
+            // 已知良性噪音(装饰性/系统内部提示,无排障价值):
+            "RippleDrawable",            // 涟漪在非硬件加速画布上跳过动画(纯装饰)
+            "Seed missing signature",    // WebView variations seed 缺失(系统内部)
+            "variations_seed_loader",    // 同上(chromium)
+            "studio.deploy",             // Android Studio 部署清理提示
+            "Unable to resolve path",    // jar/系统解析 base.apk 路径(更新后陈旧路径)
+            "no such table: Config",     // 第三方 jar 查 CatVod 遗留 Config 表(已由预置空库兜底)
+            "databases/tv"               // 第三方 jar 打开私有 tv 库(同上,防旧版本残留刷屏)
     );
     /**
      * 单个 logcat 文件大小上限(字节)。超过后滚动成 logcat-yyyy-MM-dd.1.log 等分段文件,

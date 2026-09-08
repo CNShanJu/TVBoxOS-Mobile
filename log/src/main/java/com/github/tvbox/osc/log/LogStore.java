@@ -153,6 +153,24 @@ public final class LogStore {
         }
     }
 
+    /** 成功事件便捷方法(级别 INFO,结果=SUCCESS):补录"某操作成功",任意业务点直接调用 */
+    public static void success(Category category, String detail) {
+        try {
+            CategoryLogger<GenericSubType> l = category == Category.OTHER ? otherLogger : genericLogger;
+            l.success(GenericSubType.GENERIC, detail, null);
+        } catch (Throwable ignored) {
+        }
+    }
+
+    /** 失败事件便捷方法(级别 ERROR,结果=FAILURE):记录失败原因,可在日志页"仅失败"筛出 */
+    public static void fail(Category category, String detail) {
+        try {
+            CategoryLogger<GenericSubType> l = category == Category.OTHER ? otherLogger : genericLogger;
+            l.fail(GenericSubType.GENERIC, detail, null);
+        } catch (Throwable ignored) {
+        }
+    }
+
     private static final CategoryLogger<GenericSubType> otherLogger = new LoggerImpl<>(Category.OTHER.name());
 
     /**

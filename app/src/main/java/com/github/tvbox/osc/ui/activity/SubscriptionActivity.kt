@@ -317,6 +317,8 @@ class SubscriptionActivity : BaseVbActivity<ActivitySubscriptionBinding>() {
             addSubscription(name, clanPath, mPendingChecked)
         } catch (t: Throwable) {
             t.printStackTrace()
+            AppLog.log("订阅管理", "本地导入读取失败: " + uri + "  " + t)
+            LogStore.fail(Category.SUBSCRIPTION, "订阅: 本地导入读取文件失败")
             AppBubble.toast("读取所选文件失败")
         }
     }
@@ -366,6 +368,8 @@ class SubscriptionActivity : BaseVbActivity<ActivitySubscriptionBinding>() {
             added++
         }
         if (added == 0) {
+            AppLog.log("订阅管理", "清单导入无新增(全部重复): " + displayName)
+            LogStore.log(Category.SUBSCRIPTION, "订阅: 清单导入无新增,地址均与本机重复")
             AppBubble.toastLong("清单中的订阅地址与本机已有订阅相同")
             return true
         }
@@ -529,6 +533,8 @@ class SubscriptionActivity : BaseVbActivity<ActivitySubscriptionBinding>() {
 
                     override fun onError(e: Throwable) {
                         dismissLoadingDialog()
+                        AppLog.log("订阅管理", "新增订阅失败: " + name + "  " + url + "  " + e)
+                        LogStore.fail(Category.SUBSCRIPTION, "订阅: 新增订阅失败 " + name + " 网络错误/地址无效")
                         AppBubble.toastLong("订阅失败,请检查地址或网络状态")
                     }
                 })

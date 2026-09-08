@@ -186,25 +186,42 @@ public final class UpdateManager {
     public static void cleanupOnAppStart(Context context) {
         try {
             File dir = apkDir(context);
-            if (dir == null || !dir.exists()) return;
+            if (dir == null || !dir.exists()) {
+                LOG.i(TAG, "启动清理: update 目录不存在,跳过");
+                return;
+            }
             int installed = context.getPackageManager().getPackageInfo(context.getPackageName(), 0).versionCode;
             File[] files = dir.listFiles();
-            if (files == null) return;
+            if (files == null || files.length == 0) {
+                LOG.i(TAG, "启动清理: update 目录为空,无需清理");
+                return;
+            }
+            int deleted = 0;
             for (File f : files) {
                 if (f.isDirectory()) continue;
                 try {
                     int apkCode = readApkVersionCode(context, f.getAbsolutePath());
                     if (apkCode > 0 && apkCode == installed) {
-                        f.delete();
+                        if (f.delete()) {
+                            deleted++;
+                            LOG.i(TAG, "启动清理: 删除已安装版本安装包 " + f.getName() + " (vc=" + apkCode + ")");
+                        }
                     } else if (apkCode < 0) {
                         // 非 APK/损坏:半成品,删除
-                        f.delete();
+                        if (f.delete()) {
+                            deleted++;
+                            LOG.i(TAG, "启动清理: 删除损坏/半成品 " + f.getName());
+                        }
+                    } else {
+                        LOG.i(TAG, "启动清理: 保留未安装版本缓存 " + f.getName() + " (vc=" + apkCode + " != " + installed + ")");
                     }
-                } catch (Throwable ignored) {
-                    f.delete();
+                } catch (Throwable e) {
+                    if (f.delete()) deleted++;
                 }
             }
-        } catch (Throwable ignored) {
+            LOG.i(TAG, "启动清理: 完成,删除 " + deleted + " 个,保留其余缓存");
+        } catch (Throwable e) {
+            LOG.e(TAG, "启动清理异常: " + e);
         }
     }
 

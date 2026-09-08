@@ -1,7 +1,13 @@
 package com.github.tvbox.osc.ui.activity
 
 import android.content.Intent
+import android.text.Editable
+import android.text.SpannableString
+import android.text.Spanned
+import android.text.TextWatcher
+import android.text.style.BackgroundColorSpan
 import android.view.View
+import android.view.inputmethod.EditorInfo
 import android.widget.TextView
 import com.github.tvbox.osc.log.Category
 import com.github.tvbox.osc.log.LogStore
@@ -13,6 +19,7 @@ import com.github.tvbox.osc.util.LogViewAssembler
 import com.github.tvbox.osc.util.Utils
 import com.lxj.xpopup.XPopup
 import java.io.File
+import java.util.Locale
 
 /**
  * 运行日志页（双 Tab，数据组装下沉到 [LogViewAssembler]，页面只做交互与展示）
@@ -33,12 +40,23 @@ class LogActivity : BaseVbActivity<ActivityLogBinding>() {
     /** 业务日志筛选：仅失败（fail/异常打点） */
     private var filterErrorOnly = false
 
+    // ── 全文搜索(类浏览器 Ctrl+F)──
+    /** 当前展示的未高亮全文 */
+    private var rawText = ""
+    /** 当前搜索关键词(trim;空=未在搜索) */
+    private var searchQuery = ""
+    /** 全部命中起始下标 */
+    private val matches = ArrayList<Int>()
+    /** 当前命中下标 */
+    private var matchIndex = 0
+
     override fun init() {
         mBinding.btnClear.setOnClickListener { confirmClear() }
         mBinding.btnExport.setOnClickListener { export() }
         mBinding.btnScrollBottom.setOnClickListener { scrollBottom() }
         mBinding.btnCopy.setOnClickListener { copyContent() }
         mBinding.llDatePicker.setOnClickListener { showDatePicker() }
+        wireSearch()
 
         // Tab 切换
         mBinding.tvTabBiz.setOnClickListener { switchTab(0) }
@@ -72,7 +90,6 @@ class LogActivity : BaseVbActivity<ActivityLogBinding>() {
         mBinding.tvTabBiz.setTextColor(if (tab == 0) colorOf(R.color.white) else colorOf(R.color.text_sub_foreground))
         mBinding.tvTabAll.setTextColor(if (tab == 1) colorOf(R.color.white) else colorOf(R.color.text_sub_foreground))
         val isBiz = tab == 0
-        mBinding.tvTip.visibility = if (isBiz) View.GONE else View.VISIBLE
         mBinding.llFilter.visibility = if (isBiz) View.VISIBLE else View.GONE
         mBinding.llDatePicker.visibility = if (isBiz) View.GONE else View.VISIBLE
         refreshContent()
@@ -127,8 +144,10 @@ class LogActivity : BaseVbActivity<ActivityLogBinding>() {
                 null
             }
             runOnUiThread {
-                mBinding.tvContent.text = text ?: "暂无业务日志（设置→业务日志 开启后记录）"
-                mBinding.scrollLog.post { mBinding.scrollLog.fullScroll(View.FOCUS_UP) }
+                setRawText(text ?: "暂无业务日志（设置→业务日志 开启后记录）")
+                if (searchQuery.isEmpty()) {
+                    mBinding.scrollLog.post { mBinding.scrollLog.fullScroll(View.FOCUS_UP) }
+                }
             }
         }.start()
     }
@@ -156,8 +175,10 @@ class LogActivity : BaseVbActivity<ActivityLogBinding>() {
                 null
             }
             runOnUiThread {
-                mBinding.tvContent.text = text ?: "暂无内容"
-                mBinding.scrollLog.post { mBinding.scrollLog.fullScroll(View.FOCUS_DOWN) }
+                setRawText(text ?: "暂无内容")
+                if (searchQuery.isEmpty()) {
+                    mBinding.scrollLog.post { mBinding.scrollLog.fullScroll(View.FOCUS_DOWN) }
+                }
             }
         }.start()
     }
@@ -184,6 +205,140 @@ class LogActivity : BaseVbActivity<ActivityLogBinding>() {
     private fun scrollBottom() {
         mBinding.scrollLog.fullScroll(View.FOCUS_DOWN)
     }
+
+    // ------------------------------------------------------------------
+    // 全文搜索(类浏览器 Ctrl+F)
+    // ------------------------------------------------------------------
+
+    private fun wireSearch() {
+        mBinding.btnSearch.setOnClickListener {
+            if (mBinding.searchBar.visibility == View.VISIBLE) closeSearch() else openSearch()
+        }
+        mBinding.btnPrev.setOnClickListener { goMatch(-1) }
+        mBinding.btnNext.setOnClickListener { goMatch(1) }
+        mBinding.btnSearchClose.setOnClickListener { closeSearch() }
+
+        mBinding.etSearch.addTextChangedListener(object : TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, a: Int, b: Int, c: Int) {}
+            override fun onTextChanged(s: CharSequence?, a: Int, b: Int, c: Int) {}
+            override fun afterTextChanged(s: Editable?) {
+                searchQuery = s?.toString()?.trim().orEmpty()
+                matchIndex = 0
+                renderSearch()
+            }
+        })
+        // 软键盘搜索键 / 回车:优先跳下一处
+        mBinding.etSearch.setOnEditorActionListener { _, actionId, _ ->
+            if (actionId == EditorInfo.IME_ACTION_SEARCH ||
+                actionId == EditorInfo.IME_ACTION_NEXT ||
+                actionId == EditorInfo.IME_ACTION_DONE
+            ) {
+                goMatch(1)
+                true
+            } else {
+                false
+            }
+        }
+    }
+
+    /** 内容装载统一入口:记录原始文本并(若有关键词)重算高亮 */
+    private fun setRawText(text: String) {
+        rawText = text
+        renderSearch()
+    }
+
+    /** 按当前关键词重绘全文:全部命中浅色底,当前命中高亮底,并滚动到当前命中 */
+    private fun renderSearch() {
+        val tv = mBinding.tvContent
+        val q = searchQuery.trim()
+        matches.clear()
+        if (q.isEmpty() || rawText.isEmpty()) {
+            tv.text = rawText
+            updateMatchUi()
+            return
+        }
+        val hay = rawText.lowercase(Locale.ROOT)
+        val needle = q.lowercase(Locale.ROOT)
+        var from = 0
+        while (from < hay.length) {
+            val idx = hay.indexOf(needle, from)
+            if (idx < 0) break
+            matches.add(idx)
+            from = idx + needle.length
+        }
+        if (matches.isEmpty()) {
+            tv.text = rawText
+            updateMatchUi()
+            return
+        }
+        if (matchIndex >= matches.size) matchIndex = 0
+        val sp = SpannableString(rawText)
+        for (i in matches.indices) {
+            // 当前命中高亮为橙色底,其余命中浅黄底
+            val bg = if (i == matchIndex) 0xFFFFB300.toInt() else 0x55FFF176
+            sp.setSpan(
+                BackgroundColorSpan(bg), matches[i], matches[i] + q.length,
+                Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
+            )
+        }
+        tv.text = sp
+        updateMatchUi()
+        scrollToMatch()
+    }
+
+    /** 计数标签:n/N;无匹配提示;未在搜索则清空 */
+    private fun updateMatchUi() {
+        mBinding.tvMatch.text = when {
+            searchQuery.isEmpty() -> ""
+            matches.isEmpty() -> "无匹配"
+            else -> "${matchIndex + 1}/${matches.size}"
+        }
+    }
+
+    /** 让当前命中行进入可视区(尽量居中) */
+    private fun scrollToMatch() {
+        if (matches.isEmpty() || matchIndex !in matches.indices) return
+        mBinding.scrollLog.post {
+            val tv = mBinding.tvContent
+            val layout = tv.layout ?: return@post
+            val line = layout.getLineForOffset(matches[matchIndex])
+            val top = layout.getLineTop(line)
+            val bottom = layout.getLineBottom(line)
+            val sy = mBinding.scrollLog.scrollY
+            val h = mBinding.scrollLog.height
+            val target = if (top < sy || bottom > sy + h) (top + bottom - h) / 2 else sy
+            mBinding.scrollLog.scrollTo(0, maxOf(0, target))
+        }
+    }
+
+    /** 上一处/下一处(-1/+1,循环) */
+    private fun goMatch(delta: Int) {
+        if (matches.isEmpty()) {
+            if (searchQuery.isNotEmpty()) renderSearch()
+            return
+        }
+        matchIndex = (matchIndex + delta + matches.size) % matches.size
+        renderSearch()
+    }
+
+    private fun openSearch() {
+        mBinding.searchBar.visibility = View.VISIBLE
+        mBinding.etSearch.requestFocus()
+        ime().showSoftInput(mBinding.etSearch, 0)
+    }
+
+    private fun closeSearch() {
+        mBinding.searchBar.visibility = View.GONE
+        searchQuery = ""
+        matches.clear()
+        matchIndex = 0
+        mBinding.etSearch.setText("")
+        ime().hideSoftInputFromWindow(mBinding.etSearch.windowToken, 0)
+        renderSearch()
+    }
+
+    private fun ime(): android.view.inputmethod.InputMethodManager =
+        getSystemService(INPUT_METHOD_SERVICE) as android.view.inputmethod.InputMethodManager
 
     private fun copyContent() {
         val text = mBinding.tvContent.text?.toString() ?: ""
