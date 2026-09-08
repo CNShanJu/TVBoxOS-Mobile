@@ -110,6 +110,11 @@ public class LocalPlayActivity extends BaseVbActivity<ActivityLocalPlayBinding> 
         VideoInfo videoInfo = mVideoList.get(mPosition);
 
         String path = videoInfo.getPath();
+        // 先回到全局默认,再装载该文件曾保存的播放设置(播放器/解码/倍速/缩放/片头片尾偏移),
+        // 避免上一文件的配置残留在会话对象里串到本文件;setPlayerConfig 同时刷新控制器按钮文案
+        fillCfgDefaults();
+        loadSavedCfgForPath(path);
+        if (mController != null) mController.setPlayerConfig(mVodPlayerCfg);
 
         String uri = "";
         File file = new File(path);
@@ -129,7 +134,14 @@ public class LocalPlayActivity extends BaseVbActivity<ActivityLocalPlayBinding> 
 
             @Override
             public long getSavedProgress(String url) {
-                return SPUtils.getInstance(CacheConst.VIDEO_PROGRESS_SP).getLong(path);
+                long saved = SPUtils.getInstance(CacheConst.VIDEO_PROGRESS_SP).getLong(path);
+                // "跳过片头":与在线播放一致,起播位置取 保存进度 与 st(片头跳过秒数) 的较大者
+                int st = 0;
+                try {
+                    st = mVodPlayerCfg.getInt("st");
+                } catch (Throwable ignored) {
+                }
+                return Math.max(saved, st * 1000L);
             }
         });
 
@@ -139,6 +151,32 @@ public class LocalPlayActivity extends BaseVbActivity<ActivityLocalPlayBinding> 
             mVideoView.replay(true);
         }else {
             mVideoView.start(); //开始播放，不调用则不自动播放
+        }
+    }
+
+    /** 本地文件播放设置持久化:SP 文件名固定,key=文件绝对路径 */
+    private static final String LOCAL_CFG_SP = "video_local_player_cfg";
+
+    /** 当前正在播放的文件路径 */
+    private String currentPath() {
+        if (mVideoList == null || mPosition < 0 || mPosition >= mVideoList.size()) return null;
+        VideoInfo info = mVideoList.get(mPosition);
+        return info == null ? null : info.getPath();
+    }
+
+    /** 把曾为该文件保存的播放设置合并进当前配置(保持 mVodPlayerCfg 对象同一性) */
+    private void loadSavedCfgForPath(String path) {
+        try {
+            if (path == null || mVodPlayerCfg == null) return;
+            String saved = SPUtils.getInstance(LOCAL_CFG_SP).getString(path, null);
+            if (saved == null || saved.isEmpty()) return;
+            JSONObject jo = new JSONObject(saved);
+            java.util.Iterator<String> it = jo.keys();
+            while (it.hasNext()) {
+                String key = it.next();
+                mVodPlayerCfg.put(key, jo.get(key));
+            }
+        } catch (Throwable ignored) {
         }
     }
 
@@ -181,17 +219,32 @@ public class LocalPlayActivity extends BaseVbActivity<ActivityLocalPlayBinding> 
 
             @Override
             public void updatePlayerCfg() {
-
+                // 持久化当前播放设置(播放器/解码/倍速/缩放/片头片尾偏移),按本地文件路径保存,
+                // 下次播放同一文件自动恢复(片头片尾调节/重置因此生效)
+                String path = currentPath();
+                if (path != null && mVodPlayerCfg != null) {
+                    SPUtils.getInstance(LOCAL_CFG_SP).put(path, mVodPlayerCfg.toString());
+                }
             }
 
             @Override
             public void replay(boolean replay) {
-
+                // 底栏/设置里的 重播 与 刷新:
+                // 重播(clearProgress=true,来自 play_retry)= 从头开始;
+                // 刷新(replay=false,来自 play_refresh / 切换播放器后重新装载)= 重载当前文件按保存进度续播
+                if (replay) {
+                    String path = currentPath();
+                    if (path != null) {
+                        SPUtils.getInstance(CacheConst.VIDEO_PROGRESS_SP).remove(path);
+                    }
+                }
+                play(replay);
             }
 
             @Override
             public void errReplay() {
-
+                // 播放出错时由控制器请求重试:直接按保存进度重新装载当前文件
+                play(false);
             }
 
             @Override
@@ -327,31 +380,21 @@ public class LocalPlayActivity extends BaseVbActivity<ActivityLocalPlayBinding> 
     }
 
     void initPlayerCfg() {
+        fillCfgDefaults();
+    }
+
+    /** 填入本地播放的全局默认配置(每次 play 前也调用,先复位再叠加该文件存档) */
+    private void fillCfgDefaults() {
         mVodPlayerCfg = new JSONObject();
         try {
-            if (!mVodPlayerCfg.has("pl")) {
-                mVodPlayerCfg.put("pl", PlayConfig.getPlayType());
-            }
-            if (!mVodPlayerCfg.has("pr")) {
-                mVodPlayerCfg.put("pr", PlayConfig.getRenderType());
-            }
-            if (!mVodPlayerCfg.has("ijk")) {
-                mVodPlayerCfg.put("ijk", PlayConfig.getIjkCodec());
-            }
-            if (!mVodPlayerCfg.has("sc")) {
-                mVodPlayerCfg.put("sc", PlayConfig.getScaleType());
-            }
-            if (!mVodPlayerCfg.has("sp")) {
-                mVodPlayerCfg.put("sp", 1.0f);
-            }
-            if (!mVodPlayerCfg.has("st")) {
-                mVodPlayerCfg.put("st", 0);
-            }
-            if (!mVodPlayerCfg.has("et")) {
-                mVodPlayerCfg.put("et", 0);
-            }
-        } catch (Throwable th) {
-
+            mVodPlayerCfg.put("pl", PlayConfig.getPlayType());
+            mVodPlayerCfg.put("pr", PlayConfig.getRenderType());
+            mVodPlayerCfg.put("ijk", PlayConfig.getIjkCodec());
+            mVodPlayerCfg.put("sc", PlayConfig.getScaleType());
+            mVodPlayerCfg.put("sp", 1.0f);
+            mVodPlayerCfg.put("st", 0);
+            mVodPlayerCfg.put("et", 0);
+        } catch (Throwable ignored) {
         }
         mController.setPlayerConfig(mVodPlayerCfg);
     }
