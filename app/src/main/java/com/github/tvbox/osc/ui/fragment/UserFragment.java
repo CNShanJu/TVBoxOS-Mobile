@@ -104,7 +104,6 @@ public class UserFragment extends BaseLazyFragment {
         tvHotList1 = findViewById(R.id.tvHotList1);
         // 主页右下角直播悬浮按钮
         findViewById(R.id.btn_live).setOnClickListener(view -> jumpActivity(LiveActivity.class));
-        setupLiveBlur();
         homeHotVodAdapter = new GridAdapter();
         homeHotVodAdapter.setOnItemClickListener(new BaseQuickAdapter.OnItemClickListener() {
             @Override
@@ -202,20 +201,6 @@ public class UserFragment extends BaseLazyFragment {
         } catch (Throwable ignored) {
         }
         initHomeHotVod(homeHotVodAdapter);
-    }
-
-    /**
-     * 直播悬浮按钮毛玻璃:模糊其后方(列表)内容, 与底栏同一套 StackBlur 算法
-     */
-    private void setupLiveBlur() {
-        // 移除毛玻璃采样:该 ROM(API36/Flyme)上 BlurView 采样会把包含它自己的整棵 decor
-        // 递归重绘,撞上框架 dispatchDraw 有序子视图竞态而崩溃(IndexOutOfBounds);
-        // 按钮退回纯色圆底遮罩(与模糊失败降级一致),稳定优先。
-        try {
-            View blur = findViewById(R.id.blur_live);
-            if (blur != null) blur.setVisibility(View.GONE);
-        } catch (Throwable ignored) {
-        }
     }
 
     private void initHomeHotVod(GridAdapter adapter) {

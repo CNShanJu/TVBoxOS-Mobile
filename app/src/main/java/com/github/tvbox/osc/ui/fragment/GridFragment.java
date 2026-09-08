@@ -63,8 +63,6 @@ public class GridFragment extends BaseLazyFragment {
     private boolean mLoadMoreBusy = false;
     /** 下拉刷新 + 到底了 装配门面 */
     private ListRefreshSupport mRefreshSupport = null;
-    /** 筛选按钮毛玻璃是否已 setup(initView 会被多次调用, 只装一次) */
-    private boolean filterBlurSetup = false;
     private boolean isTop = true;
     private View focusedView = null;
     /** 层级快照:每深入一层只把上一层的轻量状态(数据引用/分页/滚动)入栈;
@@ -283,7 +281,6 @@ public class GridFragment extends BaseLazyFragment {
         // 下拉刷新 + 到底了:一键装配(门面统一主题色/onRefresh/打断守卫/到底控制器与滚动绑定)
         attachRefreshAndEndTip();
         findViewById(R.id.btn_filter).setOnClickListener(view -> showFilter());
-        setupFilterBlur();
         setLoadSir2(mGridView);
     }
 
@@ -338,21 +335,6 @@ public class GridFragment extends BaseLazyFragment {
         gridAdapter.setEnableLoadMore(true);
         if (mRefreshSupport != null) mRefreshSupport.updateEndTip();
         sourceViewModel.getList(sortData, page);
-    }
-
-    /**
-     * 筛选悬浮按钮:移除毛玻璃采样(该 ROM(API36/Flyme)上 BlurView 会把包含它自己的整棵
-     * decor 递归重绘,撞框架 dispatchDraw 有序子视图竞态而崩溃);按钮退回纯色圆底遮罩;
-     * 只初始化一次。
-     */
-    private void setupFilterBlur() {
-        if (filterBlurSetup) return;
-        filterBlurSetup = true;
-        try {
-            View blur = findViewById(R.id.blur_filter);
-            if (blur != null) blur.setVisibility(View.GONE);
-        } catch (Throwable ignored) {
-        }
     }
 
     private void initViewModel() {

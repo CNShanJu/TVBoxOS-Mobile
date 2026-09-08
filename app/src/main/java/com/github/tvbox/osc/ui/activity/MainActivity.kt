@@ -10,7 +10,6 @@ import androidx.viewpager.widget.ViewPager.SimpleOnPageChangeListener
 import com.blankj.utilcode.util.ActivityUtils
 import com.github.tvbox.osc.R
 import com.github.tvbox.osc.util.AppBubble
-import com.github.tvbox.osc.util.StackBlurBlur
 import com.github.tvbox.osc.base.BaseVbActivity
 import com.github.tvbox.osc.constant.IntentKey
 import com.github.tvbox.osc.databinding.ActivityMainBinding
@@ -51,7 +50,6 @@ class MainActivity : BaseVbActivity<ActivityMainBinding>() {
             }
         })
         updateNavIcons(0)
-        setupBottomBlur()
     }
 
     /** 底部导航图标: 选中项换"选中"变体(与未选中图形区分), 颜色仍由 itemIconTint 按状态着色 */
@@ -64,22 +62,6 @@ class MainActivity : BaseVbActivity<ActivityMainBinding>() {
             menu.getItem(1).setIcon(
                 if (position == 1) R.drawable.ic_nav_my_sel else R.drawable.ic_nav_my
             )
-        }
-    }
-
-    /** 底部导航栏毛玻璃:实时模糊其下方(ViewPager 列表)内容(纯 Java StackBlur, 全版本可用) */
-    private fun setupBottomBlur() {
-        try {
-            val root = window.decorView.findViewById<ViewGroup>(android.R.id.content)
-            mBinding.blurView.setupWith(root)
-                .setFrameClearDrawable(window.decorView.background)
-                .setBlurAlgorithm(StackBlurBlur())
-                .setBlurRadius(18f)
-                .setBlurAutoUpdate(true)
-        } catch (th: Throwable) {
-            // 模糊失败静默降级:仅半透明遮罩,不影响功能
-            android.util.Log.e("BottomBlur", "毛玻璃初始化失败,降级为半透明遮罩", th)
-            mBinding.blurView.visibility = android.view.View.GONE
         }
     }
 

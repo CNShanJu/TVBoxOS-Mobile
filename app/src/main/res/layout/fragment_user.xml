@@ -25,7 +25,7 @@
             android:clipToPadding="false"
             />
 
-        <!-- 直播悬浮按钮(毛玻璃): 54dp 圆, 圆形裁剪(clipToOutline), 模糊层+磨砂遮罩+清晰图标;
+        <!-- 直播悬浮按钮(纯色 94% 透明): 54dp 圆, 圆形裁剪(clipToOutline), 主题色遮罩+清晰图标;
              marginBottom=78dp(58 悬浮底栏 + 20 间距), 不被底栏覆盖 -->
         <FrameLayout
             android:id="@+id/btn_live"
@@ -39,11 +39,6 @@
             android:clipToOutline="true"
             android:foreground="?android:selectableItemBackground"
             android:elevation="8dp">
-
-            <eightbitlab.com.blurview.BlurView
-                android:id="@+id/blur_live"
-                android:layout_width="match_parent"
-                android:layout_height="match_parent" />
 
             <View
                 android:layout_width="match_parent"
