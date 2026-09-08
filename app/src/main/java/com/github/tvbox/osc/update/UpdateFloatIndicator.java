@@ -109,8 +109,11 @@ public final class UpdateFloatIndicator implements UpdateManager.Listener {
         }
         if (floatView == null) {
             floatView = createFloatView(a);
+            // 触摸手势(短按/拖动)由 DragTouchListener 全权处理;OnClickListener 仅兜底
+            // 遥控器 OK 键等非触摸点击(触摸路径已消费,不会重复触发)。
+            // 注意:不能注册 OnLongClickListener——长按计时(约500ms)会在拖动中被中途触发
+            // 弹窗,表现为"拖一下圆圈变大/弹出面板"。
             floatView.setOnClickListener(v -> handleTap());
-            floatView.setOnLongClickListener(v -> { showDialog(); return true; });
             floatView.setOnTouchListener(new DragTouchListener());
         }
         if (floatView.getParent() != a.getWindow().getDecorView()) {
@@ -246,12 +249,20 @@ public final class UpdateFloatIndicator implements UpdateManager.Listener {
         dialog.show();
     }
 
-    /** 拖拽处理:超过 slop 判定拖动,拖动中拦截点击,松手吸附左右边缘 */
+    /**
+     * 悬浮圈触摸处理:DOWN 即消费接管整个手势,与 View 自身长按/点击机制隔离——
+     * 否则按下约 500ms 后系统长按会触发(哪怕手指已在拖动),弹窗"变大"打断拖动。
+     * <ul>
+     *   <li>移动超过 touchSlop → 拖动(改边距,松手吸附边缘);</li>
+     *   <li>未超过(含按下即松) → 视为短按 {@link #handleTap()}。</li>
+     * </ul>
+     */
     private final class DragTouchListener implements View.OnTouchListener {
         @Override
         public boolean onTouch(View v, MotionEvent ev) {
             switch (ev.getActionMasked()) {
                 case MotionEvent.ACTION_DOWN:
+                    if (ev.getPointerCount() > 1) return true; // 多点忽略,防误动
                     dragTracking = false;
                     downX = ev.getRawX();
                     downY = ev.getRawY();
@@ -260,38 +271,40 @@ public final class UpdateFloatIndicator implements UpdateManager.Listener {
                         dragStartLeft = lp.leftMargin;
                         dragStartTop = lp.topMargin;
                     }
-                    return false; // 先不消费,由点击逻辑处理(若拖动开始再消费)
+                    return true; // 消费 DOWN:长按计时不再由 View 驱动,避免拖动中途弹窗
                 case MotionEvent.ACTION_MOVE: {
-                    float dx = ev.getRawX() - downX;
-                    float dy = ev.getRawY() - downY;
-                    if (!dragTracking && (Math.abs(dx) > touchSlop || Math.abs(dy) > touchSlop)) {
-                        dragTracking = true;
-                        return true;
-                    }
                     if (dragTracking) {
                         FrameLayout.LayoutParams lp = (FrameLayout.LayoutParams) v.getLayoutParams();
                         ViewGroup parent = (ViewGroup) v.getParent();
-                        int maxLeft = parent.getWidth() - v.getWidth();
-                        int maxTop = parent.getHeight() - v.getHeight();
-                        int nx = dragStartLeft + Math.round(dx);
-                        int ny = dragStartTop + Math.round(dy);
+                        int maxLeft = parent == null ? 0 : parent.getWidth() - v.getWidth();
+                        int maxTop = parent == null ? 0 : parent.getHeight() - v.getHeight();
+                        int nx = dragStartLeft + Math.round(ev.getRawX() - downX);
+                        int ny = dragStartTop + Math.round(ev.getRawY() - downY);
                         lp.leftMargin = Math.max(0, Math.min(maxLeft, nx));
                         lp.topMargin = Math.max(0, Math.min(maxTop, ny));
                         v.requestLayout();
                         return true;
                     }
-                    return false;
+                    float dx = ev.getRawX() - downX;
+                    float dy = ev.getRawY() - downY;
+                    if (Math.abs(dx) > touchSlop || Math.abs(dy) > touchSlop) {
+                        dragTracking = true;
+                    }
+                    return true;
                 }
                 case MotionEvent.ACTION_UP:
-                case MotionEvent.ACTION_CANCEL:
                     if (dragTracking) {
                         dragTracking = false;
                         snapToEdge(v);
-                        return true;
+                    } else {
+                        handleTap(); // 短按(拖动未开始即松手)
                     }
-                    return false;
+                    return true;
+                case MotionEvent.ACTION_CANCEL:
+                    dragTracking = false; // 系统中断:位置保持,不吸附也不触发点击
+                    return true;
                 default:
-                    return false;
+                    return true;
             }
         }
 
