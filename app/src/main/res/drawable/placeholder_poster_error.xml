@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 封面"加载失败 / 暂无封面"占位:灰底 + 居中"图片加载失败"标识。
+     与正常占位(placeholder_poster: 灰底 + 居中猫)区分;仅加载失败/无封面时使用。
+     规则:失败占位统一用本 drawable(ic_image_fail),禁用各页面自造第二套。 -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item>
+        <shape android:shape="rectangle">
+            <solid android:color="@color/bg_component" />
+            <corners android:radius="@dimen/radius_card" />
+        </shape>
+    </item>
+    <item
+        android:drawable="@drawable/ic_image_fail"
+        android:gravity="center" />
+</layer-list>

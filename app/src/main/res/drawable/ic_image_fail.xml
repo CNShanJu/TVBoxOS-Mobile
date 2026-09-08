@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 图片"加载失败"标识(相框 + 山 + 太阳 + 红色斜杠),仅封面加载失败/无封面时显示,
+     与正常占位(placeholder_poster + ic_placeholder_cat)区分开,让用户一眼知道"没拿到图"。 -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="96dp"
+    android:height="96dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+
+    <!-- 相框(圆角矩形,灰描边) -->
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#7A000000"
+        android:strokeWidth="1.4"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M4 3 h16 a1 1 0 0 1 1 1 v16 a1 1 0 0 1 -1 1 H4 a1 1 0 0 1 -1 -1 V4 a1 1 0 0 1 1 -1 z" />
+
+    <!-- 山 -->
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#7A000000"
+        android:strokeWidth="1.4"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M2 17 L8 11 L12 15 L16 11 L22 17" />
+
+    <!-- 太阳 -->
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#7A000000"
+        android:strokeWidth="1.2"
+        android:pathData="M14 7 a1.5 1.5 0 1 0 0.001 0 z" />
+
+    <!-- 红色斜杠(加载失败) -->
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#FFD32F2F"
+        android:strokeWidth="1.8"
+        android:strokeLineCap="round"
+        android:pathData="M4 20 L20 4" />
+</vector>
