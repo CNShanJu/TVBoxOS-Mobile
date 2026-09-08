@@ -67,6 +67,7 @@ public final class LogcatCapture {
             "JIT profile",
             // 已知良性噪音(装饰性/系统内部提示,无排障价值):
             "RippleDrawable",            // 涟漪在非硬件加速画布上跳过动画(纯装饰)
+            "Invalid resource ID",       // 第三方组件解析不存在的资源id(多为无副作用误用)
             "Seed missing signature",    // WebView variations seed 缺失(系统内部)
             "variations_seed_loader",    // 同上(chromium)
             "studio.deploy",             // Android Studio 部署清理提示

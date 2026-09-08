@@ -236,28 +236,22 @@ public class BackupDialog extends AppBottomPopupView {
         return null;
     }
 
-    /** 冷启动重启:先让旧进程退出,由 Alarm 到点后在新进程冷启动主界面,保证 App.onCreate 全量重读备份 */
+    /**
+     * 还原后重启:直接清空任务栈重建主界面,不杀进程。
+     * 理由:配置导入已同步更新内存与 DataStore 磁盘(每键阻塞落盘),Room 已关闭句柄并替换文件;
+     * 立刻杀进程可能抢在 DataStore 异步落盘前退出导致数据丢失(曾出现"提示成功但重启无数据")。
+     * 重启后 Home 会重拉配置/重开 Room,读取的即为还原后的数据。
+     */
     private void restartApp() {
         try {
             android.content.Intent launch = getContext().getPackageManager()
                     .getLaunchIntentForPackage(getContext().getPackageName());
             if (launch != null) {
                 launch.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK
-                        | android.content.Intent.FLAG_ACTIVITY_CLEAR_TASK);
-                android.app.AlarmManager am = (android.app.AlarmManager) getContext()
-                        .getSystemService(Context.ALARM_SERVICE);
-                android.app.PendingIntent pi = android.app.PendingIntent.getActivity(
-                        getContext(), 0x5EEDB, launch,
-                        android.app.PendingIntent.FLAG_UPDATE_CURRENT
-                                | android.app.PendingIntent.FLAG_IMMUTABLE);
-                if (am != null) {
-                    am.set(android.app.AlarmManager.RTC,
-                            System.currentTimeMillis() + 1800L, pi);
-                    new Handler().postDelayed(() ->
-                            android.os.Process.killProcess(android.os.Process.myPid()), 300L);
-                    return;
-                }
+                        | android.content.Intent.FLAG_ACTIVITY_CLEAR_TASK
+                        | android.content.Intent.FLAG_ACTIVITY_CLEAR_TOP);
                 getContext().startActivity(launch);
+                return;
             }
         } catch (Throwable t) {
             t.printStackTrace();
