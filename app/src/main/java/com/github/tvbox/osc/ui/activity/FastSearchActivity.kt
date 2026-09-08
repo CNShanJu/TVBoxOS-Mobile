@@ -467,8 +467,10 @@ class FastSearchActivity : BaseVbActivity<ActivityFastSearchBinding>(), TextWatc
                     override fun onSuccess(response: String) {
                         try {
                             val hots = ArrayList<String>()
+                            // 服务端偶发返回非 JSON(HTML/错误页),用 lenient 容错解析
+                            val reader = com.google.gson.stream.JsonReader(java.io.StringReader(response)).apply { isLenient = true }
                             val itemList =
-                                JsonParser.parseString(response).asJsonObject["data"].asJsonObject["mapResult"].asJsonObject["0"].asJsonObject["listInfo"].asJsonArray
+                                com.google.gson.JsonParser.parseReader(reader).asJsonObject["data"].asJsonObject["mapResult"].asJsonObject["0"].asJsonObject["listInfo"].asJsonArray
                             //                            JsonArray itemList = JsonParser.parseString(response).getAsJsonObject().get("data").getAsJsonArray();
                             for (ele: JsonElement in itemList) {
                                 val obj = ele as JsonObject
@@ -497,7 +499,8 @@ class FastSearchActivity : BaseVbActivity<ActivityFastSearchBinding>(), TextWatc
                                 true
                             }
                         } catch (th: Throwable) {
-                            th.printStackTrace()
+                            // 热词接口返回异常内容时静默忽略(不刷屏、不影响页面;热词为空即可)
+                            LogUtils.d("热词解析失败: " + th.message)
                         }
                     }
 
