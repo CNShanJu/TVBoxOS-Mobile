@@ -647,7 +647,10 @@ public class DownloadScheduler {
             // 不再因 taskId 变化导致全部重下;无 episodeId 的旧任务回退 taskId
             String dirKey = (episodeId != null && !episodeId.isEmpty())
                     ? Integer.toHexString(episodeId.hashCode()) : t.id;
-            t.tmpDir = new File(dir, "tmp" + File.separator + dirKey).getAbsolutePath();
+            // 分片目录放应用私有目录(镜像 来源/剧名/tmp/key):相册/媒体库与魅族等系统
+            // 文件管理都管不到,清理 = 彻底删除;成品 mp4 仍写公共 Download(savePath 不变)
+            t.tmpDir = new File(com.github.tvbox.osc.download.internal.FileCleaner.getPrivateTmpRoot(),
+                    src + File.separator + vn + File.separator + "tmp" + File.separator + dirKey).getAbsolutePath();
         }
         t.state = DownloadTask.STATE_WAITING;
         synchronized (dm.tasks) {

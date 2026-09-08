@@ -51,7 +51,8 @@ public class FileCleaner {
                     }
                 }
             }
-            scanAndClean(getSaveDir(), liveDirs);
+            scanAndClean(getSaveDir(), liveDirs);          // 公共 Download 下的历史遗留 tmp
+            scanAndClean(getPrivateTmpRoot(), liveDirs);   // 私有 tmp 根(当前分片目录)
         } catch (Throwable ignored) {
         }
     }
@@ -87,6 +88,66 @@ public class FileCleaner {
         }
         if (!base.exists()) base.mkdirs();
         return base;
+    }
+
+    /**
+     * HLS 临时分片/合并临时文件私有根目录(app 私有 files/download_tmp):
+     * 相册/媒体库看不到(.nomedia 之外再加私有目录隔离),魅族等系统文件管理也不会把
+     * 这里的删除收进它自己的回收站——分片清理 = 彻底删除。成品 mp4 仍写公共 {@link #getSaveDir()}。
+     */
+    static File getPrivateTmpRoot() {
+        File base = appContext != null ? appContext.getFilesDir() : getSaveDir();
+        File root = new File(base, "download_tmp");
+        if (!root.exists()) root.mkdirs();
+        return root;
+    }
+
+    /**
+     * 把"公共 Download 下的旧 HLS tmp 目录"(历史版本产物)迁移到私有根目录:
+     * 目录存在则尽量整目录移入(rename,跨分区回退复制+删除);返回迁移后的私有路径。
+     * 迁移失败/非公共路径原样返回,保证续传不丢。
+     */
+    static String migrateTmpDirToPrivate(String legacyTmpDir) {
+        if (legacyTmpDir == null || appContext == null) return legacyTmpDir;
+        try {
+            String pubRoot = getSaveDir().getAbsolutePath();
+            if (!legacyTmpDir.startsWith(pubRoot)) return legacyTmpDir; // 已是私有/其它
+            String rel = legacyTmpDir.substring(pubRoot.length()); // 含首分隔符(如 /来源/剧名/tmp/xxxxx)
+            File target = new File(getPrivateTmpRoot(), rel);
+            File legacy = new File(legacyTmpDir);
+            if (legacy.exists()) {
+                File parent = target.getParentFile();
+                if (parent != null && !parent.exists()) parent.mkdirs();
+                if (target.exists()) {
+                    moveContent(legacy, target); // 同名目标已存在:并入后清旧
+                } else if (!legacy.renameTo(target)) {
+                    moveContent(legacy, target); // 跨分区 rename 失败:复制+删除
+                }
+            }
+            return target.getAbsolutePath();
+        } catch (Throwable th) {
+            return legacyTmpDir; // 迁移失败:保留原路径(该任务续传仍走旧公共目录,不丢数据)
+        }
+    }
+
+    /** 把 srcDir 下全部内容移入 dstDir(跨分区 rename 失败时逐项复制+删除),最后删除 srcDir */
+    private static void moveContent(File srcDir, File dstDir) {
+        File[] children = srcDir.listFiles();
+        if (children == null) return;
+        for (File c : children) {
+            File to = new File(dstDir, c.getName());
+            if (c.renameTo(to)) continue;
+            if (c.isDirectory()) {
+                if (to.exists() || to.mkdirs()) moveContent(c, to);
+            } else if (!to.exists()) {
+                try {
+                    copyFile(c, to);
+                } catch (IOException ignored) {
+                    // 复制失败:保留该文件在旧目录,交由孤儿清理/重下覆盖
+                }
+            }
+        }
+        deleteRecursive(srcDir);
     }
 
     static void deleteQuietly(File f) {

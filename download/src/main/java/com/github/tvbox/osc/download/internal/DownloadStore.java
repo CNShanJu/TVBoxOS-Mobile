@@ -95,6 +95,14 @@ public class DownloadStore {
                     needPersist = true;
                 }
                 t.speed = 0;
+                // 历史版本:公共 Download 下的 HLS 临时目录迁移到应用私有目录(碎片保留,续传不丢)
+                if (t.tmpDir != null) {
+                    String migrated = FileCleaner.migrateTmpDirToPrivate(t.tmpDir);
+                    if (migrated != null && !migrated.equals(t.tmpDir)) {
+                        t.tmpDir = migrated;
+                        needPersist = true;
+                    }
+                }
             }
         }
         if (needPersist) {
