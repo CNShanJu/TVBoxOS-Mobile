@@ -1,6 +1,9 @@
 package com.github.tvbox.osc.ui.dialog;
 
 import android.content.Context;
+import android.view.View;
+import android.view.ViewGroup;
+import android.widget.ScrollView;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
@@ -43,6 +46,15 @@ public class UpdateNoteDialog extends AppCenterPopupView {
         return R.layout.dialog_update_note;
     }
 
+    /**
+     * 布局自带滚动区(内部 note_scroll):超高时只让中间"更新内容"滚动,
+     * 禁止基类把整卡(标题/按钮)包进外层 ScrollView,避免"所有内容都滚动"。
+     */
+    @Override
+    protected boolean contentSelfScrollable() {
+        return true;
+    }
+
     @Override
     protected void onCreate() {
         super.onCreate();
@@ -58,12 +70,38 @@ public class UpdateNoteDialog extends AppCenterPopupView {
             tvBody.setText("是否立即下载并安装?");
         }
 
+        // 说明超长时把"更新内容"区限高到 最大高度−标题/按钮固定区,内容区自滚(标题/按钮固定)
+        clampBodyHeight();
+
         findViewById(R.id.note_close).setOnClickListener(v -> dismiss());
         findViewById(R.id.note_later).setOnClickListener(v -> dismiss());
         findViewById(R.id.note_update).setOnClickListener(v -> {
             dismiss();
             if (mOnUpdate != null) mOnUpdate.run();
         });
+    }
+
+    /** 说明区限高:仅当自然高度超过可用空间(最大高度−标题/按钮固定区)时压缩,内容区自滚 */
+    private void clampBodyHeight() {
+        try {
+            final View content = getPopupImplView();
+            final ScrollView scroll = findViewById(R.id.note_scroll);
+            if (content == null) return;
+            content.post(() -> {
+                try {
+                    int maxH = DialogHeightPolicy.maxHeightPx(getContext());
+                    int reserved = content.getHeight() - scroll.getHeight(); // 标题行+按钮行+内边距 等固定高度
+                    int available = maxH - reserved;
+                    if (available > 0 && scroll.getHeight() > available) {
+                        ViewGroup.LayoutParams lp = scroll.getLayoutParams();
+                        lp.height = available;
+                        scroll.setLayoutParams(lp);
+                    }
+                } catch (Throwable ignored) {
+                }
+            });
+        } catch (Throwable ignored) {
+        }
     }
 
     @Override
