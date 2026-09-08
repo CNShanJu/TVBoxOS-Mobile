@@ -42,6 +42,8 @@ public final class DownloadFacade {
     public static final String MSG_MERGING = "文件合并中";
     public static final String MSG_REMUX = "文件封装中";
     public static final String MSG_REPAIRING = "补片中";
+    /** 仅WiFi开启且当前非WiFi时,等待任务的状态文案(让用户知道为何等待,而非莫名"等待中") */
+    public static final String MSG_WAIT_WIFI = "等待Wi-Fi";
 
     public interface DownloadStatusListener {
         /** 下载状态/进度变化（去抖 500ms 合并后回调，主线程） */
@@ -292,7 +294,7 @@ public final class DownloadFacade {
     // 配置门面(仅 WiFi / 并发 / 网络判定 / 保存目录;单一事实源在 DownloadManager)
     // ------------------------------------------------------------------
 
-    /** 是否仅 WiFi 下载(默认开启;移动网络下下载前强提醒确认) */
+    /** 是否仅 WiFi 下载(默认开启;开启时蜂窝/断网不启动并自动挂起,切换开关即时生效) */
     public boolean isWifiOnly() {
         return com.github.tvbox.osc.download.internal.DownloadManager.get().isWifiOnly();
     }

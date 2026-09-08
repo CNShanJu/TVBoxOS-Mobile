@@ -159,7 +159,7 @@ public class DownloadExecutor {
                 t.downloadedBytes += n;
                 throttle(t, n); // 5.4 增强: 每任务限速
                 long now = System.currentTimeMillis();
-                if (now - lastPersist > 800) {
+                if (now - lastPersist > 500) {
                     // 实时网速:按时间窗口内的字节增量计算
                     long delta = now - lastSpeedTime;
                     if (delta > 0) {
@@ -278,7 +278,7 @@ public class DownloadExecutor {
                 speedWindowStart = now;
                 speedWindowBytes = 0;
             }
-            // 分片进度:doneSegments/segmentBytes 已实时写内存;落盘与广播节流到 600ms 窗口
+            // 分片进度:doneSegments/segmentBytes 已实时写内存;落盘与广播节流到 450ms 窗口
             // (分片多时不再每片序列化写盘/刷屏),任务暂停/失败/完成由各终态点强制落盘,不丢状态
             dm.flushProgress(t);
         }
@@ -771,6 +771,178 @@ public class DownloadExecutor {
             throw e;
         } catch (Throwable th) {
             throw new IOException("request build failed: " + th.getMessage(), th);
+        }
+    }
+
+    // ------------------------------------------------------------------
+    // 大小预检(入队异步 / 启动前磁盘预检共用;单飞去重,失败保持 0 不阻塞下载)
+    // ------------------------------------------------------------------
+
+    /** 任务大小是否已确定(直链精确 totalBytes 或 m3u8 估算 estimatedBytes) */
+    private static boolean sizeKnown(DownloadTask t) {
+        return t.totalBytes > 0 || t.estimatedBytes > 0;
+    }
+
+    /** 非阻塞预检(异步探测线程调用):已探测或在途则跳过 */
+    void probeSize(DownloadTask t) {
+        probeSize(t, false);
+    }
+
+    /** 阻塞预检(任务启动前磁盘预检调用):若异步探测在途则等待其完成,避免重复请求 */
+    void probeSizeBlocking(DownloadTask t) {
+        probeSize(t, true);
+    }
+
+    private void probeSize(final DownloadTask t, boolean waitIfBusy) {
+        if (t == null || t.url == null) return;
+        boolean mine = false;
+        synchronized (t) {
+            if (sizeKnown(t)) return;             // 已有大小(持久化/本次已探测到):不再探测
+            if (t.probeDone) return;              // 本会话已尝试过(服务器不返回大小等):不再重复探测
+            if (t.probing) {
+                if (!waitIfBusy) return;
+            } else {
+                t.probing = true;
+                mine = true;
+            }
+        }
+        if (!mine) {
+            // 探测在途:等待其完成(至多 5s),完成后字段已更新
+            long end = System.currentTimeMillis() + 5000;
+            synchronized (t) {
+                while (t.probing && System.currentTimeMillis() < end) {
+                    try {
+                        t.wait(100);
+                    } catch (InterruptedException ie) {
+                        Thread.currentThread().interrupt();
+                        break;
+                    }
+                }
+            }
+            return;
+        }
+        try {
+            boolean hlsUrl = t.url != null && t.url.toLowerCase().contains(".m3u8");
+            if (hlsUrl) {
+                t.estimatedBytes = estimateHlsBytes(t);
+            } else {
+                long exact = probeDirectBytes(t);
+                if (exact > 0) t.totalBytes = exact;
+            }
+        } catch (Throwable th) {
+            Log.i("TVBox-Download", "大小探测失败: " + (t.fileName == null ? "?" : t.fileName) + " "
+                    + (th.getMessage() == null ? th.toString() : th.getMessage()));
+        } finally {
+            synchronized (t) {
+                t.probing = false;
+                t.probeDone = true; // 成功/失败都记录,避免后续每次启动/重试重复探测
+                t.notifyAll();
+            }
+        }
+    }
+
+    /** 直链精确大小:Range bytes=0-0 探测(206 时取 Content-Range 总长,200 时取 Content-Length);失败返回 0 */
+    private long probeDirectBytes(DownloadTask t) {
+        try {
+            Map<String, String> headers = baseHeaders(t);
+            headers.put("Range", "bytes=0-0");
+            Response resp = getDownloadResponse(t.url, headers);
+            try {
+                if (!resp.isSuccessful()) return 0;
+                String cr = resp.header("Content-Range"); // 206: bytes 0-0/123456
+                if (cr != null) {
+                    int slash = cr.lastIndexOf('/');
+                    if (slash >= 0) {
+                        try {
+                            return Long.parseLong(cr.substring(slash + 1).trim());
+                        } catch (NumberFormatException ignored) {
+                        }
+                    }
+                }
+                String cl = resp.header("Content-Length");
+                if (cl != null) {
+                    try {
+                        return Long.parseLong(cl.trim());
+                    } catch (NumberFormatException ignored) {
+                    }
+                }
+                return 0;
+            } finally {
+                resp.close();
+            }
+        } catch (Throwable th) {
+            return 0;
+        }
+    }
+
+    /** m3u8 集大小估算:主播放列表带 BANDWIDTH 时按"总时长 × 码率",否则退化"分片数 × 2MB";失败返回 0 */
+    private long estimateHlsBytes(DownloadTask t) {
+        try {
+            String url = t.url;
+            String text = fetchText(url, t);
+            if (text == null) return 0;
+            long bandwidth = 0;
+            if (text.contains("#EXT-X-STREAM-INF")) {
+                // 主播放列表(多码率):与 fetchPlaylist 一致选第一个变体,并读取其 BANDWIDTH
+                String base = url.substring(0, url.lastIndexOf('/') + 1);
+                boolean pending = false;
+                for (String raw : text.split("\n")) {
+                    String line = raw.trim();
+                    if (line.startsWith("#EXT-X-STREAM-INF")) {
+                        Matcher m = Pattern.compile("BANDWIDTH=(\\d+)").matcher(line);
+                        if (m.find()) {
+                            try {
+                                bandwidth = Long.parseLong(m.group(1));
+                            } catch (NumberFormatException ignored) {
+                            }
+                        }
+                        pending = true;
+                    } else if (pending && !line.isEmpty() && !line.startsWith("#")) {
+                        text = fetchText(resolveUrl(url, base, line), t);
+                        if (text == null) return 0;
+                        pending = false;
+                        break;
+                    }
+                }
+                if (pending) return 0; // 主列表无有效变体,无法估算
+            }
+            // 分片数(非注释行)与总时长(EXTINF 累计)
+            int segs = 0;
+            double durationSec = 0;
+            Matcher dur = Pattern.compile("#EXTINF:\\s*([0-9]+(?:\\.[0-9]+)?)").matcher(text);
+            while (dur.find()) {
+                try {
+                    durationSec += Double.parseDouble(dur.group(1));
+                } catch (NumberFormatException ignored) {
+                }
+            }
+            for (String line : text.split("\n")) {
+                String l = line.trim();
+                if (!l.isEmpty() && !l.startsWith("#") && !l.contains("<") && !l.contains(">")) segs++;
+            }
+            if (segs <= 0) return 0;
+            if (bandwidth > 0) {
+                double sec = durationSec > 0 ? durationSec : segs * 6.0; // 无 EXTINF 时按每片 6s 兜底
+                return Math.max(1L, (long) (sec * bandwidth / 8.0));
+            }
+            return segs * 2L * 1024 * 1024;
+        } catch (Throwable th) {
+            return 0;
+        }
+    }
+
+    /** GET 完整文本响应(播放列表用);非 2xx/IO 失败返回 null */
+    private String fetchText(String url, DownloadTask t) {
+        try {
+            Response resp = getDownloadResponse(url, baseHeaders(t));
+            try {
+                if (!resp.isSuccessful()) return null;
+                return resp.body().string();
+            } finally {
+                resp.close();
+            }
+        } catch (Throwable th) {
+            return null;
         }
     }
 

@@ -130,6 +130,23 @@ public class DownloadDisplayTest {
         assertTrue(s, s.contains("失败:连接超时"));
     }
 
+    @Test
+    public void buildPercentText_hlsEstimateWhenTotalUnknown() {
+        // m3u8 解析出分段数后:分段进度 + 预检估算大小
+        DownloadTask t = new DownloadTask();
+        t.totalSegments = 10;
+        t.doneSegments = 3;
+        t.estimatedBytes = 100L * 1024 * 1024;
+        assertEquals("分段 3/10 · 约100MB (30%)", DownloadDisplay.buildPercentText(t));
+        // 排队中(分段数未解析)也能看到约大小
+        DownloadTask queued = new DownloadTask();
+        queued.estimatedBytes = 1024L * 1024;
+        assertEquals("约1MB (0%)", DownloadDisplay.buildPercentText(queued));
+        // 无估算:输出与原实现一致
+        DownloadTask none = new DownloadTask();
+        assertEquals(" (0%)", DownloadDisplay.buildPercentText(none));
+    }
+
     // ── 状态行文本/色调/阶段判定 ──
 
     @Test

@@ -66,7 +66,8 @@ object DownloadDisplay {
         return sb.toString()
     }
 
-    /** 任务行"大小 · 进度"文本:分段 N/M + 已下/总量(有字节)+ 百分比;失败附原因 */
+    /** 任务行"大小 · 进度"文本:分段 N/M + 已下/总量(有字节)+ 百分比;失败附原因。
+     * 直链预检后 totalBytes 为精确大小直接展示;m3u8 只有估算时以"约X"展示(入队即预检写入)。 */
     @JvmStatic
     fun buildPercentText(t: DownloadTask): String {
         val sb = StringBuilder()
@@ -76,6 +77,10 @@ object DownloadDisplay {
         if (t.totalBytes > 0) {
             if (sb.isNotEmpty()) sb.append("  ")
             sb.append(formatSize(t.downloadedBytes)).append("/").append(formatSize(t.totalBytes))
+        } else if (t.estimatedBytes > 0) {
+            // 只有 m3u8 估算总量(直链精确大小在 totalBytes):下载前即可看到"约多大"
+            if (sb.isNotEmpty()) sb.append(" · ")
+            sb.append("约").append(formatSize(t.estimatedBytes))
         }
         sb.append(" (").append(t.progressPercent).append("%)")
         if (t.state == DownloadTask.STATE_FAILED && t.message != null && t.message.isNotEmpty()) {
@@ -103,7 +108,11 @@ object DownloadDisplay {
             DownloadTask.STATE_PAUSED -> return "已暂停"
             DownloadTask.STATE_NETWORK_PAUSED -> return "网络中断"
             DownloadTask.STATE_SYSTEM_PAUSED -> return "排队中"
-            DownloadTask.STATE_WAITING -> return "等待中"
+            DownloadTask.STATE_WAITING -> {
+                // 排队/等待:被"仅WiFi"闸门拦住的任务带"等待Wi-Fi"说明,避免用户不知为何等待
+                val msg = t.message
+                return if (msg != null && msg.isNotEmpty()) msg else "等待中"
+            }
             DownloadTask.STATE_CANCELLED -> return "已取消"
         }
         val msg = t.message

@@ -13,10 +13,6 @@ import com.github.tvbox.osc.state.SystemStateMonitor;
 import com.github.tvbox.osc.config.PrefsDataStore;
 
 import java.io.File;
-import java.util.Map;
-
-import okhttp3.Request;
-import okhttp3.Response;
 
 /**
  * 决策器（Policy-Decider）：并发数 / 仅WiFi / 磁盘水位等策略规则。
@@ -83,7 +79,7 @@ public class DownloadPolicy {
         dm.wakeWorker();
     }
 
-    /** 是否仅 WiFi 下载(默认开启,移动网络下载前需强提醒确认) */
+    /** 是否仅 WiFi 下载(默认开启;开启时蜂窝/断网不启动任务并自动挂起,需改为"Wi-Fi+流量"才允许用流量) */
     boolean isWifiOnly() {
         try {
             return PrefsDataStore.getBoolean(DownloadManager.HAWK_WIFI_ONLY, true);
@@ -96,6 +92,20 @@ public class DownloadPolicy {
         try {
             PrefsDataStore.put(DownloadManager.HAWK_WIFI_ONLY, wifiOnly);
         } catch (Throwable ignored) {
+        }
+    }
+
+    /** 当前是否处于 WiFi 网络(无活动网络/蜂窝/未知均返回 false) */
+    static boolean isWifiActive() {
+        try {
+            ConnectivityManager cm = (ConnectivityManager) DownloadManager.appContext.getSystemService(Context.CONNECTIVITY_SERVICE);
+            if (cm == null) return false;
+            Network network = cm.getActiveNetwork();
+            if (network == null) return false;
+            NetworkCapabilities nc = cm.getNetworkCapabilities(network);
+            return nc != null && nc.hasTransport(NetworkCapabilities.TRANSPORT_WIFI);
+        } catch (Throwable th) {
+            return false;
         }
     }
 
@@ -114,15 +124,21 @@ public class DownloadPolicy {
     }
 
     /**
-     * 下载前磁盘空间预检:估算文件大小,检查保存目录所在磁盘剩余空间。
+     * 下载前磁盘空间预检:估算文件大小(直链精确 Content-Length / m3u8 码率×时长估算,由
+     * DownloadExecutor 预检写入任务,入队时已异步探测;此处大小未知才补一次阻塞探测),
+     * 检查保存目录所在磁盘剩余空间。
      * 要求:下载完成后可用空间仍 ≥ MIN_FREE_SPACE(1.5GB),不足则拒绝启动并提示需清理的量级。
      *
      * @return null=空间充足;否则返回错误提示文案
      */
     String checkDiskSpace(DownloadTask t) {
         try {
-            long size = estimateFileSize(t);
-            if (size <= 0) return null; // 无法估算(如服务器不返回大小),不阻塞
+            if (t.totalBytes <= 0 && t.estimatedBytes <= 0) {
+                // 大小未知(入队异步预检未完成/失败/重启恢复的旧任务):启动前补一次阻塞探测
+                dm.executor.probeSizeBlocking(t);
+            }
+            long size = t.totalBytes > 0 ? t.totalBytes : t.estimatedBytes;
+            if (size <= 0) return null; // 无法确定大小(探测失败/服务器不返回),不阻塞,下载中按实际进度判定
             File dir = new File(t.savePath).getParentFile();
             if (dir == null || !dir.exists()) return null;
             StatFs stat = new StatFs(dir.getAbsolutePath());
@@ -137,60 +153,6 @@ public class DownloadPolicy {
         } catch (Throwable th) {
             return null; // 预检异常不阻塞下载
         }
-    }
-
-    /**
-     * 估算文件大小:直链用 HEAD/首字节响应 Content-Length;
-     * m3u8 用播放列表分片数 × 每片估算(无法精确时返回 0 表示不阻塞)。
-     */
-    private long estimateFileSize(DownloadTask t) {
-        try {
-            // 优先用已知大小(断点续传时已记录)
-            if (t.totalBytes > 0) return t.totalBytes;
-            if (t.url != null && t.url.toLowerCase().contains(".m3u8")) {
-                // m3u8:尝试取播放列表,分片数量 × 单片估算(2MB/片,仅粗略)
-                try {
-                    Response resp = dm.executor.getDownloadResponse(t.url, dm.executor.baseHeaders(t));
-                    dm.activeResponses.put(t.id, resp);
-                    try {
-                        if (resp.isSuccessful()) {
-                            String text = resp.body().string();
-                            int segs = 0;
-                            for (String line : text.split("\n")) {
-                                String l = line.trim();
-                                if (!l.isEmpty() && !l.startsWith("#")) segs++;
-                            }
-                            if (segs > 0) return segs * 2L * 1024 * 1024; // 粗略 2MB/片
-                        }
-                    } finally {
-                        dm.activeResponses.remove(t.id);
-                        resp.close();
-                    }
-                } catch (Throwable ignored) {
-                }
-                return 0;
-            }
-            // 直链:HEAD 请求拿 Content-Length(带任务请求头,防盗链源 HEAD 也可能校验)
-            Request.Builder headBuilder = new Request.Builder().url(t.url)
-                    .header("Range", "bytes=0-0"); // 部分服务器不支持 HEAD,用首字节 Range 探测
-            Map<String, String> hdrs = dm.executor.baseHeaders(t);
-            for (Map.Entry<String, String> e : hdrs.entrySet()) {
-                if (e.getKey() != null && e.getValue() != null) {
-                    headBuilder.header(e.getKey(), e.getValue());
-                }
-            }
-            Response resp = dm.downloadClient.newCall(headBuilder.build()).execute();
-            try {
-                if (resp.isSuccessful()) {
-                    String cl = resp.header("Content-Length");
-                    if (cl != null) return Long.parseLong(cl.trim());
-                }
-            } finally {
-                resp.close();
-            }
-        } catch (Throwable ignored) {
-        }
-        return 0;
     }
 
     /** 格式化大小(供磁盘空间提示) */

@@ -58,6 +58,20 @@ public class DownloadTask {
     /** 每任务限速(字节/秒),0=不限速;仅内存使用(transient,5.4 增强) */
     public transient long speedLimit = 0;
 
+    /**
+     * 大小预检结果(随任务持久化):直链探测到的是精确 Content-Length,写入 {@link #totalBytes};
+     * 本字段仅记 m3u8 的估算大小(码率×时长)。0=尚未探测/无法探测。
+     * 仅用于磁盘空间预检与"约大小"展示,不参与精确进度分母。
+     */
+    public long estimatedBytes = 0;
+
+    /** 大小探测进行中标记(transient):探测单飞去重,避免入队异步探测与启动前阻塞探测重复请求 */
+    public transient boolean probing = false;
+
+    /** 本进程会话内是否已尝试过大小探测(transient):探测成功或失败都置真,
+     * 防止每次重启任务/重试都重复探测(失败多为服务器不返回大小,重复探测无意义) */
+    public transient boolean probeDone = false;
+
     /** 来源 key(重启后重新解析地址用) */
     public String sourceKey;
     /** 线路名(重启后重新解析地址用) */

@@ -35,7 +35,7 @@ public class DownloadScheduler {
     private final TaskListener taskListener = new TaskListener() {
         @Override
         public void onProgress(DownloadTask t) {
-            // 进度落盘/广播由执行器内部经 DownloadManager.flushProgress 节流合并(600ms 窗口)
+            // 进度落盘/广播由执行器内部经 DownloadManager.flushProgress 节流合并(450ms 窗口)
         }
 
         @Override
@@ -70,9 +70,11 @@ public class DownloadScheduler {
                 if (!SystemStateMonitor.TYPE_NETWORK.equals(e.type)) return;
                 if (SystemStateMonitor.VAL_WIFI.equals(e.value)) {
                     resumeNetworkFailedTasks();
+                    wakeWorker(); // WiFi 恢复:被"仅WiFi"闸门拦下的等待任务立即按调度开跑
                 } else if (SystemStateMonitor.VAL_CELLULAR.equals(e.value)
                         && !dm.policy.isWifiOnly()) {
                     resumeNetworkFailedTasks();
+                    wakeWorker(); // 未开仅WiFi:蜂窝恢复同样唤醒调度
                 }
                 // VAL_NONE(断网): 不在此恢复
             }, SystemStateMonitor.TYPE_NETWORK);
@@ -82,6 +84,7 @@ public class DownloadScheduler {
                 if (SystemStateMonitor.VAL_WIFI.equals(current.network)
                         || !dm.policy.isWifiOnly()) {
                     resumeNetworkFailedTasks();
+                    wakeWorker();
                 }
             }
         } catch (Throwable th) {
@@ -193,6 +196,25 @@ public class DownloadScheduler {
                 return true;
             }
             if (running < dm.policy.getMaxConcurrent()) {
+                // 仅WiFi开启且当前非WiFi(蜂窝/断网):不启动任何任务。
+                // 给这些等待任务打上"等待Wi-Fi"文案(仅变化时落盘/广播一次),让用户知道为何等待;
+                // 切回 WiFi 后由网络事件唤醒调度自动开跑(见 subscribeNetworkEvents)
+                if (dm.policy.isWifiOnly() && !DownloadPolicy.isWifiActive()) {
+                    boolean marked = false;
+                    for (DownloadTask tt : sorted) {
+                        if (tt.state == DownloadTask.STATE_WAITING || tt.state == DownloadTask.STATE_SYSTEM_PAUSED) {
+                            if (!com.github.tvbox.osc.download.DownloadFacade.MSG_WAIT_WIFI.equals(tt.message)) {
+                                tt.message = com.github.tvbox.osc.download.DownloadFacade.MSG_WAIT_WIFI;
+                                marked = true;
+                            }
+                        }
+                    }
+                    if (marked) {
+                        dm.persist();
+                        dm.notifyChanged();
+                    }
+                    return false;
+                }
                 // 并发调高:按调度顺序补足(队首=高优先级/被抢占者先恢复)
                 int toStart = dm.policy.getMaxConcurrent() - running;
                 boolean startedAny = false;
@@ -251,17 +273,6 @@ public class DownloadScheduler {
                     wakeWorker();
                     return;
                 }
-                // 下载前磁盘空间预检:不足则直接失败并提示需清理量级(避免下载中空间耗尽损坏设备)
-                String spaceErr = dm.policy.checkDiskSpace(t);
-                if (spaceErr != null) {
-                    t.state = DownloadTask.STATE_FAILED;
-                    t.message = spaceErr;
-                    Log.i("TVBox-Download", "磁盘空间预检失败: " + t.fileName + " " + spaceErr);
-                    dm.persist();
-                    dm.notifyChanged();
-                    wakeWorker();
-                    return;
-                }
                 int retries = 0;
                 // 进程重启后首次启动:代理签名URL通常已过期,先重新解析一次(与下载中过期重解析共用逻辑)
                 if (t.needReResolve) {
@@ -278,6 +289,18 @@ public class DownloadScheduler {
                     if (!sniffResolve(t)) {
                         Log.i("TVBox-Download", "首次嗅探未命中,按原地址尝试: " + t.fileName);
                     }
+                }
+                // 下载前磁盘空间预检:放在地址重解析/嗅探之后,确保大小探测按最终真实 URL 进行;
+                // 入队时已异步探测并持久化大小的任务这里直接复用,不再重复探测(失败的任务本会话也只探测一次)
+                String spaceErr = dm.policy.checkDiskSpace(t);
+                if (spaceErr != null) {
+                    t.state = DownloadTask.STATE_FAILED;
+                    t.message = spaceErr;
+                    Log.i("TVBox-Download", "磁盘空间预检失败: " + t.fileName + " " + spaceErr);
+                    dm.persist();
+                    dm.notifyChanged();
+                    wakeWorker();
+                    return;
                 }
                 while (true) {
                     try {
@@ -426,6 +449,10 @@ public class DownloadScheduler {
                     if (t.downloadedBytes > 0 && !t.isHls()) {
                         t.downloadedBytes = 0;
                     }
+                    // 旧地址探测到的文件大小对新地址不再可信:清掉并允许下次按新地址重新探测一次
+                    t.totalBytes = 0;
+                    t.estimatedBytes = 0;
+                    t.probeDone = false;
                 } else {
                     Log.i("TVBox-Download", "重新解析地址无变化,已同步请求头: " + t.fileName);
                     DownloadLog.LOG.info(DownloadSubType.RESOLVE, "重新解析地址无变化,已同步请求头: " + t.fileName,
@@ -635,6 +662,9 @@ public class DownloadScheduler {
         wakeWorker();
         // 触发时顺带把剧集海报下载到本地(按剧集分文件夹,私有目录),下载页组级/条目级展示用
         dm.store.ensurePosterAsync(t.pic, t.vodName);
+        // 入队即预检任务大小(仅直链做一次轻量 HEAD;m3u8 估算由启动时的探测负责,避免多拉一份播放列表):
+        // 直链写 totalBytes(精确),让下载页尽早显示大小、启动前的磁盘空间判断直接复用结果
+        dm.probeSizeAsync(t);
         return true;
     }
 
@@ -664,10 +694,14 @@ public class DownloadScheduler {
 
     /**
      * 继续:恢复单个暂停/失败任务。
+     * 网络暂停(NETWORK_PAUSED)也允许手动继续,避免"断网自动挂起"后切回 WiFi 用户点击无反应;
+     * 若仍处于蜂窝且开启仅WiFi,调度闸门会拦住(等 WiFi),属预期。
      * 若并发已满,把最早开始下载的任务置为"调度暂停"给被恢复的任务让位,保证严格按并发上限执行。
      */
     void resume(DownloadTask t) {
-        if (t.state != DownloadTask.STATE_PAUSED && t.state != DownloadTask.STATE_FAILED) {
+        if (t.state != DownloadTask.STATE_PAUSED
+                && t.state != DownloadTask.STATE_FAILED
+                && t.state != DownloadTask.STATE_NETWORK_PAUSED) {
             return;
         }
         t.state = DownloadTask.STATE_WAITING;
@@ -903,6 +937,21 @@ public class DownloadScheduler {
             dm.notifyChanged();
             wakeWorker();
         }
+    }
+
+    /**
+     * 仅WiFi 开关即时生效(设置页/下载页切换后立即执行,不依赖网络切换事件):
+     * 开启且当前非WiFi → 暂停全部(置网络暂停);关闭 → 恢复被挂起任务并唤醒调度。
+     */
+    void enforceNetworkGate() {
+        if (dm.policy.isWifiOnly()) {
+            if (!DownloadPolicy.isWifiActive()) {
+                pauseAllNetwork();
+            }
+        } else {
+            resumeAllNetwork();
+        }
+        wakeWorker(); // 关闭时立即按新配置调度;开启但原本就在 WiFi 上无动作也无需等待
     }
 
     /**

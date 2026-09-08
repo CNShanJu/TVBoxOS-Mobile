@@ -15,6 +15,7 @@ import androidx.annotation.NonNull;
 import androidx.core.content.ContextCompat;
 import androidx.recyclerview.widget.GridLayoutManager;
 import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
 
 import com.blankj.utilcode.util.GsonUtils;
 import com.blankj.utilcode.util.SPUtils;
@@ -66,6 +67,8 @@ public class DownloadFragment extends BaseVbFragment<FragmentDownloadBinding> {
     private static final int TAB_DONE = 1;
     /** 左滑露出的操作区宽度(暂停+删除两个按钮) */
     private static final int SWIPE_REVEAL_WIDTH_DP = 128;
+    /** bindPoster 去重 tag key:ImageView 上记录"当前海报源"(本地海报文件绝对路径,或已发起懒拉取的 pic) */
+    private static final int TAG_POSTER_SOURCE = 0x2D00001;
 
     // ------------------------------------------------------------------
     // 聚合根级:剧集网格(收藏页样式,按 剧名+来源 分组)
@@ -178,28 +181,12 @@ public class DownloadFragment extends BaseVbFragment<FragmentDownloadBinding> {
         downloadingAdapter = new BaseQuickAdapter<DownloadTask, BaseViewHolder>(R.layout.item_download_task_new) {
             @Override
             protected void convert(@NonNull BaseViewHolder helper, DownloadTask task) {
-                // 封面图:本地海报文件(缺失显示搜索页同款占位图并懒拉取)
+                // 封面图:本地海报文件(缺失显示搜索页同款占位图并懒拉取);同源去重,状态刷新整行重绑不再闪图
                 bindPoster(helper.getView(R.id.iv_cover), DownloadGrouping.vodNameOf(task), task.pic);
                 // 行1:剧名 · 集名(拼装抽到 DownloadDisplay)
                 helper.setText(R.id.tv_name, DownloadDisplay.titleText(task));
-                // 行2:状态 · 进度(文本/色调/阶段判定抽到 DownloadDisplay,颜色在此取)
-                int statusColor;
-                switch (DownloadDisplay.statusToneOf(task)) {
-                    case ERROR:
-                        statusColor = ContextCompat.getColor(mContext, R.color.red);
-                        break;
-                    case MUTED:
-                        statusColor = ContextCompat.getColor(mContext, R.color.text_sub_foreground);
-                        break;
-                    default:
-                        statusColor = ContextCompat.getColor(mContext, R.color.download_active);
-                        break;
-                }
-                TextView tvStatus = helper.getView(R.id.tv_status);
-                tvStatus.setText(DownloadDisplay.statusLine(task));
-                tvStatus.setTextColor(statusColor);
-                // 行3:大小 · 进度
-                helper.setText(R.id.tv_size_speed, DownloadDisplay.buildPercentText(task));
+                // 行2/行3:状态·进度(含网速)与 大小·进度(与进度事件局部刷新共用同一绑定)
+                bindProgressTexts(helper, task);
                 // 行4:来源 · 存储位置
                 helper.setText(R.id.tv_source, DownloadDisplay.sourceText(task.sourceName));
                 // 操作按钮:统一左滑滑出(不区分大小屏,宽屏同样滑出右侧 暂停/删除 操作区)
@@ -253,7 +240,9 @@ public class DownloadFragment extends BaseVbFragment<FragmentDownloadBinding> {
             DownloadTask t = data.get(position);
             int id = view.getId();
             if (id == R.id.btn_swipe_pause) {
-                if (t.state == DownloadTask.STATE_PAUSED || t.state == DownloadTask.STATE_FAILED) {
+                if (t.state == DownloadTask.STATE_PAUSED || t.state == DownloadTask.STATE_FAILED
+                        || t.state == DownloadTask.STATE_NETWORK_PAUSED) {
+                    if (blockedByWifiOnly()) return;
                     DownloadFacade.get().resume(t);
                 } else {
                     DownloadFacade.get().pause(t);
@@ -382,9 +371,10 @@ public class DownloadFragment extends BaseVbFragment<FragmentDownloadBinding> {
     }
 
     /** 任务级进度回调(带任务 id,高频,由 DownloadManager.flushProgress 节流后经 Facade 转发):
-     * 只对该任务在"正在下载"列表中的可见条目做局部 notifyItemChanged,不做全量重建——
-     * 避免每次 HLS 分片进度都重新聚合全部任务/检查文件/setNewData(任务 B)。
-     * UI 状态(展开/多选/勾选/滑动)均由任务对象与 adapter 字段驱动,单行重绑不会丢状态。 */
+     * 只对该任务在"正在下载"列表中的可见条目做文本级局部刷新,不整行 notifyItemChanged 重绑——
+     * 避免每次 HLS 分片进度都重新聚合全部任务/检查文件/setNewData(任务 B),也避免重绑时
+     * 重新发起海报加载导致图片闪动。UI 状态(展开/多选/勾选/滑动)均由任务对象与 adapter 字段
+     * 驱动,文本就地更新不影响它们。 */
     private void onTaskProgress(String taskId) {
         if (taskId == null || taskId.isEmpty()) return;
         // 底部"可用空间/设置"条:进度期间磁盘占用持续变化,轻量刷新(StatFs 开销极小)
@@ -398,11 +388,50 @@ public class DownloadFragment extends BaseVbFragment<FragmentDownloadBinding> {
         for (int i = 0; i < data.size(); i++) {
             DownloadTask t = data.get(i);
             if (t != null && taskId.equals(t.id)) {
-                downloadingAdapter.notifyItemChanged(i);
+                refreshProgressRowTexts(i);
                 return;
             }
         }
         // 任务不属于当前剧集分组(未找到行)或已不在该列表:无需任何操作
+    }
+
+    /** 进度事件就地刷新指定行的动态文本(状态行含网速 + 大小·进度行),不动图片/布局/手势等;
+     * 行不可见或列表已重排导致 holder 不再对应目标任务时放弃(该行下次绑定会按最新状态重绘)。 */
+    private void refreshProgressRowTexts(int position) {
+        List<DownloadTask> data = downloadingAdapter.getData();
+        if (data == null || position < 0 || position >= data.size()) return;
+        DownloadTask t = data.get(position);
+        if (t == null) return;
+        RecyclerView.ViewHolder vh = mBinding.rvDownloading.findViewHolderForAdapterPosition(position);
+        if (vh == null) return; // 行不可见(滚出屏外):下次绑定即读到最新内存值
+        if (vh.getBindingAdapterPosition() != position) return; // 事件与列表重排竞态:放弃就地刷新
+        bindProgressTexts((BaseViewHolder) vh, t);
+    }
+
+    /** 绑定"正在下载"行的动态文本(行2 状态·进度含网速 + 行3 大小·进度;失败附原因);
+     * 整行重绑(convert)与进度事件局部刷新共用;文本/颜色无变化时不重设,避免无谓重排。 */
+    private void bindProgressTexts(BaseViewHolder helper, DownloadTask task) {
+        TextView tvStatus = helper.getView(R.id.tv_status);
+        String statusLine = DownloadDisplay.statusLine(task);
+        if (statusLine != null && !statusLine.contentEquals(tvStatus.getText())) {
+            tvStatus.setText(statusLine);
+        }
+        int statusColor;
+        switch (DownloadDisplay.statusToneOf(task)) {
+            case ERROR:
+                statusColor = ContextCompat.getColor(mContext, R.color.red);
+                break;
+            case MUTED:
+                statusColor = ContextCompat.getColor(mContext, R.color.text_sub_foreground);
+                break;
+            default:
+                statusColor = ContextCompat.getColor(mContext, R.color.download_active);
+                break;
+        }
+        if (tvStatus.getCurrentTextColor() != statusColor) tvStatus.setTextColor(statusColor);
+        TextView tvSize = helper.getView(R.id.tv_size_speed);
+        String percent = DownloadDisplay.buildPercentText(task);
+        if (percent != null && !percent.contentEquals(tvSize.getText())) tvSize.setText(percent);
     }
 
     private void switchTab(int tab) {
@@ -679,12 +708,15 @@ public class DownloadFragment extends BaseVbFragment<FragmentDownloadBinding> {
         if (n > 0) AppBubble.toast("已暂停 " + n + " 个任务");
     }
 
-    /** 全部开始(仅详情下载中多选):作用于作用域内已暂停/失败的任务 */
+    /** 全部开始(仅详情下载中多选):作用于作用域内已暂停/失败/网络中断的任务 */
     private void startSelected() {
+        if (blockedByWifiOnly()) return;
         List<DownloadTask> scope = currentDlScope();
         int n = 0;
         for (DownloadTask t : scope) {
-            if (t.state == DownloadTask.STATE_PAUSED || t.state == DownloadTask.STATE_FAILED) {
+            if (t.state == DownloadTask.STATE_PAUSED
+                    || t.state == DownloadTask.STATE_FAILED
+                    || t.state == DownloadTask.STATE_NETWORK_PAUSED) {
                 DownloadFacade.get().resume(t);
                 n++;
             }
@@ -917,22 +949,33 @@ public class DownloadFragment extends BaseVbFragment<FragmentDownloadBinding> {
         return null;
     }
 
-    /** 绑定剧集海报:优先本地文件(私有目录,不入相册),缺失显示搜索页同款占位图并懒拉取 */
+    /** 绑定剧集海报:优先本地文件(私有目录,不入相册),缺失显示搜索页同款占位图并懒拉取。
+     * 同源去重:同一 ImageView 再次绑定同一海报源(本地文件路径/已请求的 pic)时直接跳过,
+     * 避免状态刷新/多选切换整行重绑时反复"占位→重载"导致图片闪动;复用条目换绑其它封面、
+     * 或海报文件从无到有(懒拉取落地)时源变化,自然重新加载。 */
     private void bindPoster(ImageView iv, String vodName, String pic) {
         File pf = DownloadFacade.get().getPosterFile(vodName);
-        if (pf != null) {
+        String source = pf != null ? pf.getAbsolutePath() : null;
+        Object bound = iv.getTag(TAG_POSTER_SOURCE);
+        if (source != null) {
+            if (source.equals(bound)) return; // 同一张海报已绑定/加载中
+            iv.setTag(TAG_POSTER_SOURCE, source);
             // 统一图片加载到 Picasso 单例(共享 OkHttp 连接池/缓存),移除 Glide 双依赖
+            // 必须 fit():RecyclerView 绑定条目先于测量,此时 iv 尺寸为 0,
+            // centerCrop 不带正尺寸直接 build 会抛 IllegalStateException;fit() 在视图布局后按真实尺寸加载
             com.squareup.picasso.Picasso.get()
                     .load(pf)
                     .placeholder(R.drawable.placeholder_poster)
                     .error(R.drawable.placeholder_poster)
+                    .fit()
                     .centerCrop()
                     .into(iv);
         } else {
             iv.setImageResource(R.drawable.placeholder_poster);
-            if (pic != null && !pic.isEmpty()) {
-                DownloadFacade.get().ensurePosterAsync(pic, vodName);
-            }
+            // 无本地海报:仅对首次出现的 pic 发起一次懒拉取(去重),避免进度刷新反复请求
+            if (pic == null || pic.isEmpty() || pic.equals(bound)) return;
+            iv.setTag(TAG_POSTER_SOURCE, pic);
+            DownloadFacade.get().ensurePosterAsync(pic, vodName);
         }
     }
 
@@ -1052,13 +1095,27 @@ public class DownloadFragment extends BaseVbFragment<FragmentDownloadBinding> {
         updateToolbar();
     }
 
-    /** 点击条目切换播放/暂停:暂停/失败 -> 开始下载;下载中/等待/排队 -> 暂停 */
+    /** 点击条目切换播放/暂停:暂停/失败/网络中断 -> 开始下载;下载中/等待/排队 -> 暂停 */
     private void toggleTaskPlay(DownloadTask t) {
-        if (t.state == DownloadTask.STATE_PAUSED || t.state == DownloadTask.STATE_FAILED) {
+        // 被"仅WiFi"拦住的等待任务:点击给出原因,而不是无声变"已暂停"
+        if (t.state == DownloadTask.STATE_WAITING && blockedByWifiOnly()) return;
+        if (t.state == DownloadTask.STATE_PAUSED
+                || t.state == DownloadTask.STATE_FAILED
+                || t.state == DownloadTask.STATE_NETWORK_PAUSED) {
+            if (blockedByWifiOnly()) return;
             DownloadFacade.get().resume(t);
         } else {
             DownloadFacade.get().pause(t);
         }
+    }
+
+    /** 仅WiFi + 当前移动网络时明确提示并拦截,避免"点了没反应";@return true=已拦截 */
+    private boolean blockedByWifiOnly() {
+        if (DownloadFacade.get().isWifiOnly() && DownloadFacade.get().isMobileNetwork()) {
+            AppBubble.toast("已开启仅Wi-Fi下载,当前为移动网络,任务不会开始。请连接 Wi-Fi,或将下载设置为“Wi-Fi+流量”。");
+            return true;
+        }
+        return false;
     }
 
     /** 用内置播放器播放下载的文件(与"我的-本地视频"一致) */

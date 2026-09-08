@@ -102,6 +102,9 @@ public class App extends MultiDexApplication {
         logDeviceScreenToBiz();
         // 崩溃捕获:未捕获异常落库(log 模块)
         LogStore.get().installCrashHandler();
+        // 全局系统状态监控(网络/前后台/横竖屏/电量/磁盘, 基座层)必须先于下载模块初始化:
+        // 下载模块在构造时会订阅网络事件(仅WiFi暂停/恢复),若监控未就绪订阅被跳过 → 切流量不停、恢复无法继续
+        SystemStateMonitor.init(this);
         // 下载模块(:download) context 注入(保存目录/海报/网络监听/通知)
         com.github.tvbox.osc.download.DownloadFacade.init(this);
         // 组合根:收敛 spider-api 服务注入(解析/手动判定/内容服务),见 AppCompositionRoot
@@ -109,9 +112,7 @@ public class App extends MultiDexApplication {
         // 方案A:注册无头 WebView 嗅探器(嗅探型源任务启动前用它拿真实播放地址,串行复用保会话)
         com.github.tvbox.osc.download.DownloadFacade.setUrlSniffer(com.github.tvbox.osc.util.WebSniffResolver.get());
         // 下载完成通知渠道(可选增强)
-        
-        // 全局系统状态监控(网络/前后台/横竖屏/电量/磁盘, 基座层)
-        SystemStateMonitor.init(this);
+
         // 更新缓存清理:更新完成并安装后,首次启动删除"版本与当前一致"的本地 APK;并清半成品
         try {
             com.github.tvbox.osc.update.UpdateManager.cleanupOnAppStart(this);

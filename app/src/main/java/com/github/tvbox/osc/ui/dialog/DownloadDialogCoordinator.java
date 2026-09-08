@@ -276,12 +276,10 @@ public final class DownloadDialogCoordinator {
             host.toast("请先选择要下载的剧集");
             return;
         }
-        // 网络控制:默认仅 WiFi 下载;移动网络下强提醒流量风险,确认后才继续(统一走 DownloadConfig)
+        // 仅WiFi为硬性限制:当前为移动网络时不开始(与下载页"仅Wi-Fi"开关语义一致);
+        // 需用流量请先在下载设置里改为"Wi-Fi+流量",或连接 Wi-Fi
         if (DownloadFacade.get().isWifiOnly() && DownloadFacade.get().isMobileNetwork()) {
-            // 统一主题化确认弹窗(替代 XPopup 默认 asConfirm)
-            ConfirmDialog.show(context, "流量提醒",
-                    "当前为移动网络,继续下载将消耗手机流量,是否继续?",
-                    "继续下载", () -> doStartDownloads(selected));
+            host.toast("已开启仅Wi-Fi下载。");
             return;
         }
         doStartDownloads(selected);

@@ -66,6 +66,12 @@ public class DownloadManager {
         t.setDaemon(true);
         return t;
     });
+    /** 大小预检:后台单线程(HEAD/播放列表请求轻量),不占下载线程与持久化线程 */
+    private final ExecutorService probeExecutor = Executors.newSingleThreadExecutor(r -> {
+        Thread t = new Thread(r, "tvbox-size");
+        t.setDaemon(true);
+        return t;
+    });
     /** 持久化合并锁:始终只写最新快照,批量入队不会重复写几十次 */
     private final Object persistLock = new Object();
     private List<DownloadTask> pendingSnapshot = null;
@@ -216,8 +222,9 @@ public class DownloadManager {
     // 进度型刷新(任务 A/B 共用):高频进度只更新内存,落盘+广播合并到窗口内
     // ------------------------------------------------------------------
 
-    /** 高频进度(直链窗口 / HLS 每分片 / 合并进度)落盘与广播的合并窗口(ms) */
-    private static final long PROGRESS_FLUSH_MS = 600L;
+    /** 高频进度(直链窗口 / HLS 每分片 / 合并进度)落盘与广播的合并窗口(ms)。
+     * 450ms ≈ 2.2Hz:网速/百分比文本保持约半秒级平滑刷新,同时落盘频率仍有上限。 */
+    private static final long PROGRESS_FLUSH_MS = 450L;
     /** 进度节流共享锁(多下载线程并发调用) */
     private final Object progressLock = new Object();
     /** 上次实际落盘时间戳 */
@@ -243,7 +250,7 @@ public class DownloadManager {
      * 被节流的是"任务列表快照的磁盘落盘 + 进度广播"——进度字段(下载字节/分片数/网速等)
      * 由执行器线程直接写任务对象内存,其余代码读取时始终是最新内存值,不受节流影响。
      * <p>
-     * 策略:600ms 窗口内多次调用只落盘/广播一次(窗口满后的调用立即执行);
+     * 策略:窗口(450ms)内多次调用只落盘/广播一次(窗口满后的调用立即执行);
      * 窗口末尾由主线程定时器兜底一次,持续进度不漏尾部。
      * 暂停/失败/完成等终态事件不经过本方法,由调用方 persist+notifyChanged 立即强制落盘(不丢终态)。
      */
@@ -300,6 +307,32 @@ public class DownloadManager {
 
     void wakeWorker() {
         scheduler.wakeWorker();
+    }
+
+    /**
+     * 任务大小异步预检(入队后调用,下载页尽早显示"约大小",启动前磁盘判断直接复用结果):
+     * 直链探测精确 Content-Length(写 totalBytes);m3u8 按码率×时长估算(写 estimatedBytes)。
+     * 单飞去重;完成后大小有变化才落盘并广播一次(驱动下载页行内大小展示)。
+     */
+    void probeSizeAsync(final DownloadTask t) {
+        if (t == null || t.state == DownloadTask.STATE_COMPLETED || t.state == DownloadTask.STATE_CANCELLED) return;
+        // m3u8 不做入队预检:估算需要拉一次整份播放列表(大且带 sign),下载任务本身启动时也会拉一次并据此估算,
+        // 再预检会额外白拉一遍并增加 CDN 掐连接/资源未关闭的概率。m3u8 的"约大小/磁盘预检"由
+        // 启动时的阻塞探测(checkDiskSpace)负责;直链仅一个轻量 HEAD,保留入队异步预检。
+        if (t.url != null && t.url.toLowerCase().contains(".m3u8")) return;
+        probeExecutor.execute(() -> {
+            try {
+                if (t.totalBytes > 0 || t.estimatedBytes > 0) return;
+                long prevTotal = t.totalBytes, prevEst = t.estimatedBytes;
+                executor.probeSize(t);
+                if (t.totalBytes != prevTotal || t.estimatedBytes != prevEst) {
+                    persist();
+                    notifyChanged();
+                }
+            } catch (Throwable th) {
+                th.printStackTrace();
+            }
+        });
     }
 
     String sanitize(String name) {
@@ -452,13 +485,15 @@ public class DownloadManager {
         }
     }
 
-    /** 是否仅 WiFi 下载(默认开启) */
+    /** 是否仅 WiFi 下载(默认开启;开启时蜂窝/断网不启动并自动挂起) */
     public boolean isWifiOnly() {
         return policy.isWifiOnly();
     }
 
     public void setWifiOnly(boolean wifiOnly) {
         policy.setWifiOnly(wifiOnly);
+        // 立即生效,不依赖网络切换事件:开启且当前非WiFi → 暂停全部;关闭 → 恢复挂起任务并唤醒调度
+        scheduler.enforceNetworkGate();
         com.github.tvbox.osc.log.LogStore.log(com.github.tvbox.osc.log.Category.DOWNLOAD, "下载设置: 仅WiFi=" + wifiOnly);
     }
 
