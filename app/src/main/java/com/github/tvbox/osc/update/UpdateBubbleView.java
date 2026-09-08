@@ -10,11 +10,13 @@ import android.graphics.Paint;
 import android.graphics.Path;
 import android.graphics.RectF;
 import android.graphics.drawable.Drawable;
+import android.util.AttributeSet;
 import android.view.View;
 import android.view.animation.DecelerateInterpolator;
 import android.view.animation.LinearInterpolator;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.core.content.ContextCompat;
 
 import com.github.tvbox.osc.R;
@@ -84,6 +86,21 @@ public class UpdateBubbleView extends View {
         if (mArrowIcon != null) mArrowIcon.setTint(mIconColor);
         if (mCheckIcon != null) mCheckIcon.setTint(mIconColor); // 完成态对勾与其它图标同色(主题色)
         setLayerType(View.LAYER_TYPE_SOFTWARE, null);
+    }
+
+    /**
+     * XML inflate 构造(layout float_update_indicator 以全限定类名引用本视图)。
+     * LayoutInflater 只能经 (Context, AttributeSet) 构造创建自定义标签视图,
+     * 缺此构造会抛 InflateException "Error inflating class ...";
+     * 本视图全自绘、不读 attrs,直接委托单参构造即可。
+     */
+    public UpdateBubbleView(@NonNull Context context, @Nullable AttributeSet attrs) {
+        this(context);
+    }
+
+    /** 带主题 defStyleAttr 的构造,兼容 inflate/样式框架调用;同样忽略 attrs。 */
+    public UpdateBubbleView(@NonNull Context context, @Nullable AttributeSet attrs, int defStyleAttr) {
+        this(context);
     }
 
     /** 取主题资源色;缺失/异常回落兜底色(保证不崩,且浅色/深色主题自适应) */
