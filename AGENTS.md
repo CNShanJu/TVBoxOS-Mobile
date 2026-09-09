@@ -155,6 +155,15 @@ app / feature
    - 用户让**打 tag** 时:一律基于**最新的 versionName** 打(如 `v3.4.5`)。
    - 用户让**发布 app(出正式包)**时:一律基于**最新 tag 对应的版本**构建。
    - 用户有主动说明(指定版本号/tag/发布方式)时,以用户说明为准。
+4. **发布/脚本写入含中文(非 ASCII)内容必须显式 UTF-8,发布后抽查乱码**(强制;血泪教训:曾两次发版正文中文全部变成
+   `?`,起因是脚本上传编码被破坏):
+   - 向 GitHub Release 等网页/接口上传含中文的文本时,**禁止**依赖 Windows PowerShell 5.1
+     `Invoke-WebRequest`/`Invoke-RestMethod` 字符串 body 的默认编码——其按 ASCII 发送,会把每个中文字符替换成 `?`;
+   - 正确做法:显式带 charset 并以 UTF-8 字节发送(body 先 `[Text.Encoding]::UTF8.GetBytes(...)`,
+     `ContentType 'application/json; charset=utf-8'`),或直接用 `curl.exe --data-binary @<utf8文件>`;
+   - 含中文的脚本/数据文件(如 .ps1/.md)一律以 **UTF-8** 落盘,避免 GBK/ANSI 读取错乱;
+   - **发布后必须抽查** GitHub 上正文/标题/资产名是否乱码(连续 `?` 即编码被破坏),发现后立即以 UTF-8 方式修正
+     正文再让用户/客户端验证,不得把乱码留到用户测试环节。
 
 ## 十、常用基础设施速查
 
