@@ -27,6 +27,8 @@ public final class UpdateFloatIndicator implements UpdateManager.Listener {
 
     private final Context appContext;
     private View floatView;
+    /** 悬浮圈内部自绘视图(创建时直接持有,替代每帧 findView,保证状态刷新稳定) */
+    private UpdateBubbleView bubbleView;
     private ViewGroup attachedParent;
     private Activity currentActivity;
     private UpdateIndicatorDialog dialog;
@@ -111,8 +113,8 @@ public final class UpdateFloatIndicator implements UpdateManager.Listener {
             floatView = createFloatView(a);
             // 触摸手势(短按/拖动)由 DragTouchListener 全权处理;OnClickListener 仅兜底
             // 遥控器 OK 键等非触摸点击(触摸路径已消费,不会重复触发)。
-            // 注意:不能注册 OnLongClickListener——长按计时(约500ms)会在拖动中被中途触发
-            // 弹窗,表现为"拖一下圆圈变大/弹出面板"。
+            // 不注册 OnLongClickListener:长按计时(约500ms)会在拖动中被中途触发,
+            // 造成拖动与弹窗手势互相干扰。
             floatView.setOnClickListener(v -> handleTap());
             floatView.setOnTouchListener(new DragTouchListener());
         }
@@ -121,10 +123,10 @@ public final class UpdateFloatIndicator implements UpdateManager.Listener {
                 ((ViewGroup) floatView.getParent()).removeView(floatView);
             }
             ViewGroup decor = (ViewGroup) a.getWindow().getDecorView();
-            FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(
-                    ViewGroup.LayoutParams.WRAP_CONTENT,
-                    ViewGroup.LayoutParams.WRAP_CONTENT,
-                    Gravity.NO_GRAVITY);
+            int fixed = Math.round(54 * a.getResources().getDisplayMetrics().density);
+            // 固定像素尺寸挂载:不能用 WRAP_CONTENT——decor 按"屏宽-边距"给 WRAP 子视图 AT_MOST,
+            // 内部 match_parent 的自绘 View 会把可用空间吃满,拖动使边距变小→圆圈随之放大。
+            FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(fixed, fixed, Gravity.NO_GRAVITY);
             placeInitial(lp, a, floatView);
             decor.addView(floatView, lp);
             attachedParent = decor;
@@ -133,22 +135,30 @@ public final class UpdateFloatIndicator implements UpdateManager.Listener {
         updateBubble();
     }
 
-    /** 构造悬浮气泡:优先 XML inflate;若 inflate 异常(资源/类加载问题)打印堆栈并程序化兜底 */
+    /** 构造悬浮气泡:优先 XML inflate;异常或缺少子视图时程序化兜底,并始终持有自绘视图引用 */
     private View createFloatView(Activity a) {
+        bubbleView = null;
+        View root = null;
         try {
-            return LayoutInflater.from(a).inflate(R.layout.float_update_indicator, null);
+            root = LayoutInflater.from(a).inflate(R.layout.float_update_indicator, null);
         } catch (Throwable t) {
             LOG.e(TAG, "inflate float_update_indicator FAILED, fallback programmatic: " + t);
             LOG.e(TAG, t);
-            FrameLayout root = new FrameLayout(a);
-            root.setClickable(true);
-            root.setFocusable(true);
-            UpdateBubbleView b = new UpdateBubbleView(a);
-            b.setId(R.id.update_bubble);
-            int size = Math.round(54 * a.getResources().getDisplayMetrics().density);
-            root.addView(b, new FrameLayout.LayoutParams(size, size));
-            return root;
         }
+        int size = Math.round(54 * a.getResources().getDisplayMetrics().density);
+        UpdateBubbleView b = root == null ? null : root.findViewById(R.id.update_bubble);
+        if (b == null) {
+            if (!(root instanceof FrameLayout)) root = new FrameLayout(a);
+            FrameLayout fl = (FrameLayout) root;
+            fl.setClickable(true);
+            fl.setFocusable(true);
+            b = new UpdateBubbleView(a);
+            b.setId(R.id.update_bubble);
+            fl.addView(b, new FrameLayout.LayoutParams(size, size));
+            LOG.e(TAG, "update_bubble child missing after inflate, added programmatically");
+        }
+        bubbleView = b;
+        return root;
     }
 
     /** 首次挂载/无记录位置:默认贴右下(距边 18dp、距底 76dp 避底栏);有记录位置则恢复 */
@@ -183,7 +193,7 @@ public final class UpdateFloatIndicator implements UpdateManager.Listener {
         if (floatView != null) {
             LOG.i(TAG, "hide: removing floatView, parent="
                     + (floatView.getParent() == null ? "null" : floatView.getParent().getClass().getSimpleName()));
-            UpdateBubbleView b = floatView.findViewById(R.id.update_bubble);
+            UpdateBubbleView b = bubbleView != null ? bubbleView : floatView.findViewById(R.id.update_bubble);
             if (b != null) b.pauseAnimations();
             if (floatView.getParent() instanceof ViewGroup) {
                 ((ViewGroup) floatView.getParent()).removeView(floatView);
@@ -191,17 +201,19 @@ public final class UpdateFloatIndicator implements UpdateManager.Listener {
         }
         attachedParent = null;
     }
+
     /** 用 UpdateBubbleView 映射 UpdateManager 状态与真实进度(进度环/中心图标/动画) */
     private void updateBubble() {
         if (floatView == null) {
             LOG.i(TAG, "updateBubble: floatView null, skipped");
             return;
         }
-        UpdateBubbleView b = floatView.findViewById(R.id.update_bubble);
+        UpdateBubbleView b = bubbleView != null ? bubbleView : floatView.findViewById(R.id.update_bubble);
         if (b == null) {
             LOG.i(TAG, "updateBubble: R.id.update_bubble not found in inflated layout!");
             return;
         }
+        bubbleView = b;
         UpdateManager m = UpdateManager.get();
         UpdateManager.State s = m.getState();
         long downloaded = m.getDownloaded();
@@ -251,9 +263,9 @@ public final class UpdateFloatIndicator implements UpdateManager.Listener {
 
     /**
      * 悬浮圈触摸处理:DOWN 即消费接管整个手势,与 View 自身长按/点击机制隔离——
-     * 否则按下约 500ms 后系统长按会触发(哪怕手指已在拖动),弹窗"变大"打断拖动。
+     * 否则按下约 500ms 后系统长按会触发(哪怕手指已在拖动),弹窗会打断拖动。
      * <ul>
-     *   <li>移动超过 touchSlop → 拖动(改边距,松手吸附边缘);</li>
+     *   <li>移动超过 touchSlop → 拖动(只改边距,尺寸固定,松手吸附边缘);</li>
      *   <li>未超过(含按下即松) → 视为短按 {@link #handleTap()}。</li>
      * </ul>
      */
