@@ -56,6 +56,12 @@ public abstract class BaseActivity extends AppCompatActivity implements CustomAd
         }
         mContext = this;
         AppManager.getInstance().addActivity(this);
+        // 全局页面背景层("body"底图):挂到内容容器最底层,所有页面透明处即显示背景图
+        // 图源/遮罩/缩放位置统一走系统配置门面(SystemConfig)组装,设置页改完各页 onResume 自动套用
+        try {
+            attachPageBackground();
+        } catch (Throwable ignored) {
+        }
         initStatusBar();
         initTitleBar();
         init();
@@ -104,6 +110,16 @@ public abstract class BaseActivity extends AppCompatActivity implements CustomAd
         return mTitleBar;
     }
 
+
+    /**
+     * 挂载/刷新全局页面背景层("body"底图):图源、遮罩不透明度、缩放与位置都从
+     * {@link com.github.tvbox.osc.config.SystemConfig} 门面组装(见 util/PageBackgroundStore),
+     * 设置页改完配置后,各页面 onResume 走这里自动套用。
+     */
+    private void attachPageBackground() {
+        com.github.tvbox.osc.ui.kit.PageBackgroundView.attach(this,
+                com.github.tvbox.osc.util.PageBackgroundStore.currentConfig());
+    }
 
     public boolean hasPermission(String permission) {
         boolean has = true;
@@ -154,6 +170,11 @@ public abstract class BaseActivity extends AppCompatActivity implements CustomAd
     @Override
     protected void onResume() {
         super.onResume();
+        // 全局背景层:主题切换/背景图配置变更后重新应用;图源未变时为零开销
+        try {
+            attachPageBackground();
+        } catch (Throwable ignored) {
+        }
         // 全局更新悬浮圈:下载进行中时,当前页面顶部悬浮圆形进度钮(不依赖系统悬浮窗权限)
         try {
             com.github.tvbox.osc.update.UpdateFloatIndicator.get(this).attach(this);
@@ -231,10 +252,26 @@ public abstract class BaseActivity extends AppCompatActivity implements CustomAd
      * 显示加载框（统一走 DialogCoordinator 生成）
      */
     public void showLoadingDialog() {
+        showLoadingDialog(null);
+    }
+
+    /**
+     * 显示加载框并带一行状态文本（用于"逐个探测/可能十几秒"的流程：让用户看到进度，
+     * 而不是点了没反应；文本经 {@link #updateLoadingHint} 中途更新）
+     */
+    public void showLoadingDialog(CharSequence hint) {
         if (loadingPopup == null) {
             loadingPopup = com.github.tvbox.osc.ui.dialog.DialogCoordinator.loading(this);
         }
         loadingPopup.show();
+        updateLoadingHint(hint);
+    }
+
+    /** 更新加载框状态文本（加载框未显示时空操作；须在主线程调用） */
+    public void updateLoadingHint(CharSequence hint) {
+        if (loadingPopup instanceof com.github.tvbox.osc.ui.dialog.LoadingDialog) {
+            ((com.github.tvbox.osc.ui.dialog.LoadingDialog) loadingPopup).setHint(hint);
+        }
     }
 
     /**

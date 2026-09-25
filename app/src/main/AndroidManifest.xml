@@ -108,6 +108,11 @@
             android:name=".ui.activity.LogActivity"
             android:configChanges="orientation|screenSize|keyboardHidden"
             android:exported="false"/>
+        <!-- 背景图设置(设置-主题颜色-设置背景图):选图/拖动缩放/遮罩透明度 -->
+        <activity
+            android:name=".ui.activity.BackgroundSettingActivity"
+            android:configChanges="orientation|screenSize|keyboardHidden"
+            android:exported="false"/>
 
         <!-- DLNA 投屏服务已停用:依赖 com.github.devin1014.DLNA-Cast 从 JitPack 消失,待找到替代库后恢复 -->
         <!-- <service android:name="com.android.cast.dlna.dmc.DLNACastService"/> -->
