@@ -100,6 +100,8 @@ tasks.register('checkModuleDependencies') {
                 'Hawk 裸依赖(import)'       : ~/import\s+com\.orhanobut\.hawk\./,
                 'DownloadManager.get() 直调': ~/\bDownloadManager\.get\s*\(/,
                 '业务自建 OkHttpClient'      : ~/\bnew\s+OkHttpClient\.Builder\s*\(/,
+                // app 层 EventBus 已清零(改进.txt §五:新代码禁止新增 EventBus);只匹配真实 API,避开注释里的"EventBus"字样
+                'app 层 EventBus 残留'       : ~/(org\.greenrobot\.eventbus|EventBus\.getDefault\s*\(|@Subscribe\b)/,
         ]
         appSourceDirs.each { dir ->
             if (!dir.exists()) return
