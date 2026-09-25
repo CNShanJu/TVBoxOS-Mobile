@@ -36,14 +36,21 @@ object EpisodeDownloadBatch {
 
         @JvmField
         var failed: Int = 0
+
+        /** 因无存储权限被拒的集数(enqueue 硬门槛,任务未入队) */
+        @JvmField
+        var noPermission: Int = 0
     }
 
     /**
-     * 批量入队完成后的提示文案(纯映射;UI 仅弹 toast)。优先"有新增"、
-     * 其次"均已存在(已下载/已在任务中)"、再"全部失败";空输入返回 null 由调用方处理。
+     * 批量入队完成后的提示文案(纯映射;UI 仅弹 toast)。优先「无存储权限」(任务未入队,必须引导授权)、
+     * 其次「有新增」、再「均已存在(已下载/已在任务中)」、最后「全部失败」;空输入返回 null 由调用方处理。
      */
     @JvmStatic
     fun toastMessage(r: Outcome): String? {
+        if (r.noPermission > 0) {
+            return "未授权存储权限,无法下载。请先在系统设置授予「所有文件访问」权限"
+        }
         if (r.added > 0) {
             val dups = r.downloadedExisted + r.existedInQueue
             return if (dups > 0) {
@@ -134,6 +141,12 @@ object EpisodeDownloadBatch {
         val sel = selected
         val vi = vodInfo
         if (sel == null || sel.isEmpty() || vi == null) return out
+        // 存储权限是入队硬门槛(DownloadScheduler 会直接拒绝):先检查,避免白白逐集解析地址后报误导性文案
+        if (!DownloadFacade.get().hasStoragePermission()) {
+            Log.i("TVBox-Download", "批量入队中止:无存储权限,已选 " + sel.size + " 集")
+            out.noPermission = sel.size
+            return out
+        }
         val seriesList: List<VodInfo.VodSeries>? = vi.seriesMap?.get(vi.playFlag)
         if (seriesList == null || seriesList.isEmpty()) return out
         val sourceKey = vi.sourceKey

@@ -32,7 +32,7 @@ public class FileCleaner {
     }
 
     /** Bug4: 存储权限硬门槛(Android 10+ 需要 MANAGE_EXTERNAL_STORAGE 才能写公共目录) */
-    static boolean hasStoragePermission() {
+    public static boolean hasStoragePermission() {
         return Build.VERSION.SDK_INT < 30 || Environment.isExternalStorageManager();
     }
 

@@ -335,6 +335,11 @@ public final class DownloadFacade {
         return com.github.tvbox.osc.download.internal.DownloadManager.getSaveDir();
     }
 
+    /** 是否已具备存储权限(Android 11+ 需「所有文件访问」;无权限时 enqueue 会被拒绝) */
+    public boolean hasStoragePermission() {
+        return com.github.tvbox.osc.download.internal.FileCleaner.hasStoragePermission();
+    }
+
     // ------------------------------------------------------------------
     // 剧集状态(统一 EpisodeId 语义,见 DownloadCore;UI 不再直读下载内部实现)
     // ------------------------------------------------------------------

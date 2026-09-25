@@ -54,6 +54,18 @@ public class EpisodeDownloadBatchTest {
     }
 
     @Test
+    public void toastMessage_noPermissionWins() {
+        EpisodeDownloadBatch.Outcome noPerm = new EpisodeDownloadBatch.Outcome();
+        noPerm.noPermission = 2;
+        assertEquals("未授权存储权限,无法下载。请先在系统设置授予「所有文件访问」权限",
+                EpisodeDownloadBatch.toastMessage(noPerm));
+        // 即使同时有新增/已存在计数,无权限文案仍优先(任务实际未入队)
+        noPerm.added = 1;
+        noPerm.existedInQueue = 1;
+        assertTrue(EpisodeDownloadBatch.toastMessage(noPerm).startsWith("未授权存储权限"));
+    }
+
+    @Test
     public void toastMessage_prefersAddedThenDupThenFail() {
         EpisodeDownloadBatch.Outcome addedOnly = new EpisodeDownloadBatch.Outcome();
         addedOnly.added = 3;
