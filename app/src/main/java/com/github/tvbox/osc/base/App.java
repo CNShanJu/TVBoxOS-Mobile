@@ -187,52 +187,60 @@ public class App extends MultiDexApplication {
     }
 
     private void putDefaultApi() {
-        // 本地默认订阅文件是默认订阅的唯一来源,每次启动与列表同步:
-        // 文件新增的默认订阅 -> 补进列表;文件删除/清空的默认订阅 -> 从列表移除
+        // 本地默认订阅文件是默认订阅的唯一来源,每次启动与列表同步(只增删**我们注入过**的条目):
+        // 文件新增的默认订阅 -> 补进列表;文件移除的默认订阅 -> 从列表移除(限注入记录内);
+        // 用户自己添加/改名的订阅一律不动。
         List<Subscription> defaults = readDefaultSubscriptions();
-        boolean filePresent = defaults != null;
         if (defaults == null) defaults = new ArrayList<>();
         List<Subscription> injected = SubscriptionConfig.getDefaultSubs();
         List<Subscription> subs = SubscriptionConfig.getSubscriptions();
         if (subs == null) subs = new ArrayList<>();
 
-        // 迁移兼容:旧版本注入默认订阅时未记录 DEFAULT_SUBS。
-        // 1) 文件已清空:若列表符合旧版注入特征(首项勾选且接口地址=首项地址),视为注入集交给同步逻辑清除;
-        // 2) 文件有内容:把与文件匹配的现有订阅视为注入集,文件后续删掉它们时能同步移除。
-        if (!SubscriptionConfig.containsDefaultSubs()) {
-            if (filePresent && defaults.isEmpty() && !subs.isEmpty()
-                    && subs.get(0).isChecked()
-                    && TextUtils.equals(subs.get(0).getUrl(), SubscriptionConfig.getApiUrl())) {
-                injected = new ArrayList<>(subs);
-            } else if (!defaults.isEmpty()) {
-                for (Subscription def : defaults) {
-                    if (containsSub(subs, def) && !containsSub(injected, def)) {
-                        injected.add(def);
-                    }
+        List<String> injectedTags = SubscriptionConfig.getInjectedTags();
+
+        // 迁移兼容(只做一次):早期版本用 DEFAULT_SUBS 当删除依据,升级后首次启动会把与该快照
+        // 同名的用户自建订阅当成注入项删掉(实证:整表清空 + api_url 置空,订阅"更新后消失")。
+        // 无注入记录时只建立基线——曾由旧版注入的项照旧补进记录,其余绝不删除。
+        if (injectedTags == null) {
+            injectedTags = new ArrayList<>();
+            for (Subscription s : subs) {
+                if (!SubscriptionConfig.isTagInjected(injectedTags, s)
+                        && (containsSub(injected, s) || containsSub(defaults, s))) {
+                    injectedTags.add(SubscriptionConfig.injectedTag(s));
                 }
             }
+        }
+
+        // 删除依据 = "上次注入记录里确实注入过、但现在文件已移除"的条目(用户自建订阅永不触碰)
+        List<String> removalTags = new ArrayList<>(injectedTags);
+        for (Subscription def : defaults) {
+            removalTags.remove(SubscriptionConfig.injectedTag(def));
         }
 
         boolean changed = false;
         boolean removedChecked = false;
 
-        // 1) 移除:文件里已不存在的注入项
-        for (Subscription inj : injected) {
+        // 1) 移除:仅限确实注入过、且文件已不再提供的条目
+        if (!removalTags.isEmpty()) {
             Iterator<Subscription> it = subs.iterator();
             while (it.hasNext()) {
                 Subscription s = it.next();
-                if (TextUtils.equals(s.getName(), inj.getName()) && TextUtils.equals(s.getUrl(), inj.getUrl())) {
+                String tag = SubscriptionConfig.injectedTag(s);
+                if (removalTags.contains(tag)) {
                     if (s.isChecked()) removedChecked = true;
+                    AppLog.log("订阅", "默认订阅同步: 移除 " + s.getName() + "  " + s.getUrl());
+                    LogStore.log(Category.SUBSCRIPTION, "订阅: 默认订阅已从清单移除 " + s.getName());
                     it.remove();
+                    removalTags.remove(tag);
                     changed = true;
-                    break;
                 }
             }
         }
-        // 2) 补齐:文件里新增的默认订阅
+        // 2) 补齐:仅文件里新增的默认订阅(不在注入记录中 = 本次文件新增,用户主动删除的不补回)
         for (Subscription def : defaults) {
-            if (!containsSub(subs, def)) {
+            if (!SubscriptionConfig.isTagInjected(injectedTags, def) && !containsSub(subs, def)) {
                 subs.add(new Subscription(def.getName(), def.getUrl()));
+                injectedTags.add(SubscriptionConfig.injectedTag(def));
                 changed = true;
             }
         }
@@ -240,6 +248,8 @@ public class App extends MultiDexApplication {
         // 3) 勾选与接口地址维护
         if (subs.isEmpty()) {
             if (changed) {
+                AppLog.log("订阅", "默认订阅同步: 列表已空(仅移除注入项),当前订阅地址置空");
+                LogStore.log(Category.SUBSCRIPTION, "订阅: 列表已空(默认订阅被清单移除)");
                 SubscriptionConfig.setSubscriptions(subs);
                 SubscriptionConfig.setApiUrl("");
             }
@@ -259,8 +269,9 @@ public class App extends MultiDexApplication {
             if (changed) SubscriptionConfig.setSubscriptions(subs);
         }
 
-        // 4) 记录本次文件内容,供下次同步
+        // 4) 记录本次文件内容(快照)与注入记录,供下次同步
         SubscriptionConfig.setDefaultSubs(defaults);
+        SubscriptionConfig.setInjectedTags(injectedTags);
     }
 
     private static boolean containsSub(List<Subscription> list, Subscription sub) {
