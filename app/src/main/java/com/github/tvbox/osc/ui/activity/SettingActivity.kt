@@ -48,6 +48,9 @@ class SettingActivity : BaseVbActivity<ActivitySettingBinding>() {
     private var dnsOpt = SystemConfig.getDohUrl()
     private var currentLiveApi = SystemConfig.getLiveUrl()
 
+    /** init() 是否已跑完(onResume 刷新显示前要确认控件已就绪) */
+    private var inited = false
+
     /** 设置操作业务日志:写结构化业务日志(SYSTEM)+ logcat 文件日志 */
     private fun biz(msg: String) {
         com.github.tvbox.osc.util.AppLog.log("设置", msg)
@@ -444,6 +447,15 @@ class SettingActivity : BaseVbActivity<ActivitySettingBinding>() {
                 onClickClearCache(view)
             })
         }
+        // 启动时自动检查更新(默认开):开关只记配置,触发时机见 HomeFragment(上次看到气泡消失后)
+        mBinding.switchAutoCheckUpdate.setChecked(SystemConfig.isAutoCheckUpdate())
+        mBinding.llAutoCheckUpdate.setOnClickListener { view: View? ->
+            FastClickCheckUtil.check(view)
+            val newVal = !SystemConfig.isAutoCheckUpdate()
+            SystemConfig.setAutoCheckUpdate(newVal)
+            mBinding.switchAutoCheckUpdate.setChecked(newVal)
+            biz("启动自动检查更新: " + if (newVal) "开" else "关")
+        }
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
             mBinding.llTheme.visibility = View.GONE
         }
@@ -488,6 +500,13 @@ class SettingActivity : BaseVbActivity<ActivitySettingBinding>() {
             dialog.show()
         })
 
+        // 背景图设置(二级页):展示当前背景图,支持换图/拖动缩放位置/调遮罩透明度/恢复默认
+        updatePageBackgroundValue()
+        mBinding.llPageBackground.setOnClickListener(View.OnClickListener { view: View? ->
+            FastClickCheckUtil.check(view)
+            jumpActivity(BackgroundSettingActivity::class.java)
+        })
+
         mBinding.switchVideoPurify.setChecked(PlayConfig.isVideoPurify())
         // toggle purify video -------------------------------------
         mBinding.llVideoPurify.setOnClickListener { v: View? ->
@@ -519,6 +538,7 @@ class SettingActivity : BaseVbActivity<ActivitySettingBinding>() {
             FastClickCheckUtil.check(v)
             jumpActivity(LogActivity::class.java)
         }
+        inited = true
     }
 
     /** 下载设置分组:仅WiFi开关 + 并发数选择 + 保存位置只读,统一走 DownloadFacade(门禁:UI 不触内部实现) */
@@ -623,6 +643,18 @@ class SettingActivity : BaseVbActivity<ActivitySettingBinding>() {
         } else {
             super.onBackPressed()
         }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        // 背景图设置页返回后刷新取值(默认/自定义)
+        if (inited) updatePageBackgroundValue()
+    }
+
+    /** 背景图取值:默认(跟随主题) / 自定义(用户自己设过,含显式纯色) */
+    private fun updatePageBackgroundValue() {
+        mBinding.tvPageBackground.text =
+            if (SystemConfig.isPageBackgroundUserSet()) "自定义" else "默认"
     }
 
     private fun onClickClearCache(v: View) {
