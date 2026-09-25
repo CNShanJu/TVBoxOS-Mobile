@@ -18,7 +18,7 @@
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1"
-        android:background="@drawable/bg_large_round_gray"
+        android:background="@drawable/bg_large_round_float"
         android:layout_margin="10dp"
         android:padding="10dp"
         tools:listitem="@layout/item_folder"

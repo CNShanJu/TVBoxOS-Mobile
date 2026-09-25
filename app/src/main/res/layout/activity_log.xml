@@ -38,7 +38,7 @@
         android:layout_height="wrap_content"
         android:layout_marginHorizontal="14dp"
         android:layout_marginTop="8dp"
-        android:background="@drawable/bg_large_round_gray"
+        android:background="@drawable/bg_large_round_float"
         android:gravity="center_vertical"
         android:orientation="horizontal"
         android:paddingStart="14dp"
@@ -231,7 +231,7 @@
         android:layout_height="wrap_content"
         android:layout_marginHorizontal="14dp"
         android:layout_marginTop="10dp"
-        android:background="@drawable/bg_large_round_gray"
+        android:background="@drawable/bg_large_round_float"
         android:foreground="?android:selectableItemBackground"
         android:gravity="center_vertical"
         android:orientation="horizontal"
@@ -266,7 +266,7 @@
             android:id="@+id/scroll_log"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
-            android:background="@drawable/bg_large_round_gray"
+            android:background="@drawable/bg_large_round_float"
             android:scrollbars="vertical">
 
             <TextView
@@ -303,7 +303,7 @@
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btn_clear"
-            style="@style/mbOutline"
+            style="@style/BtnSecondary"
             android:layout_width="0dp"
             android:layout_height="38dp"
             android:layout_marginRight="12dp"
@@ -312,7 +312,7 @@
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btn_export"
-            style="@style/mbOutline"
+            style="@style/BtnSecondary"
             android:layout_width="0dp"
             android:layout_height="38dp"
             android:layout_weight="1"

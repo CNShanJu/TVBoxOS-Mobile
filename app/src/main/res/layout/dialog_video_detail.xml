@@ -39,12 +39,14 @@
             xmlns:app="http://schemas.android.com/apk/res-auto"
             app:hl_cornerRadius="@dimen/common_corners">
 
+            <!-- 占位走 ImageView 背景层(全 App 统一做法):不放 src,免得 src 盖住
+                 "图片加载失败"占位层;真实图由 PicassoLoad 加载后盖在背景之上 -->
             <ImageView
                 android:id="@+id/iv_thum"
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
-                android:scaleType="centerCrop"
-                app:srcCompat="@drawable/placeholder_poster" />
+                android:background="@drawable/placeholder_poster"
+                android:scaleType="centerCrop" />
         </com.lihang.ShadowLayout>
 
         <LinearLayout
@@ -104,8 +106,9 @@
         </LinearLayout>
     </LinearLayout>
 
-    <!-- 链接行(固定,可复制) -->
+    <!-- 链接行(固定,可复制);链接为空时整行隐藏(见 VideoDetailDialog) -->
     <LinearLayout
+        android:id="@+id/ll_link"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:gravity="center_vertical"
@@ -134,7 +137,8 @@
             android:layout_height="wrap_content"
             android:paddingLeft="10dp"
             android:text="复制"
-            android:textColor="@color/color_1890FF" />
+            android:textStyle="bold"
+            android:textColor="@color/text_accent" />
     </LinearLayout>
 
     <!-- 简介标签:固定一行,不随简介内容滚动 -->
@@ -181,7 +185,8 @@
                 android:clickable="true"
                 android:focusable="true"
                 android:paddingTop="6dp"
-                android:textColor="@color/color_1890FF"
+                android:textColor="@color/text_accent"
+                android:textStyle="bold"
                 android:textSize="13sp"
                 android:visibility="gone"
                 tools:ignore="MissingConstraints" />

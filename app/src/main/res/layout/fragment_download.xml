@@ -6,13 +6,14 @@
     android:layout_margin="10dp"
     android:orientation="vertical">
 
-    <!-- ============ 下载相关 box:独立圆角卡片,内容超出内部滚动 ============ -->
+    <!-- ============ 下载相关 box:独立圆角卡片(悬浮面 bg_float,与底栏/「我的」页同一个面),
+         内容超出内部滚动 ============ -->
     <LinearLayout
         android:id="@+id/ll_download_box"
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1"
-        android:background="@drawable/bg_large_round_gray"
+        android:background="@drawable/bg_large_round_float"
         android:orientation="vertical"
         android:paddingHorizontal="12dp"
         android:paddingVertical="10dp">
@@ -170,7 +171,7 @@
 
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/btn_pause_all"
-                    style="@style/mbOutline"
+                    style="@style/BtnSecondary"
                     android:layout_width="0dp"
                     android:layout_height="36dp"
                     android:layout_marginRight="8dp"
@@ -181,7 +182,7 @@
 
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/btn_start_all"
-                    style="@style/mbOutline"
+                    style="@style/BtnPrimary"
                     android:layout_width="0dp"
                     android:layout_height="36dp"
                     android:layout_weight="1"

@@ -59,6 +59,7 @@ public class AllVodSeriesRightDialog extends AppDrawerPopupView {
         mGridViewFlag.setHasFixedSize(true);
         mGridViewFlag.setLayoutManager(new LinearLayoutManager(getContext(), LinearLayoutManager.HORIZONTAL, false));
         if (seriesFlagAdapter != null) {//复用activity的adapter
+            seriesFlagAdapter.setDetailStyle(false); // 抽屉里线路保持原样(详情页才与选集 chip 对齐)
             mGridViewFlag.setAdapter(seriesFlagAdapter);
 
             List<VodInfo.VodSeriesFlag> data = seriesFlagAdapter.getData();
@@ -112,6 +113,9 @@ public class AllVodSeriesRightDialog extends AppDrawerPopupView {
             seriesAdapter.setGird(false);
             seriesAdapter.setChipTextSize(12f); // 恢复详情页默认字号
             seriesAdapter.notifyDataSetChanged();
+        }
+        if (seriesFlagAdapter != null) {
+            seriesFlagAdapter.setDetailStyle(true); // 线路恢复详情页样式(与选集 chip 一致)
         }
     }
 }

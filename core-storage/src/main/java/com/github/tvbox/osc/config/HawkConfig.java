@@ -77,7 +77,7 @@ public class HawkConfig {
      */
     public static final String VIDEO_SPEED = "video_speed";
     /**
-     * 加载动画:空串=默认(anim_loading.json),或 assets/loading/ 目录下的文件名(动态扫描注册)
+     * 加载动画:空串=默认(鱼 glowing_fish_loader),或 assets/loading/ 目录下的文件夹名(动态扫描注册)
      */
     public static final String LOADING_ANIM = "loading_anim";
     /**

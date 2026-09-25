@@ -473,12 +473,12 @@ public class LocalPlayActivity extends BaseVbActivity<ActivityLocalPlayBinding> 
     }
 
     public void showAllSeriesDialog(){
-        // 右侧抽屉:本地选集列表(全高),与在线选集抽屉一致
+        // 右侧抽屉:本地选集列表(全高),与在线选集抽屉一致;固定宽度 300,避免长文件名把抽屉撑宽(文字超出跑马灯滚动)
         mAllSeriesRightDialog = DialogCoordinator.right(this,
                 new AllLocalSeriesDialog(this, convertLocalVideo(), (position, text) -> {
                     mPosition = position;
                     play(true);
-                }), 0, true);
+                }), 300, true);
         mAllSeriesRightDialog.show();
     }
 

@@ -25,7 +25,7 @@
         <com.lihang.ShadowLayout
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            app:hl_layoutBackground="@color/orange"
+            app:hl_layoutBackground="@color/poster_badge_bg"
             app:hl_cornerRadius_rightBottom="8dp">
             <TextView
                 android:id="@+id/tvYear"

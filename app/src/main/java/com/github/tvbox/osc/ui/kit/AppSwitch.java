@@ -10,9 +10,10 @@ import com.github.tvbox.osc.R;
 import com.google.android.material.switchmaterial.SwitchMaterial;
 
 /**
- * 统一的开关组件(跟随主题):
- * 开 = 高亮蓝(color_highlight,两主题一致),关 = 主题灰(switch_track_off,浅色浅灰/深色深灰),
- * 圆点固定白色。开关状态通过轨道颜色 + 圆点位置区分。
+ * 统一的开关组件(跟随主题,颜色全部来自 theme_colors.json):
+ * 开 = `switch_track_on`(蓝色 #1890FF,两主题一致),关 = `switch_track_off`
+ * (该主题主色:亮色 #1F2937 / 暗色 #3C3C46),圆点 = `switch_thumb`(固定白色)。
+ * 开/关靠轨道颜色 + 圆点位置同时区分。
  */
 public class AppSwitch extends SwitchMaterial {
 
@@ -26,7 +27,7 @@ public class AppSwitch extends SwitchMaterial {
     }
 
     private void initDefault() {
-        int onColor = ContextCompat.getColor(getContext(), R.color.color_highlight);
+        int onColor = ContextCompat.getColor(getContext(), R.color.switch_track_on);
         int offColor = ContextCompat.getColor(getContext(), R.color.switch_track_off);
         setTrackTintList(new ColorStateList(
                 new int[][]{
@@ -34,6 +35,6 @@ public class AppSwitch extends SwitchMaterial {
                         new int[]{}
                 },
                 new int[]{onColor, offColor}));
-        setThumbTintList(ColorStateList.valueOf(ContextCompat.getColor(getContext(), R.color.white)));
+        setThumbTintList(ColorStateList.valueOf(ContextCompat.getColor(getContext(), R.color.switch_thumb)));
     }
 }

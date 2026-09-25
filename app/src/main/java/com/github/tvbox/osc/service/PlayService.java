@@ -47,8 +47,9 @@ public class PlayService extends Service {
 
     static String videoInfo = "MBox&&第一集";
     private static MyVideoView videoView;
-    /** 运行中的服务实例(供播放页直调刷新通知/媒体卡);未启动时为 null */
-    private static PlayService sInstance;
+    /** 运行中的服务实例(供播放页直调刷新通知/媒体卡);未启动时为 null。
+     *  由 onCreate/onDestroy(主线程)写、播放侧任意线程读,故用 volatile 保证可见性 */
+    private static volatile PlayService sInstance;
 
     private MediaSession mediaSession;
     private Handler mainHandler;
@@ -318,7 +319,10 @@ public class PlayService extends Service {
             }
             mediaSession = null;
         }
-        sInstance = null;
+        // 只清自己:重建场景下旧实例的 onDestroy 可能晚于新实例的 onCreate,避免把新实例清掉
+        if (sInstance == this) {
+            sInstance = null;
+        }
         stopForeground(true);
         videoView = null;
     }

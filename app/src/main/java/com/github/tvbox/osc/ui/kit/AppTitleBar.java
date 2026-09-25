@@ -14,7 +14,15 @@ import com.hjq.bar.TitleBar;
 
 /**
  * 统一的二级页面标题栏组件:
- * 背景 / 标题文字 / 分割线统一跟随主题配置(bg_body / text_main)。
+ * 背景 / 标题文字 / 分割线统一跟随主题配置(悬浮面 bg_float / 文字 text_main)。
+ * <p>
+ * 背景用悬浮面色 bg_float(与底部导航栏同色同透明度,94%),与底栏是同一个面;
+ * 改底栏颜色/透明度这里跟着一起变,不要再单独指定背景色。
+ * <p>
+ * 注意:标题栏与底栏、页面内容卡片/面板({@code bg_large_round_float})是<b>同一个面</b>
+ * (bg_float 色 + 92% 透明度),改底栏色/透明度这里跟着一起变,不要再单独指定背景色。
+ * 大面板用半透明会把背后底图的明暗差透出来(轻微噪斑),这是"全站同一个面"的既定取舍
+ * (见 ui-common/res/values/colors.xml 注释)。
  * <p>
  * 右侧图标:TitleBar 原生的 rightIcon 机制(compound drawable)尺寸/位置受限
  * (setRightIconSize 固定、无垂直位置控制),这里改为直接挂自绘 ImageView,
@@ -37,7 +45,8 @@ public class AppTitleBar extends TitleBar {
 
     private void initDefault() {
         int textColor = ContextCompat.getColor(getContext(), R.color.text_main);
-        setBackgroundColor(ContextCompat.getColor(getContext(), R.color.bg_body));
+        // 悬浮面:与底部导航栏(bg_float)同色同透明度,不另调色
+        setBackgroundColor(ContextCompat.getColor(getContext(), R.color.bg_float));
         setTitleColor(textColor);
         setLeftIconTint(textColor);
         setLineVisible(false);

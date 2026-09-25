@@ -4,6 +4,7 @@ import android.os.Build
 import android.os.Process
 import android.view.MenuItem
 import android.view.ViewGroup
+import androidx.appcompat.widget.TooltipCompat
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.FragmentPagerAdapter
 import androidx.viewpager.widget.ViewPager.SimpleOnPageChangeListener
@@ -42,6 +43,20 @@ class MainActivity : BaseVbActivity<ActivityMainBinding>() {
             mBinding.vp.setCurrentItem(menuItem.order, false)
             updateNavIcons(menuItem.order)
             true
+        }
+        // 底栏图标不参与长按:Material 的 NavigationBarItemView 会给每个条目挂 Tooltip
+        // (TooltipCompat.setTooltipText,文本取"条目标题"—— 只把文本置空也会回退成标题),那个提示
+        // 用系统样式(与主题反色)、位置固定在锚点上方偏右,主题里改不了。本底栏 labelVisibilityMode=labeled,
+        // 图标下方一直显示文字,长按提示本就多余 —— 这里直接清掉条目上的 Tooltip 与长按处理:
+        // TooltipCompat 置空时会顺带移除长按监听并关掉 longClickable(API<26 的 AppCompat 路径),
+        // API≥26 走 framework 的 setTooltipText(null),所以监听与 longClickable 这里再显式清一遍。
+        mBinding.bottomNav.post {
+            for (i in 0 until mBinding.bottomNav.childCount) {
+                val item = mBinding.bottomNav.getChildAt(i)
+                item.setOnLongClickListener(null)
+                item.isLongClickable = false
+                TooltipCompat.setTooltipText(item, null)
+            }
         }
         mBinding.vp.addOnPageChangeListener(object : SimpleOnPageChangeListener() {
             override fun onPageSelected(position: Int) {

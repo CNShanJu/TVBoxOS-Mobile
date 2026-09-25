@@ -26,7 +26,7 @@
 		android:id="@+id/ll_epg"
 		android:layout_width="match_parent"
 		android:layout_height="100dp"
-		android:background="@drawable/bg_large_round_gray"
+		android:background="@drawable/bg_large_round_float"
 		android:layout_margin="10dp">
 
 		<LinearLayout
@@ -158,7 +158,7 @@
 			android:layout_height="match_parent"
 			android:baselineAligned="false"
 			android:padding="0dp"
-			android:background="@drawable/bg_large_round_gray"
+			android:background="@drawable/bg_large_round_float"
 			android:layout_marginHorizontal="10dp"
 			android:layout_marginBottom="10dp">
 

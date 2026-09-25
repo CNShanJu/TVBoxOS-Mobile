@@ -53,7 +53,7 @@
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/tv_cancel"
-            style="@style/mbOutline"
+            style="@style/BtnSecondary"
             android:layout_width="0dp"
             android:layout_height="40dp"
             android:layout_marginRight="10dp"
@@ -62,7 +62,7 @@
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/tv_ok"
-            style="@style/mbOutline"
+            style="@style/BtnPrimary"
             android:layout_width="0dp"
             android:layout_height="40dp"
             android:layout_weight="1"

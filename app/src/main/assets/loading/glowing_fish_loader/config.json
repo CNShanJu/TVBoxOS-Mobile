@@ -2,5 +2,6 @@
   "mbox_tipsname": "鱼",
   "size_player": 100,
   "size_other": 100,
-  "size_refresh": 100
+  "size_refresh": 100,
+  "msg_gap": -12
 }

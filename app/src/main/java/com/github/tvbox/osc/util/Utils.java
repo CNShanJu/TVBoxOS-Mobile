@@ -124,8 +124,18 @@ public class Utils {
             do {
                 VideoInfo videoInfo = new VideoInfo();
                 videoInfo.setId(cursor.getInt(cursor.getColumnIndexOrThrow(MediaStore.Video.Media._ID)));
-                videoInfo.setPath(cursor.getString(cursor.getColumnIndexOrThrow(MediaStore.Video.Media.DATA)));
-                videoInfo.setSize(cursor.getLong(cursor.getColumnIndexOrThrow(MediaStore.Video.Media.SIZE)));
+                String dataPath = cursor.getString(cursor.getColumnIndexOrThrow(MediaStore.Video.Media.DATA));
+                videoInfo.setPath(dataPath);
+                long size = cursor.getLong(cursor.getColumnIndexOrThrow(MediaStore.Video.Media.SIZE));
+                // MediaStore 对刚下载/刚写入的文件 SIZE 可能为 0(索引未更新),用 File.length() 兜底
+                if (size <= 0 && dataPath != null) {
+                    try {
+                        java.io.File f = new java.io.File(dataPath);
+                        if (f.exists()) size = f.length();
+                    } catch (Throwable ignored) {
+                    }
+                }
+                videoInfo.setSize(size);
                 videoInfo.setDisplayName(cursor.getString(cursor.getColumnIndexOrThrow(MediaStore.Video.Media.DISPLAY_NAME)));
                 videoInfo.setTitle(cursor.getString(cursor.getColumnIndexOrThrow(MediaStore.Video.Media.TITLE)));
                 videoInfo.setDuration(cursor.getLong(cursor.getColumnIndexOrThrow(MediaStore.Video.Media.DURATION)));

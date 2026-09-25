@@ -24,14 +24,16 @@
     </LinearLayout>
 
     <!-- 中间选项区:高度固定=吃满标题与底部版本号之间的剩余空间;选项行超出时在卡片内部滚动,
-         版本号固定在页面底部不参与滚动 -->
+         版本号固定在页面底部不参与滚动。
+         卡片用实色(bg_component,与底栏 bg_float 同色):大面积半透明会把底图明暗差透成噪斑,
+         所以只有底栏/标题栏这类细条保留半透明悬浮面 -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1"
         android:orientation="vertical"
         android:layout_marginHorizontal="20dp"
-        android:background="@drawable/bg_large_round_gray">
+        android:background="@drawable/bg_large_round_float">
 
         <!-- 选项行超出时在卡片内部滚动;拖到顶/底可越界跟手回弹(iOS 橡皮筋,见 RubberBandScrollView)。
              clipToPadding=true:滚动内容不越过 padding,首末行滚到顶/底时文字不会贴着圆角卡片上下边。 -->

@@ -546,7 +546,11 @@ public class VodController extends BaseController implements PlaybackSettingsCon
             try {
                 int current = (int) mControlWrapper.getCurrentPosition();
                 int duration = (int) mControlWrapper.getDuration();
-                if (current > duration / 2) return;
+                if (current > duration / 2) {
+                    // 片头只能在进度前半段取:否则会把"跳过片头"设到片子后半段 —— 给个提示,别让用户以为点了没反应
+                    AppBubble.toast("视频前半段才允许设置跳过片头");
+                    return;
+                }
                 mPlayerConfig.put("st", current / 1000);
                 updatePlayerCfgView();
                 listener.updatePlayerCfg();
@@ -570,7 +574,11 @@ public class VodController extends BaseController implements PlaybackSettingsCon
             try {
                 int current = (int) mControlWrapper.getCurrentPosition();
                 int duration = (int) mControlWrapper.getDuration();
-                if (current < duration / 2) return;
+                if (current < duration / 2) {
+                    // 片尾只能在进度后半段取:提示同上,避免"点了没反应"
+                    AppBubble.toast("视频后半段才允许设置跳过片尾");
+                    return;
+                }
                 mPlayerConfig.put("et", (duration - current) / 1000);
                 updatePlayerCfgView();
                 listener.updatePlayerCfg();

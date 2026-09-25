@@ -118,7 +118,7 @@ class LogActivity : BaseVbActivity<ActivityLogBinding>() {
     private fun setFilterSelected(tv: TextView, selected: Boolean) {
         // 选中态:背景高亮(selector_filter_chip) + 白字; 未选中灰底灰字
         tv.isSelected = selected
-        tv.setTextColor(colorOf(if (selected) R.color.white else R.color.text_sub_foreground))
+        tv.setTextColor(colorOf(if (selected) R.color.btn_select_text else R.color.text_sub_foreground))
     }
 
     private fun colorOf(res: Int): Int = getColor(res)

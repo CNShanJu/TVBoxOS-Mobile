@@ -44,26 +44,24 @@
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/leftBtn"
-            style="@style/mbOutline"
+            style="@style/BtnPrimary"
             android:layout_width="0dp"
             android:layout_weight="1"
             android:layout_height="33dp"
             android:layout_marginRight="20dp"
             android:text="重 试"
-            app:strokeColor="@color/colorPrimary"
             />
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/rightBtn"
-            style="@style/mbOutline"
+            style="@style/BtnSecondary"
             android:layout_width="0dp"
             android:layout_weight="1"
             android:insetTop="0dp"
             android:insetBottom="0dp"
             android:layout_height="33dp"
-            android:textColor="@color/text_sub_foreground"
-            app:strokeColor="@color/text_sub_foreground"
-            android:text="取 消"/>
+            android:text="取 消"
+            />
 
     </LinearLayout>
 </LinearLayout>

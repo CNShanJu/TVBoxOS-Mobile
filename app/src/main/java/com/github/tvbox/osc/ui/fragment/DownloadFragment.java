@@ -507,8 +507,8 @@ public class DownloadFragment extends BaseVbFragment<FragmentDownloadBinding> {
      * 聚合展示时中间 box 移除背景色(收藏页风格);详情页无下载中任务时隐藏 tab 直接展示下载完成 */
     private void updateNavBar() {
         boolean inDetail = currentVodGroup != null;
-        // 中间 box 背景:聚合根级透明,详情页恢复卡片背景
-        mBinding.llDownloadBox.setBackgroundResource(inDetail ? R.drawable.bg_large_round_gray : 0);
+        // 中间 box 背景:聚合根级透明,详情页恢复卡片背景(悬浮面,与底栏/「我的」页同一个面)
+        mBinding.llDownloadBox.setBackgroundResource(inDetail ? R.drawable.bg_large_round_float : 0);
         // 聚合组件显隐:非详情时由 refreshAggregate 按数据是否为空设置列表/空态,此处仅处理详情态
         if (inDetail) {
             mBinding.rvAggregate.setVisibility(View.GONE);

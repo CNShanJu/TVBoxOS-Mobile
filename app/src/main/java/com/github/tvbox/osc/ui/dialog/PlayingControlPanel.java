@@ -207,15 +207,18 @@ final class PlayingControlPanel {
     }
 
     private void updateSpeedUi() {
+        Context ctx = mBinding.getRoot().getContext();
         for (int i = 0; i < mBinding.containerSpeed.getChildCount(); i++) {
             TextView tv = (TextView) mBinding.containerSpeed.getChildAt(i);
-            if (String.valueOf(mPlayer.getSpeed()).equals(tv.getText().toString().replace("x", ""))) {
-                // 选中:与选集一致,无填充背景 + 蓝色文字(主题感知,用 getContext() 解析)
-                tv.setBackground(mBinding.getRoot().getResources().getDrawable(R.drawable.bg_r_common_stroke_primary));
-                tv.setTextColor(ContextCompat.getColor(mBinding.getRoot().getContext(), R.color.color_highlight));
+            boolean selected = String.valueOf(mPlayer.getSpeed()).equals(tv.getText().toString().replace("x", ""));
+            if (selected) {
+                // 选中:实心填充 + 按钮选中文字色(与"设置背景图"页预设 chip 的选中态同一套色)
+                tv.setBackground(mBinding.getRoot().getResources().getDrawable(R.drawable.bg_r_common_solid_select));
+                tv.setTextColor(ContextCompat.getColor(ctx, R.color.btn_select_text));
             } else {
+                // 未选中:描边按钮样式(与抽屉里其他按钮一致)
                 tv.setBackground(mBinding.getRoot().getResources().getDrawable(R.drawable.bg_r_common_stroke_primary));
-                tv.setTextColor(ContextCompat.getColor(mBinding.getRoot().getContext(), R.color.text_foreground));
+                tv.setTextColor(ContextCompat.getColor(ctx, R.color.text_foreground));
             }
         }
     }

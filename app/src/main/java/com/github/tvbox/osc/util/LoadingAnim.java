@@ -24,15 +24,15 @@ import java.util.Map;
  * 目录结构(每个动画一个文件夹,统一配置文件 config.json):
  * <pre>
  * assets/loading/
- *   anim_loading/           默认动画
+ *   anim_loading/           旧默认动画
  *     anim_loading.json     Lottie 动画文件
- *     config.json           配置:{ "mbox_tipsname": "默认", "size": 72 }
- *   glowing_fish_loader/    Glowing Fish
+ *     config.json           { "mbox_tipsname": "默认", "size_other": 30, "size_refresh": 36 }
+ *   glowing_fish_loader/    Glowing Fish(当前默认)
  *     glowing_fish_loader.json
- *     config.json           { "mbox_tipsname": "鱼", "size": 84 }
+ *     config.json           { "mbox_tipsname": "鱼", "size_other": 100, "msg_gap": -12 }
  * </pre>
- * 展示名(mbox_tipsname)与页面显示尺寸(size,dp)统一从 config.json 读取,不再读 lottie 文件。
- * 选择值(HawkConfig.LOADING_ANIM)存动画文件夹名;旧版存的文件名/数字自动兼容。
+ * 展示名(mbox_tipsname)、页面显示尺寸(size_*,dp)、与状态文字的间距(msg_gap,dp,可为负)统一从 config.json 读取,
+ * 不再读 lottie 文件。选择值(HawkConfig.LOADING_ANIM)存动画文件夹名;旧版存的文件名/数字自动兼容。
  */
 public class LoadingAnim {
 
@@ -40,14 +40,16 @@ public class LoadingAnim {
     public static final String DIR_NAME = "loading";
     /** 统一配置文件名称 */
     public static final String CONFIG_FILE = "config.json";
-    /** 默认动画文件夹名(loading 下) */
-    public static final String DEFAULT_NAME = "anim_loading";
+    /** 默认动画文件夹名(loading 下):鱼 */
+    public static final String DEFAULT_NAME = "glowing_fish_loader";
     /** 配置键:视频播放里的尺寸(dp) */
     private static final String KEY_PLAYER = "size_player";
     /** 配置键:其他地方的尺寸(dp) */
     private static final String KEY_OTHER = "size_other";
     /** 配置键:下拉刷新指示的尺寸(dp)(单独可调,避免默认偏大/鱼偏小) */
     private static final String KEY_REFRESH = "size_refresh";
+    /** 配置键:加载动画与其下方状态文字的间距(dp),可为负值(负值=把文字提进动画盒子底部的固有留白) */
+    private static final String KEY_MSG_GAP = "msg_gap";
 
     /** 兼容旧版:Glowing Fish 的旧选择值 1 映射到文件夹名 */
     private static final String LEGACY_GLOWING_FISH_NAME = "glowing_fish_loader";
@@ -56,6 +58,8 @@ public class LoadingAnim {
     private static final int DEFAULT_SIZE_DP = 72;
     /** 下拉刷新指示的兜底尺寸(dp) */
     private static final int DEFAULT_REFRESH_SIZE_DP = 40;
+    /** 状态文字间距的兜底值(dp);不配 msg_gap 的动画用这个安全值(正数=动画下方自然留一点缝) */
+    private static final int DEFAULT_MSG_GAP_DP = 2;
 
     /** 配置读取缓存:文件夹名 -> 配置 JSON */
     private static final Map<String, JSONObject> configCache = new HashMap<>();
@@ -110,6 +114,22 @@ public class LoadingAnim {
     /** 当前配置动画在"下拉刷新指示"里的显示尺寸(dp),来自 config.json 的 size_refresh;缺失回退 40 */
     public static int getRefreshSizeDp() {
         return getSizeDp(getAnimName(), KEY_REFRESH, DEFAULT_REFRESH_SIZE_DP);
+    }
+
+    /**
+     * 加载动画与其下方状态文字之间的间距(dp),来自当前动画 config.json 的 msg_gap。
+     * <p>
+     * 允许负值:多数 Lottie 图形的可见内容只占画布中上部(如"鱼"在 100dp 盒子里底部本就空着约 20dp),
+     * 正间距会让"动画—文字"之间显得离得很远,此时配负值把文字提进这段固有留白即可贴紧;
+     * 取值按"图形可见区底边(离线量出)再留 ≥5dp 余量"给,避免文字压到动画。
+     * 未配置/读取失败时回退 {@link #DEFAULT_MSG_GAP_DP}。
+     */
+    public static int getMsgGapDp() {
+        JSONObject cfg = readConfig(getAnimName());
+        if (cfg != null && cfg.has(KEY_MSG_GAP)) {
+            return cfg.optInt(KEY_MSG_GAP, DEFAULT_MSG_GAP_DP);
+        }
+        return DEFAULT_MSG_GAP_DP;
     }
 
     /** 可用加载动画列表:loading/ 下的子目录(每个目录 = 一个动画),按目录名排序 */

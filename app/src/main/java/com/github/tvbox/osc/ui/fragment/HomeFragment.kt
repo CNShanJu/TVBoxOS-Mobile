@@ -66,6 +66,11 @@ class HomeFragment : BaseVbFragment<FragmentHomeBinding>() {
     private val fragments: MutableList<BaseLazyFragment> = ArrayList()
     private val mHandler = Handler()
 
+    companion object {
+        /** "上次看到"气泡的展示时长:自动检查更新要等它消失后再做 */
+        private const val BUBBLE_SHOW_MS = 4000L
+    }
+
     /**
      * 顶部tabs分类集合,用于渲染tab页,每个tab对应fragment内的数据
      */
@@ -74,6 +79,12 @@ class HomeFragment : BaseVbFragment<FragmentHomeBinding>() {
     private var jarInitOk = false
 
     var errorTipDialog: TipDialog? = null
+
+    /**
+     * 当前提示弹窗用的文案。TipDialog 的文案在构造时定死(内容绑定只在 onCreate 执行一次),
+     * 换了原因(如"解析配置失败"→"该订阅不是 TVBox 配置")必须重建弹窗,否则显示的还是旧原因
+     */
+    private var errorTipMsg: String? = null
 
     /**
      * true: 配置变更重载
@@ -219,7 +230,9 @@ class HomeFragment : BaseVbFragment<FragmentHomeBinding>() {
     }
 
     private fun showTipDialog(msg: String) {
-        if (errorTipDialog == null) {
+        if (errorTipDialog == null || errorTipMsg != msg) {
+            errorTipDialog?.hide()
+            errorTipMsg = msg
             errorTipDialog =
                 TipDialog(requireActivity(), msg, "重试", "取消", object : TipDialog.OnListener {
                     override fun left() {
@@ -269,6 +282,8 @@ class HomeFragment : BaseVbFragment<FragmentHomeBinding>() {
     private fun showNoSubscriptionTip() {
         showEmpty()
         if (errorTipDialog == null) {
+            // 复用同一条错误提示弹窗:文案不同,清掉记录以免后续 showTipDialog 误复用本弹窗
+            errorTipMsg = null
             errorTipDialog =
                 TipDialog(requireActivity(), "尚未设置订阅,请先在订阅管理中设置订阅地址", "去设置", "取消", object : TipDialog.OnListener {
                     override fun left() {
@@ -437,8 +452,27 @@ class HomeFragment : BaseVbFragment<FragmentHomeBinding>() {
                     .offsetY(ScreenUtils.getAppScreenHeight() - ConvertUtils.dp2px(155f + 44f))
                     .asCustom(LastViewedDialog(requireContext(), vodInfoList[0]))
                     .show()
-                    .delayDismiss(4000)
+                    .delayDismiss(BUBBLE_SHOW_MS)
+                // 启动自动检查更新:等"上次看到"气泡消失后再做,避免和气泡抢焦点/叠一起
+                scheduleAutoUpdateCheck()
             }
         }
+    }
+
+    /**
+     * 启动自动检查更新:等首页"上次看到"气泡消失(4s)后稍等再检查,有新版本由 UpdateCheck
+     * 弹出更新说明弹窗(与「我的-关于-检查更新」同一套动作)。
+     * <p>
+     * 受"自动检查更新"开关控制(设置页,默认开);检查本身由 UpdateCheck 做进程级去重,
+     * 每次启动最多一次,因此这里随首页刷新重复调用无副作用。
+     */
+    private fun scheduleAutoUpdateCheck() {
+        if (!com.github.tvbox.osc.config.SystemConfig.isAutoCheckUpdate()) return
+        mHandler.postDelayed({
+            val act = activity ?: return@postDelayed
+            if (isAdded && !act.isFinishing && !act.isDestroyed) {
+                com.github.tvbox.osc.update.UpdateCheck.autoCheckOnce(act, null)
+            }
+        }, BUBBLE_SHOW_MS + 600L)
     }
 }

@@ -21,7 +21,16 @@ public class LoadingCallback extends Callback {
     @Override
     protected void onViewCreate(Context context, View view) {
         super.onViewCreate(context, view);
-        // 按设置页"加载动画"配置动态设置动画文件(默认 anim_loading.json,可选 Glowing Fish)
+        // 按设置页"加载动画"配置动态设置动画文件(默认 鱼/glowing_fish_loader,可选其他)
+        LoadingAnim.apply(view.findViewById(R.id.lottie_loading));
+    }
+
+    @Override
+    public void onAttach(Context context, View view) {
+        super.onAttach(context, view);
+        // LoadSir 复用本回调视图:隐藏时从视图树摘除会 unschedule 并 cancel 掉 Lottie,
+        // cancel 同时清掉 XML autoPlay,重新 attach 后不会自动续播(表现为加载中动画静止)。
+        // 每次展示都重新 apply,保证动画起播,并顺带应用设置页的动画切换。
         LoadingAnim.apply(view.findViewById(R.id.lottie_loading));
     }
 }

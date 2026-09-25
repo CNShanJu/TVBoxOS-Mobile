@@ -42,7 +42,7 @@
             android:layout_marginRight="20dp"
             android:text="关 闭"
             android:textColor="@color/text_foreground"
-            style="@style/Widget.MaterialComponents.Button.OutlinedButton"/>
+            style="@style/BtnSecondary"/>
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btn_confirm"
@@ -51,7 +51,7 @@
             android:insetTop="0dp"
             android:insetBottom="0dp"
             android:layout_height="33dp"
-            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+            style="@style/BtnPrimary"
             app:strokeColor="@color/colorPrimary"
             android:text="刷 新"/>
 

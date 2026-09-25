@@ -21,7 +21,6 @@ import com.github.tvbox.osc.ui.kit.InlineExpandableText;
 import com.github.tvbox.osc.util.DefaultConfig;
 import com.lxj.xpopup.XPopup;
 import com.lxj.xpopup.util.SmartGlideImageLoader;
-import com.squareup.picasso.Picasso;
 
 /**
  * 详情抽屉(底部):头部固定(海报/信息/链接),简介区按内容/抽屉状态展示:
@@ -77,25 +76,27 @@ public class VideoDetailDialog extends SheetResizableBottomPopup {
         DialogVideoDetailBinding binding = DialogVideoDetailBinding.bind(getPopupImplView());
 
         binding.tvName.setText(mVideo.name);
-        binding.tvYear.setText("年份：" + (mVideo.year == 0 ? "" : String.valueOf(mVideo.year)));
-        binding.tvArea.setText("地区：" + getText(mVideo.area));
-        binding.tvType.setText("类型：" + getText(mVideo.type));
-        binding.tvActor.setText("演员：" + getText(mVideo.actor));
-        binding.tvDirector.setText("导演：" + getText(mVideo.director));
-        binding.url.setText(mHost.getCurrentVodUrl());
+        // 空值/未知的字段整行隐藏:数据不全的源(接口只回空壳)时,不会再列出一串"地区：未知"、
+        // 也不会出现只有标签没有值的"年份："把排版撑乱
+        bindInfoRow(binding.tvYear, "年份：", mVideo.year == 0 ? "" : String.valueOf(mVideo.year));
+        bindInfoRow(binding.tvArea, "地区：", mVideo.area);
+        bindInfoRow(binding.tvType, "类型：", mVideo.type);
+        bindInfoRow(binding.tvActor, "演员：", mVideo.actor);
+        bindInfoRow(binding.tvDirector, "导演：", mVideo.director);
+        String vodUrl = mHost.getCurrentVodUrl();
+        // 链接行为空时整行隐藏(否则只剩"链接："和复制按钮,看着像坏了)
+        binding.llLink.setVisibility(TextUtils.isEmpty(vodUrl) ? View.GONE : View.VISIBLE);
+        binding.url.setText(vodUrl == null ? "" : vodUrl);
         binding.tvLinkCopy.setOnClickListener(view -> {
-            ClipboardUtils.copyText(mHost.getCurrentVodUrl());
+            if (TextUtils.isEmpty(vodUrl)) return;
+            ClipboardUtils.copyText(vodUrl);
             AppBubble.toastLong("已复制");
         });
         String picUrl = DefaultConfig.checkReplaceProxy(mVideo.pic);
+        // 走全 App 统一图片入口:空封面/加载失败都会切到 ErrorPlaceholderDrawable
+        // (灰底 + 按控件尺寸排版的猫图标 + "图片加载失败"文字),加载中有骨架屏
+        com.github.tvbox.osc.util.PicassoLoad.into(binding.ivThum, picUrl);
         if (!TextUtils.isEmpty(picUrl)) {
-            // 占位/错误用全 App 统一占位组件 placeholder_poster(主题感知灰底+居中图标)
-            Picasso.get()
-                    .load(picUrl)
-                    .placeholder(R.drawable.placeholder_poster)
-                    .error(R.drawable.placeholder_poster)
-                    .into(binding.ivThum);
-
             binding.llThum.setOnClickListener(view -> {
                 new XPopup.Builder(getContext())
                         .asImageViewer(binding.ivThum, picUrl, new SmartGlideImageLoader())
@@ -158,7 +159,8 @@ public class VideoDetailDialog extends SheetResizableBottomPopup {
             // 长文本:预渲染汇总后进入“可展开”
             descFoldable = true;
             mDescWidthPx = width;
-            mLinkColor = ContextCompat.getColor(getContext(), R.color.color_1890FF);
+            // "… 展开 / 收回"用文字高亮色(蓝色):color_highlight 是主题主色(近黑/近白),压在正文上看着"没高亮"
+            mLinkColor = ContextCompat.getColor(getContext(), R.color.text_accent);
             mCollapsedSpan = InlineExpandableText.buildCollapsed(
                     mDescText, paint, width, spacing, DESC_MIN_LINES,
                     "… 展开", this::toggleFold, mLinkColor);
@@ -231,6 +233,17 @@ public class VideoDetailDialog extends SheetResizableBottomPopup {
 
     private String getText(String str) {
         return TextUtils.isEmpty(str) ? "未知" : str;
+    }
+
+    /** 绑定一行"标签：值";值为空或"未知"时整行隐藏(数据不全的源不再撑出一串空标签) */
+    private void bindInfoRow(TextView tv, String label, String value) {
+        String v = getText(value);
+        if ("未知".equals(v)) {
+            tv.setVisibility(View.GONE);
+            return;
+        }
+        tv.setVisibility(View.VISIBLE);
+        tv.setText(label + v);
     }
 
     private String removeHtmlTag(String info) {

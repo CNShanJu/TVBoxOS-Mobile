@@ -655,8 +655,11 @@ public class DetailActivity extends BaseVbActivity<ActivityDetailBinding>
                     mBinding.tvSite.setText("来源：" + (TextUtils.isEmpty(srcName) ? "未知" : srcName));
 
                     if (vodInfo.seriesMap != null && vodInfo.seriesMap.size() > 0) {//线路
+                        mBinding.llLayout.setVisibility(View.VISIBLE);
                         mBinding.mGridViewFlag.setVisibility(View.VISIBLE);
                         mBinding.mGridView.setVisibility(View.VISIBLE);
+                        mBinding.rlLineHeader.setVisibility(View.VISIBLE);
+                        mBinding.llSeriesHeader.setVisibility(View.VISIBLE);
                         mBinding.mEmptyPlaylist.setVisibility(View.GONE);
 
                         VodInfo vodInfoRecord = HistoryRepositories.history().get(sourceKey, vodId);
@@ -698,17 +701,21 @@ public class DetailActivity extends BaseVbActivity<ActivityDetailBinding>
                         refreshList();
                         if (showPreview) {
                             jumpToPlay();
+                            mBinding.previewPlayerPlace.setVisibility(View.VISIBLE);
                             mBinding.previewPlayer.setVisibility(View.VISIBLE);
                             toggleSubtitleTextSize();
                         }
                         // startQuickSearch();
-                    } else {//空布局
-                        mBinding.mGridViewFlag.setVisibility(View.GONE);
-                        mBinding.mGridView.setVisibility(View.GONE);
+                    } else {//空布局:无剧集可播 —— 整页只留"暂无播放数据"空态,其余组件(标题/来源/操作栏/线路/选集/预览播放器)全部不显示
+                        mBinding.llLayout.setVisibility(View.GONE);
                         mBinding.mEmptyPlaylist.setVisibility(View.VISIBLE);
+                        // 占位区(260dp)与内层播放器都在 llLayout / 根层,这里显式收起避免留空白带
+                        mBinding.previewPlayerPlace.setVisibility(View.GONE);
+                        mBinding.previewPlayer.setVisibility(View.GONE);
                     }
                 } else {
                     showEmpty();
+                    mBinding.previewPlayerPlace.setVisibility(View.GONE);
                     mBinding.previewPlayer.setVisibility(View.GONE);
                 }
             }

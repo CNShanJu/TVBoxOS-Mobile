@@ -14,12 +14,11 @@
         <LinearLayout
             android:id="@+id/previewPlayerPlace"
             android:layout_width="match_parent"
-            android:layout_height="250dp"
+            android:layout_height="260dp"
             android:orientation="horizontal"
-            android:paddingLeft="@dimen/dp_40"
-            android:paddingRight="@dimen/dp_50"
+            android:paddingLeft="@dimen/dp_20"
+            android:paddingRight="@dimen/dp_20"
             android:paddingBottom="@dimen/dp_10">
-
         </LinearLayout>
 
         <ScrollView
@@ -69,7 +68,7 @@
                             android:text="详情 >"
                             android:layout_marginRight="10dp"
                             android:textSize="12dp"
-                            android:layout_gravity="bottom|right"/>
+                            android:layout_gravity="center|right"/>
                     </LinearLayout>
 
                     <LinearLayout
@@ -80,7 +79,7 @@
 
                             <TextView
                                 android:id="@+id/tvSite"
-                                android:background="@drawable/bg_large_round_gray"
+                                android:background="@drawable/bg_large_round_float"
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
                                 android:ellipsize="end"
@@ -171,33 +170,6 @@
 
 
                 <LinearLayout
-                    android:id="@+id/mEmptyPlaylist"
-                    android:layout_width="match_parent"
-                    android:layout_height="match_parent"
-                    android:layout_gravity="center"
-                    android:gravity="center_horizontal"
-                    android:orientation="horizontal"
-                    tools:visibility="gone">
-
-                    <ImageView
-                        android:layout_width="@dimen/dp_128"
-                        android:layout_height="@dimen/dp_128"
-                        android:layout_gravity="center"
-                        android:src="@drawable/ic_empty" />
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_gravity="center"
-                        android:layout_marginStart="@dimen/dp_10"
-                        android:layout_marginLeft="@dimen/dp_10"
-                        android:gravity="center"
-                        android:text="暂无播放数据"
-
-                        />
-                </LinearLayout>
-
-                <LinearLayout
                     android:id="@+id/parse_root"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
@@ -226,6 +198,7 @@
                         tools:listitem="@layout/item_select_flag" />
                 </LinearLayout>
                 <RelativeLayout
+                    android:id="@+id/rlLineHeader"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginHorizontal="14dp"
@@ -264,6 +237,7 @@
                     android:orientation="horizontal"/>
 
                 <LinearLayout
+                    android:id="@+id/llSeriesHeader"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginHorizontal="14dp"
@@ -336,5 +310,32 @@
         android:id="@+id/previewPlayer"
         android:layout_width="match_parent"
         android:layout_height="250dp" />
+
+    <!-- 空态:无剧集可播时**整页只显示它**(llLayout 整块隐藏,见 DetailActivity);
+         放在页面根层(不再塞在 ScrollView 里)才能在整屏居中;图标在上、文字在下换行排列,
+         样式与全 App 统一空态(view_empty)一致 -->
+    <LinearLayout
+        android:id="@+id/mEmptyPlaylist"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:gravity="center"
+        android:orientation="vertical"
+        android:visibility="gone"
+        tools:visibility="gone">
+
+        <ImageView
+            android:layout_width="@dimen/dp_128"
+            android:layout_height="@dimen/dp_128"
+            android:src="@drawable/ic_empty" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:gravity="center"
+            android:text="暂无播放数据"
+            android:textColor="@color/text_sub_foreground"
+            android:textSize="14sp" />
+    </LinearLayout>
 
 </FrameLayout>
