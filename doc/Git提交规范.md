@@ -64,3 +64,17 @@ fix(播放器): 全屏时视频未加载默认横屏,加载后按真实尺寸校
 3. 一次提交只做一件事:功能 / 修复 / 文档 / 资源 分开提交,不混在一个 commit 里。
 4. 提交前 `git status` 确认无多余文件混入。
 5. 仓库根目录已提供 `.gitmessage` 提交模板,可用 `git config commit.template .gitmessage` 启用。
+
+## 五、发版说明(Release/更新弹窗正文)另有规范
+
+commit 信息是给开发者看的,可带 `type(scope)` 前缀与内部细节;**发版说明是给用户看的,禁止照搬 commit**——
+只写用户关注的内容(新增功能 / 功能变更 / 移除停用 / 问题修复 / 体验与性能 / 兼容性注意),
+内部事项(规则文档、依赖与构建、模块重构、单测门禁、版本号)包进 `<!-- dev --> … <!-- /dev -->` 围栏或直接不写。
+
+完整要求见 `AGENTS.md` 第九章「发布与版本纪律」第 1~2 条;发布前用离线自检脚本过一遍:
+
+```bash
+node scripts/check-release-notes.js <正文文件.md>     # 或: node scripts/check-release-notes.js --stdin
+```
+
+命中开发者字样会非零退出并指出行号,提示挪进围栏或删除。

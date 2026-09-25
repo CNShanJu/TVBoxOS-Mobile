@@ -143,6 +143,53 @@ Exo→Media3、EventBus→Flow/接口、Hawk→DataStore、Java→Kotlin 渐进�
 - ✅ 订阅页本地导入改系统 SAF(替代 hedzr 反射 StorageVolume 兼容性问题):`SubscriptionActivity.pickFile`
   改用 `ActivityResultContracts.OpenDocument`(*/* + 扩展名校验),仅接受 ExternalStorageProvider 主卷并转真实
   路径后仍以 clan:// 订阅源加入(保留记忆导入目录/去重/权限门禁)。
+- ✅ 订阅页新增 **JSON 导入**(粘贴导入,免文件):`SubsciptionDialog` 标题栏加"JSON导入"入口(图标与"本地导入"同款 16dp,
+  原 24dp 偏大),弹窗 `JsonImportDialog`(多行等宽输入 + 剪贴板粘贴 + 格式校验不通过不关窗)确认后由
+  `SubscriptionActivity.importJsonText` 识别:清单数组 `[{name,url}]`/`[{sourceName,sourceUrl}]`、多线路 `{"urls":[...]}`、
+  多仓 `{"storeHouse":[...]}`(弹窗选仓)、单条 `{"name":..,"url":..}` 直接加订阅;识别不了(单源规则配置、整份配置)
+  按内容摘要存应用专属导入目录 json,再以 clan:// 本地订阅加入。落库/去重/启用首条逻辑与本地导入共用
+  `importSubscriptionEntries`/`addLocalFileSubscription`,多仓选仓抽出 `showStoreHouseChoose` 供订阅地址返回多仓时复用。
+- ✅ 订阅导入拦非订阅内容(线上实例:用户把「阅读」Legado 书源粘进 JSON 导入,存成 clan:// 订阅后每次启动都
+  `不是订阅配置(缺少 sites)` 报"解析配置失败",重选订阅也恢复不了):`CmsApiRules` 新增内容形态判定
+  `subscriptionShape`(`SHAPE_CONFIG/SITE/ENCRYPTED/BOOK_SOURCE/LIVES/UNUSABLE`)、`looksLikeBookSource`、
+  `bookSourceSiteUrl`(书源带 `sourceUrl`+`rule*` 规则;数组导出看首个对象,扫描按字符串/转义与括号深度,
+  开头 BOM 与 `//` 注释与加载阶段 FindResult 同规则先剥);`SubscriptionActivity` 三处入口(JSON 粘贴 / 本地文件 /
+  订阅地址响应)落盘前判定:完整配置与加密套路可用、裸站点条目/数组补 `{"sites":[…]}` 外壳后另存、不能用的按形态
+  提示原因(「阅读」书源/只有直播源/缺 sites)并拒绝落盘,书源另按其中的站点地址嗅探采集接口(红牛资源书源的
+  sourceUrl 即站点首页);本地文件识别抽出 `importJsonEntries` 与粘贴导入共用(清单/多线路/多仓/单条)。
+  `ApiConfig.parseJson` 对缺 `sites` 的裸站点内容先补壳自愈,解析失败提示改"该订阅不是 TVBox 配置"
+  (`HomeFragment.showTipDialog` 文案变化时重建弹窗,TipDialog 文案只在 onCreate 绑一次)。
+- ✅ 订阅管理新增 **导出**(勾选多份订阅 → 抓取配置 → 合并成一份 txt → 分享):
+  `SubscriptionAdapter` 加导出态(复选框语义由"当前订阅-单选"切到"要导出的订阅-多选",导出态隐藏删除/置顶标记,
+  选择集按 URL 存 `LinkedHashSet`,列表重排不丢);`activity_subscription.xml` 标题栏加导出入口(与"使用说明"同排容器,
+  整体让开原生"添加"图标)+ 底部操作条(全选/已选 N 项/取消/导出,列表区改 `0dp+weight=1` 让出这条);
+  抓取与落盘在 `util/SubscriptionExporter`(clan:// 直读主存储文件、读不到回落内置本地服务 `/file/`;http(s) 走
+  `HttpClient.getSync`,带 `;pk;` 的加密订阅只取文本;规范化路径拒绝 `..` 逃出主存储根;单份 8MB 上限;跑
+  `HeavyTaskUtil` 共享池、epoch 自检过期作废、结果切主线程);合并策略在 `util/SubsConfigMerger`
+  (纯 JSON 逻辑带 JVM 单测:以首份可解析配置为底保留其 spider/lives/wallpaper 等,sites 按 key、parses 按 url 去重,
+  flags/rules 取并集,后续配置 spider 不一致只记冲突不合并,非 JSON/加密串进 skipped);落盘
+  `getExternalCacheDir()/subscription_export/` 的 txt(只留最近 4 份),经 FileProvider 分享。
+- ✅ 新增**抓页面接入**(站点采集接口关闭时的兜底;也用于「阅读」书源):`HtmlSiteRules`(spider-api,纯字符串
+  逻辑可单测:子目录线索/分类/详情链接/播放链接(只认本片 vod id,防把"猜你喜欢"当剧集)/播放页真实地址
+  (`player_aaaa`/MacPlayer/m3u8 正则/iframe)/总页数/ext 与单源配置生成) + `HtmlSiteImporter`(app,实探
+  首页→分类→详情→播放→搜索,整链路探通才落盘,写 `maccms_<key>.json`) + 运行时模板
+  `app/src/main/assets/js/lib/maccms.js`(type 3 源,`api=assets://js/lib/maccms.js`,`ext` 带 host/prefix/分类/
+  搜索模板;纯正则解析,不依赖 cheerio,故 Node 侧可原样跑同一份代码;列表与搜索路由按候选逐个实探:
+  v10 `index.php/vod/type|show/id` → 伪静态 `vodtype`/`vodshow`/`vodsearch`,探通哪个写哪个);`SubscriptionActivity`
+  两处接入:「阅读」书源改用其 `sourceUrl` 接入、普通站点地址在采集接口探不到时自动继续抓页面;`CmsApiRules` 增
+  `buildSubscriptionJson(带 ext)` 重载。回归:22 个 `HtmlSiteRulesTest` 单测 + `scripts/check-maccms-source.mjs`
+  (Node 拿真实页面跑模板全链路,可喂 Java 生成的 ext 验证"生成→消费"契约)。
+- ✅ 修 **JsSpider.init 线程错误(JS/JAR 源 ext 为 JSON 时源直接初始化失败)**:`JsSpider.init` 里
+  `ctx.parse(extend)` 跑在调用线程上,而 QuickJS 上下文属于它自己的单线程执行器 → 抛
+  `QuickJSException: Must be call same thread in QuickJSContext.create!` → `JsLoader.getSpider` 落空 →
+  首页无分类、分类/搜索全空(线上实例:抓页面源因为 ext 带站点配置必走这行,表现为"导入了但没数据");
+  修复:`ctx.parse` 与 `proxy1` 的 ctx 调用都改到 `submit(...)` 里执行。注:只有 ext 是 JSON 的源会踩到,
+  所以此前 ext 为空的 JS 源没暴露。
+- ✅ 新增**聚合搜索"加载更多"翻页**:`SpiderContentApi` 增 `searchContent(..., pg)` 默认方法(老实现不受影响)
+  → `SpiderContentImpl` 覆写走 `Spider.searchContent(key,quick,pg)`;`SourceViewModel.getSearchPaged(key,wd,page)`
+  支持 type3(type0/1/4 走 HTTP 拼参带 `pg`),结果经新增的 `SearchPageBatchListener` 单独一路投递;
+  `FastSearchActivity` 上拉到底按轮次取各源下一页并追加(列表不满一屏自动续拉,一次手势最多 3 轮),
+  记账抽 `util/SearchPagingState`(纯逻辑,9 个 JVM 单测:空页到底/没回包到底/乱序回包/多源独立翻页/复位)。
 - ✅ 字幕本地导入同步去 hedzr:`SubtitleCoordinator.openLocalFileChooserDialog` 原用
   `com.github.hedzr:android-file-chooser` 的 ChooserDialog(反射 StorageVolume.getPath,在 Android 11+/targetSdk 34
   被 hiddenapi 拒收,见 9/5 日志 NoSuchMethodException)改为自研 `SubtitleFileChooserDialog`(标准 File API 列目录/

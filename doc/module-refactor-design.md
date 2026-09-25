@@ -1,5 +1,8 @@
 # 视频下载重构与项目六模块设计方案
 
+> **实施进度（2026-09-25）**：下载模块重构已落地——DownloadFacade 门面 + internal 包（Manager/Scheduler/Executor/Store/Policy/Archive/Config/Core）+ 任务对象化（BaseDownloadTask/NormalFile/M3u8）+ 前台服务 + 通知。
+> 本文件保留作为原始设计参考，实际实现以代码为准。六模块中的 spider/log/state/ui-common/player 已按 改进.txt 分层落地，下载模块见 `doc/项目目录结构.md` 第九节。
+
 > **目标**：把 `DownloadManager.java`（1778 行单体）重构为**六个项目级模块 + 纵向分层架构**，
 > 同时修复已确认的 5 个线上 bug，建立"可排查"的日志体系，并为播放内核升级（Media3）铺路。
 >

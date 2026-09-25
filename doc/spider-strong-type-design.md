@@ -1,6 +1,10 @@
 # 强类型 SpiderService 设计（改进.txt §1/§4.3 落地方案）
 
-> 目标：把 app 侧“字符串 JSON/XML + 各自解析”下沉为 :spider 内实现返回的**类型化领域对象**，
+> **实施进度（2026-09-25）**：强类型契约已落地——`:spider-api` 提供 SpiderDetailApi/SpiderSearchApi/SpiderHomeApi/SpiderManualCheckApi/PlayUrlResolverApi，`:spider` 侧实现对应 Impl。
+> SourceViewModel 已收敛为 **typed-first + 失败回退旧 HttpClient 直连**（detail/search/quickSearch/category/list/play 六入口），字符串通道 SpiderContentApi 仍为底层数据源（非可下线遗留层）。
+> 构造注入 SpiderService（替代静态 Provider）、删除回退通道为后续长线项，需逐源真机回归。
+
+> 目标：把 app 侧"字符串 JSON/XML + 各自解析"下沉为 :spider 内实现返回的**类型化领域对象**，
 > app/UI 只依赖 :spider-api 契约；并用 FakeSpiderService 支持 JVM 单测。
 > 现状锚点：`SourceViewModel` 依 type=0/1/3/4 分别走 XML/JSON/JS+Jar 并各自 parse 成
 > `AbsSortXml/AbsXml`（core-model）；`:spider-api` 已有字符串级 `SpiderContentApi`。

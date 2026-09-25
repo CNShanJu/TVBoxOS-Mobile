@@ -1,7 +1,24 @@
 # 安全审计整改与架构迁移状态（跟踪文档）
 
-> 本文件汇总 TVBoxOS-Mobile 三轮整改（安全/性能审计 + 模块边界路线图 改进.txt）
+> 本文件汇总 TVBoxOS-Mobile 多轮整改（安全/性能审计 + 模块边界路线图 改进.txt）
 > 的落地状态、关键改动点与真机回归矩阵。代码级验证：Debug/Release 双变体 BUILD SUCCESSFUL。
+
+## 0. 近期进展补充（2026-09-25）
+
+- **未推送改动全量复查 + 缺陷修复（一轮 review→fix 批次）**：对当时全部未 push 内容（6 个本地 commit + 工作区改动）做了四个域（下载/播放UI/检查更新/网络爬虫）并行审查 + 逐条读码复核，确认并修掉以下问题（均已过 `assembleDebug/assembleRelease/testDebugUnitTest/checkModuleDependencies`，单测 176 例 0 失败）：
+  - **默认订阅被清空（高，已被并行会话先修）**：`App.putDefaultApi()` 原逻辑把"上次注入记录"里的订阅无条件删除且拒绝补回 → 第 2 次启动清空内置默认订阅 + 置空 apiUrl。现改为 `injectedTags` 差集（只删"注入过且文件已移除"的项），**需真机回归：装包→启动→杀进程→再启动，订阅仍在**。
+  - **发版说明版本号重复（中）**：`ReleaseNotes.aggregate` 单版本分支绕过标题去重 → 弹窗标题"发现新版本 vX"下再来一行 `## vX`；改为单版本同样走 `dropVersionHeader`，引言去重也从"标题命中"子分支里独立出来。
+  - **dev 围栏误吞正文（中）**：围栏改为**独占一行**才生效（同一行成对写出仍整段剔除），避免正文里"提到"围栏写法时把它之后的用户可见内容一起删掉；AGENTS 围栏约定同步补充说明，测试补 4 例。
+  - **代理地址不再判 HLS（中）**：`ExoMediaSourceHelper.inferContentType` 先按路径末段扩展名判定后，对"路径无明确媒体后缀"的地址回退看查询串（`/proxy?...&url=xxx.m3u8`），恢复旧 `contains(".m3u8")` 兜底，避免退化成 Progressive 首播失败。
+  - **失败图记忆永不自愈（中）**：`PicassoLoad`/`FastSearchAdapter` 的失败集合改为"URL→失败时间 + 60s 窗口 + 上限 500"（成功即清），瞬时失败（开局无网/CDN 抖动）不再需要杀进程才恢复。
+  - **下载细节（低）**：AES-128 密钥请求登记进 `activeResponses`（暂停/删除可中断在途密钥请求，登记采用顶替-还原避免摘掉分段响应的登记）；"仅Wi-Fi"守卫下沉到 `doStartDownloads()` 单入口（授权成功回调不再绕过）；右侧下载抽屉补注册状态监听、注销与注册成对（`statusListenerRegistered`）。
+  - **其它（低）**：`PlayService.sInstance` 加 `volatile` + 只清自己；`CmsApiRules` 协议相对链接 `//host/...` 按当前页协议绝对化、`siteKey` 加主机名短哈希（消除不同站点生成同名 `cms_<key>.json` 互相覆盖）、候选顺序改为站点根默认路径优先（不再被 10 条上限截掉）；`player_vod_control_view.xml` marginStart/marginLeft 统一 dp_10（原 start=30 覆盖 left=10 使改动无效）；`box_vod_control_view.xml` 两处 `textSize` 由 dp 回 sp；`DetailActivity` 无剧集时连 260dp 预览占位区一起收起；订阅地址响应"配置 vs 资源站采集接口"判定收紧（`CmsApiRules.detectKind`，避免只有 flags/ads 的最小配置被误送去嗅探）。
+  - 未改（评估后风险更高，留待排期）：`Utils.getVideoList()` 的 MediaStore 主线程查询 + 新增 `File.length()` 兜底（需两页异步化重构）；跨版本续传复用旧密文分片（触发前提苛刻，强制校验有引发补片死循环风险）。
+
+- **hawk 全量退役完成**：`KeyValueStore` 类及全部 legacy 迁移分支已删除，运行权威统一 `PrefsDataStore`/文件；全仓零 `com.orhanobut.hawk` 依赖（mbox 包名隔离，无 Hawk 存量升级场景）。
+- **订阅本地导入改系统 SAF**：`SubscriptionActivity` 用 `ActivityResultContracts.OpenDocument` 替代 hedzr 反射，支持 `content://` 流、`primary:`/`home:` 文档卷，复制到应用专属目录 + canonical 防穿越，按 URL 去重；移除 `MANAGE_EXTERNAL_STORAGE` 前置检查。
+- **下载存储权限引导**：`DownloadDialogCoordinator` 无存储权限时弹 `ConfirmDialog` + `XXPermissions` 拉起系统授权（与「我的-本地视频」入口一致），不再仅 toast 提示。
+- **播放器收口 P1 真机通过**（MEIZU 21/Android 16）：IJK/Exo 双内核起播、后台播放系统 MediaSession 媒体卡、会话 bind/release 无泄漏。
 
 ## 1. 已落地改动总览
 

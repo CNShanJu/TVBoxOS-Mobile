@@ -1,5 +1,9 @@
 # 改进.txt 第二阶段实施工单：核心模块化（:core-model 起步）
 
+> **实施进度（2026-09-25）**：核心模块化已基本完成——`:core-model`（纯模型）、`:core-network`（原 common 拆出网络）、`:core-storage`（Room+PrefsDataStore）、`:core-utils`（AES/MD5/AdBlocker）、`:spider-api`、`:player-api` 均已落地。
+> 剩余长线项：`:playback`/feature-* 模块未建（需真机回归）、播放器主线收口（P2-P4）、EventBus 跨页 refresh 收口、Media3/Hilt（第五阶段）。
+> 本文件保留作为阶段二原始工单参考。
+
 > 本工单把 改进.txt 第二~五阶段细化为可执行步骤。原则：每步保持全仓库可编译；
 > 每次“搬一个模型→改 import→全量编译”作为一次原子提交；先建模块壳，再按依赖自底向上迁移。
 
