@@ -31,7 +31,6 @@ import com.github.tvbox.osc.bean.Movie
 import com.github.tvbox.osc.bean.SourceBean
 import com.github.tvbox.osc.databinding.ActivityFastSearchBinding
 import com.github.tvbox.osc.spiderapi.SourceConfigProviders
-import com.github.tvbox.osc.event.ServerEvent
 import com.github.tvbox.osc.log.Category
 import com.github.tvbox.osc.log.LogStore
 import com.github.tvbox.osc.util.AppLog
@@ -63,9 +62,6 @@ import com.lxj.xpopup.core.BasePopupView
 import com.lxj.xpopup.interfaces.SimpleCallback
 import com.zhy.view.flowlayout.FlowLayout
 import com.zhy.view.flowlayout.TagAdapter
-import org.greenrobot.eventbus.EventBus
-import org.greenrobot.eventbus.Subscribe
-import org.greenrobot.eventbus.ThreadMode
 import java.util.concurrent.atomic.AtomicInteger
 
 class FastSearchActivity : BaseVbActivity<ActivityFastSearchBinding>(), TextWatcher {
@@ -106,9 +102,6 @@ class FastSearchActivity : BaseVbActivity<ActivityFastSearchBinding>(), TextWatc
     }
 
     override fun init() {
-        // 快速搜索页注册 EventBus 仅收 ServerEvent(遥控/局域网推送搜索)
-        // (BaseActivity 已移除"全 Activity 自动注册";搜索批次结果已直调,不再走 EventBus)
-        EventBus.getDefault().register(this)
         sourceViewModel = ViewModelProvider(this).get(SourceViewModel::class.java)
         // 主搜索批次结果直调:VM 回调线程不保证主线程,统一切主线程喂 searchData(替代 TYPE_SEARCH_RESULT 订阅)
         sourceViewModel.setSearchBatchListener { data ->
@@ -579,15 +572,6 @@ class FastSearchActivity : BaseVbActivity<ActivityFastSearchBinding>(), TextWatc
         }
     }
 
-    @Subscribe(threadMode = ThreadMode.MAIN)
-    fun server(event: ServerEvent) {
-        if (event.type == ServerEvent.SERVER_SEARCH) {
-            val title = event.obj as String
-            showLoading()
-            search(title)
-        }
-    }
-
     private fun search(title: String?) {
         if (title.isNullOrEmpty()) {
             AppBubble.toast("请输入搜索内容")
@@ -871,7 +855,6 @@ class FastSearchActivity : BaseVbActivity<ActivityFastSearchBinding>(), TextWatc
     override fun onDestroy() {
         super.onDestroy()
         sourceViewModel.setSearchBatchListener(null) // 断开结果直调,防悬垂回调
-        EventBus.getDefault().unregister(this)
         cancel()
         synchronized(searchLock) {
             searchEpoch++

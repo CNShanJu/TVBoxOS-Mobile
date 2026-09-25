@@ -1,12 +1,7 @@
 package com.github.tvbox.osc.server;
 
-import android.content.ComponentName;
 import android.content.Context;
-import android.content.Intent;
-import android.os.Bundle;
-import android.text.TextUtils;
 
-import com.github.tvbox.osc.receiver.SearchReceiver;
 import com.github.tvbox.osc.config.SystemConfig;
 
 import java.io.IOException;
@@ -60,16 +55,8 @@ public class ControlManager {
             mServer.setDataReceiver(new DataReceiver() {
                 @Override
                 public void onTextReceived(String text) {
-                    if (!TextUtils.isEmpty(text)) {
-                        Intent intent = new Intent();
-                        Bundle bundle = new Bundle();
-                        bundle.putString("title", text);
-                        intent.setAction(SearchReceiver.action);
-                        intent.setPackage(mContext.getPackageName());
-                        intent.setComponent(new ComponentName(mContext, SearchReceiver.class));
-                        intent.putExtras(bundle);
-                        mContext.sendBroadcast(intent);
-                    }
+                    // 历史遗留:曾广播 SearchReceiver 触发局域网推送搜索,但 SearchReceiver.onReceive
+                    // 早已是空实现(SERVER_SEARCH 从无发送方),整条链路已死,删除。
                 }
 
                 @Override

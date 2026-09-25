@@ -112,16 +112,8 @@
         <!-- DLNA 投屏服务已停用:依赖 com.github.devin1014.DLNA-Cast 从 JitPack 消失,待找到替代库后恢复 -->
         <!-- <service android:name="com.android.cast.dlna.dmc.DLNACastService"/> -->
 
-        <!-- 两个广播接收器不再对三方 App 开放(exported=false):
-             SearchReceiver 由 ControlManager 以显式组件广播触发, CustomWebReceiver 无外部契约,
-             避免任意应用向本应用注入搜索/刷新指令 -->
-        <receiver
-            android:name=".receiver.SearchReceiver"
-            android:exported="false">
-            <intent-filter>
-                <action android:name="android.content.movie.search.Action" />
-            </intent-filter>
-        </receiver>
+        <!-- 广播接收器不对三方 App 开放(exported=false):CustomWebReceiver 无外部契约,
+             避免任意应用向本应用注入刷新指令 -->
         <receiver
             android:name=".receiver.CustomWebReceiver"
             android:exported="false">

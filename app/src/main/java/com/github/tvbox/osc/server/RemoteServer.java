@@ -8,14 +8,11 @@ import android.util.Base64;
 
 import com.github.tvbox.osc.R;
 import com.github.tvbox.osc.base.App;
-import com.github.tvbox.osc.event.ServerEvent;
 import com.github.tvbox.osc.util.FileUtils;
 import com.github.tvbox.osc.util.OkGoHelper;
 import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
-
-import org.greenrobot.eventbus.EventBus;
 
 import java.io.BufferedOutputStream;
 import java.io.ByteArrayInputStream;
@@ -118,7 +115,6 @@ public class RemoteServer extends NanoHTTPD {
     public void start(int timeout, boolean daemon) throws IOException {
         isStarted = true;
         super.start(timeout, daemon);
-        EventBus.getDefault().post(new ServerEvent(ServerEvent.SERVER_SUCCESS));
     }
 
     @Override
@@ -129,7 +125,6 @@ public class RemoteServer extends NanoHTTPD {
 
     @Override
     public Response serve(IHTTPSession session) {
-        EventBus.getDefault().post(new ServerEvent(ServerEvent.SERVER_CONNECTION));
         String uri = session.getUri();
         if (uri == null || uri.isEmpty()) {
             return getRequestList.get(0).doResponse(session, "", null, null);
