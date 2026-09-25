@@ -85,7 +85,9 @@ public class PlayFragment extends BaseLazyFragment {
     private View mPlayLoading;
     private VodController mController;
     private SourceViewModel sourceViewModel;
-    /** 解析/嗅探引擎(解析编排 + 无头 WebView 嗅探 + json/聚合解析;见 util/player/PlayParseCoordinator) */
+    /**
+     * 解析/嗅探引擎(解析编排 + 无头 WebView 嗅探 + json/聚合解析;见 util/player/PlayParseCoordinator)
+     */
     private com.github.tvbox.osc.util.player.PlayParseCoordinator mParseEngine;
     /** 字幕协调器(字幕装载/音轨与内置字幕切换/设置弹窗;见 util/player/SubtitleCoordinator) */
     private com.github.tvbox.osc.util.player.SubtitleCoordinator mSubtitleCoordinator;
@@ -112,6 +114,7 @@ public class PlayFragment extends BaseLazyFragment {
      * 视频播放出错时,自动切换另一个播放器,这个开关避免多次切换
      */
     boolean retriedSwitchPlayer = false;
+
     @Override
     protected int getLayoutResID() {
         return R.layout.activity_play;
@@ -171,9 +174,10 @@ public class PlayFragment extends BaseLazyFragment {
         mVideoView.setProgressManager(progressManager);
         mController.setListener(new VodController.VodControlListener() {
             final DetailActivity activity = (DetailActivity) mActivity;
+
             @Override
             public void chooseSeries() {
-                //activity中已处理
+                // activity中已处理
                 activity.showAllSeriesDialog();
             }
 
@@ -199,8 +203,10 @@ public class PlayFragment extends BaseLazyFragment {
             @Override
             public void updatePlayerCfg() {
                 mVodInfo.playerCfg = mVodPlayerCfg.toString();
-                if (mSyncHost != null) mSyncHost.onPlayerCfgChanged(mVodPlayerCfg);
+                if (mSyncHost != null)
+                    mSyncHost.onPlayerCfgChanged(mVodPlayerCfg);
             }
+
             @Override
             public void replay(boolean replay) {
                 autoRetryCount = 0;
@@ -248,7 +254,7 @@ public class PlayFragment extends BaseLazyFragment {
 
             @Override
             public void onHideBottom() {
-                if (mFullWindows){
+                if (mFullWindows) {
                     ImmersionBar.with(activity)
                             .hideBar(BarHide.FLAG_HIDE_BAR)
                             .init();
@@ -258,14 +264,14 @@ public class PlayFragment extends BaseLazyFragment {
             @Override
             public void showSetting() {
                 // 按当前方向决定形态: 横屏右侧抽屉; 竖屏底部弹层(AppBottomPopupView 自带高度上限)
-                if (ScreenUtils.isLandscape()){
+                if (ScreenUtils.isLandscape()) {
                     // view 模式无法自动响应返回键,onBackPress 时手动 dismiss
                     mPlayingControlRightDialog = DialogCoordinator.right(activity,
                             new PlayingControlRightDialog(activity, mController, mVideoView), 320, true);
                     mPlayingControlRightDialog.show();
-                }else {
+                } else {
                     mPlayingControlDialog = DialogCoordinator.bottom(activity,
-                            new PlayingControlDialog(activity,mController,mVideoView), 0);
+                            new PlayingControlDialog(activity, mController, mVideoView), 0);
                     mPlayingControlDialog.show();
                 }
             }
@@ -283,13 +289,14 @@ public class PlayFragment extends BaseLazyFragment {
 
             @Override
             public void showParseRoot(boolean show, ParseAdapter adapter) {
-                DetailActivity activity = (DetailActivity)mActivity;
-                activity.showParseRoot(show,adapter);
+                DetailActivity activity = (DetailActivity) mActivity;
+                activity.showParseRoot(show, adapter);
             }
         });
         mVideoView.setVideoController(mController);
         mPlaySession = new com.github.tvbox.osc.player.PlayerSession(mVideoView);
-        mSubtitleCoordinator = new com.github.tvbox.osc.util.player.SubtitleCoordinator(mActivity, mController, mPlaySession);
+        mSubtitleCoordinator = new com.github.tvbox.osc.util.player.SubtitleCoordinator(mActivity, mController,
+                mPlaySession);
         // 解析/嗅探引擎(宿主薄委托;解析编排与无头 WebView 收口 util/player)
         mParseEngine = new com.github.tvbox.osc.util.player.PlayParseCoordinator(mActivity, this,
                 new com.github.tvbox.osc.util.player.PlayParseCoordinator.Callback() {
@@ -310,12 +317,14 @@ public class PlayFragment extends BaseLazyFragment {
 
                     @Override
                     public void onShowParseRoot(boolean show) {
-                        if (mController != null) mController.showParse(show);
+                        if (mController != null)
+                            mController.showParse(show);
                     }
 
                     @Override
                     public boolean postOnUiThread(Runnable r) {
-                        if (!isAdded()) return false;
+                        if (!isAdded())
+                            return false;
                         requireActivity().runOnUiThread(r);
                         return true;
                     }
@@ -339,12 +348,12 @@ public class PlayFragment extends BaseLazyFragment {
         }
     }
 
-    public boolean hideAllDialogSuccess(){
-        if (mPlayingControlRightDialog!=null && mPlayingControlRightDialog.isShow()){
+    public boolean hideAllDialogSuccess() {
+        if (mPlayingControlRightDialog != null && mPlayingControlRightDialog.isShow()) {
             mPlayingControlRightDialog.dismiss();
             return true;
         }
-        if (mPlayingControlDialog!=null && mPlayingControlDialog.isShow()){
+        if (mPlayingControlDialog != null && mPlayingControlDialog.isShow()) {
             mPlayingControlDialog.dismiss();
             return true;
         }
@@ -356,12 +365,12 @@ public class PlayFragment extends BaseLazyFragment {
      */
     public void changedLandscape(boolean fullWindows) {
         mFullWindows = fullWindows;
-        if (fullWindows){
+        if (fullWindows) {
             int[] size = mPlaySession != null ? mPlaySession.videoSize() : mVideoView.getVideoSize();
             int width = size[0];
             int height = size[1];
-            if (width>height){//根据视频尺寸判断是否横屏,小视频则只在activity改了预览尺寸(全屏预览)
-                //横屏(传感器)
+            if (width > height) {// 根据视频尺寸判断是否横屏,小视频则只在activity改了预览尺寸(全屏预览)
+                // 横屏(传感器)
                 mActivity.setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE);
             } else if (width == 0 && height == 0) {
                 // 视频尺寸未知(尚未加载出来):用户主动全屏,默认横屏,待视频加载后按真实尺寸校正
@@ -370,10 +379,10 @@ public class PlayFragment extends BaseLazyFragment {
 
             ImmersionBar.with(mActivity)
                     .hideBar(BarHide.FLAG_HIDE_BAR)
-                    .navigationBarColor(R.color.black)//即使隐藏部分时候还是会显示
+                    .navigationBarColor(R.color.black)// 即使隐藏部分时候还是会显示
                     .fitsSystemWindows(false)
                     .init();
-        }else {//非全屏统一设置竖屏,activity处理为小的预览尺寸
+        } else {// 非全屏统一设置竖屏,activity处理为小的预览尺寸
             mActivity.setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
 
             ImmersionBar.with(mActivity)
@@ -386,45 +395,51 @@ public class PlayFragment extends BaseLazyFragment {
         mController.changedLandscape(fullWindows);
     }
 
-    //设置字幕
+    // 设置字幕
     void setSubtitle(String path) {
         // 委托 SubtitleCoordinator(显隐跟随字幕开关)
-        if (mSubtitleCoordinator != null) mSubtitleCoordinator.setSubtitlePath(path);
+        if (mSubtitleCoordinator != null)
+            mSubtitleCoordinator.setSubtitlePath(path);
     }
 
     void selectMySubtitle() throws Exception {
-        if (mSubtitleCoordinator == null || mVodInfo == null) return;
+        if (mSubtitleCoordinator == null || mVodInfo == null)
+            return;
         mSubtitleCoordinator.openSubtitleDialog(mVodInfo);
     }
 
     @SuppressLint("UseCompatLoadingForColorStateLists")
     void setSubtitleViewTextStyle(int style) {
-        if (mSubtitleCoordinator != null) mSubtitleCoordinator.setSubtitleTextStyle(style);
+        if (mSubtitleCoordinator != null)
+            mSubtitleCoordinator.setSubtitleTextStyle(style);
     }
 
     void selectMyAudioTrack() {
-        if (mSubtitleCoordinator != null) mSubtitleCoordinator.openAudioTrackDialog();
+        if (mSubtitleCoordinator != null)
+            mSubtitleCoordinator.openAudioTrackDialog();
     }
 
     void selectMyInternalSubtitle() {
-        if (mSubtitleCoordinator != null) mSubtitleCoordinator.openInternalSubtitleDialog();
+        if (mSubtitleCoordinator != null)
+            mSubtitleCoordinator.openInternalSubtitleDialog();
     }
 
     void setTip(String msg, boolean loading, boolean err) {
-        if (!isAdded()) return;
-        //影魔
+        if (!isAdded())
+            return;
+        // 影魔
         requireActivity().runOnUiThread(() -> {
             mPlayLoadTip.setText(msg);
             mPlayLoadTip.setVisibility(View.VISIBLE);
             mPlayLoading.setVisibility(loading ? View.VISIBLE : View.GONE);
             mPlayLoadErr.setVisibility(err ? View.VISIBLE : View.GONE);
 
-            if ("视频播放出错".equals(msg)){
-                if (!retriedSwitchPlayer){
+            if ("视频播放出错".equals(msg)) {
+                if (!retriedSwitchPlayer) {
                     AppBubble.toast("播放出错,正在尝试切换播放器");
                     retriedSwitchPlayer = true;
                     mController.mPlayerBtn.performClick();
-                }else {
+                } else {
                     SpanUtils.with(mPlayLoadTip)
                             .append("视频播放出错，")
                             .append("切换播放器")
@@ -450,6 +465,7 @@ public class PlayFragment extends BaseLazyFragment {
                 public void run() {
                     if (finish) {
                         AppBubble.toast(err);
+                        hideTip();
                     } else {
                         setTip(err, false, true);
                     }
@@ -470,82 +486,77 @@ public class PlayFragment extends BaseLazyFragment {
         }
         HttpClient.cancel("m3u8-1");
         HttpClient.cancel("m3u8-2");
-        //remove ads in m3u8
+        // remove ads in m3u8
         Map<String, String> hheaders = new HashMap<>();
-        if(headers != null){
+        if (headers != null) {
             for (Map.Entry<String, String> s : headers.entrySet()) {
                 hheaders.put(s.getKey(), s.getValue());
             }
         }
 
         HttpClient.get(url, hheaders, "m3u8-1", new HCallBack() {
+            @Override
+            public void onSuccess(String content) {
+                if (!content.startsWith("#EXTM3U")) {
+                    startPlayUrl(url, headers);
+                    return;
+                }
+
+                String[] lines = null;
+                if (content.contains("\r\n"))
+                    lines = content.split("\r\n", 10);
+                else
+                    lines = content.split("\n", 10);
+                String forwardurl = "";
+                boolean dealedFirst = false;
+                for (String line : lines) {
+                    if (!"".equals(line) && line.charAt(0) != '#') {
+                        if (dealedFirst) {
+                            // 跳转行后还有内容，说明不需要跳转
+                            forwardurl = "";
+                            break;
+                        }
+                        if (line.endsWith(".m3u8") || line.contains(".m3u8?")) {
+                            if (line.startsWith("http://") || line.startsWith("https://")) {
+                                forwardurl = line;
+                            } else if (line.charAt(0) == '/') {
+                                int ifirst = url.indexOf('/', 9);// skip https://, http://
+                                forwardurl = url.substring(0, ifirst) + line;
+                            } else {
+                                int ilast = url.lastIndexOf('/');
+                                forwardurl = url.substring(0, ilast + 1) + line;
+                            }
+                        }
+                        dealedFirst = true;
+                    }
+                }
+                if ("".equals(forwardurl)) {
+                    int ilast = url.lastIndexOf('/');
+
+                    RemoteServer.m3u8Content = com.github.tvbox.osc.util.player.M3u8Cleaner
+                            .removeMinorityUrl(url.substring(0, ilast + 1), content);
+                    if (RemoteServer.m3u8Content == null)
+                        startPlayUrl(url, headers);
+                    else {
+                        // 广告过滤静默执行,不弹任何提示
+                        startPlayUrl("http://127.0.0.1:" + RemoteServer.serverPort + "/m3u8", headers);
+                    }
+                    return;
+                }
+                final String finalforwardurl = forwardurl;
+                HttpClient.get(forwardurl, hheaders, "m3u8-2", new HCallBack() {
                     @Override
                     public void onSuccess(String content) {
-                        if (!content.startsWith("#EXTM3U")) {
-                            startPlayUrl(url, headers);
-                            return;
+                        int ilast = finalforwardurl.lastIndexOf('/');
+                        RemoteServer.m3u8Content = com.github.tvbox.osc.util.player.M3u8Cleaner
+                                .removeMinorityUrl(finalforwardurl.substring(0, ilast + 1), content);
+
+                        if (RemoteServer.m3u8Content == null)
+                            startPlayUrl(finalforwardurl, headers);
+                        else {
+                            // 广告过滤静默执行,不弹任何提示
+                            startPlayUrl("http://127.0.0.1:" + RemoteServer.serverPort + "/m3u8", headers);
                         }
-
-                        String[] lines = null;
-                        if (content.contains("\r\n"))
-                            lines = content.split("\r\n", 10);
-                        else
-                            lines = content.split("\n", 10);
-                        String forwardurl = "";
-                        boolean dealedFirst = false;
-                        for (String line : lines) {
-                            if (!"".equals(line) && line.charAt(0) != '#') {
-                                if (dealedFirst) {
-                                    //跳转行后还有内容，说明不需要跳转
-                                    forwardurl = "";
-                                    break;
-                                }
-                                if (line.endsWith(".m3u8") || line.contains(".m3u8?")) {
-                                    if (line.startsWith("http://") || line.startsWith("https://")) {
-                                        forwardurl = line;
-                                    } else if (line.charAt(0)=='/' ) {
-                                        int ifirst = url.indexOf('/', 9);//skip https://, http://
-                                        forwardurl = url.substring(0, ifirst) + line;
-                                    } else {
-                                        int ilast = url.lastIndexOf('/');
-                                        forwardurl = url.substring(0, ilast + 1) + line;
-                                    }
-                                }
-                                dealedFirst = true;
-                            }
-                        }
-                        if ("".equals(forwardurl)) {
-                            int ilast = url.lastIndexOf('/');
-
-                            RemoteServer.m3u8Content = com.github.tvbox.osc.util.player.M3u8Cleaner.removeMinorityUrl(url.substring(0, ilast + 1), content);
-                            if (RemoteServer.m3u8Content == null)
-                                startPlayUrl(url, headers);
-                            else {
-                                // 广告过滤静默执行,不弹任何提示
-                                startPlayUrl("http://127.0.0.1:" + RemoteServer.serverPort + "/m3u8", headers);
-                            }
-                            return;
-                        }
-                        final String finalforwardurl = forwardurl;
-                        HttpClient.get(forwardurl, hheaders, "m3u8-2", new HCallBack() {
-                                    @Override
-                                    public void onSuccess(String content) {
-                                        int ilast = finalforwardurl.lastIndexOf('/');
-                                        RemoteServer.m3u8Content = com.github.tvbox.osc.util.player.M3u8Cleaner.removeMinorityUrl(finalforwardurl.substring(0, ilast + 1), content);
-
-                                        if (RemoteServer.m3u8Content == null)
-                                            startPlayUrl(finalforwardurl, headers);
-                                        else {
-                                            // 广告过滤静默执行,不弹任何提示
-                                            startPlayUrl("http://127.0.0.1:" + RemoteServer.serverPort + "/m3u8", headers);
-                                        }
-                                    }
-
-                                    @Override
-                                    public void onError(Throwable e) {
-                                        startPlayUrl(url, headers);
-                                    }
-                                });
                     }
 
                     @Override
@@ -553,19 +564,30 @@ public class PlayFragment extends BaseLazyFragment {
                         startPlayUrl(url, headers);
                     }
                 });
+            }
+
+            @Override
+            public void onError(Throwable e) {
+                startPlayUrl(url, headers);
+            }
+        });
     }
 
-    /** 记录"播放过的剧集":key=sourceKey|vodId,value=已播放集索引集合(后台线程写 SP,避免主线程 IO)。
-     *  走应用级共享串行执行器(§六:页面不得自建线程池;串行保证同 key 读改写不交错丢更新) */
+    /**
+     * 记录"播放过的剧集":key=sourceKey|vodId,value=已播放集索引集合(后台线程写 SP,避免主线程 IO)。
+     * 走应用级共享串行执行器(§六:页面不得自建线程池;串行保证同 key 读改写不交错丢更新)
+     */
     private void recordPlayedEpisode() {
-        if (mVodInfo == null || mVodInfo.id == null) return;
+        if (mVodInfo == null || mVodInfo.id == null)
+            return;
         final String videoId = com.github.tvbox.osc.util.player.PlayedVodKey.of(sourceKey, mVodInfo.id);
         final int index = mVodInfo.playIndex;
         com.github.tvbox.osc.util.HeavyTaskUtil.getSerialExecutorService().execute(() -> {
             try {
                 SPUtils sp = SPUtils.getInstance(CacheConst.VIDEO_PLAYED_SP);
                 Set<String> set = sp.getStringSet(videoId, null);
-                if (set == null) set = new HashSet<>();
+                if (set == null)
+                    set = new HashSet<>();
                 if (set.add(String.valueOf(index))) {
                     sp.put(videoId, set);
                 }
@@ -579,45 +601,51 @@ public class PlayFragment extends BaseLazyFragment {
         com.github.tvbox.osc.log.LogStore.log(com.github.tvbox.osc.log.Category.PLAYER,
                 "播放: " + (mVodInfo == null || mVodInfo.name == null ? "?" : mVodInfo.name)
                         + (mVodInfo != null && mVodInfo.playIndex >= 0
-                        && mVodInfo.seriesMap != null && mVodInfo.seriesMap.get(mVodInfo.playFlag) != null
-                        && mVodInfo.playIndex < mVodInfo.seriesMap.get(mVodInfo.playFlag).size()
-                        ? " " + mVodInfo.seriesMap.get(mVodInfo.playFlag).get(mVodInfo.playIndex).name : "")
+                                && mVodInfo.seriesMap != null && mVodInfo.seriesMap.get(mVodInfo.playFlag) != null
+                                && mVodInfo.playIndex < mVodInfo.seriesMap.get(mVodInfo.playFlag).size()
+                                        ? " " + mVodInfo.seriesMap.get(mVodInfo.playFlag).get(mVodInfo.playIndex).name
+                                        : "")
                         + (url != null && url.length() > 80 ? " url=" + url.substring(0, 80) + "..." : " url=" + url));
         if (autoRetryCount > 0 && url.contains(".m3u8")) {
-            url = "http://home.jundie.top:666/unBom.php?m3u8=" + url;//尝试去bom头再次播放
+            url = "http://home.jundie.top:666/unBom.php?m3u8=" + url;// 尝试去bom头再次播放
         }
         String finalUrl = url;
-        if (mActivity == null || !isAdded()) return;
+        if (mActivity == null || !isAdded())
+            return;
         requireActivity().runOnUiThread(() -> {
-            if (mParseEngine != null) mParseEngine.stopParse();
-            if (mPlaySession != null) mPlaySession.release();
+            if (mParseEngine != null)
+                mParseEngine.stopParse();
+            if (mPlaySession != null)
+                mPlaySession.release();
 
-                if (finalUrl != null) {
-                    recordPlayedEpisode();
-                    try {
-                        int playerType = mVodPlayerCfg.getInt("pl");
-                        if (playerType >= 10) {
-                            VodInfo.VodSeries vs = mVodInfo.seriesMap.get(mVodInfo.playFlag).get(mVodInfo.playIndex);
-                            String playTitle = mVodInfo.name + " " + vs.name;
-                            setTip("调用外部播放器" + PlayerHelper.getPlayerName(playerType) + "进行播放", true, false);
-                            boolean callResult = false;
-                            long progress = getSavedProgress(progressKey);
-                            callResult = PlayerHelper.runExternalPlayer(playerType, requireActivity(), finalUrl, playTitle, playSubtitle, headers, progress);
-                            setTip("调用外部播放器" + PlayerHelper.getPlayerName(playerType) + (callResult ? "成功" : "失败"), callResult, !callResult);
-                            return;
-                        }
-                    } catch (JSONException e) {
-                        e.printStackTrace();
+            if (finalUrl != null) {
+                recordPlayedEpisode();
+                try {
+                    int playerType = mVodPlayerCfg.getInt("pl");
+                    if (playerType >= 10) {
+                        VodInfo.VodSeries vs = mVodInfo.seriesMap.get(mVodInfo.playFlag).get(mVodInfo.playIndex);
+                        String playTitle = mVodInfo.name + " " + vs.name;
+                        setTip("调用外部播放器" + PlayerHelper.getPlayerName(playerType) + "进行播放", true, false);
+                        boolean callResult = false;
+                        long progress = getSavedProgress(progressKey);
+                        callResult = PlayerHelper.runExternalPlayer(playerType, requireActivity(), finalUrl, playTitle,
+                                playSubtitle, headers, progress);
+                        setTip("调用外部播放器" + PlayerHelper.getPlayerName(playerType) + (callResult ? "成功" : "失败"),
+                                callResult, !callResult);
+                        return;
                     }
-                    hideTip();
-                    PlayerHelper.updateCfg(mVideoView, mVodPlayerCfg);
-                    // 起播统一经 PlayerSession(设进度键+URL+start;内核隔离入口)
-                    if (mPlaySession != null) {
-                        mPlaySession.play(finalUrl, progressKey, headers);
-                    }
-                    mController.resetSpeed();
-                    bindPlaybackSession(finalUrl); // playback 会话原型:观察当前内核状态/进度(仅日志,不驱动)
+                } catch (JSONException e) {
+                    e.printStackTrace();
                 }
+                hideTip();
+                PlayerHelper.updateCfg(mVideoView, mVodPlayerCfg);
+                // 起播统一经 PlayerSession(设进度键+URL+start;内核隔离入口)
+                if (mPlaySession != null) {
+                    mPlaySession.play(finalUrl, progressKey, headers);
+                }
+                mController.resetSpeed();
+                bindPlaybackSession(finalUrl); // playback 会话原型:观察当前内核状态/进度(仅日志,不驱动)
+            }
         });
     }
 
@@ -630,16 +658,17 @@ public class PlayFragment extends BaseLazyFragment {
     private void bindPlaybackSession(String url) {
         try {
             releasePlaybackSession();
-            if (mVideoView == null || mVodInfo == null || mVodInfo.id == null) return;
-            playbackSessionKey = com.github.tvbox.osc.util.player.PlaySessionKeys.playbackSessionKey(sourceKey, mVodInfo);
-            com.github.tvbox.osc.player.VideoViewPlayerApi api =
-                    mPlaySession != null ? mPlaySession.playerApi() : null;
+            if (mVideoView == null || mVodInfo == null || mVodInfo.id == null)
+                return;
+            playbackSessionKey = com.github.tvbox.osc.util.player.PlaySessionKeys.playbackSessionKey(sourceKey,
+                    mVodInfo);
+            com.github.tvbox.osc.player.VideoViewPlayerApi api = mPlaySession != null ? mPlaySession.playerApi() : null;
             if (api == null) {
                 playbackSessionKey = null;
                 return;
             }
-            com.github.tvbox.osc.player.api.PlaybackSessions.Session session =
-                    com.github.tvbox.osc.player.api.PlaybackSessions.bind(playbackSessionKey, api, true);
+            com.github.tvbox.osc.player.api.PlaybackSessions.Session session = com.github.tvbox.osc.player.api.PlaybackSessions
+                    .bind(playbackSessionKey, api, true);
             if (session == null) {
                 playbackSessionKey = null;
                 return;
@@ -695,7 +724,8 @@ public class PlayFragment extends BaseLazyFragment {
 
     private void initSubtitleView() {
         // 字幕装载/内置字幕自动选中文等已收口 SubtitleCoordinator;同步当前字幕上下文后委托
-        if (mSubtitleCoordinator == null) return;
+        if (mSubtitleCoordinator == null)
+            return;
         mSubtitleCoordinator.updateSubtitleContext(playSubtitle, subtitleCacheKey);
         mSubtitleCoordinator.initSubtitleView();
     }
@@ -705,14 +735,16 @@ public class PlayFragment extends BaseLazyFragment {
         sourceViewModel.playResult.observeForever(mObserverPlayResult);
     }
 
-    private final Observer<JSONObject> mObserverPlayResult= new Observer<JSONObject>() {
+    private final Observer<JSONObject> mObserverPlayResult = new Observer<JSONObject>() {
         @Override
         public void onChanged(JSONObject info) {
             if (info != null) {
                 try {
                     boolean parse = info.optString("parse", "1").equals("1");
                     boolean jx = info.optString("jx", "0").equals("1");
-                    playSubtitle = info.optString("subt", /*"https://dash.akamaized.net/akamai/test/caption_test/ElephantsDream/ElephantsDream_en.vtt"*/"");
+                    playSubtitle = info.optString("subt", /*
+                                                           * "https://dash.akamaized.net/akamai/test/caption_test/ElephantsDream/ElephantsDream_en.vtt"
+                                                           */"");
                     // progressKey/subtitleCacheKey 由 play() 经 PlayRequest 落字段,不再从 proKey/subtKey 回写
                     String playUrl = info.optString("playUrl", "");
                     String flag = info.optString("flag");
@@ -741,7 +773,8 @@ public class PlayFragment extends BaseLazyFragment {
                         }
                     }
                     if (parse || jx) {
-                        boolean userJxList = (playUrl.isEmpty() && SourceConfigProviders.get().getVipParseFlags().contains(flag)) || jx;
+                        boolean userJxList = (playUrl.isEmpty()
+                                && SourceConfigProviders.get().getVipParseFlags().contains(flag)) || jx;
                         mParseEngine.initParse(flag, userJxList, playUrl, url);
                     } else {
                         mController.showParse(false);
@@ -749,31 +782,33 @@ public class PlayFragment extends BaseLazyFragment {
                     }
                 } catch (Throwable th) {
                     LogUtils.e(th.toString());
-//                        errorWithRetry("获取播放信息错误", true);
-//                        AppBubble.toast("获取播放信息错误1");
+                    errorWithRetry("获取播放信息错误", true);
                 }
             } else {
                 errorWithRetry("获取播放信息错误", true);
-//                    AppBubble.toast("获取播放信息错误");
+                // AppBubble.toast("获取播放信息错误");
             }
         }
     };
 
     public void setData(Bundle bundle) {
-//        mVodInfo = (VodInfo) bundle.getSerializable("VodInfo");
+        // mVodInfo = (VodInfo) bundle.getSerializable("VodInfo");
         mVodInfo = App.getInstance().getVodInfo();
         sourceKey = bundle.getString("sourceKey");
         sourceBean = SourceConfigProviders.get().getSource(sourceKey);
-        if (mParseEngine != null) mParseEngine.setSourceBean(sourceBean);
+        if (mParseEngine != null)
+            mParseEngine.setSourceBean(sourceBean);
         initPlayerCfg();
         play(false);
     }
 
     private void initData() {
-        /*Intent intent = getIntent();
-        if (intent != null && intent.getExtras() != null) {
-
-        }*/
+        /*
+         * Intent intent = getIntent();
+         * if (intent != null && intent.getExtras() != null) {
+         * 
+         * }
+         */
     }
 
     void initPlayerCfg() {
@@ -784,7 +819,8 @@ public class PlayFragment extends BaseLazyFragment {
         }
         try {
             if (!mVodPlayerCfg.has("pl")) {
-                mVodPlayerCfg.put("pl", (sourceBean.getPlayerType() == -1) ? (int) PlayConfig.getPlayType() : sourceBean.getPlayerType());
+                mVodPlayerCfg.put("pl", (sourceBean.getPlayerType() == -1) ? (int) PlayConfig.getPlayType()
+                        : sourceBean.getPlayerType());
             }
             if (!mVodPlayerCfg.has("pr")) {
                 mVodPlayerCfg.put("pr", PlayConfig.getRenderType());
@@ -822,21 +858,25 @@ public class PlayFragment extends BaseLazyFragment {
     @Override
     public void onPause() {
         super.onPause();
-        if (mPlaySession != null) mPlaySession.pause();
+        if (mPlaySession != null)
+            mPlaySession.pause();
     }
 
     @Override
     public void onResume() {
         super.onResume();
-        if (mPlaySession != null) mPlaySession.resume();
+        if (mPlaySession != null)
+            mPlaySession.resume();
     }
 
     @Override
     public void onHiddenChanged(boolean hidden) {
         if (hidden) {
-            if (mPlaySession != null) mPlaySession.pause();
+            if (mPlaySession != null)
+                mPlaySession.pause();
         } else {
-            if (mPlaySession != null) mPlaySession.resume();
+            if (mPlaySession != null)
+                mPlaySession.resume();
         }
         super.onHiddenChanged(hidden);
     }
@@ -844,23 +884,25 @@ public class PlayFragment extends BaseLazyFragment {
     @Override
     public void onDestroyView() {
         super.onDestroyView();
-        //手动注销
+        // 手动注销
         sourceViewModel.playResult.removeObserver(mObserverPlayResult);
 
         releasePlaybackSession(); // playback 会话原型:随视图销毁释放会话观察(共享视图不在此释放)
         if (mBatteryListener != null) {
             com.github.tvbox.osc.state.SystemStateMonitor monitor = com.github.tvbox.osc.state.SystemStateMonitor.get();
-            if (monitor != null) monitor.unregister(mBatteryListener);
+            if (monitor != null)
+                monitor.unregister(mBatteryListener);
             mBatteryListener = null;
         }
-        if (mPlaySession != null) mPlaySession.release();
+        if (mPlaySession != null)
+            mPlaySession.release();
         mVideoView = null;
         if (mParseEngine != null) {
             mParseEngine.destroy(); // 取消解析任务/嗅探超时/HTTP 并销毁无头 WebView(原 stopLoadWebView(true)+stopParse)
             mParseEngine = null;
         }
-        Thunder.stop(true);//停止磁力下载
-        Jianpian.finish();//停止p2p下载
+        Thunder.stop(true);// 停止磁力下载
+        Jianpian.finish();// 停止p2p下载
     }
 
     private VodInfo mVodInfo;
@@ -923,32 +965,38 @@ public class PlayFragment extends BaseLazyFragment {
     }
 
     void initParseLoadFound() {
-        if (mParseEngine != null) mParseEngine.resetFoundQueue();
+        if (mParseEngine != null)
+            mParseEngine.resetFoundQueue();
     }
 
     public void play(boolean reset) {
-        if (mVodInfo == null) return;
+        if (mVodInfo == null)
+            return;
         VodInfo.VodSeries vs = mVodInfo.seriesMap.get(mVodInfo.playFlag).get(mVodInfo.playIndex);
-        if (mSyncHost != null) mSyncHost.onEpisodeSelected(mVodInfo.playIndex);
+        if (mSyncHost != null)
+            mSyncHost.onEpisodeSelected(mVodInfo.playIndex);
         com.github.tvbox.osc.service.PlayService.onPlaybackNotify(mVodInfo.name + "&&" + vs.name);
         String playTitleInfo = mVodInfo.name + " " + vs.name;
         setTip("正在获取播放信息", true, false);
         mController.setTitle(playTitleInfo);
 
-        if (mParseEngine != null) mParseEngine.stopParse();
+        if (mParseEngine != null)
+            mParseEngine.stopParse();
         initParseLoadFound();
         releasePlaybackSession(); // playback 会话原型:切换前释放上一会话(只停观察,不释放共享 mVideoView)
-        if (mPlaySession != null) mPlaySession.release();
-        com.github.tvbox.osc.util.player.PlayRequest playRequest = com.github.tvbox.osc.util.player.PlayRequest.of(mVodInfo, vs);
+        if (mPlaySession != null)
+            mPlaySession.release();
+        com.github.tvbox.osc.util.player.PlayRequest playRequest = com.github.tvbox.osc.util.player.PlayRequest
+                .of(mVodInfo, vs);
         // 播放请求上下文收敛:键单一来源 PlayRequest;playResult 回调不再经 proKey/subtKey 回写
         progressKey = playRequest.progressKey();
         subtitleCacheKey = playRequest.subtitleCacheKey();
-        //重新播放清除现有进度
+        // 重新播放清除现有进度
         if (reset) {
             mPlayHistory.delete(progressKey);
             mPlayHistory.delete(subtitleCacheKey);
         }
-        if (Jianpian.isJpUrl(vs.url)) {//荐片地址特殊判断
+        if (Jianpian.isJpUrl(vs.url)) {// 荐片地址特殊判断
             String jp_url = vs.url;
             mController.showParse(false);
             if (vs.url.startsWith("tvbox-xg:")) {
@@ -987,9 +1035,10 @@ public class PlayFragment extends BaseLazyFragment {
     private String playSubtitle;
     private String subtitleCacheKey;
     private String progressKey;
+
     /** 记录当前播放url(供 DetailActivity/下载回退取址) */
-    public String getFinalUrl(){
-        return TextUtils.isEmpty(mCurrentUrl) || !RegexUtils.isURL(mCurrentUrl) ?"":mCurrentUrl;
+    public String getFinalUrl() {
+        return TextUtils.isEmpty(mCurrentUrl) || !RegexUtils.isURL(mCurrentUrl) ? "" : mCurrentUrl;
     }
 
     /** 当前播放所用请求头:经解析引擎(嗅探 WebView 收集 UA/Referer 等)取,下载回退播放地址必须携带 */
@@ -997,10 +1046,10 @@ public class PlayFragment extends BaseLazyFragment {
         return mParseEngine != null ? mParseEngine.getPlayHeaders() : null;
     }
 
-
     public MyVideoView getPlayer() {
         return mVideoView;
     }
+
     public VodController getController() {
         return mController;
     }

@@ -309,6 +309,10 @@ public class OkHttpDataSource extends BaseDataSource implements HttpDataSource {
             } catch (IOException e) {
                 errorResponseBody = Util.EMPTY_BYTE_ARRAY;
             }
+            if (responseCode >= 400) {
+                android.util.Log.w("TVBox-Player", "HTTP " + responseCode + " url=" + dataSpec.uri
+                        + " sentHeaders=" + response.request().headers());
+            }
             Map<String, List<String>> headers = response.headers().toMultimap();
             closeConnectionQuietly();
             @Nullable
@@ -408,7 +412,16 @@ public class OkHttpDataSource extends BaseDataSource implements HttpDataSource {
         if (rangeHeader != null) {
             builder.addHeader(HttpHeaders.RANGE, rangeHeader);
         }
-        if (userAgent != null) {
+        boolean hasUserAgentHeader = false;
+        for (String name : headers.keySet()) {
+            if (HttpHeaders.USER_AGENT.equalsIgnoreCase(name)) {
+                hasUserAgentHeader = true;
+                break;
+            }
+        }
+        // 工厂 UA 用 addHeader 追加:若上方 headers 已含任意大小写的 user-agent(源/解析给出),
+        // 再追加会出现两条 UA,UA 绑定鉴权的 CDN 会拒绝(IJK 单条 UA 能播而 Exo 401 的根因)。
+        if (userAgent != null && !hasUserAgentHeader) {
             builder.addHeader(HttpHeaders.USER_AGENT, userAgent);
         }
         if (!dataSpec.isFlagSet(DataSpec.FLAG_ALLOW_GZIP)) {

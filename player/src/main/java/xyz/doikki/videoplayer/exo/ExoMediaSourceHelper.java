@@ -129,15 +129,44 @@ public final class ExoMediaSourceHelper {
 
     }
 
+    /**
+     * 已知的普通媒体后缀:路径已明确指向这类文件时,不再拿查询串里的目标地址兜底
+     * (避免 xxx.mp4?sign=yyy.m3u8 之类被误判成 HLS)。
+     */
+    private static final java.util.Set<String> PLAIN_MEDIA_EXTS = new java.util.HashSet<>(java.util.Arrays.asList(
+            "mp4", "mkv", "avi", "ts", "flv", "mov", "wmv", "webm", "m4v", "mpg", "mpeg",
+            "rmvb", "rm", "3gp", "vob", "mp3", "m4a", "flac", "aac", "wav", "ogg"));
+
     private int inferContentType(String fileName) {
-        fileName = fileName.toLowerCase();
-        if (fileName.contains(".mpd")) {
-            return C.TYPE_DASH;
-        } else if (fileName.contains(".m3u8")) {
-            return C.TYPE_HLS;
-        } else {
-            return C.TYPE_OTHER;
+        String lower = fileName.toLowerCase();
+        String path = lower;
+        String query = "";
+        int queryIdx = lower.indexOf('?');
+        if (queryIdx >= 0) {
+            path = lower.substring(0, queryIdx);
+            query = lower.substring(queryIdx + 1);
         }
+        // 先看路径的最后扩展名,避免下载文件名含 ".m3u8"(如 xxx.m3u8_sign=yyy_播放.mp4) 被误判为 HLS
+        int dotIdx = path.lastIndexOf('.');
+        String ext = dotIdx >= 0 ? path.substring(dotIdx + 1) : "";
+        if ("mpd".equals(ext)) {
+            return C.TYPE_DASH;
+        }
+        if ("m3u8".equals(ext)) {
+            return C.TYPE_HLS;
+        }
+        // 路径没有明确媒体后缀时,真实目标可能在查询串里:代理地址形如
+        // http://127.0.0.1:9978/proxy?do=js&...&url=<源地址 m3u8>,只按路径判定会退化成 Progressive
+        // (首播失败后靠 ERROR_CODE_PARSING_CONTAINER_UNSUPPORTED 重试兜底),这里保留查询串兜底识别
+        if (queryIdx >= 0 && !PLAIN_MEDIA_EXTS.contains(ext)) {
+            if (query.contains(".m3u8")) {
+                return C.TYPE_HLS;
+            }
+            if (query.contains(".mpd")) {
+                return C.TYPE_DASH;
+            }
+        }
+        return C.TYPE_OTHER;
     }
 
     private DataSource.Factory getCacheDataSourceFactory() {
