@@ -45,6 +45,8 @@ public class FastSearchAdapter extends BaseQuickAdapter<Movie.Video, BaseViewHol
 
     /** 本次会话已成功加载过的海报 URL:刷新/滚动回显时命中缓存不再重闪 shimmer,减轻宫格/通栏图多时的卡顿 */
     private final java.util.Set<String> loadedUrls = new java.util.HashSet<>();
+    /** 本次会话加载失败过的海报 URL:滑回/复用命中直接显示失败占位,不再重复发起请求 */
+    private final java.util.Set<String> failedUrls = new java.util.HashSet<>();
 
     /** 视图上记录的"当前已展示图片 URL"tag(同图跳过重载,防滑回闪) */
     private static final int TAG_LAST_URL = 0x3D000001;
@@ -207,7 +209,17 @@ public class FastSearchAdapter extends BaseQuickAdapter<Movie.Video, BaseViewHol
             cancelShimmer(ivThumb);
             com.github.tvbox.osc.ui.kit.PicassoShimmer.stop(ivThumb);
             // 无封面:显示"加载失败"占位
-            ivThumb.setBackgroundResource(R.drawable.placeholder_poster_error);
+            ivThumb.setImageDrawable(null);
+            ivThumb.setBackground(com.github.tvbox.osc.util.ErrorPlaceholderDrawable.get(ivThumb.getContext()));
+            return;
+        }
+        // 已失败过的 URL:直接显示失败占位,不再重新发起请求(修复滑回又重载);清 src 露出占位
+        if (failedUrls.contains(url)) {
+            cancelShimmer(ivThumb);
+            com.github.tvbox.osc.ui.kit.PicassoShimmer.stop(ivThumb);
+            ivThumb.setTag(TAG_LAST_URL, url);
+            ivThumb.setImageDrawable(null);
+            ivThumb.setBackground(com.github.tvbox.osc.util.ErrorPlaceholderDrawable.get(ivThumb.getContext()));
             return;
         }
         // 恢复为正常占位(上一张可能是"加载失败")
@@ -246,8 +258,9 @@ public class FastSearchAdapter extends BaseQuickAdapter<Movie.Video, BaseViewHol
                     public void onError(Exception e) {
                         cancelShimmer(ivThumb);
                         com.github.tvbox.osc.ui.kit.PicassoShimmer.stop(ivThumb);
-                        // 加载失败:切换到"加载失败"占位
-                        ivThumb.setBackgroundResource(R.drawable.placeholder_poster_error);
+                        // 加载失败:记入失败集(滑回不再重试)并切到带"图片加载失败"文字的占位
+                        failedUrls.add(url);
+                        ivThumb.setBackground(com.github.tvbox.osc.util.ErrorPlaceholderDrawable.get(ivThumb.getContext()));
                     }
                 });
     }

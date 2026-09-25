@@ -32,6 +32,9 @@ public class PicassoLoad {
     /** 会话内已成功加载过的 URL:滑回/复用命中则不再重启骨架屏,避免"顶部卡最初不扫、滑回却扫"的不一致 */
     private static final java.util.Set<String> sessionLoaded =
             java.util.concurrent.ConcurrentHashMap.newKeySet();
+    /** 会话内加载失败过的 URL:滑回/复用命中则直接显示失败占位,不再重复发起请求(修复"滑到底再滑回又重新加载") */
+    private static final java.util.Set<String> sessionFailed =
+            java.util.concurrent.ConcurrentHashMap.newKeySet();
 
     public static void into(final ImageView iv, String url) {
         if (iv == null) return;
@@ -40,7 +43,17 @@ public class PicassoLoad {
         if (TextUtils.isEmpty(trimUrl)) {
             cancelShimmer(iv);
             PicassoShimmer.stop(iv); // 空 URL:无封面,显示"加载失败"占位
-            iv.setBackgroundResource(com.github.tvbox.osc.R.drawable.placeholder_poster_error);
+            iv.setImageDrawable(null);
+            iv.setBackground(ErrorPlaceholderDrawable.get(iv.getContext()));
+            return;
+        }
+        // 已失败过的 URL:直接显示失败占位,不再重新发起请求(修复滑回又重载);清 src 露出占位
+        if (sessionFailed.contains(trimUrl)) {
+            cancelShimmer(iv);
+            PicassoShimmer.stop(iv);
+            iv.setTag(TAG_LAST_URL, trimUrl);
+            iv.setImageDrawable(null);
+            iv.setBackground(ErrorPlaceholderDrawable.get(iv.getContext()));
             return;
         }
         // 恢复为正常占位(上一张可能是"加载失败")
@@ -70,8 +83,9 @@ public class PicassoLoad {
                     public void onError(Exception e) {
                         cancelShimmer(iv);
                         PicassoShimmer.stop(iv);
-                        // 加载失败:切换到"加载失败"占位,让用户知道没拿到图
-                        iv.setBackgroundResource(com.github.tvbox.osc.R.drawable.placeholder_poster_error);
+                        // 加载失败:记入失败集(滑回不再重试)并切到带"图片加载失败"文字的占位
+                        sessionFailed.add(trimUrl);
+                        iv.setBackground(ErrorPlaceholderDrawable.get(iv.getContext()));
                     }
                 });
     }
