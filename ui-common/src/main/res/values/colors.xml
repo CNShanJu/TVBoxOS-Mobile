@@ -67,9 +67,11 @@
     <color name="color_3700B3">#3700B3</color>
     <color name="color_03DAC5">#03DAC5</color>
     <color name="title_fouse_n">#ffce7900</color>
-    <color name="color_1890FF">#1890FF</color>
-    <!-- 统一高亮色(选中/强调),与选集选中、倍速选中一致 -->
-    <color name="color_highlight">#1890FF</color>
+    <!-- color_highlight(全局高亮/选中色)与 accent_on_dark(固定深色面上的强调色)已上移到
+         assets/theme/theme_colors.json 统一维护,此处不再重复定义(重复会编译不过)。
+         color_highlight 现在与主按钮同色:亮色主题=页面主黑 #1F2937、暗色主题=#E5E7EB,
+         开关/chip 选中/选中文字/进度条等都跟着走;原 #1890FF 蓝只保留给不随主题的固定深色面
+         (直播页频道列表、播放控制抽屉、EPG 选中态),即 accent_on_dark。 -->
     <color name="color_FFB800">#FF6600</color>
     <color name="color_00FF0A">#00FF0A</color>
     <color name="color_CBF46A">#CBF46A</color>
@@ -101,11 +103,23 @@
     <color name="last_viewed_popup_start">#567DF4</color>
     <color name="last_viewed_popup_end">#3E4FB1</color>
 
-    <!-- 开关轨道-关闭态(浅色主题浅灰;深色主题深灰,避免深色主题下白底白点) -->
-    <color name="switch_track_off">#B0B0B0</color>
+    <!-- 海报角标(评分/年份/来源)背景:压在图片上,**不随主题**（亮/暗主题保持同一个深色 + 白字，
+         否则暗色主题下浅底白字和亮色主题观感不一致）;别改成 btn_select_* 那对会随主题翻转的色 -->
+    <color name="poster_badge_bg">#1F2937</color>
+
+    <!-- 开关轨道(switch_track_on/off)与圆点(switch_thumb)已上移到 assets/theme/theme_colors.json:
+         开启=蓝色(#1890FF,两主题一致)、关闭=该主题主色(亮色 #1F2937 / 暗色 #3C3C46)、圆点固定白色 -->
 
     <!-- bg_float(底部导航栏磨砂遮罩)与 bg_float_fab(悬浮钮磨砂遮罩)已上移到 assets/theme/theme_colors.json
-         统一维护(颜色+透明度), 生成到 theme_colors.xml, 此处不再重复定义 -->
+         统一维护(颜色+透明度), 生成到 theme_colors.xml, 此处不再重复定义。
+         两者是"同一个悬浮面"：底部导航栏/上次观看气泡用 bg_float，直播钮/筛选钮/更新悬浮圈用 bg_float_fab，
+         改色改透明度时必须同步(含各自的 _alpha)，否则同屏会看出深浅不一。
+         bg_float 同时是**全站"页面级面"的唯一色**:二级页标题栏(AppTitleBar 背景)、"我的"页选项卡片、
+         设置页内容块、各页面内容容器与面板(drawable bg_large_round_float)全部用它 —— 底栏/标题栏/卡片
+         是同色同透明度的同一个面,改一处即全站同步。
+         已知取舍:大面板半透明会把背后背景图的明暗差透出来(轻微噪斑,实测浅色下通道极差约 7 级、
+         32×32 小块均值极差约 4.2 级)。这是"和底栏同一个面"的代价,已与用户确认取统一观感;
+         若要更干净只能整体改实色(bg_component),或给大面板加实时模糊层。 -->
 
     <!-- 悬浮圆钮(直播/筛选)描边色:亮色用深色主文字 40% 透明度描边,
          避免 1dp 组件色描边在白底上几乎不可见, 与页面黑底融合 -->

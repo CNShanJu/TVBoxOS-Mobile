@@ -38,13 +38,18 @@ def themeColorsDir = file("${buildDir}/generated/theme_colors")
 def defaultRadii = [
         radius_background: '25dp',
         radius_dialog    : '18dp',
-        radius_card      : '12dp'
+        radius_card      : '12dp',
+        // 按钮圆角:radius_btn=常规按钮,radius_btn_large=大圆角按钮(chip/预设)
+        radius_btn       : '12dp',
+        radius_btn_large : '25dp'
 ]
 
 def defaultColors = [
         bg_body        : '#FFFFFF',
         bg_component   : '#ECECF4',
         bg_popup       : '#ECECF4',
+        // bg_float(底栏/上次观看气泡)与 bg_float_fab(直播钮/筛选钮/更新悬浮圈)是同一个"悬浮面"色:
+        // 颜色与各自 _alpha 必须同值,否则同屏能看出深浅不一
         bg_float       : '#ECECF4',
         bg_float_fab   : '#ECECF4',
         text_main      : '#050505',
@@ -52,16 +57,35 @@ def defaultColors = [
         nav_text_normal: '#CCCCCC',
         download_active: '#037AFF',
         download_done  : '#08CA2C',
-        bubble_bg      : '#F2F3F7',
-        bubble_text    : '#1F2937',
         select_fill    : '#1F2937',
         select_bg      : '#1F2937',
-        swipe_red      : '#E5484D'
+        swipe_red      : '#E5484D',
+        // 按钮色板(浅色):主按钮=页面主黑填充+白字;次按钮=浅灰填充+深字;无背景按钮=主黑文字;选中态=主黑填充
+        btn_confirm_bg : '#1F2937',
+        btn_confirm_text: '#FFFFFF',
+        btn_cancel_bg  : '#ECECF4',
+        btn_cancel_text: '#1F2937',
+        btn_plain_text : '#1F2937',
+        btn_select_bg  : '#1F2937',
+        btn_select_text: '#FFFFFF',
+        // 无背景按钮的描边(浅色用主黑 40%;有填充的按钮看不到这条线,不影响)
+        btn_stroke     : '#661F2937',
+        // 全局高亮/选中色(开关、chip 选中、选中文字、进度条…):与主按钮同色,不再用蓝色
+        color_highlight: '#1F2937',
+        // 固定深色面(直播页/播放控制抽屉)上的强调色:这些面不随主题,浅色主题下用主题高亮色会看不见
+        accent_on_dark : '#1890FF',
+        // 开关:开启轨道=蓝色(两主题一致),关闭轨道=该主题主色,圆点固定白色
+        switch_thumb   : '#FFFFFF',
+        switch_track_on: '#1890FF',
+        switch_track_off: '#1F2937',
+        // 文字高亮色:选中/强调的文字(搜索结果来源、选集当前集、复制/展开、链接…)统一蓝色
+        text_accent    : '#1890FF'
 ]
 def defaultNightColors = [
         bg_body        : '#141218',
         bg_component   : '#211D28',
         bg_popup       : '#211D28',
+        // 同 defaultColors:bg_float / bg_float_fab 必须同值(同一悬浮面)
         bg_float       : '#211D28',
         bg_float_fab   : '#211D28',
         text_main      : '#FFFFFF',
@@ -69,11 +93,24 @@ def defaultNightColors = [
         nav_text_normal: '#7A7A7A',
         download_active: '#037AFF',
         download_done  : '#08CA2C',
-        bubble_bg      : '#2E2C36',
-        bubble_text    : '#FFFFFF',
         select_fill    : '#E5E7EB',
         select_bg      : '#374151',
-        swipe_red      : '#E5484D'
+        swipe_red      : '#E5484D',
+        // 按钮色板(暗色):主/次按钮都无背景,靠文字亮度区分;选中态用浅色填充+深色文字(否则选中看不出来)
+        btn_confirm_bg : '#00000000',
+        btn_confirm_text: '#E5E7EB',
+        btn_cancel_bg  : '#00000000',
+        btn_cancel_text: '#7A7A7A',
+        btn_plain_text : '#E5E7EB',
+        btn_select_bg  : '#E5E7EB',
+        btn_select_text: '#141218',
+        btn_stroke     : '#66E5E7EB',
+        color_highlight: '#E5E7EB',
+        accent_on_dark : '#1890FF',
+        switch_thumb   : '#FFFFFF',
+        switch_track_on: '#1890FF',
+        switch_track_off: '#3C3C46',
+        text_accent    : '#1890FF'
 ]
 
 // 半透明色对应的透明度(0-100, 表示百分比): 独立字段, 与颜色值分开, 便于单独调透明度; 键为 <色名>_alpha
