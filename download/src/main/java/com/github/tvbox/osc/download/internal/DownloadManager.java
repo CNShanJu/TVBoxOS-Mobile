@@ -6,8 +6,6 @@ import android.os.Looper;
 import com.github.tvbox.osc.bean.DownloadTask;
 import com.github.tvbox.osc.util.OkGoHelper;
 
-import org.greenrobot.eventbus.EventBus;
-
 import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
@@ -103,11 +101,31 @@ public class DownloadManager {
     public static final String MSG_REMUX = com.github.tvbox.osc.download.DownloadFacade.MSG_REMUX;
     public static final String MSG_REPAIRING = com.github.tvbox.osc.download.DownloadFacade.MSG_REPAIRING;
 
-    /** 结构性变更事件去抖:合并为至多每 500ms 广播一次 DownloadEvent(全量刷新信号);
-     *  高频"进度"变更不再走这里(见 flushProgress -> DownloadProgressEvent,带任务id,UI 局部刷新) */
+    /**
+     * 事件下沉口:由对外门面 {@link com.github.tvbox.osc.download.DownloadFacade} 注册,
+     * 替代历史内部 EventBus 广播(全模块仅一个订阅者,直调即可)。
+     */
+    public interface EventSink {
+        /** 结构性变更(新增/删除/状态机切换/批量),UI 全量刷新信号;已去抖,调用在主线程 */
+        void onStructuralChange();
+        /** 任务进度推进(节流后),UI 局部刷新;调用线程不保证主线程,由消费方自行切主线程 */
+        void onTaskProgress(String taskId);
+    }
+
+    private volatile EventSink eventSink;
+
+    /** 注册事件下沉口(门面构造时调用一次) */
+    public void setEventSink(EventSink sink) {
+        this.eventSink = sink;
+    }
+
+    /** 结构性变更事件去抖:合并为至多每 500ms 下沉一次(全量刷新信号);
+     *  高频"进度"变更不再走这里(见 flushProgress -> onTaskProgress,带任务id,UI 局部刷新) */
     private final Handler notifyHandler = new Handler(Looper.getMainLooper());
-    private final Runnable notifyRunnable = () ->
-            EventBus.getDefault().post(new DownloadEvent(DownloadEvent.TYPE_CHANGE));
+    private final Runnable notifyRunnable = () -> {
+        EventSink s = eventSink;
+        if (s != null) s.onStructuralChange();
+    };
 
     // ------------------------------------------------------------------
     // 内部组件（5.1 拆分）
@@ -278,7 +296,7 @@ public class DownloadManager {
         }
     }
 
-    /** 执行一次进度落盘 + 轻量广播(带最近进度任务 id);锁外调用,幂等 */
+    /** 执行一次进度落盘 + 轻量下沉(带最近进度任务 id);锁外调用,幂等 */
     private void doProgressFlush() {
         String id;
         synchronized (progressLock) {
@@ -287,7 +305,8 @@ public class DownloadManager {
         }
         persist();
         if (id != null) {
-            EventBus.getDefault().post(new DownloadProgressEvent(id));
+            EventSink s = eventSink;
+            if (s != null) s.onTaskProgress(id);
         }
     }
 

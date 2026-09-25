@@ -36,9 +36,6 @@ dependencies {
     implementation 'com.squareup.okhttp3:okhttp:4.12.0'
     implementation 'com.google.code.gson:gson:2.10.1'
     implementation 'androidx.core:core:1.6.0' // NotificationCompat/FileProvider
-    // eventbus 用 api:DownloadFacade 公开面仍带 @Subscribe(ThreadMode.MAIN) 注解(EventBus 要求订阅方法 public),
-    // 属模块暴露 ABI 的一部分;消费方(app)编译期需能解析 ThreadMode。待 download 内部 EventBus 迁出 Facade 后收敛回 implementation。
-    api 'org.greenrobot:eventbus:3.2.0' // DownloadEvent 广播
     implementation('com.thoughtworks.xstream:xstream:1.4.20') { // bean 注解
         exclude group: 'xmlpull', module: 'xmlpull'
     }

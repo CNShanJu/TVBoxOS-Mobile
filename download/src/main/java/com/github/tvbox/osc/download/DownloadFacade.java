@@ -2,15 +2,12 @@ package com.github.tvbox.osc.download;
 
 import com.github.tvbox.osc.bean.DownloadTask;
 import com.github.tvbox.osc.download.internal.DownloadArchive;
-import com.github.tvbox.osc.download.internal.DownloadEvent;
 import com.github.tvbox.osc.download.internal.DownloadManager;
-import com.github.tvbox.osc.download.internal.DownloadProgressEvent;
 import com.github.tvbox.osc.log.LogEntry;
 import com.github.tvbox.osc.log.LogStore;
 
-import org.greenrobot.eventbus.EventBus;
-import org.greenrobot.eventbus.Subscribe;
-import org.greenrobot.eventbus.ThreadMode;
+import android.os.Handler;
+import android.os.Looper;
 
 import java.io.File;
 import java.util.List;
@@ -58,9 +55,46 @@ public final class DownloadFacade {
     private static final DownloadFacade instance = new DownloadFacade();
     private final List<DownloadStatusListener> listeners = new CopyOnWriteArrayList<>();
     private final List<TaskProgressListener> progressListeners = new CopyOnWriteArrayList<>();
+    private final Handler mainHandler = new Handler(Looper.getMainLooper());
 
     private DownloadFacade() {
-        EventBus.getDefault().register(this);
+        // 替代历史 EventBus 订阅:向内部 DownloadManager 注册事件下沉口,直调扇出给监听者。
+        // DownloadManager 可能在建连前未实例化,这里 get() 触发其单例创建(轻量,不含 boot)。
+        DownloadManager.get().setEventSink(new DownloadManager.EventSink() {
+            @Override
+            public void onStructuralChange() {
+                runOnMain(() -> {
+                    for (DownloadStatusListener l : listeners) {
+                        try {
+                            l.onChanged();
+                        } catch (Throwable ignored) {
+                        }
+                    }
+                });
+            }
+
+            @Override
+            public void onTaskProgress(String taskId) {
+                if (taskId == null || taskId.isEmpty()) return;
+                runOnMain(() -> {
+                    for (TaskProgressListener l : progressListeners) {
+                        try {
+                            l.onTaskProgress(taskId);
+                        } catch (Throwable ignored) {
+                        }
+                    }
+                });
+            }
+        });
+    }
+
+    /** 复刻原 EventBus ThreadMode.MAIN 语义:已在主线程则同步执行,否则 post 到主线程 */
+    private void runOnMain(Runnable r) {
+        if (Looper.myLooper() == Looper.getMainLooper()) {
+            r.run();
+        } else {
+            mainHandler.post(r);
+        }
     }
 
     public static DownloadFacade get() {
@@ -266,28 +300,6 @@ public final class DownloadFacade {
 
     public void unregisterProgress(TaskProgressListener l) {
         progressListeners.remove(l);
-    }
-
-    @Subscribe(threadMode = ThreadMode.MAIN)
-    public void onDownloadEvent(DownloadEvent e) {
-        if (e == null || e.type != DownloadEvent.TYPE_CHANGE) return;
-        for (DownloadStatusListener l : listeners) {
-            try {
-                l.onChanged();
-            } catch (Throwable ignored) {
-            }
-        }
-    }
-
-    @Subscribe(threadMode = ThreadMode.MAIN)
-    public void onDownloadProgressEvent(DownloadProgressEvent e) {
-        if (e == null || e.taskId == null || e.taskId.isEmpty()) return;
-        for (TaskProgressListener l : progressListeners) {
-            try {
-                l.onTaskProgress(e.taskId);
-            } catch (Throwable ignored) {
-            }
-        }
     }
 
     // ------------------------------------------------------------------
