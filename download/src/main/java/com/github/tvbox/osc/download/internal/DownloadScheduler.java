@@ -376,7 +376,7 @@ public class DownloadScheduler {
         th.start();
     }
 
-    /** 判断异常是否为网络类错误(断网/超时/无法连接等) */
+    /** 判断异常是否为网络类错误(断网/超时/无法连接/服务端中途断连等) */
     private boolean isNetworkError(Throwable th) {
         Throwable c = th;
         while (c != null) {
@@ -386,6 +386,18 @@ public class DownloadScheduler {
                     || c instanceof java.net.SocketException
                     || c instanceof javax.net.ssl.SSLException) {
                 return true;
+            }
+            // okio/服务器中途关闭连接:流被 close 后 read 抛 IOException("closed"),
+            // 或 "unexpected end of stream" / "stream closed",本质都是网络层断连,按网络错误处理
+            // (若为本方暂停导致的 close,isTaskStopped 会先拦住不走到这里)
+            if (c instanceof java.io.IOException) {
+                String msg = c.getMessage();
+                if (msg != null && (msg.equals("closed")
+                        || msg.contains("unexpected end of stream")
+                        || msg.contains("stream closed")
+                        || msg.contains("Connection reset"))) {
+                    return true;
+                }
             }
             c = c.getCause();
         }
