@@ -65,14 +65,14 @@ app / feature
 - 页面状态:ViewModel + LiveData(逐步 Kotlin 化后 StateFlow);一次性页面事件用明确 Event 类型。
 - 跨页状态(下载/播放):由 Facade 提供订阅接口(如 `DownloadFacade.DownloadStatusListener/TaskProgressListener`、`PlaybackSessions`)。
 - 系统状态(电量/网络):统一 SystemStateMonitor。
-- **EventBus 仅作迁移兼容层:新代码禁止新增 EventBus 事件**;refresh 类跨页事件逐类收口为直调/接口。
+- **EventBus 已全仓移除(app + download,依赖已从 classpath 删除),禁止再引入**;跨页/模块事件一律用直调、Facade 订阅接口或明确监听器(如 `DownloadFacade` 内部经 `DownloadManager.EventSink` 直调扇出、播放通知经 `PlayService.onPlaybackNotify` 直调)。`checkModuleDependencies` 已加 app 层 EventBus 红线;移除依赖后任何模块新增 EventBus 均编译不过。
 
 ## 六、验收红线(新代码不得触碰)
 
 1. app 内基本搜索不到 `getCSP()`、`DownloadManager.get()` 与具体播放器内核直调(见 `checkModuleDependencies` 门禁)。
 2. UI/页面层禁止裸读 Hawk 或具体配置单例(一律经业务 Config 门面读写,如 SystemConfig/LiveConfig/PlayConfig/SubscriptionConfig;底层为 core-storage `PrefsDataStore`/DataStore)。
 3. UI 禁止自建线程池;禁止 `(Activity) context` 强转具体 Activity 依赖弹窗/组件(依赖经构造注入窄宿主接口)。
-4. UI 组件禁止发 EventBus 业务事件;新代码禁止新增 EventBus 事件。
+4. 禁止引入/使用 EventBus(已全仓移除,依赖不在 classpath);跨页/模块事件一律直调或经 Facade 订阅接口。
 5. 模块依赖只增公开契约接口;Gradle 依赖默认 `implementation`,谨慎 `api`。
 6. 业务/后台任务必须用模块级共享执行器(如 `HeavyTaskUtil`),且带取消/过期自检语义(epoch),不得每轮 new 线程池后 shutdown 了事。
 7. 所有可滚动组件(RecyclerView/ScrollView/GridView/横向列表等)必须保留**内边距**并配合

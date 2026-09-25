@@ -532,6 +532,7 @@ EventBus 订阅方已收敛 4 个真实方;仍剩多源结果流(TYPE_SEARCH_RES
 - ✅ 死代码清扫:app 模块删除 14 个零引用类(旧 EPG/直播控制器/列表适配/旧控件/工具,-1099 行,06adec9c/504c77a6);其余模块全仓扫描仅 4 候选均判定保留(CaocInitProvider=crash Manifest auto-init Provider;SpiderDebug/SpiderJS/UTF8BOMFighter=QuickJS JS 桥按名反射,需 jar/真机确认后才可删)。
 - ✅ 静态审计追加:共享 DTO(Movie/VodInfo/Abs*/SourceBean/Subscription 等)确认单源在 :core-model,app/spider 仅存 UI 本地模型(Epginfo/VideoFolder/VideoInfo/Doh),无重复定义;app 移除重复 kotlin-stdlib 声明(依赖面未见其它零引用项)。
 - ✅ 门禁硬化(改进.txt §六/AGENTS §六 落地):checkModuleDependencies 现自动扫描 app(含测试)的 getCSP 直调/Hawk import/DownloadManager.get() 直调/业务自建 OkHttpClient,违规即抛错;此前仅靠人工 grep。
+- ✅ EventBus 全仓下线(承接上条"仅剩三处"):①后台通知 TYPE_REFRESH_NOTIFY 改 `PlayService.onPlaybackNotify(String)` 静态直调(内部 post 主线程,复刻 ThreadMode.MAIN;服务未启动静默跳过),VideoListActivity 冗余订阅删除(onResume 已重扫),RefreshEvent 类删除;②遥控 ServerEvent 死链整条删除(SearchReceiver.onReceive 空实现、SERVER_SEARCH 无发送方、SUCCESS/CONNECTION 无订阅者),连带删 SearchReceiver 类+Manifest 注册+ControlManager 广播+ServerEvent 类,收敛 exported 暴露面;③download 模块内桥改 `DownloadManager.EventSink` 回调(Facade 构造注册,runOnMain 复刻 ThreadMode.MAIN),删 DownloadEvent/DownloadProgressEvent 类。app 与 download 的 eventbus 依赖均移除(全仓最后一处),classpath 无 eventbus=编译期硬门禁;checkModuleDependencies 增 app 层 EventBus 红线。改进.txt §五"EventBus→Flow/接口"(第五阶段)提前完成。
 - ✅ 门禁再硬化:UI 层红线自动化(app/ui 禁 IJK/Exo 内核 import 与自建线程池),与验收红线扫描一并入 checkModuleDependencies。
 - ✅ 门禁再硬化:app 层「具体 Activity 强转」静态检查入 checkModuleDependencies(命中按文件行号报错)。
 - ✅ CI 门禁:build-apk workflow 在 assembleRelease 前新增 Verify 步骤(unit tests + checkModuleDependencies),验收红线随 CI 强制。
