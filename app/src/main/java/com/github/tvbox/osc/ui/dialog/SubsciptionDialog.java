@@ -20,14 +20,25 @@ public class SubsciptionDialog extends AppCenterPopupView {
     public interface OnSubsciptionListener {
         void onConfirm(String name,String url,boolean check);
         void chooseLocal(boolean check);
+        void chooseJson(boolean check);
     }
 
     private final String mDefaultName;
+    private final String mDefaultUrl;
+    /** 编辑模式:预填名称+地址,隐藏"本地导入/JSON导入"(那是新增入口),按钮改"保存" */
+    private final boolean mEditMode;
     private OnSubsciptionListener listener;
 
     public SubsciptionDialog(@NonNull Context context, String defaultName, OnSubsciptionListener listener) {
+        this(context, defaultName, null, false, listener);
+    }
+
+    public SubsciptionDialog(@NonNull Context context, String defaultName, String defaultUrl,
+                             boolean editMode, OnSubsciptionListener listener) {
         super(context);
-        mDefaultName = defaultName;
+        mDefaultName = defaultName == null ? "" : defaultName;
+        mDefaultUrl = defaultUrl == null ? "" : defaultUrl;
+        mEditMode = editMode;
         this.listener = listener;
     }
 
@@ -40,8 +51,18 @@ public class SubsciptionDialog extends AppCenterPopupView {
     protected void onCreate() {
         super.onCreate();
         DialogInputSubsriptionBinding binding = DialogInputSubsriptionBinding.bind(getPopupImplView());
+        if (mEditMode) {
+            binding.tvTitle.setText("编辑订阅");
+            binding.btnConfirm.setText("保 存");
+            binding.tvLocal.setVisibility(android.view.View.GONE);
+            binding.tvJson.setVisibility(android.view.View.GONE);
+        }
         binding.etName.setText(mDefaultName);
         binding.etName.setSelection(mDefaultName.length());
+        binding.etUrl.setText(mDefaultUrl);
+        if (mEditMode) {
+            binding.etUrl.setSelection(mDefaultUrl.length());
+        }
         binding.btnCancel.setOnClickListener(v -> dismiss());
         binding.btnConfirm.setOnClickListener(view -> {
             String name = binding.etName.getText().toString().trim();
@@ -62,6 +83,10 @@ public class SubsciptionDialog extends AppCenterPopupView {
 
         binding.tvLocal.setOnClickListener(view -> {
             dismissWith(() -> listener.chooseLocal(binding.cbCheck.isChecked()));
+        });
+
+        binding.tvJson.setOnClickListener(view -> { //JSON 导入:粘贴 JSON 文本直接导入
+            dismissWith(() -> listener.chooseJson(binding.cbCheck.isChecked()));
         });
     }
 }

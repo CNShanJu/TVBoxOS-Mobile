@@ -151,6 +151,57 @@ public class HttpClient {
     }
 
     // ---------------------------------------------------------------------
+    // 嗅探式同步 GET(快速失败、不抛异常)
+    // ---------------------------------------------------------------------
+
+    /**
+     * 静默同步 GET:超时短、失败或非 2xx 一律返回 null,不抛异常、不打日志。
+     * 用于"轮询多个候选地址直到命中"的嗅探场景(如订阅导入探测资源站接口)。
+     * 复用全局客户端的连接池与拦截器,仅收紧超时;调用方自行确保不在主线程执行。
+     */
+    public static String getQuietly(String url, Map<String, String> headers) {
+        try {
+            Request.Builder builder = new Request.Builder().url(HttpUrls.normalizeUrl(url));
+            if (headers != null) {
+                for (Map.Entry<String, String> entry : headers.entrySet()) {
+                    if (entry.getKey() != null && entry.getValue() != null) {
+                        builder.header(entry.getKey(), entry.getValue());
+                    }
+                }
+            }
+            Response response = getProbeClient().newCall(builder.build()).execute();
+            try {
+                if (!response.isSuccessful() || response.body() == null) return null;
+                return response.body().string();
+            } finally {
+                response.close();
+            }
+        } catch (Throwable th) {
+            return null;
+        }
+    }
+
+    private static volatile OkHttpClient probeClient;
+
+    private static OkHttpClient getProbeClient() {
+        OkHttpClient c = probeClient;
+        if (c == null) {
+            synchronized (HttpClient.class) {
+                if (probeClient == null) {
+                    probeClient = getClient().newBuilder()
+                            .connectTimeout(3000, TimeUnit.MILLISECONDS)
+                            .readTimeout(5000, TimeUnit.MILLISECONDS)
+                            .callTimeout(6000, TimeUnit.MILLISECONDS)
+                            .retryOnConnectionFailure(false)
+                            .build();
+                }
+                c = probeClient;
+            }
+        }
+        return c;
+    }
+
+    // ---------------------------------------------------------------------
     // 文件下载
     // ---------------------------------------------------------------------
 

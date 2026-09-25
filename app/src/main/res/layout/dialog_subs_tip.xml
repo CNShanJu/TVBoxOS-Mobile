@@ -67,6 +67,6 @@
         app:cornerRadius="@dimen/radius_dialog"
         android:layout_marginTop="20dp"
         android:textColor="@color/text_foreground"
-        style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+        style="@style/BtnPrimary"
         android:text="知道了"/>
 </LinearLayout>

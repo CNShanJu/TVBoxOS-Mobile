@@ -29,6 +29,7 @@ import com.github.tvbox.osc.config.SystemConfig;
 import com.github.tvbox.osc.config.PrefsDataStore;
 import com.google.gson.reflect.TypeToken;
 import java.lang.reflect.Type;
+import com.github.tvbox.osc.spiderapi.CmsApiRules;
 import com.github.tvbox.osc.util.VideoParseRuler;
 import com.google.gson.Gson;
 import com.google.gson.JsonArray;
@@ -258,7 +259,7 @@ public class ApiConfig implements com.github.tvbox.osc.spiderapi.SourceConfigApi
                 } catch (Throwable th) {
                     th.printStackTrace();
                     AppLog.log("配置", "解析失败: " + apiUrl + "  " + th.getMessage());
-                    callback.error("解析配置失败");
+                    callback.error(parseErrorTip(th));
                 }
             }
 
@@ -278,6 +279,19 @@ public class ApiConfig implements com.github.tvbox.osc.spiderapi.SourceConfigApi
                 callback.error("拉取配置失败\n" + (e != null ? e.getMessage() : ""));
             }
         });
+    }
+
+    /**
+     * 解析失败给用户的提示:缺 sites 的多半是导入的内容根本不是订阅配置(如「阅读」App 的书源),
+     * 此时只说"解析配置失败"用户无从下手(线上实例:反复重启、重选订阅都恢复不了),
+     * 故给出可照做的说法(提示弹窗右上角即"切换订阅"入口)。
+     */
+    private static String parseErrorTip(Throwable th) {
+        String detail = th == null ? null : th.getMessage();
+        if (detail != null && detail.contains("不是订阅配置")) {
+            return "该订阅不是 TVBox 配置";
+        }
+        return "解析配置失败";
     }
 
     public void loadJar(boolean useCache, String spider, LoadConfigCallback callback) {
@@ -424,6 +438,15 @@ public class ApiConfig implements com.github.tvbox.osc.spiderapi.SourceConfigApi
     }
 
     private void parseJson(String apiUrl, String jsonStr) {
+        // 裸站点条目/数组(旧版导入或用户手改过的本地订阅文件)先补 {"sites":[…]} 外壳再解析:
+        // 这类内容缺 sites,直接解析只会报"解析配置失败"(sites 已存在时不改动,避免静默丢其它字段)
+        if (jsonStr != null && !jsonStr.contains("\"sites\"")) {
+            String wrapped = CmsApiRules.wrapSiteJson(jsonStr);
+            if (wrapped != null && !wrapped.isEmpty()) {
+                AppLog.log("配置", "订阅内容补 sites 外壳: " + apiUrl);
+                jsonStr = wrapped;
+            }
+        }
         JsonObject infoJson = new Gson().fromJson(jsonStr, JsonObject.class);
         // spider
         spider = DefaultConfig.safeJsonString(infoJson, "spider", "");
@@ -433,7 +456,13 @@ public class ApiConfig implements com.github.tvbox.osc.spiderapi.SourceConfigApi
         SourceBean firstSite = null;
         if (sourceBeanList!= null)
             sourceBeanList.clear();
-        for (JsonElement opt : infoJson.get("sites").getAsJsonArray()) {
+        // 远端站点源:缺 sites 说明这份内容不是订阅配置(如误把单站点条目/采集数据当订阅存了),
+        // 给出可读原因,交由 loadConfig 的 onError/缓存兜底处理;不再直接抛 NPE
+        JsonElement sitesEl = infoJson == null ? null : infoJson.get("sites");
+        if (sitesEl == null || !sitesEl.isJsonArray()) {
+            throw new IllegalStateException("不是订阅配置(缺少 sites):" + apiUrl);
+        }
+        for (JsonElement opt : sitesEl.getAsJsonArray()) {
             JsonObject obj = (JsonObject) opt;
             SourceBean sb = new SourceBean();
             String siteKey = obj.get("key").getAsString().trim();
