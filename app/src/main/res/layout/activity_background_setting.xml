@@ -108,7 +108,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:paddingHorizontal="8dp"
-                android:text="单指拖动调整位置,双指等比缩放;小图按原始大小显示"
+                android:text="单指拖动调整位置,双指等比缩放"
                 android:textColor="@color/text_sub_foreground"
                 android:textSize="12sp" />
 
