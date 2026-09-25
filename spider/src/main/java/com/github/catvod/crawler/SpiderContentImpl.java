@@ -90,4 +90,18 @@ public final class SpiderContentImpl implements SpiderContentApi {
             return null;
         }
     }
+
+    /** 带页码搜索(聚合搜索翻页):JS/JAR 源按 Spider.searchContent(key, quick, pg) 取下一页 */
+    @Override
+    public String searchContent(String sourceKey, String word, boolean quick, String pg) {
+        try {
+            Spider sp = spiderOf(ApiConfig.get().getSource(sourceKey));
+            if (sp == null) return null;
+            if (pg == null || pg.isEmpty()) return sp.searchContent(word, quick);
+            return sp.searchContent(word, quick, pg);
+        } catch (Throwable th) {
+            android.util.Log.w("SpiderBridge", "SpiderContent 调用异常(翻页搜索)", th);
+            return null;
+        }
+    }
 }

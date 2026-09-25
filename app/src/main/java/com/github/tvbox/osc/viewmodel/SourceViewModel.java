@@ -71,8 +71,14 @@ public class SourceViewModel extends ViewModel {
     /** 源配置元信息契约(源注册表/首页源/vip 解析旗标;不再直读 :spider 的 ApiConfig) */
     private final SourceConfigApi sourceConfig;
 
-    /** 爬虫串行池：统一委托 SpiderApi（quickjs 单线程限制，全模块共用同一串行执行器） */
-    public static final ExecutorService spThreadPool = com.github.catvod.crawler.SpiderApi.serialExecutor();
+    /**
+     * 按源分道提交爬虫任务:同一 sourceKey 恒定同一单线程道(串行,保护 quickjs 上下文/jar 实例),
+     * 不同源并行,消除"一个慢详情/播放解析 head-of-line 阻塞其余接口"。
+     * (取代旧的 spThreadPool 全局单线程提交——该池现仅剩无 key 兜底用途,新代码一律走本方法)
+     */
+    private static void spExecute(String sourceKey, Runnable task) {
+        com.github.catvod.crawler.SpiderApi.executeSerial(sourceKey, task);
+    }
 
     // homeContent
     public void getSort(String sourceKey) {
@@ -155,7 +161,7 @@ public class SourceViewModel extends ViewModel {
                     }
                 }
             };
-            spThreadPool.execute(waitResponse);
+            spExecute(sourceBean.getKey(), waitResponse);
         } else if (type == 0 || type == 1) {
             HttpClient.get(sourceBean.getApi(), null, sourceBean.getKey() + "_sort", new HCallBack() {
                         @Override
@@ -235,7 +241,7 @@ public class SourceViewModel extends ViewModel {
         SourceBean homeSourceBean = sourceConfig.getHomeSourceBean();
         int type = homeSourceBean.getType();
         if (type == 3) {
-            spThreadPool.execute(new Runnable() {
+            spExecute(homeSourceBean.getKey(), new Runnable() {
                 @Override
                 public void run() {
                     try {
@@ -262,7 +268,7 @@ public class SourceViewModel extends ViewModel {
             // HTTP 源分类列表契约化:typed 优先;失败/空结果回退旧 HttpClient 直连(行为兜底)
             final MovieSort.SortData finalSortData = sortData;
             final int finalPage = page;
-            spThreadPool.execute(new Runnable() {
+            spExecute(homeSourceBean.getKey(), new Runnable() {
                 @Override
                 public void run() {
                     com.github.tvbox.osc.bean.AbsXml typed = null;
@@ -431,7 +437,7 @@ public class SourceViewModel extends ViewModel {
                     }
                 }
             };
-            spThreadPool.execute(waitResponse);
+            spExecute(sourceBean.getKey(), waitResponse);
         } else if (type == 0 || type == 1) {
             Map<String, String> homeRecParams = new HashMap<>();
             homeRecParams.put("ac", sourceBean.getType() == 0 ? "videolist" : "detail");
@@ -474,7 +480,7 @@ public class SourceViewModel extends ViewModel {
         }
         int type = sourceBean.getType();
         if (type == 3) {
-            spThreadPool.execute(new Runnable() {
+            spExecute(sourceKey, new Runnable() {
                 @Override
                 public void run() {
                     try {
@@ -493,11 +499,14 @@ public class SourceViewModel extends ViewModel {
                                 .detailContent(sourceBean.getKey(), ids), sourceBean.getKey());
                     } catch (Throwable th) {
                         th.printStackTrace();
+                        // 详情取回空/抛异常也要投递结果,否则详情页永远停在 loading(无失败提示)
+                        android.util.Log.e("SpiderBridge", "detail 失败,投递空结果: key=" + sourceKey + " id=" + id + " " + th);
+                        detailResult.postValue(null);
                     }
                 }
             });
         } else if (type == 0 || type == 1|| type == 4) {
-            spThreadPool.execute(new Runnable() {
+            spExecute(sourceBean.getKey(), new Runnable() {
                 @Override
                 public void run() {
                     try {
@@ -570,6 +579,28 @@ public class SourceViewModel extends ViewModel {
         if (listener != null) listener.onSearchBatch(data);
     }
 
+    /**
+     * 聚合搜索翻页"每源一批"结果直调监听(与首屏 [SearchBatchListener] 分开,宿主单独记账):
+     * 翻页批次不该影响首屏"全部来源已返回"的完成态,也不该被首屏批次统计口径干扰。
+     * 回调线程不保证主线程,宿主自行切主线程。
+     */
+    public interface SearchPageBatchListener {
+        /** @param sourceKey 来源 key;@param data 该页解析结果(空页/失败为 null);@param page 该页页码(>=2) */
+        void onSearchPageBatch(String sourceKey, AbsXml data, int page);
+    }
+
+    private volatile SearchPageBatchListener searchPageBatchListener;
+
+    /** 注入/清除翻页批次监听(宿主销毁前必须置 null 防悬垂) */
+    public void setSearchPageBatchListener(SearchPageBatchListener listener) {
+        searchPageBatchListener = listener;
+    }
+
+    private void deliverSearchPageBatch(String sourceKey, AbsXml data, int page) {
+        SearchPageBatchListener listener = searchPageBatchListener;
+        if (listener != null) listener.onSearchPageBatch(sourceKey, data, page);
+    }
+
     // searchContent
     public void getSearch(String sourceKey, String wd) {
         SourceBean sourceBean = sourceConfig.getSource(sourceKey);
@@ -616,6 +647,68 @@ public class SourceViewModel extends ViewModel {
             fetchSearchHttpLegacy(sourceBean, type, wd);
         } else {
             searchResult.postValue(null);
+        }
+    }
+
+    /**
+     * 聚合搜索"加载更多":取某源的第 page 页(page 从 2 起;首页走 [getSearch])。
+     * <p>
+     * 结果经 [SearchPageBatchListener] 投递(与首屏 [SearchBatchListener] 分开,宿主单独记账,
+     * 翻页批次不会干扰首屏"全部来源已返回"的完成态);本页没有更多时投递 null 数据。
+     * <p>
+     * type3(JS/JAR)走 [SpiderContentApi#searchContent(String,String,boolean,String)] 重载;
+     * type0/1/4 走 HTTP 拼参(与首屏同一套 HttpSourceParams,额外带 pg)。
+     */
+    public void getSearchPaged(final String sourceKey, final String wd, final int page) {
+        final SourceBean sourceBean = sourceConfig.getSource(sourceKey);
+        if (sourceBean == null || page <= 1 || TextUtils.isEmpty(wd)) {
+            deliverSearchPageBatch(sourceKey, null, page);
+            return;
+        }
+        final int type = sourceBean.getType();
+        if (type == 3) {
+            try {
+                String search = com.github.tvbox.osc.spiderapi.SpiderContentProviders.get()
+                        .searchContent(sourceBean.getKey(), wd, false, String.valueOf(page));
+                deliverSearchPageBatch(sourceKey, parseSearchPayload(search, sourceBean.getKey(), 1), page);
+            } catch (Throwable th) {
+                th.printStackTrace();
+                deliverSearchPageBatch(sourceKey, null, page);
+            }
+            return;
+        }
+        if (type == 0 || type == 1 || type == 4) {
+            Map<String, String> searchParams = com.github.tvbox.osc.spiderapi.HttpSourceParams.search(type, wd, false);
+            if (searchParams == null) {
+                deliverSearchPageBatch(sourceKey, null, page);
+                return;
+            }
+            searchParams.put("pg", String.valueOf(page));
+            HttpClient.get(sourceBean.getApi(), searchParams, null, "search", new HCallBack() {
+                @Override
+                public void onSuccess(String content) {
+                    deliverSearchPageBatch(sourceKey, parseSearchPayload(content, sourceBean.getKey(), type), page);
+                }
+
+                @Override
+                public void onError(Throwable e) {
+                    deliverSearchPageBatch(sourceKey, null, page);
+                }
+            });
+            return;
+        }
+        deliverSearchPageBatch(sourceKey, null, page);
+    }
+
+    /** 搜索响应串 → AbsXml(type0 走 XML 解析,其余走 JSON);空内容/解析失败返回 null */
+    private AbsXml parseSearchPayload(String content, String sourceKey, int type) {
+        if (TextUtils.isEmpty(content)) return null;
+        try {
+            return type == 0
+                    ? com.github.tvbox.osc.spiderapi.AbsXmlParser.parseXml(content, sourceKey)
+                    : com.github.tvbox.osc.spiderapi.AbsXmlParser.parseJson(content, sourceKey);
+        } catch (Throwable th) {
+            return null;
         }
     }
 
@@ -741,7 +834,7 @@ public class SourceViewModel extends ViewModel {
         SourceBean sourceBean = sourceConfig.getSource(sourceKey);
         int type = sourceBean.getType();
         if (type == 3) {
-            spThreadPool.execute(new Runnable() {
+            spExecute(sourceBean.getKey(), new Runnable() {
                 @Override
                 public void run() {
                     try {

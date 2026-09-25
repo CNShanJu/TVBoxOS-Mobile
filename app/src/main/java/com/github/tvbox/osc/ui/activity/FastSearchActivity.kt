@@ -44,6 +44,7 @@ import com.github.tvbox.osc.ui.dialog.SearchCheckboxDialog
 import com.github.tvbox.osc.ui.dialog.SearchSuggestionsDialog
 import com.github.tvbox.osc.ui.dialog.SelectDialog
 import com.github.tvbox.osc.util.FastClickCheckUtil
+import com.github.tvbox.osc.util.SearchPagingState
 import com.github.tvbox.osc.util.HCallBack
 import com.github.tvbox.osc.util.HeavyTaskUtil
 import com.github.tvbox.osc.util.HttpClient
@@ -71,6 +72,9 @@ class FastSearchActivity : BaseVbActivity<ActivityFastSearchBinding>(), TextWatc
         fun setCheckedSourcesForSearch(checkedSources: HashMap<String, String>?) {
             mCheckSources = checkedSources
         }
+
+        /** 一次用户手势内自动续拉的最大轮数(列表不满一屏时自动补页,避免用户无从"上拉") */
+        private const val MAX_AUTO_PAGING_CHAIN = 3
     }
 
     private lateinit var sourceViewModel : SourceViewModel
@@ -85,6 +89,15 @@ class FastSearchActivity : BaseVbActivity<ActivityFastSearchBinding>(), TextWatc
 
     /** 搜索是否已全部完成(全部来源返回后置真;"到底了"仅完成态显示) */
     private var searchFinished = false
+
+    // ------------------------------------------------------------------
+    // 聚合搜索"加载更多"(翻页):记账在 SearchPagingState(纯逻辑,有 JVM 单测),本页只负责发请求/追加列表
+    // ------------------------------------------------------------------
+
+    /** 每源页码/总页数与一轮翻页的 发起-回收-到底 判定(纯逻辑,有 JVM 单测) */
+    private val paging = SearchPagingState()
+    /** 列表不满一屏时自动续拉的次数上限(一次用户手势内最多自动补几页,防无限自动翻页) */
+    private var autoPagingChain = 0
     /** "到底了"统一控制器 */
     private var mEndTipController: ListEndTipController? = null
 
@@ -106,6 +119,10 @@ class FastSearchActivity : BaseVbActivity<ActivityFastSearchBinding>(), TextWatc
         // 主搜索批次结果直调:VM 回调线程不保证主线程,统一切主线程喂 searchData(替代 TYPE_SEARCH_RESULT 订阅)
         sourceViewModel.setSearchBatchListener { data ->
             runOnUiThread { searchData(data) }
+        }
+        // 翻页批次单独一路:不与首屏批次混算,宿主按来源记账(见 searchPageData)
+        sourceViewModel.setSearchPageBatchListener { key, data, page ->
+            runOnUiThread { searchPageData(key, data, page) }
         }
         initView()
         initData()
@@ -187,12 +204,78 @@ class FastSearchActivity : BaseVbActivity<ActivityFastSearchBinding>(), TextWatc
             mEndTipController = ListEndTipController(tip, object : ListEndTipController.State {
                 override fun list(): RecyclerView? = visibleResultList()
                 override fun hasData(): Boolean = visibleResultAdapter()?.data?.isNotEmpty() == true
-                override fun endReached(): Boolean = searchFinished
-                override fun busy(): Boolean = !searchFinished // 整轮搜索未完成=请求中
+                override fun endReached(): Boolean = searchFinished && !paging.hasMore()
+                override fun busy(): Boolean = !searchFinished || paging.inRound()
             }, env)
             mEndTipController!!.attach(mBinding.mGridView)
             mEndTipController!!.attach(mBinding.mGridViewFilter)
         }
+        // 上拉到底自动加载下一页(每个还有下一页的来源各取一页,逐批追加)
+        val pagingScroll = object : RecyclerView.OnScrollListener() {
+            override fun onScrolled(rv: RecyclerView, dx: Int, dy: Int) {
+                if (dy <= 0) return
+                val last = lastVisiblePosition(rv)
+                val total = rv.adapter?.itemCount ?: 0
+                if (last >= total - 3) {
+                    autoPagingChain = 0 // 用户主动上拉:重新给足自动续拉额度
+                    startPagingIfNeeded()
+                }
+            }
+        }
+        mBinding.mGridView.addOnScrollListener(pagingScroll)
+        mBinding.mGridViewFilter.addOnScrollListener(pagingScroll)
+    }
+
+    /** 可见列表最后一个条目位置(单列/宫格/瀑布流三种布局都要覆盖) */
+    private fun lastVisiblePosition(rv: RecyclerView): Int {
+        return when (val lm = rv.layoutManager) {
+            is StaggeredGridLayoutManager -> lm.findLastVisibleItemPositions(null).maxOrNull() ?: -1
+            is LinearLayoutManager -> lm.findLastVisibleItemPosition()
+            else -> -1
+        }
+    }
+
+    /**
+     * 发起一轮"加载更多":对"已加载页 < 总页数"的来源各取下一页(共享大池并发,逐批追加)。
+     * 首屏未完成、已有翻页在途、或所有源都到底时不做任何事。
+     * 请求走 [HeavyTaskUtil] 共享执行器(JS 源取页是同步网络调用,不能在主线程发起)。
+     */
+    private fun startPagingIfNeeded() {
+        if (!searchFinished || paging.inRound()) return
+        val keys = paging.keysWithMore()
+        if (keys.isEmpty() || !paging.beginRound(keys)) {
+            updateEndTip()
+            return
+        }
+        if (!refreshSpinnerDismissed) refreshSpinnerDismissed = true
+        AppLog.log("搜索", "加载更多: " + keys.size + " 个来源,下一页 " + keys.joinToString(","))
+        LogStore.log(Category.OTHER, "搜索: 加载更多 " + keys.size + " 个来源")
+        for (key in keys) {
+            val page = paging.pageOf(key) + 1
+            HeavyTaskUtil.getBigTaskExecutorService().execute {
+                sourceViewModel.getSearchPaged(key, searchTitle ?: "", page)
+            }
+        }
+        updateEndTip()
+    }
+
+    /** 翻页一轮收尾:没回有效批次的源标记到底,刷新"到底了";列表不满一屏时自动再补一页(有次数上限) */
+    private fun finishPagingRound(appended: Boolean) {
+        paging.finishRound()
+        updateEndTip()
+        val rv = visibleResultList()
+        if (appended && rv != null && paging.hasMore() && !rv.canScrollVertically(1)
+            && autoPagingChain < MAX_AUTO_PAGING_CHAIN
+        ) {
+            autoPagingChain++
+            startPagingIfNeeded()
+        }
+    }
+
+    /** 复位翻页状态(新一轮搜索/下拉重刷时调用) */
+    private fun resetPagingState() {
+        paging.reset()
+        autoPagingChain = 0
     }
 
     /** 当前可见的结果列表(普通结果 或 单来源过滤结果) */
@@ -724,6 +807,8 @@ class FastSearchActivity : BaseVbActivity<ActivityFastSearchBinding>(), TextWatc
         if (siteKey.isNotEmpty()) {
             searchSessionActive = true
         }
+        // 一轮新搜索:复位翻页记账(各源从第 1 页重新开始)
+        resetPagingState()
         for (key: String in siteKey) {
             launchSearch(key)
         }
@@ -832,6 +917,9 @@ class FastSearchActivity : BaseVbActivity<ActivityFastSearchBinding>(), TextWatc
                     mBinding.llLayout.setRefreshing(false)
                 }
             }
+            // 该源总页数(供"上拉到底还能不能继续翻"判断)
+            val key = absXml.movie.videoList[0].sourceKey
+            paging.recordFirstPage(key, absXml.movie.pagecount)
         }
         val count = allRunCount.decrementAndGet()
         if (count <= 0 && !searchFinished) {
@@ -848,6 +936,39 @@ class FastSearchActivity : BaseVbActivity<ActivityFastSearchBinding>(), TextWatc
         }
     }
 
+    /**
+     * 翻页批次(某来源的下一页):追加到结果与各来源缓存,并交给记账推进页码;
+     * 空页/失败即视为该源到底(避免反复请求同一页);一轮内所有源都返回后收尾刷新"到底了"。
+     */
+    private fun searchPageData(key: String, absXml: AbsXml?, page: Int) {
+        if (!paging.inRound()) return // 没有在途轮次:过期批次直接丢弃
+        val videos = absXml?.movie?.videoList
+        var appended = false
+        if (!videos.isNullOrEmpty()) {
+            val data: MutableList<Movie.Video> = ArrayList()
+            for (video: Movie.Video in videos) {
+                if (!SearchFilter.matches(video.name, searchTitle)) continue
+                data.add(video)
+                if (!resultVods.containsKey(video.sourceKey)) {
+                    resultVods[video.sourceKey] = ArrayList()
+                }
+                resultVods[video.sourceKey]!!.add(video)
+                addWordAdapterIfNeed(video.sourceKey)
+            }
+            if (data.isNotEmpty()) {
+                appended = true
+                searchAdapter.addData(data)
+                if (isFilterMode && searchFilterKey == key) {
+                    searchAdapterFilter.setNewData(ArrayList(resultVods[key] ?: ArrayList()))
+                }
+            }
+        }
+        val totalPages = absXml?.movie?.pagecount ?: 0
+        if (paging.reply(key, page, appended, totalPages)) {
+            finishPagingRound(appended)
+        }
+    }
+
     private fun cancel() {
         HttpClient.cancel("search")
     }
@@ -855,6 +976,7 @@ class FastSearchActivity : BaseVbActivity<ActivityFastSearchBinding>(), TextWatc
     override fun onDestroy() {
         super.onDestroy()
         sourceViewModel.setSearchBatchListener(null) // 断开结果直调,防悬垂回调
+        sourceViewModel.setSearchPageBatchListener(null) // 断开翻页批次直调
         cancel()
         synchronized(searchLock) {
             searchEpoch++

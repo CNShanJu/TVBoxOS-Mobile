@@ -24,6 +24,15 @@ public interface SpiderContentApi {
     /** 搜索(quick=false 聚合搜索;true 快速搜索) */
     String searchContent(String sourceKey, String word, boolean quick);
 
+    /**
+     * 带页码的搜索(pg 从 1 起):聚合搜索"加载更多/翻页"用。
+     * 默认忽略页码回落单页语义(老实现不改也能编译);支持翻页的源在实现侧覆写
+     * (JS/JAR 源走 {@code Spider.searchContent(key, quick, pg)})。
+     */
+    default String searchContent(String sourceKey, String word, boolean quick, String pg) {
+        return searchContent(sourceKey, word, quick);
+    }
+
     /** 解析播放地址 */
     String playerContent(String sourceKey, String flag, String id, List<String> vipFlags);
 }

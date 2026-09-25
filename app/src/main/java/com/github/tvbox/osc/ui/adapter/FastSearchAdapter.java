@@ -45,8 +45,24 @@ public class FastSearchAdapter extends BaseQuickAdapter<Movie.Video, BaseViewHol
 
     /** 本次会话已成功加载过的海报 URL:刷新/滚动回显时命中缓存不再重闪 shimmer,减轻宫格/通栏图多时的卡顿 */
     private final java.util.Set<String> loadedUrls = new java.util.HashSet<>();
-    /** 本次会话加载失败过的海报 URL:滑回/复用命中直接显示失败占位,不再重复发起请求 */
-    private final java.util.Set<String> failedUrls = new java.util.HashSet<>();
+    /**
+     * 加载失败过的海报 URL → 失败时间(ms):窗口内滑回/复用直接显示失败占位、不再重复请求;
+     * 窗口过期(瞬时失败如开局无网/CDN 抖动)后允许重试一次,不必关掉页面才能重新加载。
+     */
+    private final java.util.Map<String, Long> failedUrls = new java.util.HashMap<>();
+    /** "失败不重试"窗口(ms) */
+    private static final long FAILED_TTL_MS = 60_000L;
+
+    /** 该 URL 是否仍处于"失败不重试"窗口内(过期即移除,允许重新加载) */
+    private boolean recentlyFailed(String url) {
+        Long at = failedUrls.get(url);
+        if (at == null) return false;
+        if (System.currentTimeMillis() - at >= FAILED_TTL_MS) {
+            failedUrls.remove(url);
+            return false;
+        }
+        return true;
+    }
 
     /** 视图上记录的"当前已展示图片 URL"tag(同图跳过重载,防滑回闪) */
     private static final int TAG_LAST_URL = 0x3D000001;
@@ -213,8 +229,8 @@ public class FastSearchAdapter extends BaseQuickAdapter<Movie.Video, BaseViewHol
             ivThumb.setBackground(com.github.tvbox.osc.util.ErrorPlaceholderDrawable.get(ivThumb.getContext()));
             return;
         }
-        // 已失败过的 URL:直接显示失败占位,不再重新发起请求(修复滑回又重载);清 src 露出占位
-        if (failedUrls.contains(url)) {
+        // 已失败过且仍在窗口内的 URL:直接显示失败占位,不再重新发起请求(修复滑回又重载);清 src 露出占位
+        if (recentlyFailed(url)) {
             cancelShimmer(ivThumb);
             com.github.tvbox.osc.ui.kit.PicassoShimmer.stop(ivThumb);
             ivThumb.setTag(TAG_LAST_URL, url);
@@ -250,6 +266,7 @@ public class FastSearchAdapter extends BaseQuickAdapter<Movie.Video, BaseViewHol
                     @Override
                     public void onSuccess() {
                         loadedUrls.add(url);
+                        failedUrls.remove(url); // 重试成功:清掉失败记录
                         cancelShimmer(ivThumb);
                         com.github.tvbox.osc.ui.kit.PicassoShimmer.stop(ivThumb);
                     }
@@ -258,8 +275,8 @@ public class FastSearchAdapter extends BaseQuickAdapter<Movie.Video, BaseViewHol
                     public void onError(Exception e) {
                         cancelShimmer(ivThumb);
                         com.github.tvbox.osc.ui.kit.PicassoShimmer.stop(ivThumb);
-                        // 加载失败:记入失败集(滑回不再重试)并切到带"图片加载失败"文字的占位
-                        failedUrls.add(url);
+                        // 加载失败:记入失败窗口(窗口内滑回不再重试)并切到带"图片加载失败"文字的占位
+                        failedUrls.put(url, System.currentTimeMillis());
                         ivThumb.setBackground(com.github.tvbox.osc.util.ErrorPlaceholderDrawable.get(ivThumb.getContext()));
                     }
                 });
