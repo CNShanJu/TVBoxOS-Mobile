@@ -16,6 +16,7 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
 
@@ -23,15 +24,24 @@ import okhttp3.OkHttpClient;
 import okhttp3.Request;
 
 /**
- * GitHub Releases 更新实现:从仓库 latest release 拉取版本信息、匹配 APK 资产并交给
+ * GitHub Releases 更新实现:从仓库 release 列表取"比当前版本新"的正式发布、匹配 APK 资产并交给
  * {@link UpdateManager} 统一下载(断点续传/暂停继续/全局悬浮圈),安装完成后再触发系统安装器。
+ * <p>
+ * 取列表而非 {@code releases/latest}:跨版本升级时可以把中间各版本的发版说明一并汇总给用户;
+ * 正文中的开发者内容按 {@link ReleaseNotes} 的围栏约定剔除,不进弹窗。
  * <p>
  * 网络请求经 {@link AppCompositionRoot#network()} 提供的共享客户端(不 self-new OkHttpClient),
  * 后台任务复用 {@link HeavyTaskUtil} 共享执行器,回调统一切回主线程。
  */
 public class GithubReleaseUpdater implements Updater {
 
-    private static final String GITHUB_API = "https://api.github.com/repos/%s/%s/releases/latest";
+    private static final String GITHUB_API = "https://api.github.com/repos/%s/%s/releases?per_page=%d";
+
+    /** 一次拉取的发布条数(覆盖很久的历史已足够,也避开分页往返) */
+    private static final int RELEASE_PAGE_SIZE = 30;
+
+    /** 跨版本升级时最多汇总几个版本的说明(再往后会把最新改动淹掉) */
+    private static final int MAX_NOTE_VERSIONS = 5;
 
     private static final Handler MAIN = new Handler(Looper.getMainLooper());
 
@@ -48,7 +58,8 @@ public class GithubReleaseUpdater implements Updater {
     public void checkUpdate(final Context context, final Callback cb) {
         if (cb == null) return;
         cb.onCheckStart();
-        final String api = String.format(GITHUB_API, UpdaterConfig.getGithubOwner(), UpdaterConfig.getGithubRepo());
+        final String api = String.format(GITHUB_API, UpdaterConfig.getGithubOwner(),
+                UpdaterConfig.getGithubRepo(), RELEASE_PAGE_SIZE);
         HeavyTaskUtil.getBigTaskExecutorService().execute(() -> {
             UpdateInfo info = null;
             String err = null;
@@ -65,7 +76,7 @@ public class GithubReleaseUpdater implements Updater {
                     if (!resp.isSuccessful() || resp.body() == null) {
                         err = "检查更新失败: HTTP " + resp.code();
                     } else {
-                        info = parseRelease(resp.body().string(), current);
+                        info = parseReleases(resp.body().string(), current);
                     }
                 } finally {
                     if (resp != null) resp.close();
@@ -82,43 +93,102 @@ public class GithubReleaseUpdater implements Updater {
         });
     }
 
-    /** 解析 latest release JSON;无更新时返回 null */
-    private UpdateInfo parseRelease(String json, String current) throws Exception {
-        JSONObject root = new JSONObject(json);
-        String tag = root.optString("tag_name", "");
-        String version = stripV(tag);
-        if (version.isEmpty()) return null;
-        // 当前版本非空时,仅当远端严格更大才提示(避免降级/同版本重复提示)
-        if (current != null && !current.isEmpty()) {
-            if (!isNewerVersion(version, current)) return null;
+    /**
+     * 解析 release 列表,产出"可下载的最新版 + 到该版的说明汇总"。
+     * 无更新的正式发布、或没有任何可安装 APK 资产时返回 null(视为已是最新)。
+     */
+    private UpdateInfo parseReleases(String json, String current) throws Exception {
+        JSONArray list = new JSONArray(json);
+        List<Release> newer = new ArrayList<>();
+        for (int i = 0; i < list.length(); i++) {
+            JSONObject r = list.optJSONObject(i);
+            if (r == null) continue;
+            // 草稿/预发布不面向普通用户(/releases/latest 本就不含它们,口径保持一致)
+            if (r.optBoolean("draft", false) || r.optBoolean("prerelease", false)) continue;
+            String tag = r.optString("tag_name", "");
+            String version = stripV(tag);
+            if (version.isEmpty()) continue;
+            // 当前版本非空时,仅保留严格更新的版本(避免降级/同版本重复提示)
+            if (current != null && !current.isEmpty() && !isNewerVersion(version, current)) continue;
+            Asset apk = pickApk(r.optJSONArray("assets"));
+            newer.add(new Release(version, tag, r.optString("body", ""), apk));
         }
-        String note = root.optString("body", "");
-        String apkName = null;
-        long size = -1;
-        JSONArray assets = root.optJSONArray("assets");
-        if (assets != null) {
-            for (int i = 0; i < assets.length(); i++) {
-                JSONObject a = assets.getJSONObject(i);
-                String n = a.optString("name", "");
-                if (!isApkAsset(n)) continue;
-                long s = a.optLong("size", -1);
-                if (!isDebugAsset(n)) {
-                    apkName = n;
-                    size = s;
-                    break;
-                }
-                if (apkName == null) {
-                    apkName = n;
-                    size = s;
-                }
+        if (newer.isEmpty()) return null;
+        // GitHub 按创建时间倒序返回,这里按版本号再排一次(新→旧),不依赖返回顺序
+        Collections.sort(newer, (a, b) -> compareVersion(b.version, a.version));
+        if (current == null || current.isEmpty()) {
+            // 取不到当前版本时无从判断"跨了哪些版本",只按最新版处理
+            newer = newer.subList(0, 1);
+        }
+        Release target = null;
+        for (Release r : newer) {
+            if (r.apk != null) {
+                target = r;
+                break;
             }
         }
-        if (apkName == null) return null;
+        if (target == null) return null;
+
+        // 说明只取"不高于下载目标"的版本,避免展示下不到的更新;超出上限即截断
+        List<ReleaseNotes.Note> notes = new ArrayList<>();
+        boolean truncated = false;
+        for (Release r : newer) {
+            if (compareVersion(r.version, target.version) > 0) continue;
+            if (notes.size() >= MAX_NOTE_VERSIONS) {
+                truncated = true;
+                break;
+            }
+            notes.add(new ReleaseNotes.Note(r.version, r.body));
+        }
+
         List<String> candidates = buildDownloadCandidates(
                 String.format("https://github.com/%s/%s/releases/download/%s/%s",
-                        UpdaterConfig.getGithubOwner(), UpdaterConfig.getGithubRepo(), tag, apkName));
+                        UpdaterConfig.getGithubOwner(), UpdaterConfig.getGithubRepo(), target.tag, target.apk.name));
         if (candidates.isEmpty()) return null;
-        return new UpdateInfo(version, tag, -1, candidates, apkName, size, note);
+        return new UpdateInfo(target.version, target.tag, -1, candidates, target.apk.name, target.apk.size,
+                ReleaseNotes.aggregate(notes, truncated));
+    }
+
+    /** 从资产里挑要安装的 APK:优先非 debug 包,只有 debug 包时兜底用它 */
+    private static Asset pickApk(JSONArray assets) {
+        if (assets == null) return null;
+        Asset fallback = null;
+        for (int i = 0; i < assets.length(); i++) {
+            JSONObject a = assets.optJSONObject(i);
+            if (a == null) continue;
+            String n = a.optString("name", "");
+            if (!isApkAsset(n)) continue;
+            Asset apk = new Asset(n, a.optLong("size", -1));
+            if (!isDebugAsset(n)) return apk;
+            if (fallback == null) fallback = apk;
+        }
+        return fallback;
+    }
+
+    /** 一条 release 里与更新有关的字段 */
+    private static final class Release {
+        final String version;
+        final String tag;
+        final String body;
+        final Asset apk;
+
+        Release(String version, String tag, String body, Asset apk) {
+            this.version = version;
+            this.tag = tag;
+            this.body = body;
+            this.apk = apk;
+        }
+    }
+
+    /** release 资产里的 APK 文件名与大小 */
+    private static final class Asset {
+        final String name;
+        final long size;
+
+        Asset(String name, long size) {
+            this.name = name;
+            this.size = size;
+        }
     }
 
     /** 构建下载候选地址:优先拼接 GitHub 加速代理,末尾保留直连作为兜底 */
@@ -175,15 +245,20 @@ public class GithubReleaseUpdater implements Updater {
 
     /** 版本比较:remote 严格大于 current 时为 true(数值分段比较,忽略非数字前缀) */
     private static boolean isNewerVersion(String remote, String current) {
-        int[] r = parseVersion(remote);
-        int[] c = parseVersion(current);
-        int len = Math.max(r.length, c.length);
+        return compareVersion(remote, current) > 0;
+    }
+
+    /** 数字分段比较两个版本号:a 大于 b 返回正数,相等返回 0,小于返回负数(缺位按 0) */
+    private static int compareVersion(String a, String b) {
+        int[] x = parseVersion(a);
+        int[] y = parseVersion(b);
+        int len = Math.max(x.length, y.length);
         for (int i = 0; i < len; i++) {
-            int rv = i < r.length ? r[i] : 0;
-            int cv = i < c.length ? c[i] : 0;
-            if (rv != cv) return rv > cv;
+            int xv = i < x.length ? x[i] : 0;
+            int yv = i < y.length ? y[i] : 0;
+            if (xv != yv) return xv > yv ? 1 : -1;
         }
-        return false;
+        return 0;
     }
 
     /** 提取版本中的连续数字分段,如 "v3.2.0" -> [3,2,0] */

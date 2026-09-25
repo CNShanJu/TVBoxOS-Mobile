@@ -2,6 +2,8 @@ package com.github.tvbox.osc.update;
 
 import android.app.Activity;
 import android.content.Context;
+import android.os.Handler;
+import android.os.Looper;
 import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.MotionEvent;
@@ -15,8 +17,12 @@ import com.github.tvbox.osc.util.LOG;
 
 /**
  * 全局更新悬浮圈:任何下载中的时候,无论当前停留在哪个页面,都显示一个圆形进度圈
- * (与 FAB 同观感);点击弹出 {@link UpdateIndicatorDialog} 查看/控制下载。
- * <p>长按拖拽可移动到屏幕任意位置,松手自动吸附到左右边缘;位置在 Activity 切换后保留。
+ * (与 FAB 同观感)。
+ * <ul>
+ * <li>短按:下载中→暂停,暂停中→继续,失败/完成→打开控制弹窗;</li>
+ * <li>长按(约 500ms):任意状态都弹出 {@link UpdateIndicatorDialog} 查看/控制下载;</li>
+ * <li>拖拽:移动超过 touchSlop 即取消长按,改为拖动,松手自动吸附到左右边缘,位置跨 Activity 保留。</li>
+ * </ul>
  * 附着到当前 Activity 的窗口(decorView 顶部末位),Activity 切换时由 {@code BaseActivity}
  * 的 attach/detach 驱动重新挂载;下载结束/取消即自动移除。
  */
@@ -42,6 +48,13 @@ public final class UpdateFloatIndicator implements UpdateManager.Listener {
     private float downX, downY;
     private int dragStartLeft, dragStartTop;
     private final float touchSlop;
+    // 长按:DOWN 后延迟触发;一旦移动超过 touchSlop(开始拖动)或抬手即取消
+    private final Handler longPressHandler = new Handler(Looper.getMainLooper());
+    private final Runnable longPressRunnable = () -> {
+        longPressTriggered = true;
+        showDialog();
+    };
+    private boolean longPressTriggered = false;
 
     private UpdateFloatIndicator(Context context) {
         this.appContext = context.getApplicationContext();
@@ -58,7 +71,8 @@ public final class UpdateFloatIndicator implements UpdateManager.Listener {
 
     /** BaseActivity.onResume 调用:记录当前 Activity 并(如需)挂载悬浮圈 */
     public void attach(Activity activity) {
-        if (activity == null) return;
+        if (activity == null)
+            return;
         this.currentActivity = activity;
         LOG.i(TAG, "attach " + activity.getClass().getSimpleName()
                 + " state=" + UpdateManager.get().getState());
@@ -75,10 +89,12 @@ public final class UpdateFloatIndicator implements UpdateManager.Listener {
 
     /** 当前前台 Activity:优先取 attach 值,兜底用全局 Activity 堆栈顶(避免下载开始时 onResume 未赶上) */
     private Activity resolveActivity(Activity fallback) {
-        if (fallback != null && !fallback.isFinishing() && !fallback.isDestroyed()) return fallback;
+        if (fallback != null && !fallback.isFinishing() && !fallback.isDestroyed())
+            return fallback;
         try {
             Activity top = com.github.tvbox.osc.util.AppManager.getInstance().currentActivity();
-            if (top != null && !top.isFinishing() && !top.isDestroyed()) return top;
+            if (top != null && !top.isFinishing() && !top.isDestroyed())
+                return top;
         } catch (Throwable ignored) {
         }
         return null;
@@ -148,7 +164,8 @@ public final class UpdateFloatIndicator implements UpdateManager.Listener {
         int size = Math.round(54 * a.getResources().getDisplayMetrics().density);
         UpdateBubbleView b = root == null ? null : root.findViewById(R.id.update_bubble);
         if (b == null) {
-            if (!(root instanceof FrameLayout)) root = new FrameLayout(a);
+            if (!(root instanceof FrameLayout))
+                root = new FrameLayout(a);
             FrameLayout fl = (FrameLayout) root;
             fl.setClickable(true);
             fl.setFocusable(true);
@@ -194,7 +211,8 @@ public final class UpdateFloatIndicator implements UpdateManager.Listener {
             LOG.i(TAG, "hide: removing floatView, parent="
                     + (floatView.getParent() == null ? "null" : floatView.getParent().getClass().getSimpleName()));
             UpdateBubbleView b = bubbleView != null ? bubbleView : floatView.findViewById(R.id.update_bubble);
-            if (b != null) b.pauseAnimations();
+            if (b != null)
+                b.pauseAnimations();
             if (floatView.getParent() instanceof ViewGroup) {
                 ((ViewGroup) floatView.getParent()).removeView(floatView);
             }
@@ -256,17 +274,20 @@ public final class UpdateFloatIndicator implements UpdateManager.Listener {
             dialog.dismiss();
         }
         Activity a = currentActivity;
-        if (a == null || a.isFinishing() || a.isDestroyed()) return;
+        if (a == null || a.isFinishing() || a.isDestroyed())
+            return;
         dialog = new UpdateIndicatorDialog(a);
         dialog.show();
     }
 
     /**
-     * 悬浮圈触摸处理:DOWN 即消费接管整个手势,与 View 自身长按/点击机制隔离——
+     * 悬浮圈触摸处理:DOWN 即消费接管整个手势,与 View 自身长按/点击机制隔离。
+     * 长按由本类 Handler 延迟调度(标准长按时长),不依赖 View 的 OnLongClickListener——
      * 否则按下约 500ms 后系统长按会触发(哪怕手指已在拖动),弹窗会打断拖动。
      * <ul>
-     *   <li>移动超过 touchSlop → 拖动(只改边距,尺寸固定,松手吸附边缘);</li>
-     *   <li>未超过(含按下即松) → 视为短按 {@link #handleTap()}。</li>
+     * <li>按下不动 ≥ 长按时长 → 长按,弹出控制弹窗 {@link #showDialog()};</li>
+     * <li>移动超过 touchSlop → 取消长按,改为拖动(只改边距,尺寸固定,松手吸附边缘);</li>
+     * <li>未拖动且长按未触发即松手 → 短按 {@link #handleTap()}。</li>
      * </ul>
      */
     private final class DragTouchListener implements View.OnTouchListener {
@@ -274,8 +295,10 @@ public final class UpdateFloatIndicator implements UpdateManager.Listener {
         public boolean onTouch(View v, MotionEvent ev) {
             switch (ev.getActionMasked()) {
                 case MotionEvent.ACTION_DOWN:
-                    if (ev.getPointerCount() > 1) return true; // 多点忽略,防误动
+                    if (ev.getPointerCount() > 1)
+                        return true; // 多点忽略,防误动
                     dragTracking = false;
+                    longPressTriggered = false;
                     downX = ev.getRawX();
                     downY = ev.getRawY();
                     if (v.getLayoutParams() instanceof FrameLayout.LayoutParams) {
@@ -283,7 +306,11 @@ public final class UpdateFloatIndicator implements UpdateManager.Listener {
                         dragStartLeft = lp.leftMargin;
                         dragStartTop = lp.topMargin;
                     }
-                    return true; // 消费 DOWN:长按计时不再由 View 驱动,避免拖动中途弹窗
+                    // 长按延迟调度:ViewConfiguration 标准长按时长;一旦拖动即取消
+                    longPressHandler.removeCallbacks(longPressRunnable);
+                    longPressHandler.postDelayed(longPressRunnable,
+                            ViewConfiguration.getLongPressTimeout());
+                    return true; // 消费 DOWN:长按计时由本 Handler 驱动,避免与系统长按/拖动冲突
                 case MotionEvent.ACTION_MOVE: {
                     if (dragTracking) {
                         FrameLayout.LayoutParams lp = (FrameLayout.LayoutParams) v.getLayoutParams();
@@ -301,18 +328,21 @@ public final class UpdateFloatIndicator implements UpdateManager.Listener {
                     float dy = ev.getRawY() - downY;
                     if (Math.abs(dx) > touchSlop || Math.abs(dy) > touchSlop) {
                         dragTracking = true;
+                        longPressHandler.removeCallbacks(longPressRunnable); // 开始拖动,取消长按
                     }
                     return true;
                 }
                 case MotionEvent.ACTION_UP:
+                    longPressHandler.removeCallbacks(longPressRunnable);
                     if (dragTracking) {
                         dragTracking = false;
                         snapToEdge(v);
-                    } else {
-                        handleTap(); // 短按(拖动未开始即松手)
+                    } else if (!longPressTriggered) {
+                        handleTap(); // 短按(拖动未开始、长按未触发即松手)
                     }
                     return true;
                 case MotionEvent.ACTION_CANCEL:
+                    longPressHandler.removeCallbacks(longPressRunnable);
                     dragTracking = false; // 系统中断:位置保持,不吸附也不触发点击
                     return true;
                 default:
@@ -322,9 +352,11 @@ public final class UpdateFloatIndicator implements UpdateManager.Listener {
 
         /** 松手吸附到最近左右边缘,垂直位置保持;记录当前坐标供切页后恢复 */
         private void snapToEdge(View v) {
-            if (!(v.getLayoutParams() instanceof FrameLayout.LayoutParams)) return;
+            if (!(v.getLayoutParams() instanceof FrameLayout.LayoutParams))
+                return;
             ViewGroup parent = (ViewGroup) v.getParent();
-            if (parent == null) return;
+            if (parent == null)
+                return;
             FrameLayout.LayoutParams lp = (FrameLayout.LayoutParams) v.getLayoutParams();
             int edge = Math.round(v.getResources().getDisplayMetrics().density * 8);
             int centerX = lp.leftMargin + v.getWidth() / 2;

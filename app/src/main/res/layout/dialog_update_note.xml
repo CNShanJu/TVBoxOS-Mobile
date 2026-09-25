@@ -78,7 +78,7 @@
             android:translationY="-1dp" />
         <com.google.android.material.button.MaterialButton
             android:id="@+id/note_update"
-            style="@style/mbSolid"
+            style="@style/BtnPrimary"
             android:layout_width="0dp"
             android:layout_height="44dp"
             android:layout_marginLeft="@dimen/dp_10"
