@@ -23,13 +23,8 @@ import androidx.core.content.ContextCompat;
 import com.github.tvbox.osc.R;
 import com.github.tvbox.osc.base.App;
 import com.github.tvbox.osc.constant.IntentKey;
-import com.github.tvbox.osc.event.RefreshEvent;
 import com.github.tvbox.osc.player.MyVideoView;
 import com.github.tvbox.osc.ui.activity.DetailActivity;
-
-import org.greenrobot.eventbus.EventBus;
-import org.greenrobot.eventbus.Subscribe;
-import org.greenrobot.eventbus.ThreadMode;
 
 /**
  * 后台播放前台服务(后台播放=开启时承载)。
@@ -52,6 +47,8 @@ public class PlayService extends Service {
 
     static String videoInfo = "MBox&&第一集";
     private static MyVideoView videoView;
+    /** 运行中的服务实例(供播放页直调刷新通知/媒体卡);未启动时为 null */
+    private static PlayService sInstance;
 
     private MediaSession mediaSession;
     private Handler mainHandler;
@@ -86,6 +83,27 @@ public class PlayService extends Service {
         App.getInstance().stopService(new Intent(App.getInstance(), PlayService.class));
     }
 
+    /**
+     * 播放页(切集/换源/播放状态变化)直调:同步锁屏媒体卡标题与通知图标。
+     * 替代历史 EventBus RefreshEvent(TYPE_REFRESH_NOTIFY) 广播。
+     * 服务未启动时静默跳过(与原无订阅者行为一致);统一 post 到主线程(原 ThreadMode.MAIN 语义)。
+     *
+     * @param newVideoInfo "标题&&集数",null 表示仅刷新通知(不改标题)
+     */
+    public static void onPlaybackNotify(String newVideoInfo) {
+        PlayService service = sInstance;
+        if (service == null || service.mainHandler == null) return;
+        service.mainHandler.post(() -> service.applyPlaybackNotify(newVideoInfo));
+    }
+
+    private void applyPlaybackNotify(String newVideoInfo) {
+        if (newVideoInfo != null) {
+            videoInfo = newVideoInfo;
+            syncMediaMetadata();
+        }
+        NotificationManagerCompat.from(this).notify(NOTIFICATION_ID, buildNotification());
+    }
+
     private static final String CHANNEL_ID = "MyChannelId";
     private static final int NOTIFICATION_ID = 1;
 
@@ -93,7 +111,7 @@ public class PlayService extends Service {
     public void onCreate() {
         super.onCreate();
         mainHandler = new Handler(Looper.getMainLooper());
-        EventBus.getDefault().register(this);
+        sInstance = this;
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             NotificationChannel notificationChannel = new NotificationChannel(CHANNEL_ID, "My Channel", NotificationManager.IMPORTANCE_DEFAULT);
             NotificationManager notificationManager = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
@@ -117,18 +135,6 @@ public class PlayService extends Service {
         mainHandler.removeCallbacks(stateTicker);
         mainHandler.post(stateTicker);
         return START_NOT_STICKY;
-    }
-
-    /** 播放页状态变化(标题/集数切换、暂停/恢复图标刷新)时同步媒体会话与通知 */
-    @Subscribe(threadMode = ThreadMode.MAIN)
-    public void refresh(RefreshEvent event) {
-        if (event.type == RefreshEvent.TYPE_REFRESH_NOTIFY) {
-            if (event.obj != null) {
-                videoInfo = event.obj.toString();
-                syncMediaMetadata();
-            }
-            NotificationManagerCompat.from(this).notify(NOTIFICATION_ID, buildNotification());
-        }
     }
 
     // ── 媒体会话(系统媒体控制中心/锁屏媒体卡)──
@@ -312,11 +318,10 @@ public class PlayService extends Service {
             }
             mediaSession = null;
         }
-        EventBus.getDefault().unregister(this);
+        sInstance = null;
         stopForeground(true);
         videoView = null;
     }
-
     @Nullable
     @Override
     public IBinder onBind(Intent intent) {

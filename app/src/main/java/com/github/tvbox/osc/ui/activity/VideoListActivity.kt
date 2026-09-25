@@ -1,7 +1,6 @@
 package com.github.tvbox.osc.ui.activity
 
 import android.os.Bundle
-import android.os.Handler
 import android.view.View
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
@@ -14,7 +13,6 @@ import com.github.tvbox.osc.base.BaseVbActivity
 import com.github.tvbox.osc.bean.VideoInfo
 import com.github.tvbox.osc.constant.CacheConst
 import com.github.tvbox.osc.databinding.ActivityMovieFoldersBinding
-import com.github.tvbox.osc.event.RefreshEvent
 import com.github.tvbox.osc.ui.adapter.LocalVideoAdapter
 import com.github.tvbox.osc.util.FastClickCheckUtil
 import com.github.tvbox.osc.util.Utils
@@ -22,9 +20,6 @@ import com.lxj.xpopup.XPopup
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import org.greenrobot.eventbus.EventBus
-import org.greenrobot.eventbus.Subscribe
-import org.greenrobot.eventbus.ThreadMode
 import java.util.stream.Collectors
 
 class VideoListActivity : BaseVbActivity<ActivityMovieFoldersBinding>() {
@@ -32,10 +27,6 @@ class VideoListActivity : BaseVbActivity<ActivityMovieFoldersBinding>() {
     private var mLocalVideoAdapter = LocalVideoAdapter()
     private var mSelectedCount = 0
     override fun init() {
-        // 本地视频列表依赖 RefreshEvent 触发列表重扫,自行注册生命周期
-        // (BaseActivity 已移除"全 Activity 自动注册",EventBus 只投给真正需要的页面)
-        EventBus.getDefault().register(this)
-
         mBucketDisplayName = intent.extras?.getString("bucketDisplayName")?:""
 
         mBinding.titleBar.setTitle(mBucketDisplayName)
@@ -131,16 +122,6 @@ class VideoListActivity : BaseVbActivity<ActivityMovieFoldersBinding>() {
 
     private fun cancelAll() {
         mLocalVideoAdapter.cancelAllSelection()
-    }
-
-    @Subscribe(threadMode = ThreadMode.MAIN)
-    fun refresh(event: RefreshEvent) {
-        Handler().postDelayed({ groupVideos() }, 1000)
-    }
-
-    override fun onDestroy() {
-        EventBus.getDefault().unregister(this)
-        super.onDestroy()
     }
 
     override fun onResume() {
