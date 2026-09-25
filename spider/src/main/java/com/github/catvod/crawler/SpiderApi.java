@@ -13,8 +13,8 @@ import java.util.concurrent.ExecutorService;
  * 外部（UI 的 SourceViewModel、播放器、下载 reResolve、RemoteServer）只认这一个入口，
  * 不再直连 ApiConfig.getSpider() / JsLoader / JarLoader。
  * <p>
- * 所有方法统一：取 Spider 实例 → 串行执行（quickjs 单线程）→ 超时 → 结果归一
- * （失败返回 null/空，不向调用方抛裸异常）。
+ * 所有方法统一：取 Spider 实例 → 按源分道执行（同源串行、异源并行，见 {@link SpiderExecutor}）
+ * → 超时 → 结果归一（失败返回 null/空，不向调用方抛裸异常）。
  */
 public final class SpiderApi {
 
@@ -26,7 +26,7 @@ public final class SpiderApi {
     private SpiderApi() {
     }
 
-    /** 底层串行池（供既有调用方统一，避免 quickjs 并发） */
+    /** 0 号道（兼容入口：无 sourceKey 上下文的既有调用方；新代码一律走 {@link #executeSerial(String, Runnable)}） */
     public static ExecutorService serialExecutor() {
         return EXECUTOR.asExecutorService();
     }
@@ -35,9 +35,9 @@ public final class SpiderApi {
     // 播放地址解析（播放器 / 下载 reResolve 共用）
     // ------------------------------------------------------------------
 
-    /** 解析单集真实播放地址 + 请求头（内部串行 + 20s 超时） */
+    /** 解析单集真实播放地址 + 请求头（按源分道 + 20s 超时） */
     public static PlayUrlResolver.ResolveResult resolvePlayUrl(String sourceKey, String playFlag, String rawUrl) {
-        return EXECUTOR.call(DEFAULT_TIMEOUT,
+        return EXECUTOR.call(sourceKey, DEFAULT_TIMEOUT,
                 () -> PlayUrlResolver.resolveWithHeader(sourceKey, playFlag, rawUrl));
     }
 
@@ -103,12 +103,22 @@ public final class SpiderApi {
         // 预留：源更新后由 ApiConfig 重建 Spider 实例
     }
 
-    /** 串行执行任意爬虫任务（带超时）；超时/异常返回 null */
+    /** 串行执行任意爬虫任务（带超时，按 key 分道）；超时/异常返回 null */
+    public static <T> T submitSerial(String key, Callable<T> task, long timeoutMs) {
+        return EXECUTOR.call(key, timeoutMs, task);
+    }
+
+    /** 串行执行任意爬虫任务（带超时，无 key 落 0 号道）；超时/异常返回 null */
     public static <T> T submitSerial(Callable<T> task, long timeoutMs) {
         return EXECUTOR.call(timeoutMs, task);
     }
 
-    /** 异步提交（不阻塞，回调自行处理） */
+    /** 异步提交（不阻塞，按 key 分道，回调自行处理） */
+    public static void executeSerial(String key, Runnable task) {
+        EXECUTOR.execute(key, task);
+    }
+
+    /** 异步提交（不阻塞，无 key 落 0 号道） */
     public static void executeSerial(Runnable task) {
         EXECUTOR.execute(task);
     }
@@ -126,7 +136,7 @@ public final class SpiderApi {
         if (sb == null) return null;
         long start = System.currentTimeMillis();
         try {
-            String result = EXECUTOR.call(DEFAULT_TIMEOUT, () -> fn.call(ApiConfig.get().getCSP(sb)));
+            String result = EXECUTOR.call(sourceKey, DEFAULT_TIMEOUT, () -> fn.call(ApiConfig.get().getCSP(sb)));
             android.util.Log.i(TRACE_TAG, "[spider] " + sb.getName() + " " + method + " 完成 耗时="
                     + (System.currentTimeMillis() - start) + "ms");
             return result;

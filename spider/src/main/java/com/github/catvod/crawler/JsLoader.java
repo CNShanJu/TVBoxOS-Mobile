@@ -23,6 +23,9 @@ public class JsLoader {
 
     private static ConcurrentHashMap<String, Spider> spiders = new ConcurrentHashMap<>();
     private static ConcurrentHashMap<String, Class<?>> classs = new ConcurrentHashMap<>();
+    /** spider 创建串行锁:spiders/classs 为静态,首次创建(下载 jar/编译 JS 模块/写模块缓存)必须串行,
+     *  不同源并行取源时才不会相互踩踏;已创建的源走无锁快路径直接返回,调用仍并行。 */
+    private static final Object CREATE_LOCK = new Object();
 
     public static void load() {
         for (Spider spider : spiders.values()){
@@ -101,27 +104,39 @@ public class JsLoader {
 
 
     public Spider getSpider(String key, String api, String ext, String jar) {
-        Class<?> classLoader = null;
-        if (!jar.isEmpty()) {
-            String[] urls = jar.split(";md5;");
-            String jarUrl = urls[0];
-            String jarKey = MD5.string2MD5(jarUrl);
-            String jarMd5 = urls.length > 1 ? urls[1].trim() : "";
-            classLoader = loadJarInternal(jarUrl, jarMd5, jarKey);
+        // 快路径:已创建的源直接返回(无锁),使不同源的调用可真正并行
+        Spider cached = spiders.get(key);
+        if (cached != null) {
+            recentJarKey = key;
+            return cached;
         }
-        recentJarKey = key;
-        if (spiders.containsKey(key))
-            return spiders.get(key);
-        try {
-            Spider sp = new JsSpider(key, api, classLoader);
-            sp.init(context, ext);
-            spiders.put(key, sp);
-            return sp;
-        } catch (Throwable th) {
-            th.printStackTrace();
-            LOG.e("QuJS", th);
+        // 慢路径:首次创建串行化(下载 jar / new JsSpider 编译 JS 模块 / 写模块缓存 / init)
+        synchronized (CREATE_LOCK) {
+            cached = spiders.get(key);
+            if (cached != null) {
+                recentJarKey = key;
+                return cached;
+            }
+            Class<?> classLoader = null;
+            if (!jar.isEmpty()) {
+                String[] urls = jar.split(";md5;");
+                String jarUrl = urls[0];
+                String jarKey = MD5.string2MD5(jarUrl);
+                String jarMd5 = urls.length > 1 ? urls[1].trim() : "";
+                classLoader = loadJarInternal(jarUrl, jarMd5, jarKey);
+            }
+            recentJarKey = key;
+            try {
+                Spider sp = new JsSpider(key, api, classLoader);
+                sp.init(context, ext);
+                spiders.put(key, sp);
+                return sp;
+            } catch (Throwable th) {
+                th.printStackTrace();
+                LOG.e("QuJS", th);
+            }
+            return new SpiderNull();
         }
-        return new SpiderNull();
     }
 
     public Object[] proxyInvoke(Map<String, String> params) {

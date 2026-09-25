@@ -155,29 +155,37 @@ public class JarLoader {
             jarKey = MD5.string2MD5(jarUrl);
             jarMd5 = urls.length > 1 ? urls[1].trim() : "";
         }
+        // 与旧实现一致:缓存命中也要更新 recentJarKey(proxyInvoke 依赖"最近取过的 jar")
         recentJarKey = jarKey;
-        if (spiders.containsKey(key))
-            return spiders.get(key);
-        DexClassLoader classLoader = null;
-        if (jarKey.equals("main"))
-            classLoader = classLoaders.get("main");
-        else {
-            classLoader = loadJarInternal(jarUrl, jarMd5, jarKey);
+        // 快路径:已创建的源直接返回(无锁),不同源调用可并行
+        Spider cached = spiders.get(key);
+        if (cached != null) {
+            return cached;
         }
-        if (classLoader == null)
+        // 慢路径:首次创建串行化(下载 jar / DexClassLoader / newInstance / init),避免并行创建相互踩踏
+        synchronized (this) {
+            cached = spiders.get(key);
+            if (cached != null) {
+                return cached;
+            }
+            DexClassLoader classLoader = null;
+            if (jarKey.equals("main"))
+                classLoader = classLoaders.get("main");
+            else {
+                classLoader = loadJarInternal(jarUrl, jarMd5, jarKey);
+            }
+            if (classLoader == null)
+                return new SpiderNull();
+            try {
+                Spider sp = (Spider) classLoader.loadClass("com.github.catvod.spider." + clsKey).newInstance();
+                sp.init(context, ext);
+                spiders.put(key, sp);
+                return sp;
+            } catch (Throwable th) {
+                th.printStackTrace();
+            }
             return new SpiderNull();
-        try {
-            Spider sp = (Spider) classLoader.loadClass("com.github.catvod.spider." + clsKey).newInstance();
-            sp.init(context, ext);
-//            if (!jar.isEmpty()) {
-//                sp.homeContent(false); // 增加此行 应该可以解决部分写的有问题源的历史记录问题 但会增加这个源的首次加载时间 不需要可以已删掉
-//            }
-            spiders.put(key, sp);
-            return sp;
-        } catch (Throwable th) {
-            th.printStackTrace();
         }
-        return new SpiderNull();
     }
 
     public JSONObject jsonExt(String key, LinkedHashMap<String, String> jxs, String url) {

@@ -79,8 +79,18 @@ public class JsSpider extends Spider {
 
     @Override
     public void init(Context context, String extend) throws Exception {
-        if (cat) call("init", submit(() -> cfg(extend)).get());
-        else call("init", Json.valid(extend) ? ctx.parse(extend) : extend);
+        if (cat) {
+            call("init", submit(() -> cfg(extend)).get());
+            return;
+        }
+        // ext 是 JSON(如抓页面源的站点配置)时要 parse 成对象交给 JS,但 ctx.parse 必须在
+        // QuickJS 自己的线程上跑:以前直接在调用线程 parse,抛 "Must be call same thread" →
+        // 源初始化失败、首页/分类/搜索全空(线上实例:姐姐视频抓页面源)。
+        if (Json.valid(extend)) {
+            call("init", submit(() -> ctx.parse(extend)).get());
+        } else {
+            call("init", extend);
+        }
     }
 
     @Override
@@ -300,9 +310,12 @@ public class JsSpider extends Spider {
         }
     }
 
-    private Object[] proxy1(Map<String, String> params) {
-        JSObject object = new JSUtils<String>().toObj(ctx, params);
-        JSONArray array = ((JSArray) jsObject.getJSFunction("proxy").call(object)).toJsonArray();
+    /** 本地代理(JS 侧 proxy):构造参数对象、取返回值都在 QuickJS 自己的线程上做(同 init 的坑) */
+    private Object[] proxy1(Map<String, String> params) throws Exception {
+        JSONArray array = submit(() -> {
+            JSObject object = new JSUtils<String>().toObj(ctx, params);
+            return ((JSArray) jsObject.getJSFunction("proxy").call(object)).toJsonArray();
+        }).get();
         Object[] result = new Object[3];
         result[0] = array.opt(0);
         result[1] = array.opt(1);
