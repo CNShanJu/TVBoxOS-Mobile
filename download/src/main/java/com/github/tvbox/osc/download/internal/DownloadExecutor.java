@@ -55,6 +55,8 @@ public class DownloadExecutor {
     /** 直链下载算法入口（4.6 任务对象化: 由 NormalFileDownloadTask.doRun 委托） */
     public void downloadDirect(DownloadTask t) throws IOException {
         Map<String, String> headers = baseHeaders(t);
+        // 续传前先按磁盘实况校正计数(与 HLS 侧 countExistingSegments 同一原则)
+        reconcilePartWithDisk(t);
         if (t.downloadedBytes > 0) {
             headers.put("Range", "bytes=" + t.downloadedBytes + "-");
         }
@@ -194,6 +196,31 @@ public class DownloadExecutor {
         } finally {
             dm.activeResponses.remove(t.id);
             resp.close();
+        }
+    }
+
+    /**
+     * 续传前用 {@code .part} 的**实际长度**校正 {@code downloadedBytes}。
+     * <p>
+     * 原来直接信任计数器:计数器偏小 → 按错误偏移 append;偏大 → Range 起点错位,产物静默损坏。
+     * 规则:磁盘优先;磁盘长度超过服务器声明总长说明上一次写入错位/文件被替换 → 丢弃重下。
+     */
+    private void reconcilePartWithDisk(DownloadTask t) {
+        if (t.partPath == null) return;
+        File partFile = new File(t.partPath);
+        long onDisk = partFile.exists() ? partFile.length() : 0;
+        if (t.totalBytes > 0 && onDisk > t.totalBytes) {
+            Log.i("TVBox-Download", "续传校正: .part 长度 " + onDisk + " B 超过声明总长 "
+                    + t.totalBytes + " B, 丢弃重下: " + t.fileName);
+            onDisk = 0;
+        }
+        if (onDisk == 0 && partFile.exists()) {
+            FileCleaner.deleteQuietly(partFile);
+        }
+        if (onDisk != t.downloadedBytes) {
+            Log.i("TVBox-Download", "续传校正: 计数 " + t.downloadedBytes + " B → 磁盘 " + onDisk + " B: " + t.fileName);
+            t.downloadedBytes = onDisk;
+            dm.persist();
         }
     }
 
@@ -783,6 +810,11 @@ public class DownloadExecutor {
                     } else {
                         throw new IOException("暂不支持的 HLS 加密方式: " + method);
                     }
+                } else if (l.startsWith("#EXT-X-MAP:") || l.startsWith("#EXT-X-BYTERANGE:")) {
+                    // fMP4(#EXT-X-MAP 初始化段)/字节范围分片:只按整文件取分片会把 init 段丢掉
+                    // (产物缺 moov,不可播)或取到错位数据。宁可明确失败,也不要悄悄产出坏文件。
+                    throw new IOException("暂不支持 " + l.substring(0, l.indexOf(':') + 1)
+                            + " 类型的 HLS(fMP4 初始化段/字节范围分片)");
                 }
                 continue;
             }
@@ -854,15 +886,23 @@ public class DownloadExecutor {
         return v;
     }
 
-    /** 解析 IV=0x<32位hex> 为 16 字节;格式非法返回 null(调用方回退媒体序列号) */
+    /**
+     * 解析 IV=0x<hex> 为 16 字节;格式非法返回 null(调用方回退媒体序列号)。
+     * <p>
+     * 允许短写(如 {@code IV=0x1}):HLS 的 IV 是 128 位整数,写成不足 32 位十六进制很常见,
+     * 原来要求"必须 32 位"会把短写丢弃 → 回退成按媒体序列号推导的 IV → 解出来是乱码。
+     */
     private static byte[] parseHexIv(String s) {
         if (s == null)
             return null;
-        String hex = s.toLowerCase(Locale.ROOT);
+        String hex = s.trim().toLowerCase(Locale.ROOT);
         if (hex.startsWith("0x"))
             hex = hex.substring(2);
-        if (hex.length() != 32)
+        if (hex.isEmpty() || hex.length() > 32 || !hex.matches("[0-9a-f]+"))
             return null;
+        while (hex.length() < 32) {
+            hex = "0" + hex;
+        }
         try {
             byte[] iv = new byte[16];
             for (int i = 0; i < 16; i++) {
@@ -884,14 +924,31 @@ public class DownloadExecutor {
         return iv;
     }
 
+    /**
+     * 分片地址补全:绝对地址原样返回;协议相对地址({@code //host/x})补 scheme;
+     * 站内绝对路径({@code /x})用 {@code authority}(host[:port])拼 —— 注意必须带端口,
+     * 原实现用 {@code getHost()} 丢端口,带端口的源(如 {@code :8080})分片会全部 404。
+     */
     private String resolveUrl(String original, String base, String seg) {
         if (seg.startsWith("http://") || seg.startsWith("https://"))
             return seg;
+        Uri uri = Uri.parse(original);
+        String scheme = uri.getScheme() == null ? "http" : uri.getScheme();
+        if (seg.startsWith("//")) {
+            return scheme + ":" + seg;
+        }
         if (seg.startsWith("/")) {
-            Uri uri = Uri.parse(original);
-            return uri.getScheme() + "://" + uri.getHost() + seg;
+            String authority = uri.getAuthority();
+            if (authority == null || authority.isEmpty())
+                authority = uri.getHost();
+            return joinUrl(scheme, authority, seg);
         }
         return base + seg;
+    }
+
+    /** 纯字符串拼接(便于单测):{@code scheme + "://" + authority + path} */
+    static String joinUrl(String scheme, String authority, String path) {
+        return scheme + "://" + authority + path;
     }
 
     // ------------------------------------------------------------------
