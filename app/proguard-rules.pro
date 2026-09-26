@@ -122,13 +122,9 @@
     void *(**On*Event);
     void *(**On*Listener);
 }
-#xwalk
--keep class org.xwalk.core.** { *; }
--keep class org.crosswalk.engine.** { *; }
--keep class org.chromium.** { *; }
+#xwalk(已不使用,规则随之删除)
 -dontwarn android.view.**
 -dontwarn android.media.**
--dontwarn org.chromium.**
 #okhttp
 -dontwarn okhttp3.**
 -keep class okhttp3.**{*;}
@@ -162,23 +158,11 @@
 -keep class com.thoughtworks.xstream.converters.extended.RegexPatternConverter { *; }
 -keep class com.thoughtworks.xstream.converters.extended.CharsetConverter { *; }
 -keep class com.thoughtworks.xstream.** { *; }
-#eventbus
--keepclassmembers class * {
-    @org.greenrobot.eventbus.Subscribe <methods>;
-}
--keep enum org.greenrobot.eventbus.ThreadMode { *; }
-# And if you use AsyncExecutor:
--keepclassmembers class * extends org.greenrobot.eventbus.util.ThrowableFailureEvent {
-    <init>(java.lang.Throwable);
-}
-#bugly
--dontwarn com.tencent.bugly.**
--keep public class com.tencent.bugly.**{*;}
--keep class android.support.**{*;}
+#eventbus 已全仓移除(AGENTS §五,禁止再引入):相关 keep 规则随之删除
 
-#dkplayer
--keep class com.dueeeke.videoplayer.** { *; }
--dontwarn com.dueeeke.videoplayer.**
+#dkplayer(现用坐标 xyz.doikki.android.dkplayer,旧包名 com.dueeeke 已废弃)
+-keep class xyz.doikki.videoplayer.** { *; }
+-dontwarn xyz.doikki.videoplayer.**
 
 # IjkPlayer
 -keep class tv.danmaku.ijk.** { *; }
@@ -191,14 +175,10 @@
 # 实体类
 -keep class com.github.tvbox.osc.bean.** { *; }
 
-#CardView
--keep class com.github.tvbox.osc.ui.tv.widget.card.**{*;}
-
 -keep class com.github.catvod.crawler.*{*;}
 # 迅雷下载模块
 -keep class com.xunlei.downloadlib.** {*;}
-# quickjs引擎
--keep class com.github.tvbox.quickjs.** {*;}
+# quickjs引擎(:thirdparty)
 -keep class com.whl.quickjs.** {*;}
 
 # 支持影视的ali相关的jar
@@ -210,13 +190,7 @@
 -dontwarn com.gyf.immersionbar.**
 
 
-# glide
--keep public class * implements com.bumptech.glide.module.GlideModule
--keep public class * extends com.bumptech.glide.module.AppGlideModule
--keep public enum com.bumptech.glide.load.ImageHeaderParser$** {
-  **[] $VALUES;
-  public *;
-}
+# glide 已不使用(图片加载统一 Picasso,AGENTS §七):规则随之删除
 
 # ViewBinding & DataBinding
 -keepclassmembers class * implements androidx.viewbinding.ViewBinding {
