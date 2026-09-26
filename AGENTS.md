@@ -38,7 +38,7 @@ app / feature
 | `:spider-api` | 爬虫契约(SourcePage/Category/Detail/Search/Play 请求与结果),QuickJS/JarLoader/ApiConfig/具体 Spider 留在 :spider |
 | `:player-api` | 播放契约(PlayerSession/PlayerState/PlayerOptions/PlayerEvent/PlayerFactory),UI 不得直接依赖 MyVideoView/IJK/Exo 具体内核 |
 | `:download` | 只公开 DownloadFacade.enqueue/pause/resume/delete/observe;Manager/Scheduler/Executor/Archive 等为模块内部实现 |
-| `:ui-common`/ui-kit | ui-common=纯主题资源;通用组件先进 app 内 ui-kit package,成熟后再拆模块 |
+| `:app` 的 ui-kit/ui-common | 主题资源(原 `:ui-common`)与通用组件已全部收在 app 内(app 的 `res` + `ui/kit` package);组件成熟后再考虑拆模块 |
 
 现状残留(持续治理,新代码勿新增同类):
 - app 仍直用 `MyVideoView`/IJK/Exo、`PlayerTrackHelper` 按内核分发(播放器收口长线)。

@@ -78,7 +78,7 @@ export JAVA_HOME=/path/to/jdk17
 纯模型: :core-model
 ```
 
-其他模块:`quickjs`(JS 引擎)、`thirdparty`(第三方归堆:TabLayout + ViewPager1Delegate + CustomActivityOnCrash 崩溃页)、`ui-common`(主题/通用资源,待并入 :app)。
+其他模块:`quickjs`(JS 引擎)、`thirdparty`(第三方归堆:TabLayout + ViewPager1Delegate + CustomActivityOnCrash 崩溃页)。主题/通用资源(原 :ui-common)已并入 :app。
 
 ## 目录结构与文档
 
