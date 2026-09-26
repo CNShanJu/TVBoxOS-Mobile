@@ -19,7 +19,6 @@ concurrency:
 
 permissions:
   contents: write
-  packages: write
 
 jobs:
   build:
@@ -85,36 +84,37 @@ jobs:
           path: app/build/outputs/apk/release/*.apk
           if-no-files-found: error
 
-      # 打 tag(v* 触发)时把挂了发布脚本的库模块 AAR 发布到 GitHub Packages,
-      # 供其他项目通过 maven 坐标引用(坐标见 gradle/publish.gradle)。
-      # 现状:仅 :player 仍 apply 该脚本(TabLayout/QuickJS/Crash 等已并入 :thirdparty 且不再发布)。
-      # 可选功能:失败不影响 APK 产物,先继续出包,发布问题另行修复
-      - name: Publish Library AARs to GitHub Packages
-        if: startsWith(github.ref, 'refs/tags/v')
-        continue-on-error: true
-        run: |
-          chmod +x gradlew
-          ./gradlew publish --no-daemon
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GITHUB_ACTOR: ${{ github.actor }}
-
-      # 打 tag(v* 触发)时自动生成 Release Notes 并创建 GitHub Release,
-      # 挂上正式签名 APK。正文由 git 提交历史生成(UTF-8,避免手写乱码)
+      # 打 tag(v* 触发)时生成 Release 正文并创建 GitHub Release,挂上正式签名 APK。
+      # 正文规范(AGENTS §九:禁止照搬 commit):用户可读说明由维护者写在
+      # doc/release-notes-<tag>.md(UTF-8),CI 只把它贴上去;文件缺失时正文只留 dev 围栏
+      # (App 更新弹窗会自动剔除围栏内容),绝不把 commit 标题直接给用户看。
       - name: Prepare Release Notes
         if: startsWith(github.ref, 'refs/tags/v')
         run: |
           TAG="${GITHUB_REF_NAME}"
           PREV=$(git tag --list 'v*' --sort=-version:refname | sed -n '2p')
+          NOTES="doc/release-notes-${TAG}.md"
           {
             echo "## ${TAG}"
             echo ""
+            if [ -f "$NOTES" ]; then
+              cat "$NOTES"
+            else
+              echo "::warning title=Release 正文缺失::缺少 ${NOTES};请按 AGENTS §九 写用户可读说明(新增功能/功能变更/移除停用/问题修复/体验与性能/兼容性注意),发布前用 node scripts/check-release-notes.js ${NOTES} 自检"
+            fi
+            echo ""
+            echo "<!-- dev -->"
+            echo "以下内容仅开发者可见(App 更新弹窗自动剔除),不是给用户的更新说明。"
+            echo "用户可读说明请写在 ${NOTES}:按用户视角归纳,不写 commit 前缀/文件名/依赖与构建细节。"
+            echo ""
+            echo "提交记录(${PREV:-(无上一 tag)}..${TAG}):"
             if [ -n "$PREV" ]; then
-              echo "相比 ${PREV} 的更新:"
               git log --no-merges --pretty=format:'- %s' "${PREV}..HEAD"
             else
               git log --no-merges --pretty=format:'- %s' HEAD
             fi
+            echo ""
+            echo "<!-- /dev -->"
             echo ""
           } > RELEASE_NOTES.md
           echo "=== release notes (${PREV:-(no previous tag)} -> ${TAG}) ==="

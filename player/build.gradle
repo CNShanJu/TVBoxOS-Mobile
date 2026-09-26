@@ -45,5 +45,3 @@ dependencies {
     api 'xyz.doikki.android.dkplayer:dkplayer-ui:3.3.5'
 }
 
-// 发布到 GitHub Packages(坐标见 gradle/publish.gradle,可用 ext 覆盖)
-apply from: rootProject.file('gradle/publish.gradle')

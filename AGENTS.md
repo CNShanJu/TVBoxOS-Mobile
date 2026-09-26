@@ -190,6 +190,10 @@ app / feature
    - **不必为跨版本升级补历史**:App 取 releases 列表,把"比当前新、且不高于可下载最新版"的各版本说明
      按新→旧拼成一个弹窗(最多 5 个版本),每条 Release 只写自己的改动即可;
      正文顶部的版本标题(`## v3.5.5`)与「相比 vX 的更新:」引言会被去重,不重复出现。
+   - **发版流水线不得自动搬运 commit**(强制):`.github/workflows/build-apk.yml` 打 tag 时的 Release 正文,
+     只取仓库里维护者手写的 `doc/release-notes-<tag>.md`(UTF-8);该文件缺失时正文只留 `<!-- dev -->` 围栏
+     里的提交记录并在 Actions 输出警告,**绝不把 commit 标题当作给用户的更新说明**。发版前用
+     `node scripts/check-release-notes.js doc/release-notes-<tag>.md` 自检。
 2. **只写用户关注的内容,开发者事项一律不进用户可见正文**(强制;已发生过"把 AGENTS 规则文件改动写进 Release"的
    事故——某版本用户更新说明首条是 `docs(AGENTS): 发布含中文必须显式UTF-8防乱码`,用户看不懂也不需要知道):
    - **属于用户的内容**(这些才写,每类挑重要的 1~5 条):
