@@ -1,10 +1,11 @@
 package com.github.tvbox.osc.util
 
 import android.util.Log
-import com.github.catvod.crawler.PlayUrlResolver
 import com.github.tvbox.osc.bean.VodInfo
 import com.github.tvbox.osc.download.DownloadFacade
 import com.github.tvbox.osc.download.DownloadRequest
+import com.github.tvbox.osc.spiderapi.PlayUrlResolverProviders
+import com.github.tvbox.osc.spiderapi.ResolveResult
 import java.util.Locale
 
 /**
@@ -152,23 +153,25 @@ object EpisodeDownloadBatch {
         val sourceKey = vi.sourceKey
         val playFlag = vi.playFlag
         val vodId = vi.id
+        // 播放地址解析经爬虫契约(:spider 实现由组合根注入;未注入时按"解析失败"处理)
+        val resolver = PlayUrlResolverProviders.get()
 
         for (s in sel) {
             if (s == null) continue
             try {
                 // 解析真实地址 + 源要求的请求头(防盗链源下载必须携带,否则"能播不能下")
-                var rr: PlayUrlResolver.ResolveResult? = null
+                var rr: ResolveResult? = null
                 if (s.name != null && s.name == currentName && current != null) {
                     val finalUrl = current.finalUrl()
                     if (!finalUrl.isNullOrEmpty()) {
                         // 当前集:解析失败回退播放地址,解析结果无头时补播放器 UA/Referer
-                        rr = PlayUrlResolver.resolveCurrentWithPlaybackHeaders(
+                        rr = resolver.resolveCurrentWithPlaybackHeaders(
                             sourceKey, playFlag, s.url, current.playHeaders(), finalUrl
                         )
                     }
                 }
                 if (rr == null) {
-                    rr = PlayUrlResolver.resolveWithHeader(sourceKey, playFlag, s.url)
+                    rr = resolver.resolvePlayUrl(sourceKey, playFlag, s.url)
                 }
                 val url = rr?.url
                 if (url.isNullOrEmpty() || !(url.startsWith("http://") || url.startsWith("https://"))) {

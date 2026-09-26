@@ -25,6 +25,9 @@ public final class AppCompositionRoot {
         // 下载侧播放地址解析(:spider 提供实现,download 不依赖 :spider 实现)
         com.github.tvbox.osc.download.DownloadFacade.setUrlResolverApi(
                 com.github.catvod.crawler.SpiderUrlResolverImpl.get());
+        // app 侧批量下载解析:同一实现经契约持有者暴露(页面/工具不直连 :spider 实现)
+        com.github.tvbox.osc.spiderapi.PlayUrlResolverProviders.set(
+                com.github.catvod.crawler.SpiderUrlResolverImpl.get());
         // 嗅探型源“手动视频判定”
         com.github.tvbox.osc.spiderapi.SpiderManualCheckProviders.set(
                 com.github.catvod.crawler.SpiderManualCheckImpl.get());
@@ -102,6 +105,17 @@ public final class AppCompositionRoot {
             @Override
             public String getSpider() {
                 return com.github.tvbox.osc.api.ApiConfig.get().getSpider();
+            }
+
+            @Override
+            public void stopAllSourceTasks() {
+                // JS 源运行时动作留在 :spider 内(JsRuntimeBridge),页面只经契约调用
+                com.github.catvod.crawler.JsRuntimeBridge.stopAllSourceTasks();
+            }
+
+            @Override
+            public void resetSources() {
+                com.github.catvod.crawler.JsRuntimeBridge.resetSources();
             }
         });
         // 源配置元信息(ApiConfig 即契约实现:源注册表/首页源/vip 解析旗标)

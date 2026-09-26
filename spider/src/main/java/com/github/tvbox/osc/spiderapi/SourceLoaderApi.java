@@ -20,6 +20,18 @@ public interface SourceLoaderApi {
     /** 当前订阅携带的 spider 配置串（未配置/加载前可能为空串） */
     String getSpider();
 
+    /**
+     * 取消所有 JS 源当前正在执行的任务（原 JsLoader.stopAll）：会话结束/暂停/新一轮开始时调用，
+     * 让在跑的源请求尽快自弃；已创建的源实例保留，下次取源无需重建。
+     */
+    void stopAllSourceTasks();
+
+    /**
+     * 销毁并清空所有 JS 源实例（原 JsLoader.load）：需要让源彻底重建时调用
+     * （如快速搜索整轮重来），下次取源会重新编译 JS 模块。
+     */
+    void resetSources();
+
     /** 加载结果回调（与原 ApiConfig.LoadConfigCallback 三方法对齐） */
     interface Callback {
         void success();

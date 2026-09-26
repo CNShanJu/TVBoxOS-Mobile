@@ -4,7 +4,6 @@ import android.text.TextUtils;
 
 import androidx.multidex.MultiDexApplication;
 
-import com.github.catvod.crawler.JsLoader;
 import com.github.tvbox.osc.R;
 import com.github.tvbox.osc.bean.Subscription;
 import com.github.tvbox.osc.bean.VodInfo;
@@ -322,7 +321,8 @@ public class App extends MultiDexApplication {
     @Override
     public void onTerminate() {
         super.onTerminate();
-        JsLoader.load();
+        // 销毁并清空 JS 源实例(经契约,不直连 :spider 的 JsLoader)
+        com.github.tvbox.osc.spiderapi.SourceLoaderProviders.get().resetSources();
     }
 
     /** 写默认值:仅当现代化偏好存储尚无该键(各配置门面 getter 亦有默认兜底;不回写旧 Hawk) */
