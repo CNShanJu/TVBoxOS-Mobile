@@ -34,6 +34,20 @@ public class ReleaseNotesTest {
         assertEquals("用户可见", out);
     }
 
+    /**
+     * 围栏词大小写不敏感(AGENTS §九 约定):客户端必须与 scripts/check-release-notes.js 同规则
+     * —— 脚本原来漏了 i 标志,`&lt;!-- DEV --&gt;` 客户端会剔除、脚本却把它当用户可见内容报错。
+     */
+    @Test
+    public void devFence_isCaseInsensitive() {
+        assertEquals("用户可见", ReleaseNotes.userFacing(
+                "用户可见\n<!-- DEV -->\n依赖重构,门禁调整\n<!-- /DEV -->"));
+        assertEquals("用户可见", ReleaseNotes.userFacing(
+                "用户可见\n<!-- Internal -->\n提交号 abc1234\n<!-- /internal -->"));
+        // 同一行成对写出时同样大小写不敏感
+        assertFalse(ReleaseNotes.userFacing("A\n<!-- Dev -->内部:依赖升级<!-- /Dev -->\nB").contains("依赖升级"));
+    }
+
     @Test
     public void htmlComments_droppedEvenWithoutFence() {
         assertEquals("正文", ReleaseNotes.userFacing("<!-- 备注 -->正文"));

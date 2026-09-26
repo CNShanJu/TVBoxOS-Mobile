@@ -25,10 +25,11 @@ const FORBIDDEN = [
   'commit', '脚本', '工作流', '签名', '打包',
 ];
 
-// 围栏:独占一行(允许行首空白);只写起始围栏视为"以下全是内部内容"
-const FENCE = /^\s*<!--\s*(dev|dev-only|internal|内部|开发者)\s*-->|\s*<!--\s*\/\s*(dev|dev-only|internal|内部|开发者)\s*-->\s*$/;
-const FENCE_START = /^\s*<!--\s*(dev|dev-only|internal|内部|开发者)\s*-->\s*$/;
-const FENCE_END = /^\s*<!--\s*\/\s*(dev|dev-only|internal|内部|开发者)\s*-->\s*$/;
+// 围栏:独占一行(允许行首空白);只写起始围栏视为"以下全是内部内容"。
+// 注意:围栏词大小写不敏感 —— 客户端 ReleaseNotes.java 用的是 CASE_INSENSITIVE,
+// 这里必须一致,否则 `<!-- DEV -->` 客户端会剔除、本脚本却当用户可见内容报错。
+const FENCE_START = /^\s*<!--\s*(dev|dev-only|internal|内部|开发者)\s*-->\s*$/i;
+const FENCE_END = /^\s*<!--\s*\/\s*(dev|dev-only|internal|内部|开发者)\s*-->\s*$/i;
 // 同一行内成对写出(<!-- dev -->x<!-- /dev -->)也算整段内部内容
 const INLINE_PAIR = /<!--\s*(dev|dev-only|internal|内部|开发者)\s*-->[\s\S]*?<!--\s*\/\s*\1\s*-->/gi;
 const COMMITISH = /\b[0-9a-f]{7,40}\b/;

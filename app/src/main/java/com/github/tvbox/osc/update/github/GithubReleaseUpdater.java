@@ -198,8 +198,11 @@ public class GithubReleaseUpdater implements Updater {
         String direct = directUrl.trim();
         String proxy = UpdaterConfig.getGithubDownloadProxy();
         if (!proxy.isEmpty()) {
+            // 前缀必须以 / 结尾,否则拼出来是 `https://gh-proxy.orghttps://github.com/...`(非法 URL,
+            // 该候选恒失败)。默认值自带斜杠,这里是防自定义值漏写。
+            String prefix = proxy.endsWith("/") ? proxy : proxy + "/";
             // 拼接形如 https://gh-proxy.org/https://github.com/...
-            list.add(proxy + direct);
+            list.add(prefix + direct);
         }
         list.add(direct);
         return list;

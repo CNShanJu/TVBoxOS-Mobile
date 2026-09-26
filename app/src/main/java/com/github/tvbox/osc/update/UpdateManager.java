@@ -114,7 +114,7 @@ public final class UpdateManager {
             this.targetFile = info == null ? null : apkFile(context, info);
 
             // 已下载完整?直接复用(对应"检查本地已下载对应版本 apk,存在即使用")
-            if (isCachedComplete(targetFile, info)) {
+            if (isCachedComplete(context, targetFile, info)) {
                 this.downloaded = targetFile.length();
                 this.state = State.COMPLETED;
                 notifyListeners();
@@ -313,10 +313,20 @@ public final class UpdateManager {
             Response resp = call.execute();
             try {
                 if (resp.code() == 416) {
-                    // Range 不被服务端支持,重来
+                    // 416 = Range 起点超出资源长度(服务端换了文件/不接受 Range 时常见)。
+                    // 原实现只是把计数清零,然后继续读 **416 的错误响应体**当数据写进目标文件 ——
+                    // apkSize 未知时那份错误页还会被当成"下载完整"直接去安装。
+                    // 这里关掉响应,**不带 Range 重发一次**从头下载。
+                    resp.close();
                     downloaded = 0;
                     dest.delete();
-                } else if (!resp.isSuccessful() || resp.body() == null) {
+                    Request retryReq = new Request.Builder().url(url).build();
+                    call = client.newCall(retryReq);
+                    currentCall = call;
+                    resp = call.execute();
+                    LOG.i(TAG, "Range 不被接受(416),已改为不带 Range 重下: " + url);
+                }
+                if (!resp.isSuccessful() || resp.body() == null) {
                     // 该候选失效(如代理不可用/限流/404):交外层切换下一候选
                     return DownloadResult.FAIL;
                 } else if (startFrom > 0 && resp.code() != 206) {
@@ -470,10 +480,16 @@ public final class UpdateManager {
     }
 
     /** 体积符合预期且非空判定为"已下载完整"(命中即复用,不重新下载) */
-    private static boolean isCachedComplete(File file, UpdateInfo info) {
+    private static boolean isCachedComplete(Context context, File file, UpdateInfo info) {
         if (file == null || !file.exists() || file.length() <= 0) return false;
-        if (info != null && info.apkSize > 0 && file.length() != info.apkSize) return false;
-        return true;
+        if (info != null && info.apkSize > 0) return file.length() == info.apkSize;
+        // 资产没给 size 时不能只凭"文件非空"就当完整:上次中断留下的半截文件会被直接拿去安装,
+        // 用户看到的是"解析软件包时出现问题"。这里解析 APK 头验证(损坏/截断返回 -1),不通过就删掉重下。
+        if (readApkVersionCode(context, file.getAbsolutePath()) > 0) return true;
+        LOG.i(TAG, "缓存 APK 不完整或损坏,删除后重新下载: " + file.getName());
+        //noinspection ResultOfMethodCallIgnored
+        file.delete();
+        return false;
     }
 
     /** 读取 APK 包 versionCode;非 APK/损坏返回 -1 */
