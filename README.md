@@ -73,12 +73,12 @@ export JAVA_HOME=/path/to/jdk17
     ↓
 业务实现: :spider、:player
     ↓
-基础设施: :core-network、:core-storage、:state、:log、:core-utils
+基础设施: :core-network、:core-storage、:log、:common(工具+共享模型+系统状态)
     ↓
 纯模型: :core-model
 ```
 
-其他模块:`quickjs`(JS 引擎)、`crash`(崩溃捕获)、`ui-common`(主题/通用资源)、`TabLayout`、`ViewPager1Delegate`。
+其他模块:`quickjs`(JS 引擎)、`thirdparty`(第三方归堆:TabLayout + ViewPager1Delegate + CustomActivityOnCrash 崩溃页)、`ui-common`(主题/通用资源,待并入 :app)。
 
 ## 目录结构与文档
 

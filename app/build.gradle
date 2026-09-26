@@ -206,16 +206,12 @@ dependencies {
 
     implementation project(":player")
     implementation project(":quickjs")
-    implementation project(":core-model")
-    implementation project(":core-utils")
+    implementation project(':common')
     implementation project(":core-storage")
     implementation project(":log")
-    implementation project(":state")
-    implementation project(":player-api")
     implementation project(":core-network")
     implementation project(":ui-common")
     implementation project(":spider")
-    implementation project(":spider-api")
     implementation project(":download")
 
     // implementation 'com.tencent.bugly:crashreport_upgrade:latest.release'
@@ -238,8 +234,7 @@ dependencies {
     implementation 'com.github.lihangleo2:ShadowLayout:3.3.3'
 
     //tab标题栏
-    implementation project(":TabLayout")
-    implementation project(':ViewPager1Delegate')
+    implementation project(':thirdparty')
     //TabLayout的非kt项目需要依赖这个包实现点击事件等
     implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk8:$kotlin_version"
     //展开收缩tv
@@ -251,7 +246,6 @@ dependencies {
     //毛玻璃底栏(BlurView: API31+ RenderEffect 硬件模糊 / 低版本 RenderScript 回退)
     implementation 'com.eightbitlab:blurview:1.6.3'
     //崩溃
-    implementation project(":crash")
     //单元测试(JVM,纯逻辑)
     testImplementation 'junit:junit:4.13.2'
     //dlna投屏(已移除:com.github.devin1014.DLNA-Cast:dlna-dmc:V1.0.0 已从 JitPack 消失,功能暂用桩实现,见 _backup_dlna/)

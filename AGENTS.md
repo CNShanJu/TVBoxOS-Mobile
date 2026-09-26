@@ -32,7 +32,7 @@ app / feature
 
 | 模块 | 边界要求 |
 |---|---|
-| `:core-model` | 纯 Java 模型,不依赖 Android/Hawk/Room/ApiConfig,不执行网络与 DB;尽量不可变;模型无 getSource()/save() 等基础设施行为 |
+| `:common` | 全局共用:纯模型(`com.github.tvbox.osc.bean.*`,不依赖 Android/Hawk/Room/ApiConfig)+ 算法工具(AES/MD5/AdBlocker)+ 系统状态(`.state.*`);由原 `:core-model`/`:core-utils`/`:state` 三模块合并,包名不变 |
 | `:core-network` | 收敛网络客户端(OkGoHelper/HttpClient/各 OkHttp 创建),业务不得自行 `new OkHttpClient.Builder()` |
 | `:core-storage` | Room/缓存/配置收口,对外只暴露 Repository/类型安全 Config,不暴露 DAO;storage 不得依赖 spider/download/player |
 | `:spider-api` | 爬虫契约(SourcePage/Category/Detail/Search/Play 请求与结果),QuickJS/JarLoader/ApiConfig/具体 Spider 留在 :spider |
@@ -42,7 +42,7 @@ app / feature
 
 现状残留(持续治理,新代码勿新增同类):
 - app 仍直用 `MyVideoView`/IJK/Exo、`PlayerTrackHelper` 按内核分发(播放器收口长线)。
-- `:core-network` 内部仍是杂项袋(util/{HttpClient,OkGoHelper,AES,MD5,AdBlocker,AppLog,LOG,urlhttp/*}),待拆。
+- `:core-network` 已只剩网络职责(OkGoHelper/HttpClient/HttpUrls/FCallBack/HCallBack/SSLCompat/urlhttp 的 brotli 拦截器);AES/MD5/AdBlocker/AppLog/LOG 已迁出。残留:网络客户端装配与通用工具仍同包,后续可按职责再分目录。
 - `:spider-api` 字符串通道(SpiderContentApi)为过渡兼容层,新功能不得新增字符串协议依赖。
 - 未建 `:playback` / feature-* 模块(第三/四阶段,需真机回归环境再动)。
 
@@ -108,9 +108,16 @@ app / feature
   原矢量 `ic_image_placeholder.xml`(`D:\Code\Video\icon\图片加载失败.svg` 转)保留为回退,不再被引用。
   禁止各页面/适配器自行引入第二套占位图
   (如 iv_load_fail / img_loading_placeholder / ic_img_placeholder / ic_poster_placeholder 等),发现即收敛到统一占位。
+  **占位只有一套实现**:`util/PosterPlaceholderDrawable`(加载态 `loading` / 失败态 `failed`,色值圆角图标与
+  XML `placeholder_poster` 同源)+ 统一加载入口 `util/PicassoLoad`(URL 走 `into`、本地文件走 `intoFile`);
+  XML `placeholder_poster` 只作**布局里的静态形态**(首帧),运行时占位一律经 `PicassoLoad` 铺。
+  **占位必须放 ImageView 的背景层,禁止塞进 src / `.placeholder()`**:占位是"灰底+居中图标",
+  塞 src 会被 scaleType(centerCrop)当普通图片等比放大再裁剪,小卡片上会**超出显示范围**
+  (下载页 56×74dp 封面曾经的故障)。**图标尺寸必须随宿主自适应**:位图各密度都是 96dp 且几乎撑满画布,
+  宿主小于 96dp 时按比例缩(只缩不放),否则一样会溢出。
   **失败态文案位置有硬约束**:海报卡底部有一条渐变黑底信息条(`view_search_poster_card.xml` 的
   `llNoteBar`、`item_grid.xml` 的底部覆盖条),它绘制在 ImageView 背景之上,故"图片加载失败"文字与图标
-  必须排在**该条上方**的可用区内。实现见 `util/ErrorPlaceholderDrawable`:**整组在卡片里垂直居中**,
+  必须排在**该条上方**的可用区内。实现见 `util/PosterPlaceholderDrawable#failed`:**整组在卡片里垂直居中**,
   覆盖条高度由宿主视图自动量(排在图片之后、可见、贴住图片底边、只占下半部分、非 TextView/ImageView 的兄弟),
   居中放不下就等比缩小图标(下限 40dp)、再放不下才整体上移、最后只留文字;宿主没有覆盖条时纯居中,
   **不要再固定预留一段高度**(固定预留会让整组贴到卡片顶部,观感上"整体往上飘")。
@@ -121,7 +128,7 @@ app / feature
 ## 八、推荐推进顺序(供排期参考)
 
 1. **第一阶段(补边界)**:SourceViewModel→SpiderApi;DownloadFragment→DownloadFacade;DetailActivity 不直调 DownloadManager;注册并使用 PlayerFactory;禁止新增 Hawk/EventBus/具体 Manager 直调。
-2. **第二阶段(抽基础)**:core-model → spider-api → core-network → core-storage。
+2. **第二阶段(抽基础)**:common(模型/工具/状态)→ spider-api → core-network → core-storage。
 3. **第三阶段(拆播放器与大页)**:playback shell;拆 PlayFragment/DetailActivity;字幕迁 playback;ViewModel 只调接口。
 4. **第四阶段**:feature-* 按需模块化(不要在依赖未稳时先搬目录)。
 5. **第五阶段(现代化)**:Exo→Media3、EventBus→Flow/接口、Hawk→DataStore、Java→Kotlin、Hilt(按需)、依赖检查与测试门禁。
