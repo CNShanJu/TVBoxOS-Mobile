@@ -205,7 +205,6 @@ dependencies {
     }
 
     implementation project(":player")
-    implementation project(":quickjs")
     implementation project(':common')
     implementation project(":core-storage")
     implementation project(":log")
