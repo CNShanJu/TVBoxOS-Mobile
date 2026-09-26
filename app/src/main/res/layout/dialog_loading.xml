@@ -36,8 +36,23 @@
         android:shadowDx="0"
         android:shadowDy="1"
         android:shadowRadius="2"
-        android:textColor="#FFFFFFFF"
+        android:textColor="@color/white"
         android:textSize="13sp"
         android:visibility="gone"
         tools:text="正在识别资源站 3/10" />
+
+    <!-- 可取消流程(导出/导入等长耗时)才显示:默认隐藏,由 LoadingDialog.setOnCancel 打开。
+         用全局按钮色板 BtnSecondary(= btn_cancel_bg / btn_cancel_text / btn_stroke / radius_btn),
+         不写任何色值:浅色主题是"浅灰填充+深字",暗色主题是"透明+40% 描边+浅字",压在加载框的深色遮罩上都清楚 -->
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/btn_loading_cancel"
+        style="@style/BtnSecondary"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center_horizontal"
+        android:layout_marginTop="14dp"
+        android:minWidth="96dp"
+        android:text="取消"
+        android:visibility="gone"
+        tools:visibility="visible" />
 </LinearLayout>

@@ -5,21 +5,20 @@
     <!--应用的主要色调,actionBar默认使用该颜色,Toolbar导航栏的底色(由 theme/theme_colors.json 的 text_highlight 控制)-->
     <color name="colorPrimary">@color/text_highlight</color>
     <!--CheckBox,RadioButton,SwitchCompat等一般控件的选中效果默认采用该颜色-->
-    <color name="colorAccent">@color/text_highlight</color>
     <!--    默认window窗口(activity)背景颜色(由 theme/theme_colors.json 的 bg_body 控制)-->
     <color name="windowBackground">@color/bg_body</color>
 
     <!-- ============ Material 3 色板(浅色,中性灰白系;主体色由 theme/theme_colors.json 控制) ============ -->
     <color name="md_primary">@color/text_highlight</color>
-    <color name="md_on_primary">#FFFFFF</color>
+    <color name="md_on_primary">@color/btn_select_text</color>
     <color name="md_primary_container">@color/bg_component</color>
     <color name="md_on_primary_container">@color/text_highlight</color>
-    <color name="md_secondary">#4B5563</color>
-    <color name="md_on_secondary">#FFFFFF</color>
+    <color name="md_secondary">@color/text_sub</color>
+    <color name="md_on_secondary">@color/btn_select_text</color>
     <color name="md_secondary_container">@color/bg_component</color>
     <color name="md_on_secondary_container">@color/text_highlight</color>
-    <color name="md_tertiary">#6B7280</color>
-    <color name="md_on_tertiary">#FFFFFF</color>
+    <color name="md_tertiary">@color/text_sub</color>
+    <color name="md_on_tertiary">@color/btn_select_text</color>
     <color name="md_tertiary_container">@color/bg_component</color>
     <color name="md_on_tertiary_container">@color/text_highlight</color>
     <color name="md_error">#B3261E</color>
@@ -27,16 +26,14 @@
     <color name="md_error_container">#F9DEDC</color>
     <color name="md_on_error_container">#410E0B</color>
     <color name="md_surface">@color/bg_body</color>
-    <color name="md_on_surface">#1D1B20</color>
+    <color name="md_on_surface">@color/text_main</color>
     <color name="md_surface_variant">@color/bg_component</color>
-    <color name="md_on_surface_variant">#49454F</color>
-    <color name="md_background">@color/bg_body</color>
-    <color name="md_on_background">#1D1B20</color>
+    <color name="md_on_surface_variant">@color/text_sub</color>
     <color name="md_outline">#9CA3AF</color>
     <!-- ============ Material 3 色板结束 ============ -->
 
     <color name="bg_gray">@color/bg_component</color>
-    <color name="gray_darker">#7f7b79</color>
+    <color name="gray_darker">@color/text_sub</color>
     <!--    深灰点击透明度-->
     <color name="gray_darker_press_alpha">#3C808080</color>
 
@@ -44,27 +41,25 @@
     <color name="white">#FFFFFF</color>
     <color name="black">#000000</color>
     <color name="text_foreground">@color/text_main</color>
-    <color name="text_sub_foreground">#787878</color>
+    <!-- 文字分级(全部由主题文件驱动,不再写死):正常=text_main / 次要灰=text_sub / 未选中·占位=text_hint /
+         禁用=text_disable / 强调·选中=text_highlight / 高亮(蓝)=text_accent -->
+    <color name="text_sub_foreground">@color/text_sub</color>
     <color name="light_gray_color">#e6e6e6</color>
     <!--    警示黄色-->
     <color name="warn">#ffcb6b</color>
-    <color name="red">#ff4444</color>
+    <color name="red">@color/swipe_red</color>
 
-    <color name="disable_text">#b3b3b3</color>
+    <color name="disable_text">@color/text_disable</color>
 
     <!-- bg_popup(弹层/抽屉背景, 现为半透明可调) 已上移到 assets/theme/theme_colors.json 统一维护, 此处不再重复定义 -->
 
     <!--    制定颜色-->
     <!--    页面背景色,activity.fragment等-->
-    <color name="bg_page">#000000</color>
 
     <!--    不可用灰色颜色-->
-    <color name="disable_gray">#cccccc</color>
 
     <color name="orange">#ff4600</color>
 
-    <color name="color_6200EE">#6200EE</color>
-    <color name="color_3700B3">#3700B3</color>
     <color name="color_03DAC5">#03DAC5</color>
     <color name="title_fouse_n">#ffce7900</color>
     <!-- color_highlight(全局高亮/选中色)与 accent_on_dark(固定深色面上的强调色)已上移到
@@ -72,36 +67,13 @@
          color_highlight 现在与主按钮同色:亮色主题=页面主黑 #1F2937、暗色主题=#E5E7EB,
          开关/chip 选中/选中文字/进度条等都跟着走;原 #1890FF 蓝只保留给不随主题的固定深色面
          (直播页频道列表、播放控制抽屉、EPG 选中态),即 accent_on_dark。 -->
-    <color name="color_FFB800">#FF6600</color>
-    <color name="color_00FF0A">#00FF0A</color>
-    <color name="color_CBF46A">#CBF46A</color>
-    <color name="color_FF90CA09">#90CA09</color>
-    <color name="color_BD0CADE2">#BD0CADE2</color>
-    <color name="color_FF0057">#FF0057</color>
-    <color name="color_FF5F00">#FF5F00</color>
     <color name="color_FFB6C1">#FFB6C1</color>
-    <color name="color_3D3D3D">#3D3D3D</color>
-    <color name="color_32364E">#32364E</color>
-    <color name="color_6632364E">#6632364E</color>
-    <color name="color_CCFFFFFF">#BBFFFFFF</color>
-    <color name="color_0CADE2">#0CADE2</color>
-    <color name="color_6CFFFFFF">#6CFFFFFF</color>
     <color name="color_66000000">#66000000</color>
-    <color name="color_99000000">#99000000</color>
     <color name="color_02F8E1">#02F8E1</color>
-    <color name="color_353744">#353744</color>
-    <color name="color_CC353744">#CC353744</color>
     <color name="color_6C3D3D3D">#6c3d3d3d</color>
-    <color name="color_BBFFFFFF">#bbffffff</color>
-    <color name="color_FFFFFF">#ffffffff</color>
-    <color name="color_33FFFFFF">#33ffffff</color>
-    <color name="color_99FFFFFF">#4D777373</color>
-    <color name="color_59353744">#59353744</color>
-    <color name="color_80FF0057">#66FF0057</color>
+    <color name="color_FFFFFF">@color/white</color>
 
     <!-- "上次看到"弹窗固定配色(不随明暗主题变化,保证两种模式下白字/白图标均清晰可读) -->
-    <color name="last_viewed_popup_start">#567DF4</color>
-    <color name="last_viewed_popup_end">#3E4FB1</color>
 
     <!-- 海报角标(评分/年份/来源)背景:压在图片上,**不随主题**（亮/暗主题保持同一个深色 + 白字，
          否则暗色主题下浅底白字和亮色主题观感不一致）;别改成 btn_select_* 那对会随主题翻转的色 -->
@@ -123,6 +95,6 @@
 
     <!-- 悬浮圆钮(直播/筛选)描边色:亮色用深色主文字 40% 透明度描边,
          避免 1dp 组件色描边在白底上几乎不可见, 与页面黑底融合 -->
-    <color name="fab_stroke">#661F2937</color>
+    <color name="fab_stroke">@color/btn_stroke</color>
 
 </resources>

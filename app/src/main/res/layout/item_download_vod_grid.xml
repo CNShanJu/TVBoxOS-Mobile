@@ -19,6 +19,8 @@
             android:id="@+id/ivThumb"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
+            android:background="@drawable/placeholder_poster"
+            android:clipToOutline="true"
             android:scaleType="centerCrop" />
 
         <!-- 左上角:长按多选时的圆形勾选框(未选中=外环,选中=外环+内部填充圆,两圆有边距) -->

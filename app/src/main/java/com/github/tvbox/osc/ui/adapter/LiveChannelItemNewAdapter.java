@@ -33,9 +33,11 @@ public class LiveChannelItemNewAdapter extends BaseQuickAdapter<LiveChannelItem,
         tvChannel.setText(item.getChannelName());
         int channelIndex = item.getChannelIndex();
         if (channelIndex == selectedChannelIndex && channelIndex != focusedChannelIndex) {
-            tvChannelNum.setTextColor(mContext.getResources().getColor(R.color.white));
-            tvChannel.setTextColor(mContext.getResources().getColor(R.color.white));
-            root.setBackground(mContext.getResources().getDrawable(R.drawable.bg_live_tab_selected));
+            // 选中态与全局"已选中"实心样式一致(背景图设置页那几个预设 chip 同款):
+            // 底 = btn_select_bg(主题主色),字 = btn_select_text(主色上的文字)—— 不再用各页面自配色
+            tvChannelNum.setTextColor(mContext.getResources().getColor(R.color.btn_select_text));
+            tvChannel.setTextColor(mContext.getResources().getColor(R.color.btn_select_text));
+            root.setBackground(mContext.getResources().getDrawable(R.drawable.bg_r_common_solid_select));
         } else{
             tvChannelNum.setTextColor(mContext.getResources().getColor(R.color.text_foreground));
             tvChannel.setTextColor(mContext.getResources().getColor(R.color.text_foreground));

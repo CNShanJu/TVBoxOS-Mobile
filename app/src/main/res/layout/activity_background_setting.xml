@@ -96,139 +96,166 @@
                 app:tint="@color/text_foreground" />
         </LinearLayout>
 
-        <!-- 可收起的内容区(高度由代码做 0↔full 动画,实现抽屉效果) -->
+        <!-- 可收起的内容区(高度由代码做 0↔full 动画,实现抽屉效果)。
+             结构:上面是可滚动区(超高时内部滚动),下面是常显的按钮行 —— 两个按钮固定在面板
+             最下面,不会被上面的内容顶出去/裁掉(内容高度由代码按可用高度封顶) -->
         <LinearLayout
             android:id="@+id/panel_content"
             android:layout_width="match_parent"
             android:layout_height="0dp"
             android:orientation="vertical">
 
-            <TextView
-                android:id="@+id/tv_hint"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:paddingHorizontal="8dp"
-                android:text="单指拖动调整位置,双指等比缩放"
-                android:textColor="@color/text_sub_foreground"
-                android:textSize="12sp" />
-
-            <!-- 预设:尺寸 + 位置(点一下立即套用,当前状态对应的项会高亮) -->
-            <LinearLayout
+            <!-- 可滚动区:高度由代码设成"内容区高度 - 底部按钮行";内边距 + clipToPadding=false,
+                 滚动中内容不贴边(AGENTS §六.7) -->
+            <ScrollView
+                android:id="@+id/panel_scroll"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="6dp"
-                android:orientation="horizontal"
-                android:paddingHorizontal="8dp">
+                android:clipToPadding="false"
+                android:paddingVertical="2dp">
 
-                <TextView
-                    android:id="@+id/chip_fill"
-                    style="@style/PageBgChip"
-                    android:text="全屏铺满" />
+                <LinearLayout
+                    android:id="@+id/panel_scroll_content"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical">
 
-                <TextView
-                    android:id="@+id/chip_native"
-                    style="@style/PageBgChip"
-                    android:text="保持大小" />
+                    <TextView
+                        android:id="@+id/tv_hint"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:paddingHorizontal="8dp"
+                        android:text="单指拖动调整位置,双指等比缩放"
+                        android:textColor="@color/text_sub_foreground"
+                        android:textSize="12sp" />
 
-                <TextView
-                    android:id="@+id/chip_center"
-                    style="@style/PageBgChip"
-                    android:text="居中显示" />
-            </LinearLayout>
+                    <!-- 预设:尺寸 + 位置(点一下立即套用,当前状态对应的项会高亮) -->
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="6dp"
+                        android:orientation="horizontal"
+                        android:paddingHorizontal="8dp">
 
-            <!-- 四角 = 保持原始大小并贴到该角 -->
+                        <TextView
+                            android:id="@+id/chip_fill"
+                            style="@style/PageBgChip"
+                            android:text="全屏铺满" />
+
+                        <!-- 适应屏幕:按屏幕算,宽或高其中一边刚好铺满、另一边留边,整图可见 -->
+                        <TextView
+                            android:id="@+id/chip_fit"
+                            style="@style/PageBgChip"
+                            android:text="适应屏幕" />
+
+                        <TextView
+                            android:id="@+id/chip_native"
+                            style="@style/PageBgChip"
+                            android:text="原图大小" />
+
+                        <TextView
+                            android:id="@+id/chip_center"
+                            style="@style/PageBgChip"
+                            android:text="居中显示" />
+                    </LinearLayout>
+
+                    <!-- 四角 = 保持原始大小并贴到该角 -->
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:orientation="horizontal"
+                        android:paddingHorizontal="8dp">
+
+                        <TextView
+                            android:id="@+id/chip_tl"
+                            style="@style/PageBgChip"
+                            android:text="左上角" />
+
+                        <TextView
+                            android:id="@+id/chip_tr"
+                            style="@style/PageBgChip"
+                            android:text="右上角" />
+
+                        <TextView
+                            android:id="@+id/chip_bl"
+                            style="@style/PageBgChip"
+                            android:text="左下角" />
+
+                        <TextView
+                            android:id="@+id/chip_br"
+                            style="@style/PageBgChip"
+                            android:text="右下角" />
+                    </LinearLayout>
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="6dp"
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal"
+                        android:paddingHorizontal="8dp">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="背景图透明度"
+                            android:textColor="@color/text_foreground"
+                            android:textSize="14sp" />
+
+                        <com.google.android.material.slider.Slider
+                            android:id="@+id/slider_alpha"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:layout_marginHorizontal="10dp" />
+
+                        <TextView
+                            android:id="@+id/tv_alpha"
+                            android:layout_width="52dp"
+                            android:layout_height="wrap_content"
+                            android:gravity="end"
+                            android:textColor="@color/text_foreground"
+                            android:textSize="14sp"
+                            tools:text="100%" />
+                    </LinearLayout>
+
+                    <!-- 遮罩开关:遮罩不透明度固定,用户只开关;关掉后背景原图直出,压在底图上的文字对比度会下降 -->
+                    <LinearLayout
+                        android:id="@+id/ll_scrim"
+                        android:layout_width="match_parent"
+                        android:layout_height="44dp"
+                        android:layout_marginHorizontal="4dp"
+                        android:background="@drawable/ripple_round_background"
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal"
+                        android:paddingHorizontal="4dp">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="背景遮罩"
+                            android:textColor="@color/text_foreground"
+                            android:textSize="14sp" />
+
+                        <Space
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1" />
+
+                        <com.github.tvbox.osc.ui.kit.AppSwitch
+                            android:id="@+id/switch_scrim"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:clickable="false" />
+                    </LinearLayout>
+                </LinearLayout>
+            </ScrollView>
+
+            <!-- 底部动作:恢复默认(次) + 确认背景(主);改动只有确认后才写入配置。
+                 常显在面板最下面(不随上面内容滚动/被顶出去) -->
             <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="4dp"
-                android:orientation="horizontal"
-                android:paddingHorizontal="8dp">
-
-                <TextView
-                    android:id="@+id/chip_tl"
-                    style="@style/PageBgChip"
-                    android:text="左上角" />
-
-                <TextView
-                    android:id="@+id/chip_tr"
-                    style="@style/PageBgChip"
-                    android:text="右上角" />
-
-                <TextView
-                    android:id="@+id/chip_bl"
-                    style="@style/PageBgChip"
-                    android:text="左下角" />
-
-                <TextView
-                    android:id="@+id/chip_br"
-                    style="@style/PageBgChip"
-                    android:text="右下角" />
-            </LinearLayout>
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="6dp"
-                android:gravity="center_vertical"
-                android:orientation="horizontal"
-                android:paddingHorizontal="8dp">
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="背景图透明度"
-                    android:textColor="@color/text_foreground"
-                    android:textSize="14sp" />
-
-                <com.google.android.material.slider.Slider
-                    android:id="@+id/slider_alpha"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:layout_marginHorizontal="10dp" />
-
-                <TextView
-                    android:id="@+id/tv_alpha"
-                    android:layout_width="52dp"
-                    android:layout_height="wrap_content"
-                    android:gravity="end"
-                    android:textColor="@color/text_foreground"
-                    android:textSize="14sp"
-                    tools:text="100%" />
-            </LinearLayout>
-
-            <!-- 遮罩开关:遮罩不透明度固定,用户只开关;关掉后背景原图直出,压在底图上的文字对比度会下降 -->
-            <LinearLayout
-                android:id="@+id/ll_scrim"
-                android:layout_width="match_parent"
-                android:layout_height="44dp"
-                android:layout_marginHorizontal="4dp"
-                android:background="@drawable/ripple_round_background"
-                android:gravity="center_vertical"
-                android:orientation="horizontal"
-                android:paddingHorizontal="4dp">
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="背景遮罩"
-                    android:textColor="@color/text_foreground"
-                    android:textSize="14sp" />
-
-                <Space
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1" />
-
-                <com.github.tvbox.osc.ui.kit.AppSwitch
-                    android:id="@+id/switch_scrim"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:clickable="false" />
-            </LinearLayout>
-
-            <!-- 底部动作:恢复默认(次) + 确认背景(主);改动只有确认后才写入配置 -->
-            <LinearLayout
+                android:id="@+id/panel_actions"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="8dp"

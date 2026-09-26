@@ -9,10 +9,13 @@ import com.github.tvbox.osc.ui.kit.PicassoShimmer;
 import com.squareup.picasso.Callback;
 import com.squareup.picasso.Picasso;
 
+import java.io.File;
+
 /**
- * 图片加载统一入口(首页/历史/收藏等 3:4 竖卡片):
- * 占位不再作为 src 铺满(方形占位在 3:4 卡片 centerCrop 放大再切实图会有"突然挤瘦"跳变),
- * 而是用 ImageView 的背景层(item_grid 的 placeholder_poster = 灰底 + 居中固定比例图标):
+ * 图片加载统一入口(首页/搜索/详情/收藏/历史/下载等所有海报位):
+ * 占位不再作为 src 铺满(占位塞 src 会被 scaleType centerCrop 等比放大再裁剪,小卡片上直接
+ * "撑出显示范围";方形占位在 3:4 卡片里还会有"突然挤瘦"跳变),
+ * 而是用 ImageView 的背景层({@link PosterPlaceholderDrawable}:灰底 + 居中图标,按宿主尺寸自适应):
  * 图标不随盒子缩放裁剪, 始终居中等比; 真实图片加载成功后 centerCrop 铺满盖住背景层。
  * 加载中在背景层上叠"骨架屏扫光"(PicassoShimmer),加载完成/失败移除,避免灰底硬切。
  *
@@ -60,28 +63,50 @@ public class PicassoLoad {
         return true;
     }
 
+    /**
+     * 只把占位换成"加载态"(灰底 + 居中图标),<b>不动 src</b>。
+     * 给"先铺占位、再做同图去重"的场景用(去重命中时不能清 src,否则已显示的图会被抹掉)。
+     */
+    public static void setLoadingPlaceholder(ImageView iv) {
+        if (iv == null) return;
+        iv.setBackground(PosterPlaceholderDrawable.loading(iv.getContext()));
+    }
+
+    /** 加载态占位 + 清 src + 停扫光:换绑新图前"露出占位"用(下载页等本地图源入口) */
+    public static void showLoadingPlaceholder(ImageView iv) {
+        if (iv == null) return;
+        cancelShimmer(iv);
+        PicassoShimmer.stop(iv);
+        iv.setImageDrawable(null);
+        setLoadingPlaceholder(iv);
+    }
+
+    /** 失败/无封面占位(灰底 + 图标 + "图片加载失败")+ 清 src + 停扫光 */
+    public static void showFailedPlaceholder(ImageView iv) {
+        if (iv == null) return;
+        cancelShimmer(iv);
+        PicassoShimmer.stop(iv);
+        iv.setImageDrawable(null);
+        iv.setBackground(PosterPlaceholderDrawable.failed(iv.getContext()));
+    }
+
     public static void into(final ImageView iv, String url) {
         if (iv == null) return;
         // 清掉 src:复用列表项时移除上一张真实图, 露出灰底占位层
         String trimUrl = url == null ? "" : url.trim();
         if (TextUtils.isEmpty(trimUrl)) {
-            cancelShimmer(iv);
-            PicassoShimmer.stop(iv); // 空 URL:无封面,显示"加载失败"占位
-            iv.setImageDrawable(null);
-            iv.setBackground(ErrorPlaceholderDrawable.get(iv.getContext()));
+            // 空 URL:无封面,显示"加载失败"占位
+            showFailedPlaceholder(iv);
             return;
         }
         // 已失败过且仍在窗口内的 URL:直接显示失败占位,不再重新发起请求(修复滑回又重载);清 src 露出占位
         if (recentlyFailed(trimUrl)) {
-            cancelShimmer(iv);
-            PicassoShimmer.stop(iv);
             iv.setTag(TAG_LAST_URL, trimUrl);
-            iv.setImageDrawable(null);
-            iv.setBackground(ErrorPlaceholderDrawable.get(iv.getContext()));
+            showFailedPlaceholder(iv);
             return;
         }
-        // 恢复为正常占位(上一张可能是"加载失败")
-        iv.setBackgroundResource(com.github.tvbox.osc.R.drawable.placeholder_poster);
+        // 恢复为正常占位(上一张可能是"加载失败");此时不动 src —— 下面同图去重命中要保留已显示的图
+        setLoadingPlaceholder(iv);
         // 同一张图已显示(滑回/复用相同项):不重载、不闪
         if (trimUrl.equals(iv.getTag(TAG_LAST_URL))) return;
         iv.setTag(TAG_LAST_URL, trimUrl);
@@ -116,11 +141,46 @@ public class PicassoLoad {
 
                     @Override
                     public void onError(Exception e) {
-                        cancelShimmer(iv);
-                        PicassoShimmer.stop(iv);
                         // 加载失败:记入失败窗口(窗口内滑回不再重试)并切到带"图片加载失败"文字的占位
                         sessionFailed.put(trimUrl, System.currentTimeMillis());
-                        iv.setBackground(ErrorPlaceholderDrawable.get(iv.getContext()));
+                        showFailedPlaceholder(iv);
+                    }
+                });
+    }
+
+    /**
+     * 本地图片文件统一入口(下载页剧集海报等):占位/失败语义与 {@link #into(ImageView, String)} 完全一致
+     * (占位/失败都画在背景层,src 只放实图),只是图源是本地文件。
+     *
+     * <p>用 fit()+centerCrop 按控件尺寸解码:RecyclerView 绑定条目先于测量,此时 iv 尺寸为 0,
+     * centerCrop 不带正尺寸直接 build 会抛 IllegalStateException;fit() 会等布局完成后再按真实尺寸加载。
+     * 本地文件读取很快,故不叠骨架屏扫光。
+     */
+    public static void intoFile(final ImageView iv, final File file) {
+        if (iv == null) return;
+        if (file == null || !file.exists() || file.length() <= 0) {
+            showFailedPlaceholder(iv);
+            iv.setTag(TAG_LAST_URL, null); // 清去重记录:文件补齐后重绑能再次加载
+            return;
+        }
+        String key = file.getAbsolutePath();
+        // 同一张本地海报已绑定(状态刷新/多选切换整行重绑):不重载、不闪
+        if (key.equals(iv.getTag(TAG_LAST_URL))) return;
+        iv.setTag(TAG_LAST_URL, key);
+        showLoadingPlaceholder(iv);
+        Picasso.get()
+                .load(file)
+                .fit()
+                .centerCrop()
+                .into(iv, new Callback() {
+                    @Override
+                    public void onSuccess() {
+                    }
+
+                    @Override
+                    public void onError(Exception e) {
+                        iv.setTag(TAG_LAST_URL, null); // 失败:下次重绑允许再试
+                        showFailedPlaceholder(iv);
                     }
                 });
     }

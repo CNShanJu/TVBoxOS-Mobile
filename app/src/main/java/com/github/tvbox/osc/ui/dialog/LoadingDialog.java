@@ -25,7 +25,9 @@ import org.jetbrains.annotations.NotNull;
 public class LoadingDialog extends CenterPopupView {
 
     private TextView msgView;
+    private com.google.android.material.button.MaterialButton cancelView;
     private CharSequence pendingHint;
+    private Runnable onCancel;
 
     public LoadingDialog(@NonNull @NotNull Context context) {
         super(context);
@@ -41,8 +43,29 @@ public class LoadingDialog extends CenterPopupView {
         super.onCreate();
         LoadingAnim.apply(findViewById(R.id.lottie_loading));
         msgView = findViewById(R.id.tv_loading_msg);
+        cancelView = findViewById(R.id.btn_loading_cancel);
         applyMsgGap();
         setHint(pendingHint);   // show() 与 onCreate 之间设过的提示在此补上
+        bindCancel();
+    }
+
+    /**
+     * 设置"取消"回调:非空时显示取消按钮(导出/导入这类长耗时流程给用户一条退路),
+     * 传 null 隐藏按钮并清掉回调(默认的阻塞式加载框就是这种)。
+     */
+    public void setOnCancel(Runnable listener) {
+        onCancel = listener;
+        bindCancel();
+    }
+
+    private void bindCancel() {
+        if (cancelView == null) return;   // 弹窗还没创建完:由 onCreate 补上
+        boolean show = onCancel != null;
+        cancelView.setVisibility(show ? View.VISIBLE : View.GONE);
+        cancelView.setOnClickListener(show ? v -> {
+            Runnable r = onCancel;
+            if (r != null) r.run();
+        } : null);
     }
 
     /**

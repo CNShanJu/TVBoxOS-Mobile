@@ -19,6 +19,8 @@ import com.chad.library.adapter.base.BaseViewHolder;
 import com.github.tvbox.osc.R;
 import com.github.tvbox.osc.bean.VideoInfo;
 import com.github.tvbox.osc.constant.CacheConst;
+import com.github.tvbox.osc.util.HeavyTaskUtil;
+import com.github.tvbox.osc.util.PicassoLoad;
 import com.github.tvbox.osc.util.Utils;
 
 import java.util.IdentityHashMap;
@@ -26,7 +28,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 
 public class LocalVideoAdapter extends BaseQuickAdapter<VideoInfo, BaseViewHolder> {
 
@@ -53,11 +54,11 @@ public class LocalVideoAdapter extends BaseQuickAdapter<VideoInfo, BaseViewHolde
             return size() > FRAME_CACHE_MAX;
         }
     };
-    private static final ExecutorService FRAME_EXECUTOR = Executors.newSingleThreadExecutor(r -> {
-        Thread t = new Thread(r, "tvbox-video-frame");
-        t.setDaemon(true);
-        return t;
-    });
+    // 取帧走模块级共享执行器(AGENTS §六.6:UI/页面不得自建线程池)。
+    // 原实现是自建单线程池("tvbox-video-frame"),与 util/LocalVideoFrameLoader 里那个同功能池重复;
+    // 统一用 HeavyTaskUtil 的图片执行器(多线程,列表滚动时取帧更快);
+    // "取消/过期"语义由下面的 TAG_KEY_PATH 复用自检承担(holder 滚走/复用后回调直接丢弃)。
+    private static final ExecutorService FRAME_EXECUTOR = HeavyTaskUtil.getImageExecutorService();
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
     // 行内 tag key:异步取帧回调校验 holder 是否已复用到其它条目
     private static final int TAG_KEY_PATH = 0x6d000001;
@@ -128,7 +129,10 @@ public class LocalVideoAdapter extends BaseQuickAdapter<VideoInfo, BaseViewHolde
             progressBar.setProgress(0);
         }
 
-        // 封面:视频内容截图(异步 MediaMetadataRetriever 取帧,第1秒画面避免黑帧;失败回退占位;顺带补时长)
+        // 封面:视频内容截图(异步 MediaMetadataRetriever 取关键帧,第1秒画面避免黑帧;顺带补时长)。
+        // 取帧前/取不到统一走背景层的统一占位(PicassoLoad → PosterPlaceholderDrawable):
+        // 灰底 + 居中图标按 156×88dp 封面槽自适应铺满 —— 以前把方形占位塞 src,配 fitCenter 会缩成
+        // 一个居中小方块(四周留白),配 centerCrop 又会被放大裁掉,两种都不对。
         ImageView iv = helper.getView(R.id.iv);
         iv.setTag(TAG_KEY_PATH, item.getPath());
         iv.setTag(TAG_KEY_VIEWS, new Object[]{tvDuration, progressBar});
@@ -136,7 +140,7 @@ public class LocalVideoAdapter extends BaseQuickAdapter<VideoInfo, BaseViewHolde
         if (cached != null) {
             iv.setImageBitmap(cached);
         } else {
-            iv.setImageResource(R.drawable.iv_video);
+            PicassoLoad.showLoadingPlaceholder(iv);
             loadFrameAsync(iv, item.getPath());
         }
 
@@ -163,8 +167,15 @@ public class LocalVideoAdapter extends BaseQuickAdapter<VideoInfo, BaseViewHolde
                     } catch (Throwable ignored) {
                     }
                 }
-                // 取第 1 秒画面(避开黑屏/灰屏首帧),CLOSEST_SYNC 保证拿到关键帧
+                // 取第 1 秒画面(避开黑屏/灰屏首帧),CLOSEST_SYNC 保证拿到关键帧;
+                // 拿不到再退到第 0 秒 / 任意可用帧 —— 短片头、非常规容器(部分 ts/合并流)只有这些兜底能出帧
                 bmp = mmr.getFrameAtTime(1000 * 1000, MediaMetadataRetriever.OPTION_CLOSEST_SYNC);
+                if (bmp == null) {
+                    bmp = mmr.getFrameAtTime(0, MediaMetadataRetriever.OPTION_CLOSEST_SYNC);
+                }
+                if (bmp == null) {
+                    bmp = mmr.getFrameAtTime();
+                }
             } catch (Throwable th) {
                 bmp = null;
             } finally {
@@ -182,7 +193,8 @@ public class LocalVideoAdapter extends BaseQuickAdapter<VideoInfo, BaseViewHolde
                     frameCache.put(path, fb);
                     iv.setImageBitmap(fb);
                 } else {
-                    iv.setImageResource(R.drawable.placeholder_poster);
+                    // 取不到帧:保持统一占位(灰底 + 居中图标,不写"加载失败"—— 本地视频/下载完成列表没有失败语义)
+                    PicassoLoad.showLoadingPlaceholder(iv);
                 }
                 // 时长补写 SP + 刷新该行时长文本/进度条
                 if (fdur > 0) {

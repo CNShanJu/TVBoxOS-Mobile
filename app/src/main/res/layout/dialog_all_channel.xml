@@ -22,7 +22,8 @@
         android:scrollbars="none"
         android:layout_gravity="center"
         android:layout_marginLeft="40dp"
-        tools:listitem="@layout/item_live_channel_group_new"/>
+        tools:listitem="@layout/item_live_channel_group_new"
+        android:clipToPadding="false" />
 
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/mChannelGridView"
@@ -35,5 +36,8 @@
         android:scrollbars="none"
         android:layout_marginLeft="30dp"
         android:layout_marginRight="40dp"
-        tools:listitem="@layout/item_live_channel_new"/>
+        tools:listitem="@layout/item_live_channel_new"
+        android:paddingHorizontal="10dp"
+        android:clipToPadding="false"
+        />
 </LinearLayout>

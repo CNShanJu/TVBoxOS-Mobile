@@ -23,7 +23,11 @@
 
         <ScrollView
             android:layout_width="match_parent"
-            android:layout_height="wrap_content">
+            android:layout_height="wrap_content"
+            android:paddingTop="8dp"
+            android:paddingBottom="8dp"
+            android:clipToPadding="false"
+            >
 
             <LinearLayout
                 android:layout_width="match_parent"
@@ -195,7 +199,11 @@
                         android:layout_height="wrap_content"
                         app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
                         android:orientation="horizontal"
-                        tools:listitem="@layout/item_select_flag" />
+                        tools:listitem="@layout/item_select_flag" 
+                        android:paddingTop="8dp"
+                        android:paddingBottom="8dp"
+                        android:clipToPadding="false"
+                        />
                 </LinearLayout>
                 <RelativeLayout
                     android:id="@+id/rlLineHeader"
@@ -234,7 +242,11 @@
                     android:layout_marginVertical="4dp"
                     tools:listitem="@layout/item_select_flag"
                     app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
-                    android:orientation="horizontal"/>
+                    android:orientation="horizontal"
+                    android:paddingTop="8dp"
+                    android:paddingBottom="8dp"
+                    android:clipToPadding="false"
+                    />
 
                 <LinearLayout
                     android:id="@+id/llSeriesHeader"
@@ -300,7 +312,10 @@
                     app:tv_verticalSpacingWithMargins="@dimen/dp_10"
                     tools:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
                     tools:orientation="horizontal"
-                    tools:listitem="@layout/item_series"/>
+                    tools:listitem="@layout/item_series"
+                    android:paddingTop="8dp"
+                    android:paddingBottom="8dp"
+                    />
             </LinearLayout>
         </ScrollView>
 
@@ -323,9 +338,13 @@
         android:visibility="gone"
         tools:visibility="gone">
 
+        <!-- 负外边距抵消 ic_empty 的透明留白(128dp 框里顶 46dp、底 29dp),
+             让布局盒子≈图案可见范围、与下方文字间距和 view_empty 空态保持一致 -->
         <ImageView
             android:layout_width="@dimen/dp_128"
             android:layout_height="@dimen/dp_128"
+            android:layout_marginTop="-46dp"
+            android:layout_marginBottom="-20dp"
             android:src="@drawable/ic_empty" />
 
         <TextView

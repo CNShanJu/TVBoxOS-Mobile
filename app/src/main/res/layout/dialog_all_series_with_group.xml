@@ -30,6 +30,9 @@
             app:tv_horizontalSpacingWithMargins="@dimen/dp_10"
             app:tv_selectedItemIsCentered="true"
             tools:listitem="@layout/item_select_flag"
+            
+            android:paddingHorizontal="16dp"
+            android:paddingVertical="4dp"
             />
         <TextView
             android:id="@+id/tvSort"

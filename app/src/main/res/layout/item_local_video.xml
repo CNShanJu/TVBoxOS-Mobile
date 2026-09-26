@@ -22,7 +22,11 @@
         app:layout_constraintLeft_toLeftOf="@id/item"
         app:layout_constraintTop_toTopOf="@id/item" />
 
-    <!-- 封面:视频内容截图(适配器异步取帧,失败回退占位) -->
+    <!-- 封面:视频内容截图(适配器异步取关键帧;取帧前/取不到一律用统一占位组件铺背景层,
+         见 util/PosterPlaceholderDrawable)。
+         这里只给一层纯灰底:方形占位图(96dp/160dp)放进 156×88dp 的 16:9 封面槽,
+         无论 fitCenter(缩成居中方块、四周留白)还是 centerCrop(放大裁掉)都不对,
+         所以布局层不放占位图,交给按宿主尺寸自适应的统一占位(背景层),src 只放关键帧 -->
     <com.lihang.ShadowLayout
         android:id="@+id/iv_container"
         android:layout_width="156dp"
@@ -44,7 +48,9 @@
                 android:id="@+id/iv"
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
-                android:src="@drawable/iv_video" />
+                android:background="@drawable/bg_small_round_gray"
+                android:clipToOutline="true"
+                android:scaleType="centerCrop" />
 
             <View
                 android:layout_width="match_parent"

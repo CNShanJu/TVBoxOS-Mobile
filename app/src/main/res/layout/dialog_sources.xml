@@ -42,7 +42,9 @@
             android:layout_height="wrap_content"
             tools:listitem="@layout/item_source"
             android:layout_marginTop="20dp"
-            />
+            android:paddingTop="8dp"
+            android:paddingBottom="8dp"
+            android:clipToPadding="false" />
     </LinearLayout>
 
 </com.lihang.ShadowLayout>

@@ -38,5 +38,7 @@
         android:orientation="vertical"
         app:layout_constrainedHeight="true"
         tools:listitem="@layout/item_stroke_button"
-        />
+        android:paddingTop="8dp"
+        android:paddingBottom="8dp"
+        android:clipToPadding="false" />
 </LinearLayout>

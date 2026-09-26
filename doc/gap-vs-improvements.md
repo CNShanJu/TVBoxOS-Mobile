@@ -34,7 +34,7 @@
   `SystemConfig`;订阅/搜索域→`util.SubscriptionConfig`;用户页热播缓存→`util.HomeHotCache`。剩余裸读写仅在
   装配/封装边界:App.java 订阅默认注入与 putDefault(启动装配)、RemoteTVBox(类内方法封装)、各配置门面内部。
 - UI 直触 DAO/存储实现：已清零(app `RoomDataManger` 直读已收口到 HistoryRepository)。
-- UI/业务自建线程池：`PlayFragment`(PLAYED_RECORD_EXECUTOR/parseThreadPool)、`Thunder`、subtitle `DefaultTaskExecutor`、`LocalVideoFrameLoader`/`LocalVideoAdapter` 等 `new*ThreadPool`；未全部收口到模块级执行器（各点均有串行/取消语义约束，随大页面拆分一并治理）。
+- UI/业务自建线程池：`PlayFragment`(PLAYED_RECORD_EXECUTOR/parseThreadPool)、`LocalVideoFrameLoader`/`LocalVideoAdapter` **已收口**到模块级执行器 `HeavyTaskUtil`；门禁 `checkModuleDependencies` 的 UI 层红线已从"只认 new*ThreadPool"收紧为拦截 `Executors.new*` 全部工厂 + `new *ThreadPoolExecutor`/`ForkJoinPool`。剩余 `Thunder`、subtitle `DefaultTaskExecutor` 未收口（随大页面拆分一并治理）。
 - EventBus 仍广泛(register/post ~37 处)；新事件仍有出现，未真正退为"仅兼容层"。
 - ui-kit:app 内已建 `com.github.tvbox.osc.ui.kit`(§2.7 第一阶段),迁入 6 个纯净组件;
   播放器/业务耦合视图(Player*View/FrostedGlassUtil)仍留 widget 包。

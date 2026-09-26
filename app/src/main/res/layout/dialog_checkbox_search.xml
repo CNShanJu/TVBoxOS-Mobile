@@ -51,6 +51,9 @@
         android:orientation="vertical"
         tools:listitem="@layout/item_dialog_checkbox_search"
         tools:layoutManager="androidx.recyclerview.widget.GridLayoutManager"
-        tools:spanCount="2"/>
+        tools:spanCount="2"
+        android:paddingTop="8dp"
+        android:paddingBottom="8dp"
+        android:clipToPadding="false" />
 
 </LinearLayout>

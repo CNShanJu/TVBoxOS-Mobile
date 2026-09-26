@@ -115,10 +115,17 @@ public abstract class BaseActivity extends AppCompatActivity implements CustomAd
      * 挂载/刷新全局页面背景层("body"底图):图源、遮罩不透明度、缩放与位置都从
      * {@link com.github.tvbox.osc.config.SystemConfig} 门面组装(见 util/PageBackgroundStore),
      * 设置页改完配置后,各页面 onResume 走这里自动套用。
+     * <p>
+     * 顺带接上"老配置位移→锚点"的迁移回调:背景层拿到图片尺寸后换算出的锚点在这里落盘(一次性),
+     * 之后换横竖屏/分辨率都按锚点还原,不会出现"竖屏摆好的图转横屏自己往中间跑"。
      */
     private void attachPageBackground() {
-        com.github.tvbox.osc.ui.kit.PageBackgroundView.attach(this,
-                com.github.tvbox.osc.util.PageBackgroundStore.currentConfig());
+        com.github.tvbox.osc.ui.kit.PageBackgroundView layer =
+                com.github.tvbox.osc.ui.kit.PageBackgroundView.attach(this,
+                        com.github.tvbox.osc.util.PageBackgroundStore.currentConfig());
+        if (layer != null) {
+            layer.setOnLegacyMigratedListener(com.github.tvbox.osc.util.PageBackgroundStore::persistAnchors);
+        }
     }
 
     public boolean hasPermission(String permission) {
@@ -260,8 +267,20 @@ public abstract class BaseActivity extends AppCompatActivity implements CustomAd
      * 而不是点了没反应；文本经 {@link #updateLoadingHint} 中途更新）
      */
     public void showLoadingDialog(CharSequence hint) {
+        showLoadingDialog(hint, null);
+    }
+
+    /**
+     * 显示**可取消**的加载框:{@code onCancel} 非空时加载框里出现"取消"按钮,点它执行回调
+     * (调用方应在此作废在跑的任务,见 SubscriptionExporter.cancel()),之后需自行 dismissLoadingDialog()。
+     * 传 null 即普通的阻塞式加载框(不显示取消)。
+     */
+    public void showLoadingDialog(CharSequence hint, Runnable onCancel) {
         if (loadingPopup == null) {
             loadingPopup = com.github.tvbox.osc.ui.dialog.DialogCoordinator.loading(this);
+        }
+        if (loadingPopup instanceof com.github.tvbox.osc.ui.dialog.LoadingDialog) {
+            ((com.github.tvbox.osc.ui.dialog.LoadingDialog) loadingPopup).setOnCancel(onCancel);
         }
         loadingPopup.show();
         updateLoadingHint(hint);

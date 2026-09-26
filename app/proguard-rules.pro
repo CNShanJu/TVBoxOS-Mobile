@@ -193,10 +193,6 @@
 
 #CardView
 -keep class com.github.tvbox.osc.ui.tv.widget.card.**{*;}
-#ViewObj
--keep class com.github.tvbox.osc.ui.tv.widget.ViewObj{
-    <methods>;
-}
 
 -keep class com.github.catvod.crawler.*{*;}
 # 迅雷下载模块

@@ -28,18 +28,18 @@
             android:orientation="horizontal">
 
             <ImageView
-                android:id="@+id/iv_export"
-                android:layout_width="wrap_content"
-                android:layout_height="20dp"
-                android:paddingLeft="4dp"
-                android:src="@drawable/ic_export_24"/>
+                    android:id="@+id/iv_use_tip"
+                    android:layout_width="wrap_content"
+                    android:layout_height="16dp"
+                    android:paddingLeft="4dp"
+                    android:src="@drawable/ic_use_description_24"/>
 
             <ImageView
-                    android:id="@+id/iv_use_tip"
+                    android:id="@+id/iv_export"
                     android:layout_width="wrap_content"
                     android:layout_height="20dp"
                     android:paddingLeft="4dp"
-                    android:src="@drawable/ic_use_description_24"/>
+                    android:src="@drawable/ic_export_24"/>
 
             <ImageView
                 android:id="@+id/iv_add"

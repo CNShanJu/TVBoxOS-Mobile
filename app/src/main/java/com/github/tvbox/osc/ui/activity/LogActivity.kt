@@ -84,11 +84,12 @@ class LogActivity : BaseVbActivity<ActivityLogBinding>() {
 
     private fun switchTab(tab: Int) {
         currentTab = tab
-        // Tab 选中态:背景用 selector_filter_chip 的 selected 高亮, 文字选中白/未选灰
+        // Tab 选中态:背景用 selector_filter_chip 的 selected 高亮(= color_highlight 主题色),
+        // 文字取"选中填充上的文字"btn_select_text(写死白色会在暗色主题的浅底上看不见;与下面筛选 chip 同一套)
         mBinding.tvTabBiz.isSelected = tab == 0
         mBinding.tvTabAll.isSelected = tab == 1
-        mBinding.tvTabBiz.setTextColor(if (tab == 0) colorOf(R.color.white) else colorOf(R.color.text_sub_foreground))
-        mBinding.tvTabAll.setTextColor(if (tab == 1) colorOf(R.color.white) else colorOf(R.color.text_sub_foreground))
+        mBinding.tvTabBiz.setTextColor(if (tab == 0) colorOf(R.color.btn_select_text) else colorOf(R.color.text_sub_foreground))
+        mBinding.tvTabAll.setTextColor(if (tab == 1) colorOf(R.color.btn_select_text) else colorOf(R.color.text_sub_foreground))
         val isBiz = tab == 0
         mBinding.llFilter.visibility = if (isBiz) View.VISIBLE else View.GONE
         mBinding.llDatePicker.visibility = if (isBiz) View.GONE else View.VISIBLE
@@ -302,11 +303,14 @@ class LogActivity : BaseVbActivity<ActivityLogBinding>() {
             val tv = mBinding.tvContent
             val layout = tv.layout ?: return@post
             val line = layout.getLineForOffset(matches[matchIndex])
-            val top = layout.getLineTop(line)
-            val bottom = layout.getLineBottom(line)
+            // 内边距在滚动容器上(卡片内部滚动,见 activity_log.xml):行坐标要加上容器上内边距换算到滚动内容坐标系,
+            // 可视区高度也要扣掉上下内边距,否则命中行会整体偏一个内边距
+            val padTop = mBinding.scrollLog.paddingTop
+            val visible = mBinding.scrollLog.height - padTop - mBinding.scrollLog.paddingBottom
+            val top = layout.getLineTop(line) + padTop
+            val bottom = layout.getLineBottom(line) + padTop
             val sy = mBinding.scrollLog.scrollY
-            val h = mBinding.scrollLog.height
-            val target = if (top < sy || bottom > sy + h) (top + bottom - h) / 2 else sy
+            val target = if (top < sy + padTop || bottom > sy + padTop + visible) (top + bottom - visible) / 2 - padTop else sy
             mBinding.scrollLog.scrollTo(0, maxOf(0, target))
         }
     }

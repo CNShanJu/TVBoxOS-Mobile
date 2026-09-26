@@ -43,15 +43,15 @@ public class UpdateBubbleView extends View {
     private static final int DEF_PROGRESS = 0xFF4C6EF5;   // 下载中进度环兜底
     private static final int DEF_ICON = 0xFFFFFFFF;       // 中心图标兜底
 
-    private static final int PROGRESS_OK_COLOR = 0xFF37C871;// 完成绿
-    private static final int PROGRESS_FAIL_COLOR = 0xFFF25555;// 失败红
+    private static final int PROGRESS_FAIL_COLOR = 0xFFF25555;// 失败红(兜底;正常取主题 swipe_red)
 
-    // 主题兼容色(与首页「直播」悬浮钮同源:bg_float_fab 盘面 / fab_stroke 描边 / text_highlight 高亮)
+    // 主题兼容色(与首页「直播」悬浮钮同源:bg_float_fab 盘面 / btn_stroke 描边 / 文本与状态色取主题)
     private final int mDiscColor;
     private final int mDiscStrokeColor;
     private final int mTrackColor;
     private final int mProgressColor;
     private final int mIconColor;
+    private final int mFailColor;
 
     private final Paint mPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint mTrackPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
@@ -81,6 +81,8 @@ public class UpdateBubbleView extends View {
         mTrackColor = themeColor(context, R.color.fab_stroke, DEF_TRACK);
         mProgressColor = themeColor(context, R.color.text_highlight, DEF_PROGRESS);
         mIconColor = themeColor(context, R.color.text_highlight, DEF_ICON);
+        // 失败色与全局状态色同源(swipe_red),不再另写一套红
+        mFailColor = themeColor(context, R.color.swipe_red, PROGRESS_FAIL_COLOR);
         mArrowIcon = loadIcon(context, R.drawable.ic_download_arrow);
         mCheckIcon = loadIcon(context, R.drawable.ic_check_circle);
         if (mArrowIcon != null) mArrowIcon.setTint(mIconColor);
@@ -212,7 +214,7 @@ public class UpdateBubbleView extends View {
         if (mProgress > 0f) {
             mPaint.setStyle(Paint.Style.STROKE);
             mPaint.setStrokeWidth(mRingWidthDp);
-            mPaint.setColor(mState == BubbleState.FAILED ? PROGRESS_FAIL_COLOR : mProgressColor);
+            mPaint.setColor(mState == BubbleState.FAILED ? mFailColor : mProgressColor);
             canvas.drawArc(mArcRect, -90f, mProgress * 360f, false, mPaint);
         }
 
@@ -242,7 +244,7 @@ public class UpdateBubbleView extends View {
                 mPaint.setStyle(Paint.Style.STROKE);
                 mPaint.setStrokeWidth(r * 0.16f);
                 mPaint.setStrokeCap(Paint.Cap.ROUND);
-                mPaint.setColor(PROGRESS_FAIL_COLOR);
+                mPaint.setColor(mFailColor);
                 float l = r * 0.30f;
                 canvas.drawLine(cx - l, cy - l, cx + l, cy + l, mPaint);
                 canvas.drawLine(cx + l, cy - l, cx - l, cy + l, mPaint);

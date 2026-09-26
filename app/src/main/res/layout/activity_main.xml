@@ -22,8 +22,9 @@
         android:elevation="10dp"
         android:background="@color/bg_float">
 
-        <!-- 图标层:透明背景, 绘制在纯色(94% 透明度)遮罩上 -->
-        <com.google.android.material.bottomnavigation.BottomNavigationView
+        <!-- 图标层:透明背景, 绘制在纯色(94% 透明度)遮罩上;
+             用自定义底栏:长按条目不再弹系统 Tooltip 提示, 改为放一簇烟花(见 ui/kit/FireworksBottomNavigationView) -->
+        <com.github.tvbox.osc.ui.kit.FireworksBottomNavigationView
                 android:id="@+id/bottom_nav"
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"

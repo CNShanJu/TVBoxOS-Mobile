@@ -26,9 +26,11 @@ android {
 }
 
 // ------------------------------------------------------------------
-// 主题颜色生成(3.7② ui-common 自持主题):读取 assets/theme/theme_colors.json(浅色)与
-// theme_colors_night.json(暗色),分别生成 res/values 与 res/values-night 的颜色文件;
-// 文件不存在时用内置默认值。app 及业务模块依赖本模块后自动获得主题资源。
+// 主题颜色生成(3.7② ui-common 自持主题):两个主题各一个文件 ——
+//   assets/theme/theme_colors.json(亮色)→ res/values,theme_colors_night.json(暗色)→ res/values-night
+// 每个文件自包含、**每个概念一个键**(底色/各种面+各自的透明度/各级文字色/品牌色/按钮色板/开关/状态色),
+// 只有"和主色同值的别名"不写进文件,由下面的规则表派生(原文件里同一主题内浅色 #1F2937 重复 9 次、
+// #ECECF4 重复 5 次那类)。文件不存在时用内置默认值。
 // ------------------------------------------------------------------
 def themeColorsFile = file('src/main/assets/theme/theme_colors.json')
 def themeColorsNightFile = file('src/main/assets/theme/theme_colors_night.json')
@@ -44,131 +46,152 @@ def defaultRadii = [
         radius_btn_large : '25dp'
 ]
 
-def defaultColors = [
-        bg_body        : '#FFFFFF',
-        bg_component   : '#ECECF4',
-        bg_popup       : '#ECECF4',
-        // bg_float(底栏/上次观看气泡)与 bg_float_fab(直播钮/筛选钮/更新悬浮圈)是同一个"悬浮面"色:
-        // 颜色与各自 _alpha 必须同值,否则同屏能看出深浅不一
-        bg_float       : '#ECECF4',
-        bg_float_fab   : '#ECECF4',
-        text_main      : '#050505',
-        text_highlight : '#1F2937',
-        nav_text_normal: '#CCCCCC',
-        download_active: '#037AFF',
-        download_done  : '#08CA2C',
-        select_fill    : '#1F2937',
-        select_bg      : '#1F2937',
-        swipe_red      : '#E5484D',
-        // 按钮色板(浅色):主按钮=页面主黑填充+白字;次按钮=浅灰填充+深字;无背景按钮=主黑文字;选中态=主黑填充
-        btn_confirm_bg : '#1F2937',
-        btn_confirm_text: '#FFFFFF',
-        btn_cancel_bg  : '#ECECF4',
-        btn_cancel_text: '#1F2937',
-        btn_plain_text : '#1F2937',
-        btn_select_bg  : '#1F2937',
-        btn_select_text: '#FFFFFF',
-        // 无背景按钮的描边(浅色用主黑 40%;有填充的按钮看不到这条线,不影响)
-        btn_stroke     : '#661F2937',
-        // 全局高亮/选中色(开关、chip 选中、选中文字、进度条…):与主按钮同色,不再用蓝色
-        color_highlight: '#1F2937',
-        // 固定深色面(直播页/播放控制抽屉)上的强调色:这些面不随主题,浅色主题下用主题高亮色会看不见
-        accent_on_dark : '#1890FF',
-        // 开关:开启轨道=蓝色(两主题一致),关闭轨道=该主题主色,圆点固定白色
-        switch_thumb   : '#FFFFFF',
-        switch_track_on: '#1890FF',
-        switch_track_off: '#1F2937',
-        // 文字高亮色:选中/强调的文字(搜索结果来源、选集当前集、复制/展开、链接…)统一蓝色
-        text_accent    : '#1890FF'
+// 主题文件缺失时的兜底(与仓库内文件同值)
+def defaultLightColors = [
+        bg_body: '#faf8ff',
+        bg_component: '#ECECF4', bg_component_alpha: 100,
+        bg_float: '#ECECF4', bg_float_alpha: 92,
+        text_main: '#050505', text_sub: '#787878', text_hint: '#611C1B1F',
+        text_disable: '#b3b3b3', text_highlight: '#1F2937', text_accent: '#1890FF',
+        brand: '#1F2937', brand_text: '#FFFFFF',
+        btn_confirm_bg: '#1F2937', btn_confirm_text: '#FFFFFF',
+        btn_cancel_bg: '#ECECF4', btn_cancel_text: '#1F2937',
+        switch_track_on: '#1890FF', switch_track_off: '#1F2937', switch_thumb: '#FFFFFF',
+        accent_on_dark: '#1890FF',
+        download_active: '#037AFF', download_done: '#08CA2C', swipe_red: '#E5484D'
 ]
 def defaultNightColors = [
-        bg_body        : '#141218',
-        bg_component   : '#211D28',
-        bg_popup       : '#211D28',
-        // 同 defaultColors:bg_float / bg_float_fab 必须同值(同一悬浮面)
-        bg_float       : '#211D28',
-        bg_float_fab   : '#211D28',
-        text_main      : '#FFFFFF',
-        text_highlight : '#E5E7EB',
-        nav_text_normal: '#7A7A7A',
-        download_active: '#037AFF',
-        download_done  : '#08CA2C',
-        select_fill    : '#E5E7EB',
-        select_bg      : '#374151',
-        swipe_red      : '#E5484D',
-        // 按钮色板(暗色):主/次按钮都无背景,靠文字亮度区分;选中态用浅色填充+深色文字(否则选中看不出来)
-        btn_confirm_bg : '#00000000',
-        btn_confirm_text: '#E5E7EB',
-        btn_cancel_bg  : '#00000000',
-        btn_cancel_text: '#7A7A7A',
-        btn_plain_text : '#E5E7EB',
-        btn_select_bg  : '#E5E7EB',
-        btn_select_text: '#141218',
-        btn_stroke     : '#66E5E7EB',
-        color_highlight: '#E5E7EB',
-        accent_on_dark : '#1890FF',
-        switch_thumb   : '#FFFFFF',
-        switch_track_on: '#1890FF',
-        switch_track_off: '#3C3C46',
-        text_accent    : '#1890FF'
+        bg_body: '#141218',
+        bg_component: '#211D28', bg_component_alpha: 100,
+        bg_float: '#211D28', bg_float_alpha: 92,
+        text_main: '#FFFFFF', text_sub: '#AFAFAF', text_hint: '#99E6E1E5',
+        text_disable: '#b3b3b3', text_highlight: '#E5E7EB', text_accent: '#1890FF',
+        brand: '#E5E7EB', brand_text: '#141218',
+        btn_confirm_bg: '#00000000', btn_confirm_text: '#E5E7EB',
+        btn_cancel_bg: '#00000000', btn_cancel_text: '#7A7A7A',
+        switch_track_on: '#1890FF', switch_track_off: '#3C3C46', switch_thumb: '#FFFFFF',
+        accent_on_dark: '#1890FF',
+        download_active: '#037AFF', download_done: '#08CA2C', swipe_red: '#E5484D'
 ]
 
-// 半透明色对应的透明度(0-100, 表示百分比): 独立字段, 与颜色值分开, 便于单独调透明度; 键为 <色名>_alpha
-def defaultAlphas = [
-        bg_popup_alpha     : 50,
-        bg_float_alpha     : 85,
-        bg_float_fab_alpha : 85
-]
-def defaultNightAlphas = [
-        bg_popup_alpha     : 50,
-        bg_float_alpha     : 80,
-        bg_float_fab_alpha : 80
-]
-
-/** 读取 `<色名>_alpha` 独立透明度字段(0-100, 百分比), 返回 色名 -> 0-255 透明度 的映射 */
-static def readAlphas(def file, def defaults) {
-    def alphas = new LinkedHashMap<>(defaults)
-    if (file.exists()) {
-        try {
-            def json = new groovy.json.JsonSlurper().parse(file)
-            alphas.each { k, v ->
-                def uv = json[k]
-                if (uv instanceof Number) alphas[k] = ((Number) uv).intValue()
+// ---- 读取主题文件 ----
+// 颜色键:只认默认表里的键(类型按默认值);desc:每个键一句说明(可选,写进生成的 XML 注释,
+// 将来做"用户自定义主题"界面时就是每个色块下面的说明文字)。手改文件写错键名/漏写说明都会 WARN。
+static def readTheme(def file, def defaults) {
+    def colors = new LinkedHashMap(defaults)
+    def desc = [:]
+    if (!file.exists()) return [colors: colors, desc: desc]
+    try {
+        // 必须显式按 UTF-8 读:主题文件里有中文说明(desc),走平台默认编码(Windows 下可能是 GBK)会读成乱码
+        def json = new groovy.json.JsonSlurper().parseText(file.getText('UTF-8'))
+        colors.each { k, v ->
+            def uv = json[k]
+            if (v instanceof Number) {
+                if (uv instanceof Number) colors[k] = ((Number) uv).intValue()
+            } else if (uv instanceof String && uv.startsWith('#')) {
+                colors[k] = uv
             }
-        } catch (Throwable th) {
-            println "WARN: ${file.name} 解析透明度失败: ${th.message}"
         }
+        // 非颜色键(type=主题元信息、desc=说明)不参与派生,也不该被"不认识的键"告警误伤
+        def unknown = json.keySet().findAll { it != 'type' && it != 'desc' && !defaults.containsKey(it) }
+        if (unknown) println "WARN: ${file.name} 里有不认识的键(已忽略): ${unknown.join(', ')}"
+        def d = json['desc']
+        if (d instanceof Map) d.each { k, v -> if (v instanceof String) desc[k] = v }
+        def staleDesc = desc.keySet().findAll { !defaults.containsKey(it) }
+        if (staleDesc) println "WARN: ${file.name} 的 desc 里有不存在的键: ${staleDesc.join(', ')}"
+        def noDesc = defaults.keySet().findAll { !desc.containsKey(it) }
+        if (noDesc) println "WARN: ${file.name} 的 desc 缺少这些键的说明: ${noDesc.join(', ')}"
+    } catch (Throwable th) {
+        println "WARN: ${file.name} 解析失败,使用内置默认颜色: ${th.message}"
     }
-    def out = new LinkedHashMap()
-    alphas.each { k, v ->
-        int percent = Math.max(0, Math.min(100, ((Number) v).intValue())) // 0-100 百分制
-        int alphaByte = Math.round(percent * 255 / 100f)                  // 换算 0-255
-        out.put(k.replace('_alpha', ''), alphaByte)
-    }
-    return out
+    return [colors: colors, desc: desc]
 }
 
-static def readColors(def file, def defaults) {
-    def colors = new LinkedHashMap<>(defaults)
-    if (file.exists()) {
-        try {
-            def json = new groovy.json.JsonSlurper().parse(file)
-            colors.each { k, v ->
-                def uv = json[k]
-                if (uv instanceof String && uv.startsWith('#')) colors[k] = uv
-            }
-        } catch (Throwable th) {
-            println "WARN: ${file.name} 解析失败,使用默认颜色: ${th.message}"
-        }
+/** '#RRGGBB' / '#AARRGGBB' -> 0xAARRGGBB;非法值回退 fallback(入参用 def:Groovy 把 8 位十六进制字面量当 Long) */
+static int parseColor(def value, def fallback) {
+    int fb = ((Number) fallback).intValue()
+    if (!(value instanceof String)) return fb
+    String hex = ((String) value).trim().replace('#', '')
+    try {
+        if (hex.length() == 6) return (int) (0xFF000000L | Long.parseLong(hex, 16))
+        if (hex.length() == 8) return (int) Long.parseLong(hex, 16)
+    } catch (Throwable ignored) {
     }
-    return colors
+    return fb
+}
+
+/** 写出 '#RRGGBB'(不透明)或 '#AARRGGBB'(带透明度) */
+static String toHex(def argbRaw) {
+    int argb = ((Number) argbRaw).intValue()
+    return ((argb >>> 24) & 0xFF) == 0xFF
+            ? String.format('#%06X', argb & 0xFFFFFF)
+            : String.format('#%08X', argb)
+}
+
+/** 透明度百分比(0-100)-> 0..1;入参用 def 再归一化(Groovy 数字字面量可能是 Long/BigDecimal,写死形参会签名不匹配) */
+static float percent(def value, def fallback) {
+    int p = (value instanceof Number) ? ((Number) value).intValue() : ((Number) fallback).intValue()
+    return Math.max(0, Math.min(100, p)) / 100f
+}
+
+static int withAlpha(def colorRaw, def alphaRaw) {
+    int color = ((Number) colorRaw).intValue()
+    int a = Math.round(Math.max(0f, Math.min(1f, ((Number) alphaRaw).floatValue())) * 255f)
+    return (a << 24) | (color & 0xFFFFFF)
+}
+
+// ---- 派生规则表 ----
+// 面的合并:主题文件里只有两个面 —— bg_component(组件/卡片)与 bg_float(悬浮面);
+//   bg_popup(弹窗/抽屉)、bg_float(底栏·标题栏·搜索框)、bg_float_fab(悬浮圆钮)是**同一个悬浮面**,
+//   本来就必须同色同透明度(否则同屏能看出深浅不一),所以共用 bg_float + bg_float_alpha。
+// 同值别名(不占配置):
+//   color_highlight / select_fill / btn_plain_text / btn_select_bg = brand
+//     (全局高亮填充=chip/进度条/悬浮圈、勾选框填充、无背景按钮文字、选中按钮填充 —— 设计上就与主色同色)
+//   btn_select_text = brand_text(选中填充上的文字)
+//   btn_stroke      = brand @40%(无填充按钮的描边)
+static def derivePalette(def c) {
+    int brand = parseColor(c.brand, 0xFF1F2937)
+    int brandText = parseColor(c.brand_text, 0xFFFFFFFF)
+    int component = withAlpha(parseColor(c.bg_component, 0xFFECECF4), percent(c.bg_component_alpha, 100))
+    int floatBg = withAlpha(parseColor(c.bg_float, 0xFFECECF4), percent(c.bg_float_alpha, 92))
+
+    return [
+            bg_body          : toHex(parseColor(c.bg_body, 0xFFFAF8FF)),
+            bg_component     : toHex(component),
+            bg_popup         : toHex(floatBg),
+            bg_float         : toHex(floatBg),
+            bg_float_fab     : toHex(floatBg),
+            text_main        : toHex(parseColor(c.text_main, 0xFF050505)),
+            text_sub         : toHex(parseColor(c.text_sub, 0xFF787878)),
+            text_hint        : toHex(parseColor(c.text_hint, 0xFF611C1B1F)),
+            text_disable     : toHex(parseColor(c.text_disable, 0xFFB3B3B3)),
+            text_highlight   : toHex(parseColor(c.text_highlight, brand)),
+            text_accent      : toHex(parseColor(c.text_accent, 0xFF1890FF)),
+            color_highlight  : toHex(brand),
+            select_fill      : toHex(brand),
+            btn_confirm_bg   : toHex(parseColor(c.btn_confirm_bg, brand)),
+            btn_confirm_text : toHex(parseColor(c.btn_confirm_text, brandText)),
+            btn_cancel_bg    : toHex(parseColor(c.btn_cancel_bg, 0x00000000)),
+            btn_cancel_text  : toHex(parseColor(c.btn_cancel_text, brand)),
+            btn_plain_text   : toHex(brand),
+            btn_select_bg    : toHex(brand),
+            btn_select_text  : toHex(brandText),
+            btn_stroke       : toHex(withAlpha(brand, 0.4f)),
+            switch_track_on  : toHex(parseColor(c.switch_track_on, 0xFF1890FF)),
+            switch_track_off : toHex(parseColor(c.switch_track_off, brand)),
+            switch_thumb     : toHex(parseColor(c.switch_thumb, 0xFFFFFFFF)),
+            accent_on_dark   : toHex(parseColor(c.accent_on_dark, 0xFF1890FF)),
+            download_active  : toHex(parseColor(c.download_active, 0xFF037AFF)),
+            download_done    : toHex(parseColor(c.download_done, 0xFF08CA2C)),
+            swipe_red        : toHex(parseColor(c.swipe_red, 0xFFE5484D))
+    ]
 }
 
 static def readRadii(def file, def defaults) {
-    def radii = new LinkedHashMap<>(defaults)
+    def radii = new LinkedHashMap(defaults)
     if (file.exists()) {
         try {
-            def json = new groovy.json.JsonSlurper().parse(file)
+            def json = new groovy.json.JsonSlurper().parseText(file.getText('UTF-8'))
             radii.each { k, v ->
                 def uv = json[k]
                 if (uv instanceof String && (uv.endsWith('dp') || uv.endsWith('dip') || uv.endsWith('px'))) {
@@ -182,23 +205,18 @@ static def readRadii(def file, def defaults) {
     return radii
 }
 
-/** 写出颜色; alphas 为 色名 -> 0-255, 命中时把透明度合成到色值前面(#AARRGGBB) */
-static def writeColorsXml(def dir, def name, def colors, def alphas) {
+/** 写出颜色资源;desc 命中时在行尾带一条说明注释(方便直接看生成的 theme_colors.xml 知道每行是啥) */
+static def writeColorsXml(def dir, def name, def colors, def desc) {
     def valuesDir = new File(dir, name)
     valuesDir.mkdirs()
     def f = new File(valuesDir, 'theme_colors.xml')
     def sb = new StringBuilder('<?xml version="1.0" encoding="utf-8"?>\n<resources>\n')
     colors.each { k, v ->
-        def a = alphas ? alphas.get(k) : null
-        if (a != null) {
-            String hex = ((String) v).replace('#', '')
-            sb.append(String.format("    <color name=\"%s\">#%02X%s</color>\n", k, ((Number) a).intValue() & 0xFF, hex))
-        } else {
-            sb.append("    <color name=\"${k}\">${v}</color>\n")
-        }
+        def note = (desc && desc[k]) ? "  <!-- ${desc[k]} -->" : ''
+        sb.append("    <color name=\"${k}\">${v}</color>${note}\n")
     }
     sb.append('</resources>\n')
-    f.text = sb.toString()
+    f.setText(sb.toString(), 'UTF-8')   // 注释里有中文,必须显式 UTF-8 落盘(别用平台默认编码)
 }
 
 static def writeRadiiXml(def dir, def name, def radii) {
@@ -208,7 +226,7 @@ static def writeRadiiXml(def dir, def name, def radii) {
     def sb = new StringBuilder('<?xml version="1.0" encoding="utf-8"?>\n<resources>\n')
     radii.each { k, v -> sb.append("    <dimen name=\"${k}\">${v}</dimen>\n") }
     sb.append('</resources>\n')
-    f.text = sb.toString()
+    f.setText(sb.toString(), 'UTF-8')
 }
 
 task generateThemeColors {
@@ -216,11 +234,27 @@ task generateThemeColors {
     inputs.file(themeColorsNightFile).optional()
     inputs.file(themeRadiiFile).optional()
     outputs.dir(themeColorsDir)
+    // 派生项的内置说明(主题文件的 desc 里没有这些键,因为它们不占配置):写进生成 XML 的注释里
+    def derivedNotes = [
+            bg_popup       : '同 bg_float(弹窗/抽屉就是悬浮面)',
+            bg_float_fab   : '同 bg_float(悬浮圆钮就是悬浮面)',
+            color_highlight: '派生自 brand(全局高亮填充)',
+            select_fill    : '派生自 brand(勾选框填充)',
+            btn_plain_text : '派生自 brand(无背景按钮文字)',
+            btn_select_bg  : '派生自 brand(选中按钮/chip 填充)',
+            btn_select_text: '派生自 brand_text(选中填充上的文字)',
+            btn_stroke     : '派生自 brand @40%(无填充按钮的描边)'
+    ]
     doLast {
-        def lightColors = readColors(themeColorsFile, defaultColors)
-        def nightColors = readColors(themeColorsNightFile, defaultNightColors)
-        writeColorsXml(themeColorsDir, 'values', lightColors, readAlphas(themeColorsFile, defaultAlphas))
-        writeColorsXml(themeColorsDir, 'values-night', nightColors, readAlphas(themeColorsNightFile, defaultNightAlphas))
+        def light = readTheme(themeColorsFile, defaultLightColors)
+        def night = readTheme(themeColorsNightFile, defaultNightColors)
+        // 两套主题的键、说明都应当一致(同一批概念):不一致 = 改了一边忘了另一边
+        def descDiff = (light.desc.keySet() + night.desc.keySet()).unique().findAll { light.desc[it] != night.desc[it] }
+        if (descDiff) println "WARN: 两个主题文件的 desc 不一致(同一个键应同一说明): ${descDiff.join(', ')}"
+        def lightNotes = new LinkedHashMap(derivedNotes); lightNotes.putAll(light.desc)
+        def nightNotes = new LinkedHashMap(derivedNotes); nightNotes.putAll(night.desc)
+        writeColorsXml(themeColorsDir, 'values', derivePalette(light.colors), lightNotes)
+        writeColorsXml(themeColorsDir, 'values-night', derivePalette(night.colors), nightNotes)
         writeRadiiXml(themeColorsDir, 'values', readRadii(themeRadiiFile, defaultRadii))
     }
 }

@@ -6,8 +6,8 @@ import android.os.Handler;
 import android.os.Looper;
 import android.widget.ImageView;
 
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+import com.github.tvbox.osc.util.HeavyTaskUtil;
+
 
 /**
  * 本地视频封面取帧复用工具:后台线程用 MediaMetadataRetriever 取第 1 秒关键帧,
@@ -16,11 +16,7 @@ import java.util.concurrent.Executors;
  */
 public class LocalVideoFrameLoader {
 
-    private static final ExecutorService EXECUTOR = Executors.newSingleThreadExecutor(r -> {
-        Thread t = new Thread(r, "tvbox-local-frame");
-        t.setDaemon(true);
-        return t;
-    });
+
     private static final Handler MAIN = new Handler(Looper.getMainLooper());
 
     /** 行内防串图 tag key */
@@ -33,7 +29,8 @@ public class LocalVideoFrameLoader {
     public static void load(final ImageView iv, final String path) {
         if (iv == null || path == null || path.isEmpty()) return;
         iv.setTag(TAG_KEY_PATH, path);
-        EXECUTOR.execute(() -> {
+        // 取帧走模块级共享执行器(AGENTS §六.6:不再自建线程池;原为单线程池 "tvbox-local-frame")
+        HeavyTaskUtil.getImageExecutorService().execute(() -> {
             Bitmap bmp = null;
             MediaMetadataRetriever mmr = null;
             try {

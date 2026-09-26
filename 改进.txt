@@ -293,6 +293,12 @@ Gradle 依赖默认使用 implementation，谨慎使用 api。
 同一领域模型只定义一次。
 跨模块不共享可变对象。
 所有后台任务必须由模块级执行器管理，页面不得自行创建线程池。
+所有可滚动组件（RecyclerView/ScrollView/GridView/横向列表等）必须保留内边距并配合 clipToPadding=false，禁止内容贴边滚动。
+图片占位只有一套实现：加载态与失败态都用 util/PosterPlaceholderDrawable（灰底+居中图标，图标随宿主尺寸只缩不放），统一加载入口 util/PicassoLoad（URL 走 into、本地文件走 intoFile）；XML 的 placeholder_poster 只作布局静态形态，运行时占位一律经 PicassoLoad 铺。
+占位必须放 ImageView 的背景层，禁止塞进 src 或 .placeholder()/.error()（塞 src 会被 scaleType 当普通图片放大再裁剪，小卡片上会超出显示范围）。
+失败态文案位置：海报卡底部有渐变信息条时，"图片加载失败"文字与图标必须排在该条上方可用区（由 PosterPlaceholderDrawable#failed 自动量覆盖条高度），禁止贴底绘制。
+不得为同一用途引入第二套占位图（iv_load_fail / img_loading_placeholder / ic_img_placeholder / ic_poster_placeholder 等），发现即收敛到统一占位。
+（以上占位/滚动内边距细则的权威版本见 AGENTS.md「七、安全与工程红线」的「依赖、构建与资源」与「六、验收红线」第 7 条，两份文件要求一致。）
 
 七、推荐迁移顺序
 第一阶段：补齐现有边界

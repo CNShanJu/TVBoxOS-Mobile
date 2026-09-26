@@ -16,5 +16,7 @@
         android:orientation="vertical"
         app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
         tools:listitem="@layout/item_douban_suggest"
-        />
+        android:paddingTop="8dp"
+        android:paddingBottom="8dp"
+        android:clipToPadding="false" />
 </LinearLayout>

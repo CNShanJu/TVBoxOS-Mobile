@@ -20,6 +20,8 @@
         app:tv_verticalSpacingWithMargins="@dimen/dp_5"
         tools:listitem="@layout/item_grid_filter_value"
         tools:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
-        tools:orientation="horizontal"/>
+        tools:orientation="horizontal"
+        android:paddingHorizontal="10dp"
+        />
 
 </LinearLayout>

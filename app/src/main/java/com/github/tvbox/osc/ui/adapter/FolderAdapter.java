@@ -18,6 +18,7 @@ import com.github.tvbox.osc.picasso.RoundTransformation;
 import com.github.tvbox.osc.util.DefaultConfig;
 import com.github.tvbox.osc.util.LocalVideoFrameLoader;
 import com.github.tvbox.osc.util.MD5;
+import com.github.tvbox.osc.util.PicassoLoad;
 import com.squareup.picasso.Callback;
 import com.squareup.picasso.LruCache;
 import com.squareup.picasso.Picasso;
@@ -45,16 +46,28 @@ public class FolderAdapter extends BaseQuickAdapter<VideoFolder, BaseViewHolder>
         if (videoList != null && !videoList.isEmpty() && videoList.get(0) != null) {
             String firstPath = videoList.get(0).getPath();
             if (!TextUtils.isEmpty(firstPath) && new File(firstPath).exists()) {
+                // 取帧前先铺统一占位的"加载态"(LocalVideoFrameLoader 失败时保持原样,那里没有失败语义)
+                PicassoLoad.showLoadingPlaceholder(iv);
                 LocalVideoFrameLoader.load(iv, firstPath);
                 return;
             }
+            // 占位/失败态走统一入口的背景层(不塞 src:占位塞 src 会被 scaleType 放大裁剪,小卡片上会溢出)
+            PicassoLoad.showLoadingPlaceholder(iv);
             Picasso.get()
                     .load(firstPath == null ? "" : firstPath)
-                    .placeholder(R.drawable.placeholder_poster)
-                    .error(R.drawable.placeholder_poster)
-                    .into(iv);
+                    .into(iv, new Callback() {
+                        @Override
+                        public void onSuccess() {
+                        }
+
+                        @Override
+                        public void onError(Exception e) {
+                            PicassoLoad.showFailedPlaceholder(iv);
+                        }
+                    });
         } else {
-            iv.setImageResource(R.drawable.placeholder_poster);
+            // 没有视频 → 无封面,按统一失败/空图占位(灰底+图标+"图片加载失败")
+            PicassoLoad.showFailedPlaceholder(iv);
         }
     }
 }

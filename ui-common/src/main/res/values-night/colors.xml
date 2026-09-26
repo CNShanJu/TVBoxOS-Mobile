@@ -6,36 +6,33 @@
     <!-- bg_popup(弹层/抽屉背景, 现为半透明可调) 已上移到 assets/theme/theme_colors_night.json 统一维护, 此处不再重复定义 -->
 
     <color name="text_foreground">@color/text_main</color>
-    <color name="text_sub_foreground">#AFAFAF</color>
+    <color name="text_sub_foreground">@color/text_sub</color>
 
     <!--应用的主要色调(Material 3 暗色,中性灰白系)-->
     <color name="colorPrimary">@color/text_highlight</color>
-    <color name="colorAccent">@color/text_highlight</color>
     <color name="windowBackground">@color/bg_body</color>
 
     <!-- ============ Material 3 色板(暗色) ============ -->
     <color name="md_primary">@color/text_highlight</color>
-    <color name="md_on_primary">#1F2937</color>
+    <color name="md_on_primary">@color/btn_select_text</color>
     <color name="md_primary_container">@color/bg_component</color>
     <color name="md_on_primary_container">@color/text_main</color>
-    <color name="md_secondary">#9CA3AF</color>
-    <color name="md_on_secondary">#1F2937</color>
+    <color name="md_secondary">@color/text_sub</color>
+    <color name="md_on_secondary">@color/btn_select_text</color>
     <color name="md_secondary_container">@color/bg_component</color>
-    <color name="md_on_secondary_container">#D1D5DB</color>
-    <color name="md_tertiary">#9CA3AF</color>
-    <color name="md_on_tertiary">#1F2937</color>
+    <color name="md_on_secondary_container">@color/text_highlight</color>
+    <color name="md_tertiary">@color/text_sub</color>
+    <color name="md_on_tertiary">@color/btn_select_text</color>
     <color name="md_tertiary_container">@color/bg_component</color>
-    <color name="md_on_tertiary_container">#D1D5DB</color>
+    <color name="md_on_tertiary_container">@color/text_highlight</color>
     <color name="md_error">#F2B8B5</color>
     <color name="md_on_error">#601410</color>
     <color name="md_error_container">#8C1D18</color>
     <color name="md_on_error_container">#F9DEDC</color>
     <color name="md_surface">@color/bg_body</color>
-    <color name="md_on_surface">#E6E0E9</color>
+    <color name="md_on_surface">@color/text_main</color>
     <color name="md_surface_variant">@color/bg_component</color>
-    <color name="md_on_surface_variant">#CAC4D0</color>
-    <color name="md_background">@color/bg_body</color>
-    <color name="md_on_background">#E6E0E9</color>
+    <color name="md_on_surface_variant">@color/text_sub</color>
     <color name="md_outline">#6B7280</color>
     <!-- 开关轨道-关闭态(浅色主题浅灰;深色主题深灰,避免深色主题下白底白点) -->
 
@@ -44,6 +41,6 @@
          统一维护(颜色+透明度), 生成到 values-night/theme_colors.xml, 此处不再重复定义 -->
 
     <!-- 悬浮圆钮(直播/筛选)描边色:暗色用亮色 35% 透明度描边, 纯黑背景上清晰可见 -->
-    <color name="fab_stroke">#59E5E7EB</color>
+    <color name="fab_stroke">@color/btn_stroke</color>
 
 </resources>

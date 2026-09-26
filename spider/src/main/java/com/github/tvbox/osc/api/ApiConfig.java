@@ -22,6 +22,8 @@ import com.github.tvbox.osc.util.HCallBack;
 import com.github.tvbox.osc.util.HttpClient;
 import com.github.tvbox.osc.util.SubUrlResolver;
 import com.github.tvbox.osc.util.SubUrlResolvers;
+import com.github.tvbox.osc.log.Category;
+import com.github.tvbox.osc.log.LogStore;
 import com.github.tvbox.osc.util.AppLog;
 import com.github.tvbox.osc.config.HawkConfig;
 import com.github.tvbox.osc.util.MD5;
@@ -255,10 +257,12 @@ public class ApiConfig implements com.github.tvbox.osc.spiderapi.SourceConfigApi
                         th.printStackTrace();
                     }
                     AppLog.log("配置", "加载成功: " + apiUrl);
+                    LogStore.success(Category.SUBSCRIPTION, "订阅: 加载配置成功 " + apiUrl);
                     callback.success();
                 } catch (Throwable th) {
                     th.printStackTrace();
                     AppLog.log("配置", "解析失败: " + apiUrl + "  " + th.getMessage());
+                    LogStore.fail(Category.SUBSCRIPTION, "订阅: 配置解析失败 " + apiUrl + " " + th.getMessage());
                     callback.error(parseErrorTip(th));
                 }
             }
@@ -266,10 +270,12 @@ public class ApiConfig implements com.github.tvbox.osc.spiderapi.SourceConfigApi
             @Override
             public void onError(Throwable e) {
                 AppLog.log("配置", "拉取失败: " + apiUrl + "  " + (e != null ? e.getMessage() : ""));
+                LogStore.fail(Category.SUBSCRIPTION, "订阅: 配置拉取失败 " + apiUrl + " " + (e != null ? e.getMessage() : ""));
                 if (cache.exists()) {
                     try {
                         parseJson(apiUrl, cache);
                         AppLog.log("配置", "使用本地缓存配置: " + apiUrl);
+                        LogStore.log(Category.SUBSCRIPTION, "订阅: 拉取失败改用本地缓存配置 " + apiUrl);
                         callback.success();
                         return;
                     } catch (Throwable th) {
@@ -300,14 +306,17 @@ public class ApiConfig implements com.github.tvbox.osc.spiderapi.SourceConfigApi
         String md5 = urls.length > 1 ? urls[1].trim() : "";
         File cache = new File(getAppContext().getFilesDir().getAbsolutePath() + "/csp.jar");
         AppLog.log("更新", "开始更新订阅: " + jarUrl + (md5.isEmpty() ? "" : "  md5=" + md5));
+        LogStore.log(Category.SUBSCRIPTION, "订阅: 开始更新爬虫 jar " + jarUrl);
 
         if (!md5.isEmpty() || useCache) {
             if (cache.exists() && (useCache || MD5.getFileMd5(cache).equalsIgnoreCase(md5))) {
                 if (jarLoader.load(cache.getAbsolutePath())) {
                     AppLog.log("更新", "使用缓存订阅成功: " + jarUrl);
+                    LogStore.success(Category.SUBSCRIPTION, "订阅: 使用缓存爬虫 jar " + jarUrl);
                     callback.success();
                 } else {
                     AppLog.log("更新", "缓存订阅 jar 加载失败: " + jarUrl);
+                    LogStore.fail(Category.SUBSCRIPTION, "订阅: 缓存爬虫 jar 加载失败 " + jarUrl);
                     callback.error("");
                 }
                 return;
@@ -338,6 +347,7 @@ public class ApiConfig implements com.github.tvbox.osc.spiderapi.SourceConfigApi
                     } catch (Throwable th) {
                         th.printStackTrace();
                         AppLog.log("更新", "订阅图片解析失败: " + realJarUrl + "  " + th.getMessage());
+                        LogStore.fail(Category.SUBSCRIPTION, "订阅: 爬虫 jar 图片套路解析失败 " + realJarUrl);
                         callback.error("");
                     }
                 }
@@ -345,6 +355,7 @@ public class ApiConfig implements com.github.tvbox.osc.spiderapi.SourceConfigApi
                 @Override
                 public void onError(Throwable e) {
                     AppLog.log("更新", "订阅下载失败: " + realJarUrl + "  " + (e != null ? e.getMessage() : ""));
+                    LogStore.fail(Category.SUBSCRIPTION, "订阅: 爬虫 jar 下载失败 " + realJarUrl + " " + (e != null ? e.getMessage() : ""));
                     callback.error("");
                 }
             });
@@ -358,6 +369,7 @@ public class ApiConfig implements com.github.tvbox.osc.spiderapi.SourceConfigApi
                 @Override
                 public void onError(Throwable e) {
                     AppLog.log("更新", "订阅下载失败: " + realJarUrl + "  " + (e != null ? e.getMessage() : ""));
+                    LogStore.fail(Category.SUBSCRIPTION, "订阅: 爬虫 jar 下载失败 " + realJarUrl + " " + (e != null ? e.getMessage() : ""));
                     callback.error("");
                 }
             });
