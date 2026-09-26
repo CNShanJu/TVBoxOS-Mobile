@@ -1,6 +1,6 @@
 # 安全审计整改与架构迁移状态（跟踪文档）
 
-> 本文件汇总 TVBoxOS-Mobile 多轮整改（安全/性能审计 + 模块边界路线图 改进.txt）
+> 本文件汇总 MBox（原名 TVBoxOS-Mobile）多轮整改（安全/性能审计 + 模块边界路线图 改进.txt）
 > 的落地状态、关键改动点与真机回归矩阵。代码级验证：Debug/Release 双变体 BUILD SUCCESSFUL。
 
 > **模块现状（2026-09）**：全仓 9 个模块 `:app`/`:common`/`:core-storage`/`:player`/`:thirdparty`/`:log`/`:core-network`/`:spider`/`:download`。本文件中提到的 `:core-model`/`:core-utils`/`:state` 已合并进 `:common`，`:spider-api`→`:spider`，`:player-api`→`:player`，`:crash`/`:TabLayout`/`:ViewPager1Delegate`/`:quickjs`→`:thirdparty`，`:ui-common`→`:app`（主题 JSON 在 `app/src/main/assets/theme/`）。下文历史记录保留当年模块名。

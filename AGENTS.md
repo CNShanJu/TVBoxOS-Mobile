@@ -1,4 +1,6 @@
-# MBox(TVBoxOS-Mobile)项目规则(AGENTS)
+# MBox 项目规则(AGENTS)
+
+> 项目名:MBox(仓库 `CNShanJu/MBox`,原名 TVBoxOS-Mobile / 工程名 TVBoxMobile,更名已落地于代码与文档)。
 
 > 本文件将仓库根目录《改进.txt》的限制与要求固化为**项目级规则**,所有代码改动(人工与 AI)必须遵守;
 > 并沉淀安全审计中的**持续约束型**红线(见「七、安全与工程红线」,一次性修复明细不入本文件)。

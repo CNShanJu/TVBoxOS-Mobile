@@ -1,4 +1,6 @@
-# TVBoxMobile (MBox)
+# MBox
+
+> 仓库/工程名:MBox(原名 TVBoxOS-Mobile / TVBoxMobile,更名后旧地址由 GitHub 301 重定向到新仓库)
 
 基于 [q215613905/TVBoxOS](https://github.com/q215613905/TVBoxOS) 的 TVBox 点播/直播应用:多源订阅、JS 爬虫、内置下载、HLS 合并、字幕、局域网遥控。
 

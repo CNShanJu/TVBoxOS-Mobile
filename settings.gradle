@@ -9,7 +9,7 @@ pluginManagement {
     }
 }
 
-rootProject.name = "TVBoxMobile"
+rootProject.name = "MBox"
 include ':app'
 include ':common'
 include ':core-storage'

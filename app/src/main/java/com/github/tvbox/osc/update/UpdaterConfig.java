@@ -13,9 +13,15 @@ public final class UpdaterConfig {
     /** 当前默认实现:GitHub Releases */
     public static final String SOURCE_GITHUB = "github";
 
-    /** 项目仓库默认坐标(与本仓库一致) */
+    /**
+     * 项目仓库默认坐标(仓库 {@code CNShanJu/MBox},原名 {@code CNShanJu/TVBoxOS-Mobile})。
+     * <p>
+     * 更名前发布的老安装包内置坐标仍是旧仓库名;GitHub 对更名后的仓库保留 301 重定向,而本 App 的
+     * 检查更新与 APK 下载都走 {@code network().general()}(followRedirects=true),因此老包仍能查到并下载
+     * 新仓库的 Release——发版时无需为老包额外做兼容。
+     */
     public static final String DEFAULT_GITHUB_OWNER = "CNShanJu";
-    public static final String DEFAULT_GITHUB_REPO = "TVBoxOS-Mobile";
+    public static final String DEFAULT_GITHUB_REPO = "MBox";
 
     /** 默认 GitHub 下载加速前缀(形如 https://gh-proxy.org/);空串=不使用代理,仅直连 */
     public static final String DEFAULT_GITHUB_DOWNLOAD_PROXY = "https://gh-proxy.org/";
