@@ -10,6 +10,7 @@ import com.github.tvbox.osc.spiderapi.SourceConfigProviders;
 import com.github.tvbox.osc.ui.fragment.PlayFragment;
 import com.github.tvbox.osc.util.DownloadSeriesModel;
 import com.github.tvbox.osc.util.EpisodeDownloadBatch;
+import com.github.tvbox.osc.util.HeavyTaskUtil;
 import com.hjq.permissions.OnPermissionCallback;
 import com.hjq.permissions.Permission;
 import com.hjq.permissions.XXPermissions;
@@ -395,7 +396,6 @@ public final class DownloadDialogCoordinator {
         }
         final String sourceName = getDownloadSourceName();
         final String vodName = host.downloadVodName();
-        final String sourceKey = vodInfo.sourceKey;
         final String playFlag = vodInfo.playFlag;
         final String vodId = vodInfo.id;
         final int playIndex = vodInfo.playIndex;
@@ -410,9 +410,11 @@ public final class DownloadDialogCoordinator {
         android.util.Log.i("TVBox-Download", "startDownloads: 已选 " + selected.size() + " 集, 来源=" + sourceName
                 + ", 剧名=" + vodName + ", 当前集=" + currentName + ", 分辨率=" + resLabel);
         host.toast("正在解析下载地址,请稍候...");
-        // 按源分道解析地址:与该源的播放解析走同一条串行道(避免同源 quickjs/jar 并发),不同源并行;
-        // 解析/入队/计数/文案收敛到 EpisodeDownloadBatch
-        com.github.catvod.crawler.SpiderApi.executeSerial(sourceKey, () -> {
+        // 批量入队**不能**先占住源道(旧写法 SpiderApi.executeSerial):批内每集解析是经 spider 契约
+        // 走同一条源道的同步调用(带 20s 超时),先占道再等同道 = 自己锁自己 —— 每集必超时返回 null,
+        // 只会提示"所选剧集地址无效",还把该源的播放/首页/详情一起堵到批末。
+        // 这里投应用级共享大池:每集解析时才短暂占用源道(同源串行语义由道本身保证),不同源可并行。
+        HeavyTaskUtil.getBigTaskExecutorService().execute(() -> {
             EpisodeDownloadBatch.Outcome r = EpisodeDownloadBatch.enqueue(selected, vodInfo, sourceName,
                     vodName, currentName, resLabel,
                     playFragment == null ? null : new EpisodeDownloadBatch.CurrentEpisode() {
