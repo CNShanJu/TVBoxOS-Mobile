@@ -99,8 +99,6 @@ jobs:
             echo ""
             if [ -f "$NOTES" ]; then
               cat "$NOTES"
-            else
-              echo "::warning title=Release 正文缺失::缺少 ${NOTES};请按 AGENTS §九 写用户可读说明(新增功能/功能变更/移除停用/问题修复/体验与性能/兼容性注意),发布前用 node scripts/check-release-notes.js ${NOTES} 自检"
             fi
             echo ""
             echo "<!-- dev -->"
@@ -117,6 +115,9 @@ jobs:
             echo "<!-- /dev -->"
             echo ""
           } > RELEASE_NOTES.md
+          if [ ! -f "$NOTES" ]; then
+            echo "::warning title=Release 正文缺失::缺少 ${NOTES};请按 AGENTS §九 写用户可读说明(新增功能/功能变更/移除停用/问题修复/体验与性能/兼容性注意),并用 node scripts/check-release-notes.js ${NOTES} 自检"
+          fi
           echo "=== release notes (${PREV:-(no previous tag)} -> ${TAG}) ==="
           cat RELEASE_NOTES.md
 
