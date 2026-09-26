@@ -9,7 +9,7 @@ import java.util.Map;
  * <p>
  * 现状:底层仍是共享 {@link MyVideoView}(doikki VideoView),本类只把"驱动指令"
  * (起播/暂停/恢复/释放/进度键)从 PlayFragment 散点收口为单一入口,行为与直接调用完全等价;
- * 后续把 UI 控制切到 player-api 的 PlayerApi 语义(或替换 Media3 adapter)时,
+ * 后续把 UI 控制切到播放契约(:player)的 PlayerApi 语义(或替换 Media3 adapter)时,
  * 只改本类内部实现,播放页与控制器零改动。
  */
 public final class PlayerSession {

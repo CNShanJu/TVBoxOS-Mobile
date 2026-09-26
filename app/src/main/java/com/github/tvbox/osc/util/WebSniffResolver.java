@@ -331,7 +331,7 @@ public class WebSniffResolver implements DownloadUrlSniffer {
                 return false;
             }
             if (sourceBean != null && sourceBean.getType() == 3) {
-                // 手动视频判定经 spider-api 契约,不直接拿具体 Spider
+                // 手动视频判定经爬虫契约(:spider),不直接拿具体 Spider
                 Boolean r = com.github.tvbox.osc.spiderapi.SpiderManualCheckProviders.get()
                         .manualVideoCheck(sourceBean.getKey(), url);
                 if (r != null) {

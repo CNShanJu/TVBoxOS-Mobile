@@ -15,7 +15,7 @@
  *   MACCMS_OFFLINE=1            不联网,改读脚本目录下的本地页面夹具(文件名由 URL 推导)
  *
  * 例:先跑 Java 侧生成 ext,再喂给模板:
- *   javac -d out spider-api/src/main/java/com/github/tvbox/osc/spiderapi/{HtmlSiteRules,CmsApiRules}.java ...
+ *   javac -d out spider/src/main/java/com/github/tvbox/osc/spiderapi/{HtmlSiteRules,CmsApiRules}.java ...
  *   MACCMS_EXT=ext.json node scripts/check-maccms-source.mjs https://example.com /sub
  */
 import { execFileSync } from 'node:child_process';

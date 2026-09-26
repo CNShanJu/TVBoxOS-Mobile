@@ -12,7 +12,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * 强类型首页/分类实现(type=3 JS/JAR):内容经 spider-api 契约取得后解析为 AbsSortXml/AbsXml。
+ * 强类型首页/分类实现(type=3 JS/JAR):内容经爬虫契约(spiderapi 包)取得后解析为 AbsSortXml/AbsXml。
  * 解析与 VM 共用同一权威实现:homeContent→SortParser.parseSortJson;分类/首页推荐→
  * AbsXmlParser.parseJson(与 SourceViewModel.json() 同源,消除双实现漂移)。
  */

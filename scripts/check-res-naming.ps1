@@ -14,13 +14,12 @@ $errors = 0
 $layoutRe    = '^(activity_|fragment_|item_|dialog_|view_|include_)'
 $drawableRe  = '^(ic_|bg_|shape_|selector_|img_)'
 
-# 校验范围: app(页面级) + ui-common(公共资源, 3.7 P2 后独立成模块)
+# 校验范围: app(页面级 + 公共资源,原 :ui-common 已并入 :app)
 $layoutDirs   = @(
     (Join-Path $root 'app\src\main\res\layout')
 )
 $drawableDirs = @(
-    (Join-Path $root 'app\src\main\res\drawable'),
-    (Join-Path $root 'ui-common\src\main\res\drawable')
+    (Join-Path $root 'app\src\main\res\drawable')
 )
 
 Write-Host '== 资源命名规范校验 =='

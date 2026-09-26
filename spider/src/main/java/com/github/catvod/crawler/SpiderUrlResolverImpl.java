@@ -4,7 +4,7 @@ import com.github.tvbox.osc.spiderapi.PlayUrlResolverApi;
 import com.github.tvbox.osc.spiderapi.ResolveResult;
 
 /**
- * :spider 侧对 spider-api 契约的实现:桥接 ApiConfig/SpiderApi 的既有解析链路。
+ * :spider 侧对爬虫契约(spiderapi 包)的实现:桥接 ApiConfig/SpiderApi 的既有解析链路。
  * App 组合根在启动时把它注入 DownloadManager(下载侧不再直接依赖 :spider 实现)。
  */
 public final class SpiderUrlResolverImpl implements PlayUrlResolverApi {

@@ -37,9 +37,9 @@ def debugVersionName(String releaseName) {
 
 
 // ------------------------------------------------------------------
-// 主题颜色生成已迁移至 :ui-common 模块(3.7②):app 依赖 :ui-common 后自动获得
-// 主题资源(theme_colors/theme_radii/样式/公共 drawable),app 只保留页面级资源。
-// 主题 JSON 统一维护于 ui-common/src/main/assets/theme/。
+// 主题与公共资源自持(3.7② 建 :ui-common 模块,后已整体并入 :app):
+// 主题资源(theme_colors/theme_radii/样式/公共 drawable)与页面级资源现在同在 app 的 res,
+// 主题 JSON 统一维护于 app/src/main/assets/theme/。
 // ------------------------------------------------------------------
 android {
     namespace 'com.github.tvbox.osc'
@@ -254,7 +254,7 @@ dependencies {
 }
 
 // ------------------------------------------------------------------
-// 主题颜色生成(3.7② ui-common 自持主题):两个主题各一个文件 ——
+// 主题颜色生成(3.7② 主题自持,资源与任务现在都在 :app):两个主题各一个文件 ——
 //   assets/theme/theme_colors.json(亮色)→ res/values,theme_colors_night.json(暗色)→ res/values-night
 // 每个文件自包含、**每个概念一个键**(底色/各种面+各自的透明度/各级文字色/品牌色/按钮色板/开关/状态色),
 // 只有"和主色同值的别名"不写进文件,由下面的规则表派生(原文件里同一主题内浅色 #1F2937 重复 9 次、

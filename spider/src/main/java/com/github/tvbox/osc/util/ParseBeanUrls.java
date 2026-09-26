@@ -6,7 +6,7 @@ import android.util.Base64;
 import com.github.tvbox.osc.bean.ParseBean;
 
 /**
- * ParseBean 行为侧工具(:spider):ParseBean 迁入 :core-model 纯化后,
+ * ParseBean 行为侧工具(:spider):ParseBean 迁入 :common 纯化后,
  * 需要 Android/运行时能力的操作集中在此,供 :spider 与 app 调用:
  * <ul>
  *   <li>{@link #url(ParseBean)}  : 解析器地址,proxy:// 前缀替换为本地代理(原 ParseBean.getUrl 语义);</li>

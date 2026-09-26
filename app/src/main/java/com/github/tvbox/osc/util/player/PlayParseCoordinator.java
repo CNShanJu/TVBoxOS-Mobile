@@ -570,7 +570,7 @@ public class PlayParseCoordinator {
                 return false;
             }
             if (sourceBean != null && sourceBean.getType() == 3) {
-                // 手动视频判定经 spider-api 契约,不直接拿具体 Spider
+                // 手动视频判定经爬虫契约(:spider),不直接拿具体 Spider
                 Boolean r = SpiderManualCheckProviders.get()
                         .manualVideoCheck(sourceBean.getKey(), url);
                 if (r != null) {

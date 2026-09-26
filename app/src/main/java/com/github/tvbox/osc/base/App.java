@@ -107,7 +107,7 @@ public class App extends MultiDexApplication {
         SystemStateMonitor.init(this);
         // 下载模块(:download) context 注入(保存目录/海报/网络监听/通知)
         com.github.tvbox.osc.download.DownloadFacade.init(this);
-        // 组合根:收敛 spider-api 服务注入(解析/手动判定/内容服务),见 AppCompositionRoot
+        // 组合根:收敛爬虫契约(:spider)服务注入(解析/手动判定/内容服务),见 AppCompositionRoot
         com.github.tvbox.osc.di.AppCompositionRoot.init();
         // 方案A:注册无头 WebView 嗅探器(嗅探型源任务启动前用它拿真实播放地址,串行复用保会话)
         com.github.tvbox.osc.download.DownloadFacade.setUrlSniffer(com.github.tvbox.osc.util.WebSniffResolver.get());

@@ -3,7 +3,7 @@ package com.github.tvbox.osc.bean;
 /**
  * 解析器配置(纯模型,跨模块共享)。
  * <p>
- * 从 :spider 迁入 :core-model 时按改进.txt 规则纯化:
+ * 从 :spider 迁入 :common(原 :core-model)时按改进.txt 规则纯化:
  * <ul>
  *   <li>只承载数据(name/url/ext/type/isDefault),无 Android 依赖;</li>
  *   <li>proxy:// 前缀替换、ext 的 Base64 拼接等"基础设施行为"移出到调用侧
