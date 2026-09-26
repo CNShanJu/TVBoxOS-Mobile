@@ -126,10 +126,10 @@ class FastSearchActivity : BaseVbActivity<ActivityFastSearchBinding>(), TextWatc
         sourceViewModel.setSearchBatchListener { data ->
             val call = syncCall.get()
             if (call != null) {
-                // jar/JS:结果直调在同一线程同步回来,置位后由 launchSearchTask 判定这一波有没有出结果
+                // 同步返回(jar/JS 与 typed HTTP 都在 getSearch 内直调回来):置位后由 launchSearchTask 统一记账
                 if (data != null) call.delivered = true
             } else if (data != null) {
-                // HTTP 源(type0/1/4)是异步回调:批次里带来源 key,据此补记实测耗时(失败批次归不到来源,不记)
+                // 异步回调(HTTP 源回退旧 HttpClient 路径时):批次里带来源 key,据此补记实测耗时(失败批次归不到来源,不记)
                 data.movie?.videoList?.firstOrNull()?.sourceKey?.let { recordSourceCost(it) }
             }
             runOnUiThread { searchData(data, call?.isRetry == true) }
@@ -912,9 +912,13 @@ class FastSearchActivity : BaseVbActivity<ActivityFastSearchBinding>(), TextWatc
         } finally {
             syncCall.remove()
         }
-        // jar/JS(type3)是同步调用:返回时就能判定这一波有没有出结果;HTTP 源(0/1/4)结果走异步回调,
-        // 这里不能判定(否则会把慢的 HTTP 源误记成"很快且无结果",下一轮反而失去延后保护)
-        if (sourceSync[key] == true) {
+        // 同步返回的来源在这里判定"这一波有没有出结果":
+        // - type3(jar/JS)本身同步;
+        // - HTTP 源(type0/1/4)走 typed 契约时**同样是同步返回**(结果在 getSearch 内直调回来),
+        //   只有回退到旧 HttpClient 路径才异步(那条由 recordSourceCost 记账)。
+        // 原判定只看 sourceSync(type==3),导致 typed HTTP 源既不记耗时也不参与分波 ——
+        // 慢的 HTTP 源永远留在第一波,"别让慢源占住池位"实际没生效。
+        if (call.delivered || sourceSync[key] == true) {
             sourceHealth.onSourceDone(key, SystemClock.elapsedRealtime() - started, call.delivered)
         }
     }

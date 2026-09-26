@@ -646,7 +646,10 @@ public class SourceViewModel extends ViewModel {
                     + " word=" + wd);
             fetchSearchHttpLegacy(sourceBean, type, wd);
         } else {
-            searchResult.postValue(null);
+            // 未支持的源类型:也要投一批"空结果"通知宿主,否则宿主的"全部来源已返回/第一波收尾"
+            // 记账永远等不到这一路(原实现只 searchResult.postValue(null),而该 LiveData 已无人观察),
+            // 第二波只能干等兜底超时,完成态也一直不落。
+            deliverSearchBatch(null);
         }
     }
 
