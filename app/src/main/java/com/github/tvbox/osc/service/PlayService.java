@@ -319,12 +319,14 @@ public class PlayService extends Service {
             }
             mediaSession = null;
         }
-        // 只清自己:重建场景下旧实例的 onDestroy 可能晚于新实例的 onCreate,避免把新实例清掉
+        // 只清自己:重建场景下旧实例的 onDestroy 可能晚于新实例的 onCreate。
+        // videoView 也必须一并放进这个判断 —— 原来无条件置 null,会把新实例刚注入的共享视图抹掉,
+        // 之后通知栏/锁屏控制拿不到视图,播放状态与进度就失灵了。
         if (sInstance == this) {
             sInstance = null;
+            videoView = null;
         }
         stopForeground(true);
-        videoView = null;
     }
     @Nullable
     @Override

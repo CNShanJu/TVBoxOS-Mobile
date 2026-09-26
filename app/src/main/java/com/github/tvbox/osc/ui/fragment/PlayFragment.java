@@ -197,7 +197,9 @@ public class PlayFragment extends BaseLazyFragment {
             @Override
             public void changeParse(ParseBean pb) {
                 autoRetryCount = 0;
-                mParseEngine.doParse(pb);
+                // 视图已销毁时 mParseEngine 会被置空:晚到的切换解析回调直接忽略,避免 NPE
+                if (mParseEngine != null)
+                    mParseEngine.doParse(pb);
             }
 
             @Override
@@ -628,7 +630,11 @@ public class PlayFragment extends BaseLazyFragment {
                         setTip("调用外部播放器" + PlayerHelper.getPlayerName(playerType) + "进行播放", true, false);
                         boolean callResult = false;
                         long progress = getSavedProgress(progressKey);
-                        callResult = PlayerHelper.runExternalPlayer(playerType, requireActivity(), finalUrl, playTitle,
+                        // 用 getActivity() 并判空:解析回包晚于页面销毁时,requireActivity() 会抛
+                        // IllegalStateException 直接把应用带崩
+                        android.app.Activity host = getActivity();
+                        if (host == null) return;
+                        callResult = PlayerHelper.runExternalPlayer(playerType, host, finalUrl, playTitle,
                                 playSubtitle, headers, progress);
                         setTip("调用外部播放器" + PlayerHelper.getPlayerName(playerType) + (callResult ? "成功" : "失败"),
                                 callResult, !callResult);
@@ -896,6 +902,8 @@ public class PlayFragment extends BaseLazyFragment {
         }
         if (mPlaySession != null)
             mPlaySession.release();
+        // 置空:释放后若还有晚到的回调(如控制器点击/解析回包)取到它,只会拿到已释放的会话
+        mPlaySession = null;
         mVideoView = null;
         if (mParseEngine != null) {
             mParseEngine.destroy(); // 取消解析任务/嗅探超时/HTTP 并销毁无头 WebView(原 stopLoadWebView(true)+stopParse)
