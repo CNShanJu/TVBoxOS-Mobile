@@ -94,6 +94,32 @@ final class DialogHeightPolicy {
         return Math.round(screenH * ratio(density, screenH));
     }
 
+    /**
+     * 普通弹窗在"扣掉状态栏/导航栏后的可用高度"内的封顶高度(px)。
+     * <p>
+     * {@link #maxHeightPx(Context)} 以整屏高为基准,而弹窗窗口的可用高度还要减掉系统栏;
+     * 长内容弹窗(如更新说明)按整屏高封顶时,底部会被导航栏/手势条裁掉(实测"按钮显示了但没显示完整")。
+     * 需要"按钮必须完整可见"的弹窗用本方法。
+     */
+    public static int maxHeightPxInsideWindow(Context context) {
+        int base = maxHeightPx(context);
+        if (base <= 0) return 0;
+        int inset = systemBarsHeightPx(context);
+        int available = ScreenUtils.getScreenHeight() - inset;
+        return Math.max(1, Math.min(base, available));
+    }
+
+    /** 状态栏 + 导航栏占用高度(取不到按 0,不影响主流程) */
+    public static int systemBarsHeightPx(Context context) {
+        try {
+            int statusBar = com.blankj.utilcode.util.BarUtils.getStatusBarHeight();
+            int navBar = com.blankj.utilcode.util.BarUtils.getNavBarHeight();
+            return Math.max(0, statusBar) + Math.max(0, navBar);
+        } catch (Throwable ignored) {
+            return 0;
+        }
+    }
+
     // ------------------------------------------------------------------
     // 纵向抽屉(底部弹窗/抽屉)
     // ------------------------------------------------------------------

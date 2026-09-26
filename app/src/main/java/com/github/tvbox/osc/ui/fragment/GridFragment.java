@@ -281,7 +281,28 @@ public class GridFragment extends BaseLazyFragment {
         // 下拉刷新 + 到底了:一键装配(门面统一主题色/onRefresh/打断守卫/到底控制器与滚动绑定)
         attachRefreshAndEndTip();
         findViewById(R.id.btn_filter).setOnClickListener(view -> showFilter());
+        syncFilterButton();
         setLoadSir2(mGridView);
+    }
+
+    /**
+     * 筛选悬浮钮的显隐:该分类<b>没有筛选项内容</b>时隐藏 —— 那种情况下点它也不会弹窗
+     * (见 {@link #showFilter()} 的判空),留着只会让人以为是坏的。
+     * 筛选项来自分类的 SortData(进页时已确定),换源重建 fragment 时按新值重新校正。
+     */
+    private void syncFilterButton() {
+        View btn = findViewById(R.id.btn_filter);
+        if (btn == null) return;
+        btn.setVisibility(hasFilterContent() ? View.VISIBLE : View.GONE);
+    }
+
+    /** 有没有"筛选项内容":有分组、且至少一组里有关键值(空分组 / 组里没值 = 弹窗也是空的,同一个判据) */
+    private boolean hasFilterContent() {
+        if (sortData == null || sortData.filters == null) return false;
+        for (MovieSort.SortFilter filter : sortData.filters) {
+            if (filter != null && filter.values != null && !filter.values.isEmpty()) return true;
+        }
+        return false;
     }
 
     /**
@@ -425,7 +446,7 @@ public class GridFragment extends BaseLazyFragment {
     }
 
     public void showFilter() {
-        if (sortData!=null && !sortData.filters.isEmpty() && gridFilterDialog == null) {
+        if (hasFilterContent() && gridFilterDialog == null) {
             gridFilterDialog = new GridFilterDialog(mContext);
             gridFilterDialog.setData(sortData);
             gridFilterDialog.setOnDismiss(new GridFilterDialog.Callback() {

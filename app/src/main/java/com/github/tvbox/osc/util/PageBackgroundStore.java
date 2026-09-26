@@ -231,15 +231,29 @@ public final class PageBackgroundStore {
     /**
      * 组装背景层配置:页面宿主(Activity)统一从这里取,
      * 免得各处重复读 SystemConfig 门面、漏字段。
+     * <p>
+     * 位置:已建立锚点的走锚点;老配置(只有旧版"中心位移")把旧值原样塞进去并标记
+     * {@link PageBackgroundView.Config#legacyOffsets},由背景层拿到图片尺寸后换算一次
+     * (当屏视觉不变)并回调 {@link #persistAnchors} 落盘 —— 之后转横竖屏就不会再漂。
      */
     public static PageBackgroundView.Config currentConfig() {
+        boolean anchors = SystemConfig.isPageBackgroundAnchorSet();
         return new PageBackgroundView.Config(
                 SystemConfig.getPageBackgroundPath(),
                 SystemConfig.getPageBackgroundDim(),
                 SystemConfig.getPageBackgroundAlpha(),
                 SystemConfig.getPageBackgroundZoom(),
-                SystemConfig.getPageBackgroundOffsetX(),
-                SystemConfig.getPageBackgroundOffsetY());
+                anchors ? SystemConfig.getPageBackgroundAnchorX() : SystemConfig.getPageBackgroundOffsetX(),
+                anchors ? SystemConfig.getPageBackgroundAnchorY() : SystemConfig.getPageBackgroundOffsetY(),
+                !anchors);
+    }
+
+    /**
+     * 把"旧版位移换算出来的锚点"落盘(老配置一次性迁移,由背景层在拿到图片尺寸后回调)。
+     * 换算结果与当屏正在显示的摆放完全一致,所以这里是"改写表示法",不是"改用户设置"。
+     */
+    public static void persistAnchors(float zoom, float anchorX, float anchorY) {
+        SystemConfig.setPageBackgroundTransform(zoom, anchorX, anchorY);
     }
 
     /** 清掉同前缀的旧副本(时间戳不同都算),保证目录里最多只留一份背景图 */

@@ -46,6 +46,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -98,6 +99,8 @@ public class ApiConfig implements com.github.tvbox.osc.spiderapi.SourceConfigApi
     private SourceBean mHomeSource;
     private ParseBean mDefaultParse;
     private List<LiveChannelGroup> liveChannelGroupList;
+    /** 订阅源自带的直播(主直播源 = 设置里配置的直播源不可用时的兜底;没有则为空) */
+    private List<LiveChannelGroup> subscribeLiveGroupList;
     private List<ParseBean> parseBeanList;
     private List<String> vipParseFlags;
     private List<IJKCode> ijkCodes;
@@ -116,6 +119,7 @@ public class ApiConfig implements com.github.tvbox.osc.spiderapi.SourceConfigApi
     private ApiConfig() {
         sourceBeanList = new LinkedHashMap<>();
         liveChannelGroupList = new ArrayList<>();
+        subscribeLiveGroupList = new ArrayList<>();
         parseBeanList = new ArrayList<>();
     }
 
@@ -535,11 +539,15 @@ public class ApiConfig implements com.github.tvbox.osc.spiderapi.SourceConfigApi
             if (mDefaultParse == null)
                 setDefaultParse(parseBeanList.get(0));
         }
-        // 直播源
+        // ── 直播源:优先"用户在设置里配置的直播源"(默认内置 iptv 源),它为空/加载失败才退到订阅源自带的直播 ──
+        // 订阅源自带的直播(内嵌分组,或 proxy:// / fengmi 形式的直播地址)只作兜底:
+        // 以前是订阅源的内嵌频道直接顶掉用户配的直播源(列表里多分组时直播页只会用订阅源那份,用户配的直播源形同虚设);
+        // 现在两者分开:主列表 = 用户直播源(包成一个待拉取的代理分组),兜底列表 = 订阅源自带直播。
+        // 两个都没有 → 主列表为空(主页不显示直播入口,直播页提示"频道列表为空")。
         liveChannelGroupList.clear();           //修复从后台切换重复加载频道列表
+        subscribeLiveGroupList.clear();
         String liveURL = SystemConfig.getLiveUrl();
-
-        String liveURL_final = null;
+        String subscribeLiveUrl = null;
         try {
             if (infoJson.has("lives") && infoJson.get("lives").getAsJsonArray() != null) {
                 JsonObject livesOBJ = infoJson.get("lives").getAsJsonArray().get(0).getAsJsonObject();
@@ -563,44 +571,25 @@ public class ApiConfig implements com.github.tvbox.osc.spiderapi.SourceConfigApi
                             extUrlFix = clanContentFix(clanToAddress(apiUrl), extUrlFix);
                         }
 
-                        // takagen99: Capture Live URL into Config
                         System.out.println("Live URL :" + extUrlFix);
                         putLiveHistory(extUrlFix);
-                        // Overwrite with Live URL from Settings
-                        if (!StringUtils.isBlank(liveURL)) {
-                            extUrlFix = liveURL;
-                        }
-
-                        // Final Live URL
-                        liveURL_final = extUrlFix;
-
-//                    // Encoding the Live URL
-//                    extUrlFix = Base64.encodeToString(extUrlFix.getBytes("UTF-8"), Base64.DEFAULT | Base64.URL_SAFE | Base64.NO_WRAP);
-//                    url = url.replace(extUrl, extUrlFix);
+                        // 订阅源的直播地址:留着当兜底(用户直播源为空/失败时才用)
+                        subscribeLiveUrl = extUrlFix;
                     }
 
                     // takagen99 : Getting EPG URL from File Config & put into Settings
                     if (livesOBJ.has("epg")) {
                         String epg = livesOBJ.get("epg").getAsString();
                         System.out.println("EPG URL :" + epg);
-                        //putEPGHistory(epg);
-                        // Overwrite with EPG URL from Settings
-                        //if (StringUtils.isBlank(epgURL)) {
-                            PrefsDataStore.put(HawkConfig.EPG_URL, epg);
-//                        } else {
-//                        }
+                        PrefsDataStore.put(HawkConfig.EPG_URL, epg);
                     }
-
-//                // Populate Live Channel Listing
-//                LiveChannelGroup liveChannelGroup = new LiveChannelGroup();
-//                liveChannelGroup.setGroupName(url);
-//                liveChannelGroupList.add(liveChannelGroup);
 
                 } else {
 
                     // if FongMi Live URL Formatting exists
                     if (!lives.contains("type")) {
-                        loadLives(infoJson.get("lives").getAsJsonArray());
+                        // 订阅源内嵌频道列表:只作兜底,不直接当主列表(否则会顶掉用户配的直播源)
+                        loadLivesInto(infoJson.get("lives").getAsJsonArray(), subscribeLiveGroupList);
                     } else {
                         JsonObject fengMiLives = infoJson.get("lives").getAsJsonArray().get(0).getAsJsonObject();
                         String type = fengMiLives.get("type").getAsString();
@@ -611,46 +600,38 @@ public class ApiConfig implements com.github.tvbox.osc.spiderapi.SourceConfigApi
                             if (fengMiLives.has("epg")) {
                                 String epg = fengMiLives.get("epg").getAsString();
                                 System.out.println("EPG URL :" + epg);
-                                //putEPGHistory(epg);
-                                // Overwrite with EPG URL from Settings
-                                //if (StringUtils.isBlank(epgURL)) {
-                                    PrefsDataStore.put(HawkConfig.EPG_URL, epg);
-//                                } else {
-//                                }
+                                PrefsDataStore.put(HawkConfig.EPG_URL, epg);
                             }
 
                             if (url.startsWith("http")) {
-                                // takagen99: Capture Live URL into Settings
                                 System.out.println("Live URL :" + url);
                                 putLiveHistory(url);
-                                // Overwrite with Live URL from Settings
-                                if (!StringUtils.isBlank(liveURL)) {
-                                    url = liveURL;
-                                }
-
-                                // Final Live URL
-                                liveURL_final = url;
-
-//                            url = Base64.encodeToString(url.getBytes("UTF-8"), Base64.DEFAULT | Base64.URL_SAFE | Base64.NO_WRAP);
+                                // 订阅源的直播地址:留着当兜底(用户直播源为空/失败时才用)
+                                subscribeLiveUrl = url;
                             }
                         }
                     }
                 }
-
-                // takagen99: Load Live Channel from settings URL (WIP)
-                if (StringUtils.isBlank(liveURL_final)) {
-                    liveURL_final = liveURL;
-                }
-                liveURL_final = Base64.encodeToString(liveURL_final.getBytes("UTF-8"), Base64.DEFAULT | Base64.URL_SAFE | Base64.NO_WRAP);
-                liveURL_final = "http://127.0.0.1:9978/proxy?do=live&type=txt&ext=" + liveURL_final;
-                LiveChannelGroup liveChannelGroup = new LiveChannelGroup();
-                liveChannelGroup.setGroupName(liveURL_final);
-                liveChannelGroupList.add(liveChannelGroup);
             }
 
 
         } catch (Throwable th) {
             th.printStackTrace();
+        }
+
+        // 订阅源兜底:内嵌分组直接用;只给了地址就包成一个"待拉取"的代理分组(与用户直播源同形)
+        if (subscribeLiveGroupList.isEmpty() && !StringUtils.isBlank(subscribeLiveUrl)) {
+            LiveChannelGroup subscribeGroup = proxyLiveGroup(subscribeLiveUrl);
+            if (subscribeGroup != null) subscribeLiveGroupList.add(subscribeGroup);
+        }
+        // 优先用户配置的直播源;没配才用订阅源的
+        if (!StringUtils.isBlank(liveURL)) {
+            LiveChannelGroup liveGroup = proxyLiveGroup(liveURL);
+            if (liveGroup != null) liveChannelGroupList.add(liveGroup);
+        } else {
+            liveChannelGroupList.addAll(subscribeLiveGroupList);
+            // 已经在用订阅源的直播了:没有"另一份"可兜底,免得失败后拿同一份重试一遍
+            subscribeLiveGroupList.clear();
         }
 
 
@@ -766,8 +747,19 @@ public class ApiConfig implements com.github.tvbox.osc.spiderapi.SourceConfigApi
         }
     }
 
+    /** 用直播源 json(lives 数组)重建<b>主</b>频道分组(直播页拉完直播源后调用) */
     public void loadLives(JsonArray livesArray) {
-        liveChannelGroupList.clear();
+        loadLivesInto(livesArray, liveChannelGroupList);
+    }
+
+    /**
+     * 把 lives 数组解析成分组写进目标列表。
+     * <p>
+     * 两种用途:① 直播页拉取直播源成功后重建<b>主</b>列表;② 源配置解析时把订阅源内嵌的频道
+     * 写进<b>兜底</b>列表(见 {@link #getFallbackChannelGroupList()})。
+     */
+    private void loadLivesInto(JsonArray livesArray, List<LiveChannelGroup> target) {
+        target.clear();
         int groupIndex = 0;
         int channelIndex = 0;
         int channelNum = 0;
@@ -806,8 +798,23 @@ public class ApiConfig implements com.github.tvbox.osc.spiderapi.SourceConfigApi
                 liveChannelItem.setChannelUrls(sourceUrls);
                 liveChannelGroup.getLiveChannels().add(liveChannelItem);
             }
-            liveChannelGroupList.add(liveChannelGroup);
+            target.add(liveChannelGroup);
         }
+    }
+
+    /**
+     * 把直播源地址包成一个"待拉取"的代理分组:直播页看到<b>单个</b>、以 {@code http://127.0.0.1}
+     * 开头的分组,就去把该地址拉下来解析成频道(见 LiveActivity.loadProxyLives)。
+     * <p>
+     * 用户在设置里配的直播源、订阅源里的直播地址都用这个形态,加载逻辑只有一套。
+     */
+    private LiveChannelGroup proxyLiveGroup(String liveUrl) {
+        if (StringUtils.isBlank(liveUrl)) return null;
+        String encoded = Base64.encodeToString(liveUrl.getBytes(StandardCharsets.UTF_8),
+                Base64.DEFAULT | Base64.URL_SAFE | Base64.NO_WRAP);
+        LiveChannelGroup group = new LiveChannelGroup();
+        group.setGroupName("http://127.0.0.1:9978/proxy?do=live&type=txt&ext=" + encoded);
+        return group;
     }
 
     public String getSpider() {
@@ -891,8 +898,17 @@ public class ApiConfig implements com.github.tvbox.osc.spiderapi.SourceConfigApi
         return mHomeSource == null ? emptyHome : mHomeSource;
     }
 
+    /** 主直播分组:用户在设置里配置的直播源(单个待拉取的代理分组);没配时才回落到订阅源自带的直播 */
     public List<LiveChannelGroup> getChannelGroupList() {
         return liveChannelGroupList;
+    }
+
+    /**
+     * 兜底直播分组 = <b>订阅源自带</b>的直播(内嵌频道分组,或订阅源里的直播地址包成的代理分组)。
+     * 只在主直播源(= 设置里配置的直播源)没内容/加载失败时才用;没有则返回空列表。
+     */
+    public List<LiveChannelGroup> getFallbackChannelGroupList() {
+        return subscribeLiveGroupList;
     }
 
     /**

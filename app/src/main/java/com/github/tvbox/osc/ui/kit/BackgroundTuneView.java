@@ -12,7 +12,7 @@ import com.github.tvbox.osc.util.BgImageTransform;
 /**
  * 背景图调整手势层(全屏透明,只负责"拖动位置 / 双指等比缩放"):
  * <ul>
- *   <li>单指拖动 = 平移,位移按视图尺寸归一化;</li>
+ *   <li>单指拖动 = 平移(位移按该轴"可移动范围"换算成锚点比例,图片永远被拖不出屏、也不会拖出缝);</li>
  *   <li>双指捏合 = 等比缩放,并<b>保持两指中点下的图像点不动</b>(缩哪停哪),
  *       双指同时移动等于顺带平移;</li>
  *   <li>手势过程中回调 {@link Callback#onTune} 实时预览,抬手回调
@@ -28,15 +28,15 @@ public class BackgroundTuneView extends View {
         public final int imageW;
         public final int imageH;
         public final float zoom;
-        public final float offsetX;
-        public final float offsetY;
+        public final float anchorX;
+        public final float anchorY;
 
-        public State(int imageW, int imageH, float zoom, float offsetX, float offsetY) {
+        public State(int imageW, int imageH, float zoom, float anchorX, float anchorY) {
             this.imageW = imageW;
             this.imageH = imageH;
             this.zoom = zoom;
-            this.offsetX = offsetX;
-            this.offsetY = offsetY;
+            this.anchorX = anchorX;
+            this.anchorY = anchorY;
         }
     }
 
@@ -46,10 +46,10 @@ public class BackgroundTuneView extends View {
         State onTuneBegin();
 
         /** 实时预览(手势过程中高频调用,不要在这里写配置) */
-        void onTune(float zoom, float offsetX, float offsetY);
+        void onTune(float zoom, float anchorX, float anchorY);
 
         /** 手势结束:可持久化 */
-        void onTuneCommitted(float zoom, float offsetX, float offsetY);
+        void onTuneCommitted(float zoom, float anchorX, float anchorY);
     }
 
     private Callback callback;
@@ -128,7 +128,13 @@ public class BackgroundTuneView extends View {
         return true;
     }
 
-    /** 单指拖动:图片跟着手指走(位移 = 手指位移 / 视图尺寸) */
+    /**
+     * 单指拖动:图片跟着手指走。
+     * <p>
+     * 手指位移要换算成锚点增量:{@code left} 的变化就是手指位移 dx,而 {@code left = anchor*slack},
+     * 所以 {@code dAnchor = dx/slack}(slack 为该轴可移动范围,可能为负 —— 图片比屏幕大时反向,公式自动处理)。
+     * 该轴没有可移动范围(图片刚好铺满)时拖动无效。
+     */
     private void applyDrag(MotionEvent event) {
         float x = event.getX();
         float y = event.getY();
@@ -136,10 +142,19 @@ public class BackgroundTuneView extends View {
         float dy = y - lastY;
         lastX = x;
         lastY = y;
-        float ox = BgImageTransform.clampOffset(start.offsetX + dx / getWidth());
-        float oy = BgImageTransform.clampOffset(start.offsetY + dy / getHeight());
-        start = new State(start.imageW, start.imageH, start.zoom, ox, oy);
-        callback.onTune(start.zoom, ox, oy);
+        float vw = getWidth();
+        float vh = getHeight();
+        float scale = vw > 0 && vh > 0
+                ? BgImageTransform.coverScale(start.imageW, start.imageH, (int) vw, (int) vh) * start.zoom
+                : 0f;
+        float slackX = BgImageTransform.slack(start.imageW, (int) vw, scale);
+        float slackY = BgImageTransform.slack(start.imageH, (int) vh, scale);
+        float ax = Math.abs(slackX) < 0.5f ? start.anchorX
+                : BgImageTransform.clampAnchor(start.anchorX + dx / slackX);
+        float ay = Math.abs(slackY) < 0.5f ? start.anchorY
+                : BgImageTransform.clampAnchor(start.anchorY + dy / slackY);
+        start = new State(start.imageW, start.imageH, start.zoom, ax, ay);
+        callback.onTune(start.zoom, ax, ay);
     }
 
     /** 双指捏合:等比缩放 + 焦点锚定(焦点下的图像点在缩放前后不动) */
@@ -156,10 +171,10 @@ public class BackgroundTuneView extends View {
         // 让手势开始时焦点下的图像点在缩放后仍落在当前焦点位置(顺带处理双指平移)
         float left = focusX - focusImageX * scale;
         float top = focusY - focusImageY * scale;
-        float ox = BgImageTransform.offsetFromLeft(left, start.imageW, getWidth(), scale);
-        float oy = BgImageTransform.offsetFromTop(top, start.imageH, getHeight(), scale);
-        start = new State(start.imageW, start.imageH, zoom, ox, oy);
-        callback.onTune(zoom, ox, oy);
+        float ax = BgImageTransform.anchorFromLeft(left, start.imageW, getWidth(), scale);
+        float ay = BgImageTransform.anchorFromTop(top, start.imageH, getHeight(), scale);
+        start = new State(start.imageW, start.imageH, zoom, ax, ay);
+        callback.onTune(zoom, ax, ay);
     }
 
     /** 记录当前焦点下的图像点(图像坐标系)+ 起始缩放,供捏合锚定使用 */
@@ -167,7 +182,7 @@ public class BackgroundTuneView extends View {
         float focusX = (event.getX(0) + event.getX(1)) / 2f;
         float focusY = (event.getY(0) + event.getY(1)) / 2f;
         float[] r = BgImageTransform.resolve(start.imageW, start.imageH, getWidth(), getHeight(),
-                start.zoom, start.offsetX, start.offsetY);
+                start.zoom, start.anchorX, start.anchorY);
         pinchStartZoom = start.zoom;
         if (r[0] <= 0f) {
             focusImageX = 0f;
@@ -191,7 +206,7 @@ public class BackgroundTuneView extends View {
         start = null;
         pinching = false;
         if (s != null && callback != null) {
-            callback.onTuneCommitted(s.zoom, s.offsetX, s.offsetY);
+            callback.onTuneCommitted(s.zoom, s.anchorX, s.anchorY);
         }
     }
 

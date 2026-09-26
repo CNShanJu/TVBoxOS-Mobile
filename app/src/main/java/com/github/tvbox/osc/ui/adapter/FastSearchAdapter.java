@@ -217,29 +217,23 @@ public class FastSearchAdapter extends BaseQuickAdapter<Movie.Video, BaseViewHol
 
     private void loadPoster(ImageView ivThumb, Movie.Video item) {
         if (ivThumb == null) return;
-        // 占位统一走 ImageView 背景层(placeholder_poster),src 只放实图:先清旧图露出占位,
+        // 占位统一走 ImageView 背景层(统一占位组件 PosterPlaceholderDrawable),src 只放实图:
         // 三布局(列表/宫格/通栏)共用同一目标规格与稳定缓存键(不含 position),
         // 切换布局/滚动复用均命中同一缓存,不再重复下载或拉原图。
         String url = item.pic == null ? "" : item.pic.trim();
         if (url.isEmpty()) {
-            cancelShimmer(ivThumb);
-            com.github.tvbox.osc.ui.kit.PicassoShimmer.stop(ivThumb);
-            // 无封面:显示"加载失败"占位
-            ivThumb.setImageDrawable(null);
-            ivThumb.setBackground(com.github.tvbox.osc.util.ErrorPlaceholderDrawable.get(ivThumb.getContext()));
+            // 无封面:显示"加载失败"占位(统一占位组件,见 util/PosterPlaceholderDrawable)
+            com.github.tvbox.osc.util.PicassoLoad.showFailedPlaceholder(ivThumb);
             return;
         }
         // 已失败过且仍在窗口内的 URL:直接显示失败占位,不再重新发起请求(修复滑回又重载);清 src 露出占位
         if (recentlyFailed(url)) {
-            cancelShimmer(ivThumb);
-            com.github.tvbox.osc.ui.kit.PicassoShimmer.stop(ivThumb);
             ivThumb.setTag(TAG_LAST_URL, url);
-            ivThumb.setImageDrawable(null);
-            ivThumb.setBackground(com.github.tvbox.osc.util.ErrorPlaceholderDrawable.get(ivThumb.getContext()));
+            com.github.tvbox.osc.util.PicassoLoad.showFailedPlaceholder(ivThumb);
             return;
         }
-        // 恢复为正常占位(上一张可能是"加载失败")
-        ivThumb.setBackgroundResource(R.drawable.placeholder_poster);
+        // 恢复为正常占位(上一张可能是"加载失败");此处不动 src,下面同图去重命中要保留已显示的图
+        com.github.tvbox.osc.util.PicassoLoad.setLoadingPlaceholder(ivThumb);
         // 同一张图已显示(滑回/复用相同项):不重载、不闪
         if (url.equals(ivThumb.getTag(TAG_LAST_URL))) return;
         ivThumb.setTag(TAG_LAST_URL, url);
@@ -273,11 +267,9 @@ public class FastSearchAdapter extends BaseQuickAdapter<Movie.Video, BaseViewHol
 
                     @Override
                     public void onError(Exception e) {
-                        cancelShimmer(ivThumb);
-                        com.github.tvbox.osc.ui.kit.PicassoShimmer.stop(ivThumb);
                         // 加载失败:记入失败窗口(窗口内滑回不再重试)并切到带"图片加载失败"文字的占位
                         failedUrls.put(url, System.currentTimeMillis());
-                        ivThumb.setBackground(com.github.tvbox.osc.util.ErrorPlaceholderDrawable.get(ivThumb.getContext()));
+                        com.github.tvbox.osc.util.PicassoLoad.showFailedPlaceholder(ivThumb);
                     }
                 });
     }

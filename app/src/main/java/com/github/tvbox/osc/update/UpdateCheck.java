@@ -25,8 +25,14 @@ public final class UpdateCheck {
     public interface Listener {
         void onChecking();
 
-        /** @param newVersion null=已是最新 */
-        void onResult(UpdateInfo newVersion);
+        /**
+         * 检查完成。
+         *
+         * @param newVersion null=已是最新
+         * @return true=新版本的说明弹窗由调用方负责弹(例如底部弹窗要先等自己退场动画收完再弹,
+         *         避免两个弹窗硬切显得僵硬);false=由 {@link UpdateCheck} 立即弹(启动自动检查等无宿主弹窗的场景)
+         */
+        boolean onResult(UpdateInfo newVersion);
 
         void onFailed(String message);
     }
@@ -56,9 +62,15 @@ public final class UpdateCheck {
 
             @Override
             public void onCheckResult(final UpdateInfo newVersion) {
-                if (listener != null) listener.onResult(newVersion);
-                if (newVersion == null) return;
-                UpdateNoteDialog.show(context, newVersion, () -> startDownload(context, updater, newVersion));
+                if (newVersion == null) {
+                    if (listener != null) listener.onResult(null);
+                    return;
+                }
+                // 调用方要自己编排弹窗时机(如等底部弹窗退场动画收完)时,这里就不抢着弹
+                boolean handledByCaller = listener != null && listener.onResult(newVersion);
+                if (!handledByCaller) {
+                    showNote(context, newVersion);
+                }
             }
 
             @Override
@@ -74,6 +86,15 @@ public final class UpdateCheck {
                 if (listener != null) listener.onFailed(message);
             }
         });
+    }
+
+    /**
+     * 弹更新说明弹窗(宿主弹窗自己编排时机时由调用方调用,见 {@link Listener#onResult})。
+     */
+    public static void showNote(final Context context, final UpdateInfo info) {
+        if (context == null || info == null) return;
+        final Updater updater = UpdaterProvider.get();
+        UpdateNoteDialog.show(context, info, () -> startDownload(context, updater, info));
     }
 
     /**
@@ -99,10 +120,11 @@ public final class UpdateCheck {
             }
 
             @Override
-            public void onResult(UpdateInfo newVersion) {
+            public boolean onResult(UpdateInfo newVersion) {
                 com.github.tvbox.osc.util.AppLog.log("更新", newVersion == null
                         ? "启动自动检查: 已是最新" : "启动自动检查: 发现新版本 v" + newVersion.versionName);
                 if (onFinished != null) MAIN.post(onFinished);
+                return false;   // 启动检查没有宿主弹窗要收,直接弹
             }
 
             @Override

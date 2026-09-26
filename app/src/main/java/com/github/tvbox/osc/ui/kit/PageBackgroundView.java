@@ -40,8 +40,9 @@ import java.io.File;
  * 调的是<b>背景图自身的不透明度</b>({@code imageAlpha},作用于图片而非遮罩)。
  * <p>
  * 缩放/位置模型见 {@link BgImageTransform}:普通图片默认铺满屏幕;尺寸很小的图(如 100×100)
- * 默认按原始像素显示,用户可以拖到任意位置(例如右下角做点缀);位置按屏幕比例归一化,
- * 换分辨率/横竖屏仍能还原。设置入口见 {@code ui/activity/BackgroundSettingActivity}。
+ * 默认按原始像素显示,用户可以拖到任意位置(例如右下角做点缀);位置存的是<b>锚点比例</b>
+ * (0=起始边贴边、0.5=居中、1=结束边贴边),与屏幕尺寸无关,所以换分辨率/转横竖屏仍是同一观感。
+ * 设置入口见 {@code ui/activity/BackgroundSettingActivity}。
  * <p>
  * 组件本身不读配置:图源/遮罩/缩放/位置由页面宿主按 {@code SystemConfig} 的配置门面取值后经
  * {@link Config} 传入(见 {@link #attach(Activity, Config)});设置页的实时预览用
@@ -63,20 +64,34 @@ public class PageBackgroundView extends FrameLayout {
         public final int imageAlpha;
         /** 缩放倍率(相对铺满;<=0 自动:大图铺满、小图原始像素) */
         public final float zoom;
-        /** 横向位置:图片中心相对屏幕中心的位移(屏宽比例,0=居中) */
-        public final float offsetX;
-        /** 纵向位置:图片中心相对屏幕中心的位移(屏高比例,0=居中) */
-        public final float offsetY;
+        /** 横向位置:锚点比例 0~1(0=贴左、0.5=居中、1=贴右) */
+        public final float anchorX;
+        /** 纵向位置:锚点比例 0~1(0=贴上、0.5=居中、1=贴下) */
+        public final float anchorY;
+        /**
+         * 上面两个位置字段装的是不是<b>旧版的"图片中心位移"</b>(-0.5..0.5,按屏宽/屏高归一化)。
+         * <p>
+         * 旧值只在"写入时那块屏幕的几何"下有意义(转横竖屏会漂),组件拿到图片尺寸后会按
+         * {@link BgImageTransform#anchorFromLegacyOffset} 换算成锚点(当屏视觉不变),
+         * 换算结果经 {@link #setOnLegacyMigratedListener} 交宿主落盘,之后不再走这条路。
+         */
+        public final boolean legacyOffsets;
 
         public Config(String imagePath, int dimPercent, int imageAlpha,
-                      float zoom, float offsetX, float offsetY) {
+                      float zoom, float anchorX, float anchorY, boolean legacyOffsets) {
             this.imagePath = imagePath;
             this.dimPercent = dimPercent;
             this.imageAlpha = imageAlpha;
             this.zoom = zoom;
-            this.offsetX = offsetX;
-            this.offsetY = offsetY;
+            this.anchorX = anchorX;
+            this.anchorY = anchorY;
+            this.legacyOffsets = legacyOffsets;
         }
+    }
+
+    /** 旧版"中心位移"配置被换算成锚点后的回调(宿主落盘用) */
+    public interface LegacyMigratedListener {
+        void onLegacyMigrated(float zoom, float anchorX, float anchorY);
     }
 
     /** 背景图(自绘矩阵,置于遮罩之下) */
@@ -90,10 +105,13 @@ public class PageBackgroundView extends FrameLayout {
     private int dimPercent = -1;
     /** 背景图自身不透明度(0-100) */
     private int imageAlpha = 100;
-    /** 配置的缩放(<=0 自动)与位置;设置页实时预览会直接改这三个值 */
+    /** 配置的缩放(<=0 自动)与位置锚点;设置页实时预览会直接改这三个值 */
     private float zoom = 0f;
-    private float offsetX = 0f;
-    private float offsetY = 0f;
+    private float anchorX = BgImageTransform.ANCHOR_CENTER;
+    private float anchorY = BgImageTransform.ANCHOR_CENTER;
+    /** 当前配置的位置字段是不是旧版"中心位移"(拿到图片尺寸后换算成锚点,只换算一次) */
+    private boolean legacyOffsets = false;
+    private boolean legacyResolved = false;
     /** 当前已加载图片的像素尺寸(0=未加载/失败) */
     private int imageW = 0;
     private int imageH = 0;
@@ -101,6 +119,8 @@ public class PageBackgroundView extends FrameLayout {
     private Target loadTarget;
     /** 图片加载完成(成功或失败)后回调:设置页用它刷新预设高亮(加载前拿不到图片尺寸) */
     private Runnable onImageReady;
+    /** 旧版位移换算成锚点后的回调(页面宿主用它把锚点落盘) */
+    private LegacyMigratedListener onLegacyMigrated;
 
     public PageBackgroundView(Context context) {
         this(context, null);
@@ -130,18 +150,22 @@ public class PageBackgroundView extends FrameLayout {
     /**
      * 给 Activity 挂上/刷新全局背景层(幂等:已挂则只按传入配置刷新,不重复添加)。
      * 由 {@link com.github.tvbox.osc.base.BaseActivity} 在 onCreate/onResume 调用。
+     *
+     * @return 当前活动的背景层(挂不上时返回 null),便于宿主接着注册回调/读取状态
      */
-    public static void attach(Activity activity, Config config) {
-        if (activity == null || config == null) return;
+    @Nullable
+    public static PageBackgroundView attach(Activity activity, Config config) {
+        if (activity == null || config == null) return null;
         PageBackgroundView layer = find(activity);
         if (layer == null) {
             ViewGroup content = activity.findViewById(android.R.id.content);
-            if (content == null) return;
+            if (content == null) return null;
             layer = new PageBackgroundView(activity);
             // 加在最底层:各页面布局(含 Fragment 容器)都在它上面,布局透明处即露出背景
             content.addView(layer, 0, new LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT));
         }
         layer.applyConfig(config);
+        return layer;
     }
 
     /** 取当前 Activity 已挂载的背景层(设置页实时预览用);未挂载返回 null */
@@ -160,14 +184,23 @@ public class PageBackgroundView extends FrameLayout {
         return resolveZoom();
     }
 
-    /** 当前位置:图片中心相对屏幕中心的横向位移(屏宽比例,0=居中) */
-    public float getOffsetX() {
-        return offsetX;
+    /** 当前位置:横向锚点比例 0~1(0=贴左、0.5=居中、1=贴右) */
+    public float getAnchorX() {
+        return anchorX;
     }
 
-    /** 当前位置:图片中心相对屏幕中心的纵向位移(屏高比例,0=居中) */
-    public float getOffsetY() {
-        return offsetY;
+    /** 当前位置:纵向锚点比例 0~1(0=贴上、0.5=居中、1=贴下) */
+    public float getAnchorY() {
+        return anchorY;
+    }
+
+    /**
+     * 位置是否已经是可用的锚点:配置本来就是锚点,或旧版位移已按当前几何换算完。
+     * {@code false} 时 {@link #getAnchorX()}/{@link #getAnchorY()} 里还是旧版的位移值,
+     * 宿主(设置页)不要拿它当锚点用(见 {@link Config#legacyOffsets})。
+     */
+    public boolean isPositionResolved() {
+        return !legacyOffsets;
     }
 
     /** 当前背景图像素宽(0=未加载完,此时不可拖动) */
@@ -203,11 +236,19 @@ public class PageBackgroundView extends FrameLayout {
         onImageReady = listener;
     }
 
-    /** 实时预览:只改缩放/位置(持久化由调用方负责) */
-    public void setTransform(float zoom, float offsetX, float offsetY) {
+    /**
+     * 设置"旧版位移已换算成锚点"回调(页面宿主据此落盘,只发生一次);传 null 清除。
+     * 见 {@link Config#legacyOffsets} 与 {@link BgImageTransform#anchorFromLegacyOffset}。
+     */
+    public void setOnLegacyMigratedListener(@Nullable LegacyMigratedListener listener) {
+        onLegacyMigrated = listener;
+    }
+
+    /** 实时预览:只改缩放/位置锚点(持久化由调用方负责) */
+    public void setTransform(float zoom, float anchorX, float anchorY) {
         this.zoom = Float.isNaN(zoom) ? 0f : zoom;
-        this.offsetX = BgImageTransform.clampOffset(offsetX);
-        this.offsetY = BgImageTransform.clampOffset(offsetY);
+        this.anchorX = BgImageTransform.clampAnchor(anchorX);
+        this.anchorY = BgImageTransform.clampAnchor(anchorY);
         updateMatrix();
     }
 
@@ -222,8 +263,34 @@ public class PageBackgroundView extends FrameLayout {
             source = path;
             loadImage(path);
         }
+        // 位置:旧版位移等到拿到图片尺寸再换算(见 resolveLegacyOffsets),先原样收下
+        legacyOffsets = cfg.legacyOffsets;
+        legacyResolved = false;
+        zoom = Float.isNaN(cfg.zoom) ? 0f : cfg.zoom;
+        anchorX = BgImageTransform.clampAnchor(cfg.anchorX);
+        anchorY = BgImageTransform.clampAnchor(cfg.anchorY);
+        resolveLegacyOffsets();
         // 图源不变也要按传入值刷新(设置页可能刚改了缩放/位置)
-        setTransform(cfg.zoom, cfg.offsetX, cfg.offsetY);
+        updateMatrix();
+    }
+
+    /**
+     * 旧版"图片中心位移"→ 锚点(老配置一次性迁移):必须在拿到图片尺寸之后做,而且只在
+     * <b>当前这块屏幕的几何</b>上换算一次(当屏视觉不变)。换算完就不再走旧式,
+     * 之后转横竖屏按锚点走,不会漂。
+     */
+    private void resolveLegacyOffsets() {
+        if (!legacyOffsets || legacyResolved) return;
+        int vw = getWidth();
+        int vh = getHeight();
+        if (imageW <= 0 || imageH <= 0 || vw <= 0 || vh <= 0) return;
+        float scale = BgImageTransform.coverScale(imageW, imageH, vw, vh) * getEffectiveZoom();
+        anchorX = BgImageTransform.anchorFromLegacyOffset(anchorX, imageW * scale, vw);
+        anchorY = BgImageTransform.anchorFromLegacyOffset(anchorY, imageH * scale, vh);
+        legacyResolved = true;
+        legacyOffsets = false;
+        LegacyMigratedListener l = onLegacyMigrated;
+        if (l != null) l.onLegacyMigrated(getEffectiveZoom(), anchorX, anchorY);
     }
 
     private void applyDim(int percent) {
@@ -338,8 +405,9 @@ public class PageBackgroundView extends FrameLayout {
 
     private void updateMatrix() {
         int vw = getWidth(), vh = getHeight();
+        resolveLegacyOffsets();
         if (imageW <= 0 || imageH <= 0 || vw <= 0 || vh <= 0) return;
-        float[] r = BgImageTransform.resolve(imageW, imageH, vw, vh, zoom, offsetX, offsetY);
+        float[] r = BgImageTransform.resolve(imageW, imageH, vw, vh, zoom, anchorX, anchorY);
         imageMatrix.setScale(r[0], r[0]);
         imageMatrix.postTranslate(r[1], r[2]);
         image.setImageMatrix(imageMatrix);
@@ -348,6 +416,7 @@ public class PageBackgroundView extends FrameLayout {
     @Override
     protected void onSizeChanged(int w, int h, int oldw, int oldh) {
         super.onSizeChanged(w, h, oldw, oldh);
+        // 转横竖屏/换窗口尺寸:锚点与屏幕尺寸无关,直接按新尺寸重算即可(旧版位移在这一次换算)
         updateMatrix();
     }
 

@@ -12,8 +12,17 @@ import java.util.List;
  */
 public interface LiveChannelConfigApi {
 
-    /** 当前频道分组列表（直播源加载后填充） */
+    /**
+     * 主直播分组:{@code live[]} 里配置的直播源(单个"待拉取"的代理分组);
+     * 没配直播源时才回落到订阅源自带的直播。空 = 没有直播可用。
+     */
     List<LiveChannelGroup> getChannelGroupList();
+
+    /**
+     * 兜底直播分组 = <b>订阅源自带</b>的直播(内嵌频道分组,或订阅源里的直播地址包成的代理分组)。
+     * 只在主直播源没内容/加载失败时才用;没有则为空列表。
+     */
+    List<LiveChannelGroup> getFallbackChannelGroupList();
 
     /** 用直播源 json(lives 数组)重建频道分组 */
     void loadLives(JsonArray livesArray);

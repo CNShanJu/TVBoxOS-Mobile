@@ -31,6 +31,7 @@ import com.github.tvbox.osc.constant.CacheConst;
 import com.github.tvbox.osc.download.DownloadFacade;
 import com.github.tvbox.osc.util.DownloadDisplay;
 import com.github.tvbox.osc.util.DownloadGrouping;
+import com.github.tvbox.osc.util.PicassoLoad;
 import com.github.tvbox.osc.ui.activity.LocalPlayActivity;
 import com.github.tvbox.osc.ui.adapter.LocalVideoAdapter;
 import com.github.tvbox.osc.ui.dialog.ConfirmDialog;
@@ -67,7 +68,7 @@ public class DownloadFragment extends BaseVbFragment<FragmentDownloadBinding> {
     private static final int TAB_DONE = 1;
     /** 左滑露出的操作区宽度(暂停+删除两个按钮) */
     private static final int SWIPE_REVEAL_WIDTH_DP = 128;
-    /** bindPoster 去重 tag key:ImageView 上记录"当前海报源"(本地海报文件绝对路径,或已发起懒拉取的 pic) */
+    /** bindPoster 去重 tag key:ImageView 上记录"已发起懒拉取的 pic"(本地海报文件的去重在 PicassoLoad 内按路径记) */
     private static final int TAG_POSTER_SOURCE = 0x2D00001;
 
     // ------------------------------------------------------------------
@@ -949,34 +950,35 @@ public class DownloadFragment extends BaseVbFragment<FragmentDownloadBinding> {
         return null;
     }
 
-    /** 绑定剧集海报:优先本地文件(私有目录,不入相册),缺失显示搜索页同款占位图并懒拉取。
+    /** 绑定剧集海报:优先加载本地海报文件(私有目录,不入相册),缺失时显示统一占位并懒拉取。
+     * <p>占位一律走 {@link PicassoLoad} 的背景层(与首页/搜索/收藏/历史同一个组件):
+     * 以前把 {@code placeholder_poster} 直接塞进 src / Picasso 的 placeholder(),
+     * 会被 ImageView 的 centerCrop 当成普通图片等比放大再裁剪 —— 3:4 聚合卡上图标被撑满、
+     * 56×74dp 的条目封面上更是直接超出显示范围,这就是"下载页占位超出范围"的根因。
      * 同源去重:同一 ImageView 再次绑定同一海报源(本地文件路径/已请求的 pic)时直接跳过,
      * 避免状态刷新/多选切换整行重绑时反复"占位→重载"导致图片闪动;复用条目换绑其它封面、
      * 或海报文件从无到有(懒拉取落地)时源变化,自然重新加载。 */
     private void bindPoster(ImageView iv, String vodName, String pic) {
         File pf = DownloadFacade.get().getPosterFile(vodName);
-        String source = pf != null ? pf.getAbsolutePath() : null;
-        Object bound = iv.getTag(TAG_POSTER_SOURCE);
-        if (source != null) {
-            if (source.equals(bound)) return; // 同一张海报已绑定/加载中
-            iv.setTag(TAG_POSTER_SOURCE, source);
-            // 统一图片加载到 Picasso 单例(共享 OkHttp 连接池/缓存),移除 Glide 双依赖
-            // 必须 fit():RecyclerView 绑定条目先于测量,此时 iv 尺寸为 0,
-            // centerCrop 不带正尺寸直接 build 会抛 IllegalStateException;fit() 在视图布局后按真实尺寸加载
-            com.squareup.picasso.Picasso.get()
-                    .load(pf)
-                    .placeholder(R.drawable.placeholder_poster)
-                    .error(R.drawable.placeholder_poster)
-                    .fit()
-                    .centerCrop()
-                    .into(iv);
-        } else {
-            iv.setImageResource(R.drawable.placeholder_poster);
-            // 无本地海报:仅对首次出现的 pic 发起一次懒拉取(去重),避免进度刷新反复请求
-            if (pic == null || pic.isEmpty() || pic.equals(bound)) return;
-            iv.setTag(TAG_POSTER_SOURCE, pic);
-            DownloadFacade.get().ensurePosterAsync(pic, vodName);
+        if (pf != null) {
+            // 本地海报已就绪:清掉"已发起懒拉取"的记录(复用条目换绑时不误判),按本地文件加载
+            iv.setTag(TAG_POSTER_SOURCE, null);
+            PicassoLoad.intoFile(iv, pf);
+            return;
         }
+        if (pic == null || pic.isEmpty()) {
+            // 既无本地海报、也没有可拉取的 pic:仍用"加载态"占位(灰底 + 居中图标,不写"图片加载失败")
+            // —— 下载页的"没有海报"是"海报还没落到本地/源没给图",不是加载失败;
+            // 写失败文案还会让图标被压缩、整组上移避开底部信息条,观感变成"卡片里一小块占位"
+            iv.setTag(TAG_POSTER_SOURCE, null);
+            PicassoLoad.showLoadingPlaceholder(iv);
+            return;
+        }
+        // 本地海报还在懒拉取:加载态占位(与首页加载态同观感,图标按宿主尺寸自适应)
+        PicassoLoad.showLoadingPlaceholder(iv);
+        if (pic.equals(iv.getTag(TAG_POSTER_SOURCE))) return; // 同一条目的 pic 只发起一次
+        iv.setTag(TAG_POSTER_SOURCE, pic);
+        DownloadFacade.get().ensurePosterAsync(pic, vodName);
     }
 
     private void toggleSet(Set<String> set, String key) {

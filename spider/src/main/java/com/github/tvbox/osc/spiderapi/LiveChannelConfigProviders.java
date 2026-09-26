@@ -18,6 +18,11 @@ public final class LiveChannelConfigProviders {
         }
 
         @Override
+        public List<LiveChannelGroup> getFallbackChannelGroupList() {
+            return Collections.emptyList();
+        }
+
+        @Override
         public void loadLives(JsonArray livesArray) {
         }
     };

@@ -1,6 +1,10 @@
 package com.github.tvbox.osc.ui.adapter;
 
+import android.graphics.Typeface;
+import android.util.TypedValue;
 import android.widget.TextView;
+
+import androidx.core.content.ContextCompat;
 
 import com.chad.library.adapter.base.BaseQuickAdapter;
 import com.chad.library.adapter.base.BaseViewHolder;
@@ -11,12 +15,22 @@ import java.util.ArrayList;
 
 
 /**
- * @author pj567
- * @date :2021/1/12
- * @description:
+ * 直播线路抽屉 / 直播设置面板的条目列(两处共用同一个 adapter 与 {@code item_live_setting.xml})。
+ * <p>
+ * 文字样式与播放详情的选集 chip 对齐(同 {@link com.github.tvbox.osc.ui.widget.RoundChip} 与
+ * 全屏选集抽屉用的 {@link SeriesAdapter} 基准字号):未选中 = 次要灰常规,选中 = 主题高亮色
+ * 加粗 + 大一号;**无边框无背景**,选中只靠文字区分。
+ * <p>
+ * 历史:选中色曾是写死的蓝 {@code accent_on_dark},条目还带一块同色聚焦底
+ * ({@code shape_live_focus});灰字压蓝底看不清、且与选集 chip 两套观感,已一并去掉
+ * (连带删掉了只为绕开"蓝底压蓝字"而存在的 {@code setFocusedItemIndex},它从来没有调用方)。
  */
 public class LiveSettingItemAdapter extends BaseQuickAdapter<LiveSettingItem, BaseViewHolder> {
-    private int focusedItemIndex = -1;
+
+    /** 基准字号(sp):与全屏选集抽屉的 chip 一致(见 SeriesAdapter 的 setChipTextSize(16f)) */
+    private static final float SIZE_SP = 16f;
+    /** 选中字号(sp):基准 +1,选集 chip 同款"选中大一号" */
+    private static final float SIZE_SP_SELECTED = SIZE_SP + 1f;
 
     public LiveSettingItemAdapter() {
         super(R.layout.item_live_setting, new ArrayList<>());
@@ -26,12 +40,12 @@ public class LiveSettingItemAdapter extends BaseQuickAdapter<LiveSettingItem, Ba
     protected void convert(BaseViewHolder holder, LiveSettingItem item) {
         TextView tvItemName = holder.getView(R.id.tvSettingItemName);
         tvItemName.setText(item.getItemName());
-        int itemIndex = item.getItemIndex();
-        if (item.isItemSelected() && itemIndex != focusedItemIndex) {
-            tvItemName.setTextColor(mContext.getResources().getColor(R.color.accent_on_dark));
-        } else {
-            tvItemName.setTextColor(mContext.getResources().getColor(R.color.text_foreground));
-        }
+        boolean selected = item.isItemSelected();
+        // 与选集 chip 一致:选中 = colorPrimary 加粗大一号;未选中 = text_sub_foreground 常规
+        tvItemName.setTextColor(ContextCompat.getColor(mContext,
+                selected ? R.color.colorPrimary : R.color.text_sub_foreground));
+        tvItemName.setTypeface(null, selected ? Typeface.BOLD : Typeface.NORMAL);
+        tvItemName.setTextSize(TypedValue.COMPLEX_UNIT_SP, selected ? SIZE_SP_SELECTED : SIZE_SP);
     }
 
     public void selectItem(int selectedItemIndex, boolean select, boolean unselectPreItemIndex) {
@@ -46,15 +60,6 @@ public class LiveSettingItemAdapter extends BaseQuickAdapter<LiveSettingItem, Ba
             getData().get(selectedItemIndex).setItemSelected(select);
             notifyItemChanged(selectedItemIndex);
         }
-    }
-
-    public void setFocusedItemIndex(int focusedItemIndex) {
-        int preFocusItemIndex = this.focusedItemIndex;
-        this.focusedItemIndex = focusedItemIndex;
-        if (preFocusItemIndex != -1)
-            notifyItemChanged(preFocusItemIndex);
-        if (this.focusedItemIndex != -1)
-            notifyItemChanged(this.focusedItemIndex);
     }
 
     public int getSelectedItemIndex() {

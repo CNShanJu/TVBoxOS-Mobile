@@ -569,10 +569,14 @@ public class LiveActivity extends BaseActivity implements LiveLineSelectHost, Li
             return;
         }
 
-        if (list.size() == 1 && list.get(0).getGroupName().startsWith("http://127.0.0.1")) {
-            loadProxyLives(list.get(0).getGroupName());
+        if (isProxyOnly(list)) {
+            // 主列表是"待拉取的直播源"(设置里配置的直播源):拉它;
+            // 没内容/失败再退到订阅源自带的直播(见 useFallbackOrFail)
+            loadProxyLives(list.get(0).getGroupName(),
+                    com.github.tvbox.osc.spiderapi.LiveChannelConfigProviders.get().getFallbackChannelGroupList());
         }
         else {
+            // 没配直播源(用的是订阅源自带的直播):直接用
             liveChannelGroupList.clear();
             liveChannelGroupList.addAll(list);
             showSuccess();
@@ -580,13 +584,25 @@ public class LiveActivity extends BaseActivity implements LiveLineSelectHost, Li
         }
     }
 
-    public void loadProxyLives(String url) {
+    /** 单个"待拉取"的代理分组 = 一个直播源地址(设置里的直播源 / 订阅源的直播地址都是这个形态) */
+    private static boolean isProxyOnly(List<LiveChannelGroup> list) {
+        return list != null && list.size() == 1
+                && list.get(0) != null && list.get(0).getGroupName() != null
+                && list.get(0).getGroupName().startsWith("http://127.0.0.1");
+    }
+
+    /**
+     * 拉取一个直播源地址并解析成频道。
+     *
+     * @param fallback 该直播源没内容/加载失败时的兜底(订阅源自带的直播);null/空 = 没有兜底,直接进空态。
+     *                 <b>主直播源优先</b>:用户配的直播源能用就绝不碰订阅源的直播。
+     */
+    public void loadProxyLives(String url, List<LiveChannelGroup> fallback) {
         try {
             Uri parsedUrl = Uri.parse(url);
             url = new String(Base64.decode(parsedUrl.getQueryParameter("ext"), Base64.DEFAULT | Base64.URL_SAFE | Base64.NO_WRAP), "UTF-8");
         } catch (Throwable th) {
-            AppBubble.toast("频道列表为空");
-            finish();
+            useFallbackOrFail(fallback, "频道列表为空");
             return;
         }
         showLoading();
@@ -604,8 +620,7 @@ public class LiveActivity extends BaseActivity implements LiveLineSelectHost, Li
                     com.github.tvbox.osc.spiderapi.LiveChannelConfigProviders.get().loadLives(livesArray);
                     List<LiveChannelGroup> list = com.github.tvbox.osc.spiderapi.LiveChannelConfigProviders.get().getChannelGroupList();
                     if (list.isEmpty()) {
-                        AppBubble.toast("频道列表为空");
-                        finish();
+                        useFallbackOrFail(fallback, "频道列表为空");
                         return;
                     }
                     liveChannelGroupList.clear();
@@ -626,7 +641,7 @@ public class LiveActivity extends BaseActivity implements LiveLineSelectHost, Li
                     AppLog.log("直播", "解析失败: " + th.getMessage());
                     com.github.tvbox.osc.log.LogStore.log(com.github.tvbox.osc.log.Category.OTHER,
                             "直播: 直播源解析失败: " + th.getMessage());
-                    onLiveLoadFail("直播源解析失败,请检查订阅中的直播源");
+                    useFallbackOrFail(fallback, "直播源解析失败,请检查订阅中的直播源");
                 }
             }
 
@@ -635,9 +650,31 @@ public class LiveActivity extends BaseActivity implements LiveLineSelectHost, Li
                 AppLog.log("直播", "加载失败: " + (e == null ? "null" : e.getMessage()));
                 com.github.tvbox.osc.log.LogStore.log(com.github.tvbox.osc.log.Category.OTHER,
                         "直播: 直播源加载失败: " + (e == null ? "null" : e.getMessage()));
-                onLiveLoadFail("直播源加载失败,请检查网络或直播源");
+                useFallbackOrFail(fallback, "直播源加载失败,请检查网络或直播源");
             }
         });
+    }
+
+    /**
+     * 主直播源(设置里配置的直播源)没内容 / 加载失败时:退到<b>订阅源自带的直播</b>(只兜底一层,不再递归);
+     * 连兜底都没有才进空态。会 toast 说明"改用订阅源的直播",避免用户以为配的直播源在生效。
+     */
+    private void useFallbackOrFail(List<LiveChannelGroup> fallback, String msg) {
+        if (fallback != null && !fallback.isEmpty()) {
+            AppBubble.toast("直播源不可用,改用订阅源的直播");
+            com.github.tvbox.osc.log.LogStore.log(com.github.tvbox.osc.log.Category.OTHER,
+                    "直播: 主直播源不可用, 回退订阅源直播");
+            if (isProxyOnly(fallback)) {
+                loadProxyLives(fallback.get(0).getGroupName(), null);
+            } else {
+                liveChannelGroupList.clear();
+                liveChannelGroupList.addAll(fallback);
+                showSuccess();
+                initLiveState();
+            }
+            return;
+        }
+        onLiveLoadFail(msg);
     }
 
     /** 直播源加载失败:提示并进入空态,避免一直停留在加载中 */

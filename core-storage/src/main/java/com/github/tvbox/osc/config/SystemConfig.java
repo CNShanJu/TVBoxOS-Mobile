@@ -45,8 +45,16 @@ public final class SystemConfig {
     private static final String KEY_PAGE_BG_SCRIM = "page_bg_scrim";
     private static final String KEY_PAGE_BG_ALPHA = "page_bg_alpha";
     private static final String KEY_PAGE_BG_ZOOM = "page_bg_zoom";
+    /** 位置锚点比例 0~1(0=起始边贴边、0.5=居中、1=结束边贴边) */
+    private static final String KEY_PAGE_BG_ANCHOR_X = "page_bg_anchor_x";
+    private static final String KEY_PAGE_BG_ANCHOR_Y = "page_bg_anchor_y";
+    // 旧版"图片中心位移"(±0.5,按屏宽/屏高归一化):只在没有锚点的老配置里读一次做迁移,
+    // 新写入一律用上面的锚点键,写完就把这两个键删掉(旧值换横竖屏会漂,见 util/BgImageTransform)
     private static final String KEY_PAGE_BG_OFF_X = "page_bg_off_x";
     private static final String KEY_PAGE_BG_OFF_Y = "page_bg_off_y";
+
+    /** 位置锚点的默认值/合法范围(与 util/BgImageTransform 的锚点模型一致) */
+    private static final float ANCHOR_CENTER = 0.5f;
 
     /** 遮罩不透明度(0-100):**固定值**,用户只能在设置页开关遮罩,不能调这个数 */
     public static final int PAGE_BG_SCRIM_DIM = 50;
@@ -239,12 +247,34 @@ public final class SystemConfig {
         return PrefsDataStore.getFloat(KEY_PAGE_BG_ZOOM, 0f);
     }
 
-    /** 背景图横向位置:图片中心相对屏幕中心的位移(按屏宽归一化,0=居中,+0.5=贴右边缘) */
+    /**
+     * 位置锚点是否已按新模型写过。{@code false} = 配置里还是旧版"中心位移",
+     * 背景层({@code PageBackgroundView})会拿它按当前屏幕几何换算一次再回写(见 {@link #setPageBackgroundTransform})。
+     */
+    public static boolean isPageBackgroundAnchorSet() {
+        return PrefsDataStore.contains(KEY_PAGE_BG_ANCHOR_X) || PrefsDataStore.contains(KEY_PAGE_BG_ANCHOR_Y);
+    }
+
+    /** 背景图横向位置锚点:0=贴左、0.5=居中、1=贴右(与屏幕尺寸无关,横竖屏同一观感) */
+    public static float getPageBackgroundAnchorX() {
+        return clampAnchor(PrefsDataStore.getFloat(KEY_PAGE_BG_ANCHOR_X, ANCHOR_CENTER));
+    }
+
+    /** 背景图纵向位置锚点:0=贴上、0.5=居中、1=贴下 */
+    public static float getPageBackgroundAnchorY() {
+        return clampAnchor(PrefsDataStore.getFloat(KEY_PAGE_BG_ANCHOR_Y, ANCHOR_CENTER));
+    }
+
+    /**
+     * 旧版横向位移:图片中心相对屏幕中心的位移(按屏宽归一化,0=居中,+0.5=贴右边缘)。
+     * <b>只作老配置迁移用</b>(见 {@link #isPageBackgroundAnchorSet()}),新代码一律用
+     * {@link #getPageBackgroundAnchorX()}。
+     */
     public static float getPageBackgroundOffsetX() {
         return PrefsDataStore.getFloat(KEY_PAGE_BG_OFF_X, 0f);
     }
 
-    /** 背景图纵向位置:图片中心相对屏幕中心的位移(按屏高归一化,0=居中,+0.5=贴下边缘) */
+    /** 旧版纵向位移(按屏高归一化,0=居中,+0.5=贴下边缘);只作老配置迁移用 */
     public static float getPageBackgroundOffsetY() {
         return PrefsDataStore.getFloat(KEY_PAGE_BG_OFF_Y, 0f);
     }
@@ -382,24 +412,37 @@ public final class SystemConfig {
 
     /**
      * 保存背景图的缩放与位置(设置页拖动/双指缩放结束后调用,一次写入只广播一次)。
+     * <p>
+     * 位置是<b>锚点比例</b>(与屏幕尺寸无关):0=起始边贴边(左/上)、0.5=居中、1=结束边贴边(右/下)。
+     * 换横竖屏/换分辨率都保持同一观感;旧版"中心位移"在写入时被锚点取代(写完删掉旧键)。
      *
      * @param zoom    缩放倍率(相对铺满;<b>传 &lt;=0 表示自动</b>,换新图时用)
-     * @param offsetX 横向位移(-0.5..0.5,按屏宽归一化,0=居中)
-     * @param offsetY 纵向位移(-0.5..0.5,按屏高归一化,0=居中)
+     * @param anchorX 横向锚点 0~1(0=贴左、0.5=居中、1=贴右)
+     * @param anchorY 纵向锚点 0~1(0=贴上、0.5=居中、1=贴下)
      */
-    public static void setPageBackgroundTransform(float zoom, float offsetX, float offsetY) {
+    public static void setPageBackgroundTransform(float zoom, float anchorX, float anchorY) {
         float z = Float.isNaN(zoom) ? 0f : zoom;
-        float ox = Float.isNaN(offsetX) ? 0f : offsetX;
-        float oy = Float.isNaN(offsetY) ? 0f : offsetY;
+        float ax = clampAnchor(anchorX);
+        float ay = clampAnchor(anchorY);
         if (getPageBackgroundZoom() == z
-                && getPageBackgroundOffsetX() == ox
-                && getPageBackgroundOffsetY() == oy) {
+                && isPageBackgroundAnchorSet()
+                && getPageBackgroundAnchorX() == ax
+                && getPageBackgroundAnchorY() == ay) {
             return;
         }
         PrefsDataStore.put(KEY_PAGE_BG_ZOOM, z);
-        PrefsDataStore.put(KEY_PAGE_BG_OFF_X, ox);
-        PrefsDataStore.put(KEY_PAGE_BG_OFF_Y, oy);
+        PrefsDataStore.put(KEY_PAGE_BG_ANCHOR_X, ax);
+        PrefsDataStore.put(KEY_PAGE_BG_ANCHOR_Y, ay);
+        // 锚点已建立:旧版位移字段作废(留着没人读,删掉免得后人误用)
+        PrefsDataStore.delete(KEY_PAGE_BG_OFF_X);
+        PrefsDataStore.delete(KEY_PAGE_BG_OFF_Y);
         fireChanged();
+    }
+
+    /** 锚点钳制(0~1,NaN 视为居中):core-storage 不依赖 app 侧 util,这里自带一份 */
+    private static float clampAnchor(float anchor) {
+        if (Float.isNaN(anchor)) return ANCHOR_CENTER;
+        return Math.max(0f, Math.min(1f, anchor));
     }
 
     /**
@@ -410,8 +453,10 @@ public final class SystemConfig {
     public static void resetPageBackground() {
         PrefsDataStore.delete(KEY_PAGE_BG);
         PrefsDataStore.put(KEY_PAGE_BG_ZOOM, 0f);
-        PrefsDataStore.put(KEY_PAGE_BG_OFF_X, 0f);
-        PrefsDataStore.put(KEY_PAGE_BG_OFF_Y, 0f);
+        PrefsDataStore.put(KEY_PAGE_BG_ANCHOR_X, ANCHOR_CENTER);
+        PrefsDataStore.put(KEY_PAGE_BG_ANCHOR_Y, ANCHOR_CENTER);
+        PrefsDataStore.delete(KEY_PAGE_BG_OFF_X);
+        PrefsDataStore.delete(KEY_PAGE_BG_OFF_Y);
         PrefsDataStore.put(KEY_PAGE_BG_ALPHA, PAGE_BG_ALPHA_DEFAULT);
         PrefsDataStore.put(KEY_PAGE_BG_SCRIM, true);
         com.github.tvbox.osc.log.LogStore.log(com.github.tvbox.osc.log.Category.SYSTEM, "系统设置: 背景图恢复默认(跟随主题)");

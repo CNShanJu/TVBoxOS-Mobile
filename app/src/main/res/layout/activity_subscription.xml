@@ -121,6 +121,9 @@
             android:layout_height="1dp"
             android:layout_weight="1"/>
 
+        <!-- 导出条两个按钮完全走主题按钮样式(BtnSecondary/BtnPrimary):
+             底/字/描边/圆角都来自主题色板与圆角文件,不要再单独写 android:textColor(页面文字色≠按钮文字色)
+             或 app:strokeColor(会顶掉主题的 btn_stroke) -->
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btn_export_cancel"
             android:layout_width="wrap_content"
@@ -128,7 +131,6 @@
             android:insetTop="0dp"
             android:insetBottom="0dp"
             android:text="取 消"
-            android:textColor="@color/text_sub_foreground"
             style="@style/BtnSecondary"/>
 
         <com.google.android.material.button.MaterialButton
@@ -139,7 +141,6 @@
             android:insetTop="0dp"
             android:insetBottom="0dp"
             android:text="导 出"
-            style="@style/BtnPrimary"
-            app:strokeColor="@color/colorPrimary"/>
+            style="@style/BtnPrimary"/>
     </LinearLayout>
 </LinearLayout>

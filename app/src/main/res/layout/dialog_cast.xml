@@ -43,7 +43,6 @@
             android:layout_height="33dp"
             android:layout_marginRight="20dp"
             android:text="关 闭"
-            android:textColor="@color/text_foreground"
             style="@style/BtnSecondary"/>
 
         <com.google.android.material.button.MaterialButton
@@ -54,7 +53,6 @@
             android:insetBottom="0dp"
             android:layout_height="33dp"
             style="@style/BtnPrimary"
-            app:strokeColor="@color/colorPrimary"
             android:text="刷 新"/>
 
     </LinearLayout>

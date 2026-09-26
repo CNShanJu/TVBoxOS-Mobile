@@ -43,11 +43,16 @@ public final class AppCompositionRoot {
         // 强类型分类/首页视频(type3;失败自动回退字符串通道)
         com.github.tvbox.osc.spiderapi.SpiderHomeProviders.set(
                 com.github.catvod.crawler.SpiderHomeImpl.get());
-        // 直播频道配置契约:分组读取/直播源重建,桥接 ApiConfig
+        // 直播频道配置契约:主/兜底分组读取、直播源重建,桥接 ApiConfig
         com.github.tvbox.osc.spiderapi.LiveChannelConfigProviders.set(new com.github.tvbox.osc.spiderapi.LiveChannelConfigApi() {
             @Override
             public java.util.List<com.github.tvbox.osc.bean.LiveChannelGroup> getChannelGroupList() {
                 return com.github.tvbox.osc.api.ApiConfig.get().getChannelGroupList();
+            }
+
+            @Override
+            public java.util.List<com.github.tvbox.osc.bean.LiveChannelGroup> getFallbackChannelGroupList() {
+                return com.github.tvbox.osc.api.ApiConfig.get().getFallbackChannelGroupList();
             }
 
             @Override

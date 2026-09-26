@@ -14,6 +14,8 @@ import androidx.recyclerview.widget.DiffUtil
 import com.angcyo.tablayout.delegate.ViewPager1Delegate.Companion.install
 import com.blankj.utilcode.util.ConvertUtils
 import com.blankj.utilcode.util.ScreenUtils
+import com.github.tvbox.osc.log.Category
+import com.github.tvbox.osc.log.LogStore
 import com.github.tvbox.osc.util.AppBubble
 import com.github.tvbox.osc.R
 import com.github.tvbox.osc.spiderapi.SourceConfigProviders
@@ -69,6 +71,10 @@ class HomeFragment : BaseVbFragment<FragmentHomeBinding>() {
     companion object {
         /** "上次看到"气泡的展示时长:自动检查更新要等它消失后再做 */
         private const val BUBBLE_SHOW_MS = 4000L
+        /** 气泡消失后再多等一点,避开消失动画 */
+        private const val CHECK_AFTER_BUBBLE_MS = BUBBLE_SHOW_MS + 600L
+        /** 没有气泡(无痕浏览/本机无历史)时的默认延时:给首页留出首屏渲染时间 */
+        private const val CHECK_DEFAULT_DELAY_MS = 4000L
     }
 
     /**
@@ -77,6 +83,12 @@ class HomeFragment : BaseVbFragment<FragmentHomeBinding>() {
     private var mSortDataList: List<SortData> = ArrayList()
     private var dataInitOk = false
     private var jarInitOk = false
+
+    /** "上次看到"气泡预计消失的时间点(uptimeMillis);无气泡时保持 0,自动检查按默认延时走 */
+    private var bubbleUntil = 0L
+
+    /** 排队的自动检查任务(重复排队时先撤掉,只保留最后一次) */
+    private val pendingAutoCheck = Runnable { runAutoUpdateCheck() }
 
     var errorTipDialog: TipDialog? = null
 
@@ -99,6 +111,8 @@ class HomeFragment : BaseVbFragment<FragmentHomeBinding>() {
                 showSiteSwitch()
             } else {
                 AppBubble.toast("数据源未加载，长按刷新或切换订阅")
+            // 用户能看到的订阅故障:首页拿不到任何源 → 记一条失败业务日志(排障时和"配置拉取/解析失败"对上)
+            LogStore.fail(Category.SUBSCRIPTION, "订阅: 数据源未加载(首页无可用源)")
             }
         }
         mBinding.nameContainer.setOnLongClickListener {
@@ -150,6 +164,11 @@ class HomeFragment : BaseVbFragment<FragmentHomeBinding>() {
             mBinding.tvName.text = home.name
             mBinding.tvName.postDelayed({ mBinding.tvName.isSelected = true }, 2000)
         }
+
+        // 启动自动检查更新:挂在首页数据初始化上(而不是"有上次播放记录"那支),
+        // 否则无痕浏览/本机无历史时"上次看到"气泡不弹,自动检查就永远不跑。
+        // 内部按"气泡展示时长"延时并做进程级去重(见 scheduleAutoUpdateCheck)。
+        scheduleAutoUpdateCheck()
 
         showLoading()
         when{
@@ -443,6 +462,8 @@ class HomeFragment : BaseVbFragment<FragmentHomeBinding>() {
 
             // 查询完成后更新UI
             if (vodInfoList.isNotEmpty() && vodInfoList[0] != null) {
+                val shownAt = android.os.SystemClock.uptimeMillis()
+                bubbleUntil = shownAt + BUBBLE_SHOW_MS
                 XPopup.Builder(context)
                     .hasShadowBg(false)
                     .isDestroyOnDismiss(true)
@@ -453,26 +474,40 @@ class HomeFragment : BaseVbFragment<FragmentHomeBinding>() {
                     .asCustom(LastViewedDialog(requireContext(), vodInfoList[0]))
                     .show()
                     .delayDismiss(BUBBLE_SHOW_MS)
-                // 启动自动检查更新:等"上次看到"气泡消失后再做,避免和气泡抢焦点/叠一起
-                scheduleAutoUpdateCheck()
+                // 气泡真的出现了:把自动检查往后排到它消失之后(可能已由 initData 排过一次)
+                rescheduleAutoUpdateCheckAfterBubble()
             }
         }
     }
 
+    private fun rescheduleAutoUpdateCheckAfterBubble() {
+        if (!com.github.tvbox.osc.config.SystemConfig.isAutoCheckUpdate()) return
+        mHandler.removeCallbacks(pendingAutoCheck)
+        mHandler.postDelayed(pendingAutoCheck, CHECK_AFTER_BUBBLE_MS)
+    }
+
     /**
-     * 启动自动检查更新:等首页"上次看到"气泡消失(4s)后稍等再检查,有新版本由 UpdateCheck
+     * 启动自动检查更新:等首页"上次看到"气泡消失(4s)后再检查,有新版本由 {@link UpdateCheck}
      * 弹出更新说明弹窗(与「我的-关于-检查更新」同一套动作)。
      * <p>
-     * 受"自动检查更新"开关控制(设置页,默认开);检查本身由 UpdateCheck 做进程级去重,
-     * 每次启动最多一次,因此这里随首页刷新重复调用无副作用。
+     * 受"自动检查更新"开关控制(设置页,默认开);无痕浏览/本机无历史时气泡不弹,这里按默认延时照常检查
+     * (不能挂在"有历史记录"分支里,否则那种情况下自动检查永远不生效)。
+     * 检查本身由 UpdateCheck 做进程级去重,每次启动最多一次;重复排队时只保留最后一次。
      */
     private fun scheduleAutoUpdateCheck() {
         if (!com.github.tvbox.osc.config.SystemConfig.isAutoCheckUpdate()) return
-        mHandler.postDelayed({
-            val act = activity ?: return@postDelayed
-            if (isAdded && !act.isFinishing && !act.isDestroyed) {
-                com.github.tvbox.osc.update.UpdateCheck.autoCheckOnce(act, null)
-            }
-        }, BUBBLE_SHOW_MS + 600L)
+        mHandler.removeCallbacks(pendingAutoCheck)
+        // 气泡若已排好,等到它消失;否则(无历史/无痕)用默认延时
+        val now = android.os.SystemClock.uptimeMillis()
+        val remain = bubbleUntil - now
+        mHandler.postDelayed(pendingAutoCheck, if (remain > 0) remain + 600L else CHECK_DEFAULT_DELAY_MS)
+    }
+
+    /** 真正执行自动检查(主线程):进程级去重与开关判定在 UpdateCheck 内 */
+    private fun runAutoUpdateCheck() {
+        val act = activity ?: return
+        if (isAdded && !act.isFinishing && !act.isDestroyed) {
+            com.github.tvbox.osc.update.UpdateCheck.autoCheckOnce(act, null)
+        }
     }
 }

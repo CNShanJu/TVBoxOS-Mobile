@@ -10,6 +10,7 @@ import androidx.annotation.NonNull;
 
 import com.github.tvbox.osc.R;
 import com.github.tvbox.osc.update.UpdateInfo;
+import com.github.tvbox.osc.util.AppLog;
 import com.github.tvbox.osc.util.MdText;
 import com.github.tvbox.osc.util.Utils;
 import com.lxj.xpopup.XPopup;
@@ -34,6 +35,8 @@ public class UpdateNoteDialog extends AppCenterPopupView {
 
     private final UpdateInfo mInfo;
     private final Runnable mOnUpdate;
+    /** 说明区是否已限高(测量期/post 两条路径只生效一次,避免重复压或把固定区算错) */
+    private boolean bodyClampApplied;
 
     public UpdateNoteDialog(@NonNull @NotNull Context context, UpdateInfo info, Runnable onUpdate) {
         super(context);
@@ -47,8 +50,19 @@ public class UpdateNoteDialog extends AppCenterPopupView {
     }
 
     /**
-     * 布局自带滚动区(内部 note_scroll):超高时只让中间"更新内容"滚动,
-     * 禁止基类把整卡(标题/按钮)包进外层 ScrollView,避免"所有内容都滚动"。
+     * 弹窗上限:按"扣掉状态栏/导航栏后的可用高度"封顶。
+     * 更新说明可能很长(跨版本最多拼 5 个版本),按整屏高封顶会让底部按钮被系统栏裁掉。
+     */
+    @Override
+    protected int getMaxHeight() {
+        return DialogHeightPolicy.maxHeightPxInsideWindow(getContext());
+    }
+
+    /**
+     * 内容根是否自带滚动能力(列表/ScrollView)。
+     * 默认 false:内容超高时由基类把整卡包进 ScrollView 兜底;
+     * 自带滚动区的弹窗(如 SelectDialog 的 TvRecyclerView)应返回 true,
+     * 由内容区自行吃掉超高余量滚动,避免"整卡滚动"。
      */
     @Override
     protected boolean contentSelfScrollable() {
@@ -71,7 +85,9 @@ public class UpdateNoteDialog extends AppCenterPopupView {
         }
 
         // 说明超长时把"更新内容"区限高到 最大高度−标题/按钮固定区,内容区自滚(标题/按钮固定)
-        clampBodyHeight();
+        // 注意:必须在测量期就限(见 onMeasure),post 里再改高度太晚——
+        // XPopup 的窗口高度已按内容自然高度定下,按钮会被顶出屏幕(实测"两个按钮被挤得看不见")
+        requestMeasureClampOnNextLayout();
 
         findViewById(R.id.note_close).setOnClickListener(v -> dismiss());
         findViewById(R.id.note_later).setOnClickListener(v -> dismiss());
@@ -81,27 +97,120 @@ public class UpdateNoteDialog extends AppCenterPopupView {
         });
     }
 
-    /** 说明区限高:仅当自然高度超过可用空间(最大高度−标题/按钮固定区)时压缩,内容区自滚 */
-    private void clampBodyHeight() {
+    /** 首次可布局后按"可用高度"给说明区定高(与 XPopup 自身 doMeasure/post 同帧,先于用户可见) */
+    private void requestMeasureClampOnNextLayout() {
+        final View content = getPopupImplView();
+        if (content == null || !(content instanceof ViewGroup)) return;
+        content.post(() -> applyBodyClamp((ViewGroup) content));
+    }
+
+    /**
+     * 给说明区定高:可用高度 = 弹窗上限 − 卡片内边距 − 其他所有子视图(标题行/按钮行/间距)的自然高度。
+     * <p>
+     * 关键点:固定区高度**逐个用 UNSPECIFIED 量自然高**,不依赖整卡已测高度——
+     * XPopup 的 {@code applyPopupSize} 是 post 出去的,首帧量到的整卡高度可能已被容器钳过,
+     * 用它算"固定区"会算错,结果说明区被压错、按钮被顶出可视区(实测"按钮没有露出来")。
+     */
+    private void applyBodyClamp(ViewGroup card) {
         try {
-            final View content = getPopupImplView();
-            final ScrollView scroll = findViewById(R.id.note_scroll);
-            if (content == null) return;
-            content.post(() -> {
-                try {
-                    int maxH = DialogHeightPolicy.maxHeightPx(getContext());
-                    int reserved = content.getHeight() - scroll.getHeight(); // 标题行+按钮行+内边距 等固定高度
-                    int available = maxH - reserved;
-                    if (available > 0 && scroll.getHeight() > available) {
-                        ViewGroup.LayoutParams lp = scroll.getLayoutParams();
-                        lp.height = available;
-                        scroll.setLayoutParams(lp);
-                    }
-                } catch (Throwable ignored) {
+            if (bodyClampApplied) return;   // 测量期已压过就不重复
+            ScrollView scroll = card.findViewById(R.id.note_scroll);
+            if (scroll == null) return;
+            int maxH = getMaxHeight();
+            if (maxH <= 0) return;
+
+            int width = card.getWidth();
+            if (width <= 0) width = card.getMeasuredWidth();
+            if (width <= 0) return;
+
+            int fixed = card.getPaddingTop() + card.getPaddingBottom();
+            int wSpec = View.MeasureSpec.makeMeasureSpec(width, View.MeasureSpec.AT_MOST);
+            int hSpec = View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED);
+            for (int i = 0; i < card.getChildCount(); i++) {
+                View child = card.getChildAt(i);
+                if (child == scroll || child.getVisibility() == View.GONE) continue;
+                ViewGroup.LayoutParams lp = child.getLayoutParams();
+                int extra = 0;
+                if (lp instanceof ViewGroup.MarginLayoutParams) {
+                    ViewGroup.MarginLayoutParams mlp = (ViewGroup.MarginLayoutParams) lp;
+                    extra = mlp.topMargin + mlp.bottomMargin;   // 间距也算固定区
                 }
-            });
-        } catch (Throwable ignored) {
+                child.measure(wSpec, hSpec);
+                fixed += child.getMeasuredHeight() + extra;
+            }
+
+            DialogClamp.Clamp clamp = DialogClamp.clampScrollHeight(maxH, fixed, naturalHeight(scroll, width));
+            ViewGroup.LayoutParams lp = scroll.getLayoutParams();
+            if (clamp.clamped) {
+                lp.height = clamp.height;
+                AppLog.log("更新", "说明区限高 " + clamp.height + "px(弹窗上限 " + maxH + "px,固定区 " + fixed + "px)");
+            } else {
+                // 说明区在可用高度内:回推自然高度,让卡片按内容撑开(权重布局会把它压在最小值上)
+                lp.height = Math.max(clamp.height, minScrollPx());
+                AppLog.log("更新", "说明区按内容撑开 " + lp.height + "px(弹窗上限 " + maxH + "px,固定区 " + fixed + "px)");
+            }
+            scroll.setLayoutParams(lp);
+            bodyClampApplied = true;
+        } catch (Throwable th) {
+            AppLog.log("更新", "说明区限高失败: " + th);
         }
+    }
+
+    /** 说明区自然高度(UNSPECIFIED 量,不受容器钳制) */
+    private int naturalHeight(View v, int width) {
+        int wSpec = View.MeasureSpec.makeMeasureSpec(width, View.MeasureSpec.AT_MOST);
+        int hSpec = View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED);
+        v.measure(wSpec, hSpec);
+        return v.getMeasuredHeight();
+    }
+
+    /** 说明区最小高度(与布局里的 minHeight 一致):权重布局在高度不受约束时会把它压到很小,故兜底 */
+    private int minScrollPx() {
+        return Math.round(80f * getResources().getDisplayMetrics().density);
+    }
+
+    /**
+     * 测量期也限一次高:与 {@link #requestMeasureClampOnNextLayout()} 同源,互为兜底——
+     * XPopup 的 applyPopupSize 是 post 出去的,首帧量到的整卡可能已是超高值,
+     * 在测量期就把说明区压好,能保证第一帧(用户看到的那一帧)标题与按钮就在屏幕内。
+     */
+    @Override
+    protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
+        super.onMeasure(widthMeasureSpec, heightMeasureSpec);
+        if (bodyClampApplied) return;
+        View content = getPopupImplView();
+        if (!(content instanceof ViewGroup)) return;
+        ViewGroup card = (ViewGroup) content;
+        ScrollView scroll = card.findViewById(R.id.note_scroll);
+        if (scroll == null) return;
+        int maxH = getMaxHeight();
+        if (maxH <= 0) return;
+        int width = card.getMeasuredWidth();
+        if (width <= 0) return;
+
+        int fixed = card.getPaddingTop() + card.getPaddingBottom();
+        int wSpec = View.MeasureSpec.makeMeasureSpec(width, View.MeasureSpec.AT_MOST);
+        int hSpec = View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED);
+        for (int i = 0; i < card.getChildCount(); i++) {
+            View child = card.getChildAt(i);
+            if (child == scroll || child.getVisibility() == View.GONE) continue;
+            ViewGroup.LayoutParams lp = child.getLayoutParams();
+            int extra = 0;
+            if (lp instanceof ViewGroup.MarginLayoutParams) {
+                ViewGroup.MarginLayoutParams mlp = (ViewGroup.MarginLayoutParams) lp;
+                extra = mlp.topMargin + mlp.bottomMargin;
+            }
+            child.measure(wSpec, hSpec);
+            fixed += child.getMeasuredHeight() + extra;
+        }
+        DialogClamp.Clamp clamp = DialogClamp.clampScrollHeight(maxH, fixed, naturalHeight(scroll, width));
+        if (!clamp.clamped) return;
+        ViewGroup.LayoutParams lp = scroll.getLayoutParams();
+        if (lp == null || lp.height == clamp.height) return;
+        lp.height = clamp.height;
+        scroll.setLayoutParams(lp);
+        bodyClampApplied = true;
+        super.onMeasure(widthMeasureSpec, heightMeasureSpec);
     }
 
     @Override

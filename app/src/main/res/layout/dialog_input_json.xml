@@ -104,7 +104,6 @@
             android:layout_height="33dp"
             android:layout_marginRight="20dp"
             android:text="取 消"
-            android:textColor="@color/text_sub_foreground"
             style="@style/BtnSecondary"/>
 
         <com.google.android.material.button.MaterialButton
@@ -115,7 +114,6 @@
             android:insetBottom="0dp"
             android:layout_height="33dp"
             style="@style/BtnPrimary"
-            app:strokeColor="@color/colorPrimary"
             android:text="导 入"/>
 
     </LinearLayout>

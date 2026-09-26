@@ -93,7 +93,7 @@ public class VideoDetailDialog extends SheetResizableBottomPopup {
             AppBubble.toastLong("已复制");
         });
         String picUrl = DefaultConfig.checkReplaceProxy(mVideo.pic);
-        // 走全 App 统一图片入口:空封面/加载失败都会切到 ErrorPlaceholderDrawable
+        // 走全 App 统一图片入口:空封面/加载失败都会切到 PosterPlaceholderDrawable
         // (灰底 + 按控件尺寸排版的猫图标 + "图片加载失败"文字),加载中有骨架屏
         com.github.tvbox.osc.util.PicassoLoad.into(binding.ivThum, picUrl);
         if (!TextUtils.isEmpty(picUrl)) {

@@ -49,6 +49,12 @@ public final class LogcatCapture {
      * hiddenapi 越权提示、ContentCapture/WebViewInfoPicker 视图探查、
      * SELinux avc 拒绝、渲染器/GC/输入法噪音等。真正的崩溃/业务异常
      * (FATAL/我们的异常栈)不含这些特征,仍会完整保留。
+     * <p>
+     * 注意:`logcat --uid=本应用uid` 抓的是"本应用进程"的全部 E 级日志,而厂商 ROM 的框架类
+     * (联想 ZUI 的 OvfBaseDialog/ZuiHandWritingManager/CustomLongPressHelper、系统输入法 ImeBackDispatcher、
+     * 图形栈 ashmem/BufferQueueProducer 等)是**在应用进程内加载**的,它们的 E 级提示(含自己 catch 后打的异常栈)
+     * 同样会被抓到,但都不是应用代码的问题(已核对:仓库内无任何 setFrameRate/preferredRefreshRate 调用,
+     * 也无 CustomLongPressHelper 类),一律按噪音丢弃。
      */
     private static final List<String> SYSTEM_NOISE_MARKERS = java.util.Arrays.asList(
             "Invalid resource ID ",
@@ -73,7 +79,22 @@ public final class LogcatCapture {
             "studio.deploy",             // Android Studio 部署清理提示
             "Unable to resolve path",    // jar/系统解析 base.apk 路径(更新后陈旧路径)
             "no such table: Config",     // 第三方 jar 查 CatVod 遗留 Config 表(已由预置空库兜底)
-            "databases/tv"               // 第三方 jar 打开私有 tv 库(同上,防旧版本残留刷屏)
+            "databases/tv",              // 第三方 jar 打开私有 tv 库(同上,防旧版本残留刷屏)
+            // 厂商 ROM 框架类(在应用进程内加载,E 级提示与业务无关);
+            // 这四条按「tag 位」匹配(`E/Tag(pid):`,本模块用 logcat -v time),不用裸类名——
+            // 否则应用真崩溃时栈里恰好有一帧落在这些 ROM 类上,那一行会被误吞(丢了最关键的帧)。
+            "E/OvfBaseDialog(",              // 联想 ZUI 系统弹窗框架(反复打 superDismiss unRegister…,纯时序提示)
+            "E/ZuiHandWritingManager(",      // 联想 ZUI 手写输入框架构造提示(Constructor called)
+            "E/ImeBackDispatcher(",          // 系统输入法回调注销不到(键盘收起时的常规提示)
+            "E/CustomLongPressHelper(",      // ROM 长按助手对已回收 View 取 getContext() 的 NPE,
+                                             // 由 ROM 自行 catch 后整段打栈(非应用崩溃,PID 不变,应用侧无法修)
+            "Pinning is deprecated",         // 系统 ashmem 弃用提示(Android Q 起,系统内部行为;消息特征,无 tag)
+            "BufferQueueProducer::",         // 图形栈 BufferQueue 告警(如 setFrameRate 兼容值越界,厂商显示适配发起)
+            // 厂商媒体栈噪音(tag 用 AOSP 通用名,故按消息特征匹配——那 tag 下还有真实编解码错误要留):
+            "Media Quality Service not found",              // 厂商画质服务不存在(本机没这服务,每次起播都打)
+            "Failed to query component interface",          // 厂商编解码组件接口查询失败(tag=进程名,起播时成对出现)
+            "E/HeifDecoderImpl(",                           // 厂商 HEIF 解码器不支持 getSize(探测不支持的格式,无害)
+            "--------- beginning of "        // logcat 缓冲区分隔行(非日志内容,清理后更易读)
     );
     /**
      * 单个 logcat 文件大小上限(字节)。超过后滚动成 logcat-yyyy-MM-dd.1.log 等分段文件,

@@ -26,7 +26,9 @@
             android:clipToPadding="false"/>
 
         <!-- 筛选悬浮按钮: 54dp 圆, 圆形裁剪(clipToOutline), 底色=悬浮色 bg_float(94%,与底栏/气泡一致),
-             不再单独叠一层主题遮罩(两层会把半透明盖实);marginBottom=78dp(58 悬浮底栏 + 20 间距), 不被底栏覆盖 -->
+             不再单独叠一层主题遮罩(两层会把半透明盖实);marginBottom=78dp(58 悬浮底栏 + 20 间距), 不被底栏覆盖。
+             **默认 gone**:该分类没有筛选项时压根不该出现,有内容才由代码置 VISIBLE(GridFragment.syncFilterButton),
+             不要改成 visible 默认值,否则没筛选的分类会先闪一个点不动的按钮 -->
         <FrameLayout
             android:id="@+id/btn_filter"
             android:layout_width="54dp"
@@ -38,6 +40,7 @@
             android:background="@drawable/bg_fab_oval"
             android:clipToOutline="true"
             android:foreground="?android:selectableItemBackground"
+            android:visibility="gone"
             android:elevation="4dp">
 
             <ImageView

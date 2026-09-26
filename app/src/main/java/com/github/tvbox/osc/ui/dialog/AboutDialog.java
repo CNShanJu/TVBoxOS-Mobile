@@ -50,16 +50,18 @@ public class AboutDialog extends AppBottomPopupView {
                 }
 
                 @Override
-                public void onResult(UpdateInfo newVersion) {
+                public boolean onResult(UpdateInfo newVersion) {
                     btn.setEnabled(true);
                     if (newVersion == null) {
                         showStatus(tvStatus, "当前已是最新版本");
-                        return;
+                        return false;   // 无更新:留在本弹窗显示状态即可
                     }
                     showStatus(tvStatus, "发现新版本 v" + newVersion.versionName);
-                    // 说明弹窗里的"立即更新"由共用的 UpdateCheck 负责起下载:
-                    // 这里收起"关于"弹窗,进度改由全局悬浮圆圈(UpdateFloatIndicator)展示与控制
-                    dismiss();
+                    // 先让底部弹窗把退场动画播完,再弹更新说明弹窗:
+                    // 之前是"边关抽屉边弹新弹窗",两个动效硬切,观感僵硬(实测反馈)
+                    final Context ctx = getContext();
+                    dismissWith(() -> UpdateCheck.showNote(ctx, newVersion));
+                    return true;   // 弹窗时机由本类接管,UpdateCheck 不再立即弹
                 }
 
                 @Override
