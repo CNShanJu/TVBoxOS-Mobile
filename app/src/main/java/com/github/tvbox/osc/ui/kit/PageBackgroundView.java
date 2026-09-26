@@ -263,12 +263,20 @@ public class PageBackgroundView extends FrameLayout {
             source = path;
             loadImage(path);
         }
-        // 位置:旧版位移等到拿到图片尺寸再换算(见 resolveLegacyOffsets),先原样收下
+        // 位置:旧版位移(偏移量语义:0=居中、±0.5=贴边)等到拿到图片尺寸再换算(见 resolveLegacyOffsets),
+        // 此处必须**原样收下**;只有新模型的锚点(比例语义:0=贴左/上、0.5=居中、1=贴右/下)才钳制到 0~1。
+        // 旧值若也按锚点钳制,负位移(贴左/贴上)会被夹成 0,再经换算 = 恒定居中 —— 老配置一进页面位置就被改成居中,
+        // 而且迁移回调会立刻落盘并丢掉旧键,用户不可回退。
         legacyOffsets = cfg.legacyOffsets;
         legacyResolved = false;
         zoom = Float.isNaN(cfg.zoom) ? 0f : cfg.zoom;
-        anchorX = BgImageTransform.clampAnchor(cfg.anchorX);
-        anchorY = BgImageTransform.clampAnchor(cfg.anchorY);
+        if (legacyOffsets) {
+            anchorX = Float.isNaN(cfg.anchorX) ? 0f : cfg.anchorX;
+            anchorY = Float.isNaN(cfg.anchorY) ? 0f : cfg.anchorY;
+        } else {
+            anchorX = BgImageTransform.clampAnchor(cfg.anchorX);
+            anchorY = BgImageTransform.clampAnchor(cfg.anchorY);
+        }
         resolveLegacyOffsets();
         // 图源不变也要按传入值刷新(设置页可能刚改了缩放/位置)
         updateMatrix();
