@@ -31,8 +31,10 @@ import android.util.Log;
 
 import com.github.tvbox.osc.subtitle.exception.FatalParsingException;
 import com.github.tvbox.osc.subtitle.format.FormatASS;
+import com.github.tvbox.osc.subtitle.format.FormatSCC;
 import com.github.tvbox.osc.subtitle.format.FormatSRT;
 import com.github.tvbox.osc.subtitle.format.FormatSTL;
+import com.github.tvbox.osc.subtitle.format.FormatTTML;
 import com.github.tvbox.osc.subtitle.format.TimedTextFileFormat;
 import com.github.tvbox.osc.subtitle.model.TimedTextObject;
 import com.github.tvbox.osc.subtitle.runtime.AppTaskExecutor;
@@ -240,25 +242,67 @@ public class SubtitleLoader {
         Log.d(TAG, "parse: name = " + fileName + ", ext = " + ext);
         Reader reader = new UnicodeReader(is); //处理有BOM头的utf8
         InputStream newInputStream = new ReaderInputStream(reader, Charset.defaultCharset());
-        if (".srt".equalsIgnoreCase(ext)) {
-            return new FormatSRT().parseFile(fileName, newInputStream);
-        } else if (".ass".equalsIgnoreCase(ext)) {
-            return new FormatASS().parseFile(fileName, newInputStream);
-        } else if (".stl".equalsIgnoreCase(ext)) {
-            return new FormatSTL().parseFile(fileName, newInputStream);
-        } else if (".ttml".equalsIgnoreCase(ext)) {
-            return new FormatSTL().parseFile(fileName, newInputStream);
+        // 先把内容整份读进内存:每种候选格式都喂**独立的**流。
+        // 原实现让 4 个候选共用同一个流,第一个解析器读空/关掉之后,后面的候选只能拿到空内容,
+        // 于是"后缀写错的文件"(如 .txt/.srt 里其实是 ASS)永远解析不出字幕。
+        byte[] bytes = readAll(newInputStream);
+        newInputStream.close();
+        if (bytes.length == 0) {
+            Log.d(TAG, "parse: empty subtitle stream, name = " + fileName);
+            return null;
         }
-        TimedTextFileFormat[] arr = {new FormatSRT(), new FormatASS(), new FormatSTL(), new FormatSTL()};
-        for(TimedTextFileFormat oneFormat : arr) {
+        // 后缀优先;解析不出字幕(或该格式解析异常)时再按内容逐个试其余格式。
+        // 这样既保留"srt/ass/stl/ttml 各走自己解析器"的确定性,又给错后缀/怪后缀兜底。
+        TimedTextObject fallback = null;
+        for (TimedTextFileFormat format : candidateFormats(ext)) {
             try {
-                TimedTextObject obj = oneFormat.parseFile(fileName, newInputStream);
-                return obj;
-            } catch (Exception e) {
-                continue;
+                TimedTextObject tto = format.parseFile(fileName, new ByteArrayInputStream(bytes));
+                if (tto != null && tto.captions != null && !tto.captions.isEmpty()) {
+                    return tto;
+                }
+                if (fallback == null) fallback = tto;
+            } catch (Throwable th) {
+                Log.d(TAG, "parse with " + format.getClass().getSimpleName() + " failed: " + th.getMessage());
             }
         }
-        return null;
+        return fallback;
+    }
+
+    /** 按后缀挑首选解析器,再补上其余格式作为"内容兜底"(顺序稳定,便于复现) */
+    private static TimedTextFileFormat[] candidateFormats(String ext) {
+        TimedTextFileFormat[] all = {new FormatSRT(), new FormatASS(), new FormatTTML(), new FormatSTL(), new FormatSCC()};
+        TimedTextFileFormat preferred = null;
+        if (".srt".equalsIgnoreCase(ext) || ".sub".equalsIgnoreCase(ext)) {
+            preferred = all[0];
+        } else if (".ass".equalsIgnoreCase(ext) || ".ssa".equalsIgnoreCase(ext)) {
+            preferred = all[1];
+        } else if (".ttml".equalsIgnoreCase(ext) || ".xml".equalsIgnoreCase(ext)) {
+            preferred = all[2];
+        } else if (".stl".equalsIgnoreCase(ext)) {
+            preferred = all[3];
+        } else if (".scc".equalsIgnoreCase(ext)) {
+            preferred = all[4];
+        }
+        if (preferred == null) {
+            return all;
+        }
+        TimedTextFileFormat[] order = new TimedTextFileFormat[all.length];
+        order[0] = preferred;
+        int i = 1;
+        for (TimedTextFileFormat f : all) {
+            if (f != preferred) order[i++] = f;
+        }
+        return order;
+    }
+
+    private static byte[] readAll(InputStream in) throws IOException {
+        java.io.ByteArrayOutputStream bos = new java.io.ByteArrayOutputStream();
+        byte[] buf = new byte[8192];
+        int n;
+        while ((n = in.read(buf)) > 0) {
+            bos.write(buf, 0, n);
+        }
+        return bos.toByteArray();
     }
 
     public interface Callback {

@@ -130,21 +130,11 @@ public class Style {
 			else if (value.equals("cyan"))
 				color = "00ffffff ";
 		} else if (format.equalsIgnoreCase("&HBBGGRR")) {
-			// hex format from SSA
-			StringBuilder sb = new StringBuilder();
-			sb.append(value.substring(6));
-			sb.append(value.substring(4, 5));
-			sb.append(value.substring(2, 3));
-			sb.append("ff");
-			color = sb.toString();
+			// hex format from SSA: &HBBGGRR[&] → RRGGBBAA(alpha=ff)
+			color = hexToRGBA(value, 6);
 		} else if (format.equalsIgnoreCase("&HAABBGGRR")) {
-			// hex format from ASS
-			StringBuilder sb = new StringBuilder();
-			sb.append(value.substring(8));
-			sb.append(value.substring(6, 7));
-			sb.append(value.substring(4, 5));
-			sb.append(value.substring(2, 3));
-			color = sb.toString();
+			// hex format from ASS: &HAABBGGRR[&] → RRGGBBAA
+			color = hexToRGBA(value, 8);
 		} else if (format.equalsIgnoreCase("decimalCodedBBGGRR")) {
 			// normal format from SSA
 			color = Integer.toHexString(Integer.parseInt(value));
@@ -165,6 +155,58 @@ public class Style {
 					+ color.substring(2, 4) + color.substring(0, 2);
 		}
 		return color;
+	}
+
+	/**
+	 * ASS/SSA 的 {@code &HBBGGRR}/{@code &HAABBGGRR} 色值 → 统一的 8 字符 RGBA(RRGGBBAA,Android 语义)。
+	 * <p>
+	 * 修正点(原实现每个通道只截 1 个字符,任意颜色都会被拼错):
+	 * <ul>
+	 *   <li>按通道成对截取:ASS 的 {@code AABBGGRR} 取 {@code (0,2)/(2,4)/(4,6)/(6,8)},
+	 *       SSA 的 {@code BBGGRR} 取 {@code (0,2)/(2,4)/(4,6)} 并补不透明;</li>
+	 *   <li>调用方传进来的是带前缀的原始写法({@code &H00FFFFFF},行尾还可能带 {@code &}),
+	 *       这里先剥掉 {@code &H}/{@code &} 再按位数对齐(不足左侧补 0、超出取低位);</li>
+	 *   <li>ASS 的 alpha 与 Android 相反({@code 00}=不透明、{@code FF}=全透明),这里翻转,
+	 *       与 SSA 分支补的 {@code ff}(不透明)保持同一语义。</li>
+	 * </ul>
+	 *
+	 * @param value 原始色值(如 {@code &H00FFFFFF} / {@code &HFFFFFF&} / {@code 00FFFFFF})
+	 * @param digits 期望的十六进制位数:6=BBGGRR(SSA)、8=AABBGGRR(ASS)
+	 * @return RRGGBBAA;入参非法返回 null
+	 */
+	private static String hexToRGBA(String value, int digits) {
+		if (value == null) return null;
+		String hex = value.trim();
+		if (hex.regionMatches(true, 0, "&H", 0, 2)) hex = hex.substring(2);
+		hex = hex.replace("&", "").trim();
+		if (hex.isEmpty() || !hex.matches("(?i)[0-9a-f]+")) return null;
+		if (hex.length() > digits) hex = hex.substring(hex.length() - digits);
+		while (hex.length() < digits) hex = "0" + hex;
+		String rr;
+		String gg;
+		String bb;
+		String aa;
+		if (digits >= 8) {
+			// AABBGGRR
+			aa = invertByte(hex.substring(0, 2));
+			bb = hex.substring(2, 4);
+			gg = hex.substring(4, 6);
+			rr = hex.substring(6, 8);
+		} else {
+			// BBGGRR(无 alpha → 不透明)
+			bb = hex.substring(0, 2);
+			gg = hex.substring(2, 4);
+			rr = hex.substring(4, 6);
+			aa = "ff";
+		}
+		return (rr + gg + bb + aa).toLowerCase(java.util.Locale.ROOT);
+	}
+
+	/** ASS/SSA 的 alpha 与 Android 相反(00=不透明),按字节翻转 */
+	private static String invertByte(String hexByte) {
+		int v = Integer.parseInt(hexByte, 16);
+		String s = Integer.toHexString(255 - v);
+		return s.length() < 2 ? "0" + s : s;
 	}
 
 	public static String defaultID() {
