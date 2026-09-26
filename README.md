@@ -69,16 +69,17 @@ export JAVA_HOME=/path/to/jdk17
 ```
 :app / feature
     ↓
-业务 API: :spider-api、:player-api、:download(对外仅 DownloadFacade)
+业务契约(spiderapi/player 契约包 + DownloadFacade,现与实现同模块)
     ↓
-业务实现: :spider、:player
+业务实现: :spider、:player、:download
     ↓
 基础设施: :core-network、:core-storage、:log、:common(工具+共享模型+系统状态)
     ↓
-纯模型: :core-model
+纯模型: :common 的 com.github.tvbox.osc.bean.*
 ```
 
-其他模块:`quickjs`(JS 引擎)、`thirdparty`(第三方归堆:TabLayout + ViewPager1Delegate + CustomActivityOnCrash 崩溃页)。主题/通用资源(原 :ui-common)已并入 :app。
+**现状 9 个模块**:`:app`、`:common`、`:core-network`、`:core-storage`、`:log`、`:player`、`:spider`、`:download`、`:thirdparty`。
+契约模块已回并业务模块(`:spider-api`→`:spider`、`:player-api`→`:player`),原 `:core-model`/`:core-utils`/`:state` 已并入 `:common`,`:crash`/`:TabLayout`/`:ViewPager1Delegate`/`:quickjs` 已并入 `:thirdparty`(第三方归堆:TabLayout + CustomActivityOnCrash 崩溃页 + QuickJS JS 引擎),主题/通用资源(原 `:ui-common`)已并入 `:app`。边界改由 `checkModuleDependencies` 源码层门禁守护(见 AGENTS.md §二)。
 
 ## 目录结构与文档
 

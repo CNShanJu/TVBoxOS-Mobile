@@ -99,7 +99,7 @@ interface HistoryRepository {
     List<HistorySummary> query(int limit);
     void delete(String sourceKey, String vodId);
 }
-storage 只能依赖 core-model，不能调用 ApiConfig。源是否仍存在，应由业务层判断。
+storage 只能依赖 core-model（现 :common 的纯模型），不能调用 ApiConfig。源是否仍存在，应由业务层判断。
 
 4. 拆出 :spider-api
 当前 download 直接依赖整个 spider：
@@ -292,9 +292,10 @@ EventBus 仅作为迁移兼容层，新代码禁止新增 EventBus 事件。
 可以把下面规则作为后续架构检查标准：
 
 app 不得直接依赖 DAO、OkHttpClient、Spider 实现、IJK/Exo。
-download 不得依赖 spider 实现，只依赖 spider-api。
+download 不得依赖 spider 的实现类，只经爬虫契约（原 spider-api，现与实现同在 :spider 的 spiderapi 包；
+      契约与实现同模块后，边界由 checkModuleDependencies 源码红线守，而不是靠拆 Gradle 模块）。
 storage 不得依赖 spider、download、player。
-core-model 不得依赖任何 Android 模块。
+core-model（现 :common）不得依赖任何 Android 模块。
 UI 组件不得读取全局配置或访问业务单例。
 模块只通过公开 API 包通信，具体实现放 internal 包。
 Gradle 依赖默认使用 implementation，谨慎使用 api。
