@@ -22,7 +22,7 @@ public class DownloadTask {
 
     public String id;
     public String url;
-    /** 来源名称(如 饭太硬),作为一级目录 */
+    /** 来源名称(取自订阅里配置的源名),作为一级目录 */
     public String sourceName;
     /** 剧名,作为二级目录与显示分组 */
     public String vodName;

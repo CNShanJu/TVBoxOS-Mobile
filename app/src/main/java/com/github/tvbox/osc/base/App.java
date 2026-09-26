@@ -186,11 +186,16 @@ public class App extends MultiDexApplication {
     }
 
     private void putDefaultApi() {
-        // 本地默认订阅文件是默认订阅的唯一来源,每次启动与列表同步(只增删**我们注入过**的条目):
-        // 文件新增的默认订阅 -> 补进列表;文件移除的默认订阅 -> 从列表移除(限注入记录内);
-        // 用户自己添加/改名的订阅一律不动。
+        // 本机调试用的默认订阅清单是"默认订阅"的唯一来源(只放 debug 源集,release 包与克隆仓库都没有):
+        // 文件在 -> 每次启动与列表同步(只增删**我们注入过**的条目,用户自建/改名的订阅一律不动);
+        // 文件不在 -> 既不注入也不移除,完全尊重用户现有列表。
         List<Subscription> defaults = readDefaultSubscriptions();
-        if (defaults == null) defaults = new ArrayList<>();
+        if (defaults == null) {
+            // 关键:缺文件绝不等于"清单被清空"。若按"清单里没有就删掉注入项"处理,
+            // 从带清单的包升级到不带清单的包(release/CI 包)时会一次性删光用户此前被注入的订阅,
+            // 甚至把订阅列表清空、接口地址置空 —— 这正是历史上"升级后订阅消失"的成因。
+            return;
+        }
         List<Subscription> injected = SubscriptionConfig.getDefaultSubs();
         List<Subscription> subs = SubscriptionConfig.getSubscriptions();
         if (subs == null) subs = new ArrayList<>();
@@ -283,9 +288,10 @@ public class App extends MultiDexApplication {
     }
 
     /**
-     * 读取本地默认订阅文件 app/src/main/assets/config/default_subscriptions.json
+     * 读取本机调试用的默认订阅文件(只放在 debug 源集:app/src/debug/assets/config/default_subscriptions.json)
      * 格式: [{"name":"订阅名","url":"订阅地址"}, ...]
-     * 文件存在(本地打包)则返回默认订阅列表;文件不存在(线上打包)返回 null
+     * <p>
+     * 文件存在(本机 debug 打包)则返回默认订阅列表;文件不存在(release 包、克隆仓库后的构建)返回 null。
      */
     private List<Subscription> readDefaultSubscriptions() {
         try {

@@ -52,7 +52,7 @@
                 android:maxWidth="70dp"
                 android:padding="5dp"
                 android:singleLine="true"
-                tools:text="饭太硬"
+                tools:text="来源名"
                 android:textColor="@color/white"
                 android:textSize="10dp" />
         </com.lihang.ShadowLayout>

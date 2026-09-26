@@ -437,7 +437,7 @@ public final class DownloadDialogCoordinator {
         });
     }
 
-    /** 来源名(一级目录,如 饭太硬) */
+    /** 来源名(一级目录,取自订阅里配置的源名) */
     private String getDownloadSourceName() {
         String sourceName = "未分类";
         try {

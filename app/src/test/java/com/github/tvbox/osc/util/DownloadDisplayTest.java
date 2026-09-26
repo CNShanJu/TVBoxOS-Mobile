@@ -239,7 +239,7 @@ public class DownloadDisplayTest {
     public void sourceText_and_swipeActionText() {
         assertEquals("来源 未知", DownloadDisplay.sourceText(null));
         assertEquals("来源 未知", DownloadDisplay.sourceText(""));
-        assertEquals("来源 饭太硬", DownloadDisplay.sourceText("饭太硬"));
+        assertEquals("来源 测试源", DownloadDisplay.sourceText("测试源"));
         assertEquals("继续", DownloadDisplay.swipeActionText(state(DownloadTask.STATE_PAUSED, null)));
         assertEquals("重试", DownloadDisplay.swipeActionText(state(DownloadTask.STATE_FAILED, null)));
         assertEquals("暂停", DownloadDisplay.swipeActionText(state(DownloadTask.STATE_DOWNLOADING, null)));

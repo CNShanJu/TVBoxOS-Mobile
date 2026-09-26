@@ -491,7 +491,7 @@ class SubscriptionActivity : BaseVbActivity<ActivitySubscriptionBinding>() {
                 AppBubble.toast("无法读取所选文件,请选择本机存储中的 txt/json 订阅文件")
                 return
             }
-            // 订阅清单式文件(如 assets/config/default_subscriptions.json: [{name,url},...]):
+            // 订阅清单式文件(形如 [{name,url},...],同本机调试用的默认订阅清单格式):
             // 读取内容解析为多条订阅加入;识别失败则回落为"单个 clan:// 文件源"加入
             if (importSubscriptionList(importFile, name, mPendingChecked)) {
                 SubscriptionConfig.setLastImportDir(importFile.parent)

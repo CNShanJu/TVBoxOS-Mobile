@@ -547,7 +547,7 @@ public class DownloadScheduler {
      * @param episodeId   统一剧集标识(可空)
      * @param pic         封面图 URL(可空)
      * @param headers     解析请求头(可空)
-     * @param sourceName  来源名称(如 饭太硬),一级目录
+     * @param sourceName  来源名称(取自订阅里配置的源名),一级目录
      * @param vodName     剧名,二级目录与显示分组
      * @param episodeName 选集名称(播放页选集列表的名称,如 第1集)
      * @return true=已加入任务;false=该集已下载,不能重复下载
