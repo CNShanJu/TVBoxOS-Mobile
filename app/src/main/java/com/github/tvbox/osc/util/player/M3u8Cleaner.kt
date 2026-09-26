@@ -42,31 +42,21 @@ object M3u8Cleaner {
         }
         if (maxTimes == 0) return null
 
-        var dealedExtXKey = false
         for (i in lines.indices) {
-            if (!dealedExtXKey && lines[i].startsWith("#EXT-X-KEY")) {
+            // 每一条 #EXT-X-KEY 都要补成绝对地址:多密钥轮换(key rotation)很常见,
+            // 原来只处理第一条(dealedExtXKey 用完就置 true),后面的 key 仍是相对地址 → 取不到 key → 黑屏
+            if (lines[i].startsWith("#EXT-X-KEY")) {
                 val keyUrl = StringUtils.substringBetween(lines[i], "URI=\"", "\"")
-                if (keyUrl != null && !keyUrl.startsWith("http://") && !keyUrl.startsWith("https://")) {
-                    val newKeyUrl = if (keyUrl[0] == '/') {
-                        val ifirst = tsUrlPre.indexOf('/', 9) // skip https://, http://
-                        tsUrlPre.substring(0, ifirst) + keyUrl
-                    } else {
-                        tsUrlPre + keyUrl
+                if (keyUrl != null) {
+                    val newKeyUrl = absoluteUrl(tsUrlPre, keyUrl)
+                    if (newKeyUrl != keyUrl) {
+                        lines[i] = lines[i].replace("URI=\"" + keyUrl + "\"", "URI=\"" + newKeyUrl + "\"")
                     }
-                    lines[i] = lines[i].replace("URI=\"" + keyUrl + "\"", "URI=\"" + newKeyUrl + "\"")
                 }
-                dealedExtXKey = true
             }
             if (lines[i].isEmpty() || lines[i][0] == '#') continue
             if (lines[i].startsWith(maxTimesPreUrl)) {
-                if (!lines[i].startsWith("http://") && !lines[i].startsWith("https://")) {
-                    if (lines[i][0] == '/') {
-                        val ifirst = tsUrlPre.indexOf('/', 9) // skip https://, http://
-                        lines[i] = tsUrlPre.substring(0, ifirst) + lines[i]
-                    } else {
-                        lines[i] = tsUrlPre + lines[i]
-                    }
-                }
+                lines[i] = absoluteUrl(tsUrlPre, lines[i])
             } else {
                 if (i > 0 && lines[i - 1].isNotEmpty() && lines[i - 1][0] == '#') {
                     lines[i - 1] = ""
@@ -75,5 +65,26 @@ object M3u8Cleaner {
             }
         }
         return StringUtils.join(lines, linesplit)
+    }
+
+    /**
+     * 把 m3u8 里的相对地址补成绝对地址(纯字符串处理,便于单测)。
+     *
+     * @param tsUrlPre m3u8 所在目录(如 `https://cdn/a/b/`)
+     * @param url      待补的地址:已是绝对地址原样返回;以 `/` 开头按站点根拼;其余按目录拼
+     */
+    @JvmStatic
+    fun absoluteUrl(tsUrlPre: String, url: String): String {
+        if (url.isEmpty() || url.startsWith("http://") || url.startsWith("https://")) return url
+        if (url.startsWith("/")) {
+            // 取站点根(scheme://host[:port]):跳过 https:// 的两个斜杠后再找第一个斜杠。
+            // 找不到(如 base 就是 https://host,没有路径)时退化为去掉结尾斜杠 —— 原来直接
+            // substring(0, -1) 会抛 StringIndexOutOfBoundsException,整条播放链路异常
+            val idx = tsUrlPre.indexOf('/', 9)
+            val origin = if (idx > 0) tsUrlPre.substring(0, idx) else tsUrlPre.trimEnd('/')
+            return origin + url
+        }
+        val dir = if (tsUrlPre.endsWith("/")) tsUrlPre else tsUrlPre + "/"
+        return dir + url
     }
 }
