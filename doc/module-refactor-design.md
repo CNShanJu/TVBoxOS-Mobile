@@ -1,7 +1,9 @@
 # 视频下载重构与项目六模块设计方案
 
 > **实施进度（2026-09-25）**：下载模块重构已落地——DownloadFacade 门面 + internal 包（Manager/Scheduler/Executor/Store/Policy/Archive/Config/Core）+ 任务对象化（BaseDownloadTask/NormalFile/M3u8）+ 前台服务 + 通知。
-> 本文件保留作为原始设计参考，实际实现以代码为准。六模块中的 spider/log/state/ui-common/player 已按 改进.txt 分层落地，下载模块见 `doc/项目目录结构.md` 第九节。
+> 本文件保留作为原始设计参考（当时设计的"六模块"划分），实际实现以代码为准。六模块中的 spider/log/state/ui-common/player 已按 改进.txt 分层落地，下载模块见 `doc/项目目录结构.md` 第九节。
+>
+> **模块现状（2026-09）**：全仓 9 个模块 `:app`/`:common`/`:core-storage`/`:player`/`:thirdparty`/`:log`/`:core-network`/`:spider`/`:download`。本文件中提到的 `:core-model`/`:core-utils`/`:state` 已合并进 `:common`，`:spider-api`→`:spider`，`:player-api`→`:player`，`:crash`/`:TabLayout`/`:ViewPager1Delegate`/`:quickjs`→`:thirdparty`，`:ui-common`→`:app`（主题 JSON 在 `app/src/main/assets/theme/`）。下文历史记录保留当年模块名。
 
 > **目标**：把 `DownloadManager.java`（1778 行单体）重构为**六个项目级模块 + 纵向分层架构**，
 > 同时修复已确认的 5 个线上 bug，建立"可排查"的日志体系，并为播放内核升级（Media3）铺路。
@@ -132,6 +134,12 @@
 └──────────────────────────────────────────────────────────────┘
 ```
 
+> **现状注（2026-09）**：图中 L4 的资源与基础库已合并——`:ui-common` 已并入 `:app`（主题 JSON 在
+> `app/src/main/assets/theme/`，公共资源在 `app/src/main/res/`，生成任务 `generateThemeColors` 在
+> `app/build.gradle`）；`:quickjs`/`:TabLayout`/`:ViewPager1Delegate`/`:crash` 已合并为 `:thirdparty`。
+> 同时 `:player` 现同时承载播放契约（原 `:player-api`）与具体内核实现，`:spider` 现同时承载爬虫契约
+> （原 `:spider-api`）与实现（契约与实现同模块，边界改由源码层门禁守）。下文出现的同名模块名均按此理解。
+
 ### 2.2 六模块总览
 
 | 编号 | 模块 | 层 | 定位 | 对外门面 |
@@ -140,7 +148,7 @@
 | ② | SystemStateMonitor | L3 | 全局状态广播（网络/横竖屏/前后台/电量/磁盘） | `register/unregister/getCurrentState` |
 | ③ | LogStore | L3 | 统一日志采集/存储/筛选（零业务依赖，最底层） | `register(category,枚举)→CategoryLogger` |
 | ④ | SpiderModule | L2 | 爬虫全能力统一门面（内容爬取/播放解析/源代理） | `SpiderApi` |
-| ⑤ | ui-common | L4 | 公共 UI 资源 + 命名规范（零业务依赖） | 资源模块 |
+| ⑤ | ui-common（现并入 `:app`） | L4 | 公共 UI 资源 + 命名规范（零业务依赖） | 资源模块（现为 app 内资源，主题 JSON 在 `app/src/main/assets/theme/`） |
 | ⑥ | PlayerModule | L2 | 项目自有播放层（引擎无关，Media3 升级铺路） | `PlayerApi` |
 
 ### 2.3 分层原则
@@ -148,7 +156,7 @@
 - **L1 · UI 层 = 纯展示 + 交互**（详见 3.8）：只展示门面返回的 DTO、发交互指令；不持有业务数据、不直连存储/内核/模块内部；
 - **L2 · 业务模块层**：业务能力与数据所在，各自对外门面；业务模块间可互调（播放/下载共用 ④ 解析）；
 - **L3 · 基座层（app 基座）**：状态广播 + 日志——跨业务基础设施，所有业务模块与 UI 依赖，**先于业务模块落地**；
-- **L4 · 资源 + 基础库层**：ui-common + `:player` 内核（vendored，不动）+ 既有工具模块；
+- **L4 · 资源 + 基础库层**：ui-common（现并入 `:app`）+ `:player` 内核（vendored）+ 既有工具模块（`:quickjs`/`:TabLayout`/`:ViewPager1Delegate`/`:crash` 现并入 `:thirdparty`）；
 - **横切**：配置门面模式贯穿 L1~L3（数据在模块内，设置页查询+发通知+订阅）。
 
 ### 2.4 数据生命周期
@@ -390,7 +398,7 @@ void enterWindow(); void backgroundPlay(boolean);
 
 **内部结构**：适配层（各内核 PlayerApiAdapter + PlayerHelper 内核选择）→ 控制器层（Vod/Live/Local 迁入）→ 播放页 UI（`PlayFragment` 薄层化）；`PlayService`（后台播放）、`LivePlayerManager` 迁入。
 
-**依赖方向**：⑥ → ④（resolvePlayUrl 解析）+ ②（断网提示 / 横竖屏全屏）+ ③（播放日志，大类型=播放，小类型=init/switchSource/buffering/seek/error）+ PlayConfig（自持）+ ⑤ ui-common（播放页资源）。
+**依赖方向**：⑥ → ④（resolvePlayUrl 解析）+ ②（断网提示 / 横竖屏全屏）+ ③（播放日志，大类型=播放，小类型=init/switchSource/buffering/seek/error）+ PlayConfig（自持）+ ⑤ ui-common（播放页资源，现并入 `:app`）。
 
 **风险**：
 - `:player` 为 vendored 源码（DKVideoPlayer 基于 Exo2），升级 Media3 需评估 doikki 新版支持或自研薄内核；**PlayerApi 契约稳定是前提**；
@@ -471,12 +479,12 @@ SystemStateMonitor 订阅策略项。
 **设置页（我的-设置）**：静态分区（播放/下载/日志/系统四区），每区绑定对应模块配置门面；
 打开页调各门面 get 取快照渲染，用户操作调 `setXxx`（只发通知），模块广播 → 订阅刷新。
 **备份/恢复**：`BackupDialog` 聚合各模块 `exportConfig/importConfig`（取代散落 Hawk 键）。
-不直连 Hawk（消除 99 处散落）；设置页资源归 ⑤ ui-common 命名规范。
+不直连 Hawk（消除 99 处散落）；设置页资源归 ⑤ ui-common 命名规范（现状：资源已收在 `:app`）。
 
 > 注：不再需要中央配置存储；仅保留一个**极轻量 ConfigRegistry**（可选）：只登记各模块
 > 配置门面引用，用于备份聚合顺序与设置页分区渲染，**不存任何数据**。
 
-### 3.7 ⑤ 资源层 · ui-common 模块 + 资源治理
+### 3.7 ⑤ 资源层 · ui-common 模块 + 资源治理（现状：`:ui-common` 已并入 `:app`——主题 JSON 在 `app/src/main/assets/theme/`、`generateThemeColors` 任务在 `app/build.gradle`、公共资源在 `app/src/main/res/`）
 
 **技术约束（决定方案）**：Android res 目录**物理上不允许子文件夹**（AAPT2 限制），
 资源"分类"只有两条路：**① 命名前缀规范；② Gradle 模块拆分（每模块自带 res/）**。
@@ -488,7 +496,7 @@ SystemStateMonitor 订阅策略项。
 | layout 100 个 | 平铺；前缀雏形：activity_ / fragment_ / item_ / dialog_ / view_ | 补全规范并强制 |
 | drawable 103 个 | 平铺；前缀规律：ic_(41) / bg_(22) / shape_(14) / icon_(8) / item_ / button_ | 统一为 ic_/bg_/shape_/selector_ |
 | values | attrs / colors / dimens / strings / styles 已拆分 | 保持 |
-| gradle 模块 | 已有 app / player / quickjs / TabLayout / ViewPager1Delegate / crash | 拆 :ui-common 有基础 |
+| gradle 模块 | 已有 app / player / quickjs / TabLayout / ViewPager1Delegate / crash | 拆 :ui-common 有基础（现状：quickjs/TabLayout/ViewPager1Delegate/crash 已合并为 `:thirdparty`；资源拆分一事终为止于 `:app` 内） |
 
 **① 命名规范（强制执行，防回退）**：
 - layout：`activity_`（页面）/ `fragment_`（片段）/ `item_`（列表项）/ `dialog_`（弹窗）/ `view_`（自定义视图）/ `include_`（公共 include）；
@@ -496,7 +504,7 @@ SystemStateMonitor 订阅策略项。
 - values：保持 attrs/colors/dimens/strings/styles 拆分；
 - **强制手段**：Gradle 校验任务 / Lint 自定义规则（资源命名），构建期校验，违规即失败。
 
-**② :ui-common 模块（公共 UI 资源独立，零业务依赖）**：
+**② :ui-common 模块（公共 UI 资源独立，零业务依赖）——现状：已并入 `:app`（主题 JSON 在 `app/src/main/assets/theme/`，生成任务 `generateThemeColors` 在 `app/build.gradle`，公共资源在 `app/src/main/res/`）**：
 - 内容：主题（styles/themes）、颜色（colors）、字体（font）、全局通用 drawable（ic_/bg_/shape_/selector_ 跨页面通用部分）、通用 include 布局、通用自定义控件（加载/空态/进度条等）；
 - app 只留页面级资源（activity_/fragment_/item_/dialog_）；后续 download / player 等业务模块各自 res 只含自身页面资源；
 - 依赖方向：app 及业务模块 UI → :ui-common；:ui-common **零业务依赖**（可被 player 复用）。
@@ -878,7 +886,7 @@ File getSaveDir();  boolean hasStoragePermission();  void requestStoragePermissi
 | 阶段 | 内容 | 验证 |
 |---|---|---|
 | **P1 命名规范** | 资源命名前缀规范 + 违规纯改名（git mv，无行为变化）+ Lint/Gradle 强制校验 | 构建通过、资源命名合规 |
-| **P2 :ui-common 模块** | 建 `:ui-common`，公共资源迁入；app 只留页面级资源 | 构建通过、UI 无回归 |
+| **P2 :ui-common 模块** | 建 `:ui-common`，公共资源迁入；app 只留页面级资源（实施后该模块已回并 `:app`，见下方落地状态表） | 构建通过、UI 无回归 |
 | **P3 模块树（按需）** | crawler / download / state / log 独立 gradle 模块 | 按需评估 |
 
 ### 落地状态（执行记录）
@@ -896,11 +904,11 @@ File getSaveDir();  boolean hasStoragePermission();  void requestStoragePermissi
 | ① 5.4 重封装 | ✅ 已落地 | TS→MP4 MediaMuxer 重封装（失败回退 .ts）+ MSG_REMUX |
 | ① 4.6 任务对象化 | ✅ 已落地 | BaseDownloadTask 契约 + TaskListener 上报协议 + DownloadTaskRegistry（Feature→Factory）+ NormalFileDownloadTask/M3u8DownloadTask 子类；startTask 经注册表创建对象执行（行为零变化） |
 | ① 4.7 日志粒度收尾 | ✅ 已落地 | 校验/开始（含完整缺失清单）、补片轮次（开始目标/单项成功失败/轮末 补K成功K1失败K2剩余J）、补片 FAILED 全量清单、合并（开始含 size/重试含上次原因/完成含耗时/失败含第k次+碎片保留） |
-| 3.6 配置门面 PlayConfig | ✅ 已落地 | player-api 内自持 内核/渲染/缩放/步进/解码/缓存/后台播放/净化/倍速/字幕 12 项；设置页播放区 + 播放内核消费方 12 文件收敛；沿用旧 Hawk key 兼容历史设置 |
+| 3.6 配置门面 PlayConfig | ✅ 已落地 | `:player`（原 player-api，现契约与实现同模块）内自持 内核/渲染/缩放/步进/解码/缓存/后台播放/净化/倍速/字幕 12 项；设置页播放区 + 播放内核消费方 12 文件收敛；沿用旧 Hawk key 兼容历史设置 |
 | 3.6 配置门面 SystemConfig | ✅ 已落地 | common 内自持 DNS/主题/动画/首页/历史/直播源/无痕 7 项；设置页系统区 + 系统键消费方 9 文件收敛；设置页 44 处 Hawk 直连清零（四门面 下载/日志/播放/系统） |
-| 3.7 P2 :ui-common | ✅ 已落地 | 公共 UI 资源独立成模块：主题生成任务 + styles/colors/attrs/dimens + values-night + 通用 drawable 99 个 + anim 4 个；app 仅留页面级资源；主题 JSON 统一在 ui-common/assets/theme；assembleDebug 通过（行为零变化） |
+| 3.7 P2 :ui-common | ✅ 已落地 | 公共 UI 资源独立成模块：主题生成任务 + styles/colors/attrs/dimens + values-night + 通用 drawable 99 个 + anim 4 个；app 仅留页面级资源；主题 JSON 统一在 ui-common/assets/theme；assembleDebug 通过（行为零变化）。（现状：该模块已并入 `:app`——主题 JSON 现位于 `app/src/main/assets/theme/`，生成任务在 `app/build.gradle`，公共资源在 `app/src/main/res/`） |
 | P1 资源命名规范 | ✅ 脚本 + 两批治理 | check-res-naming.ps1 校验（含 :ui-common）；icon_*→ic_*、layout 归位；剩余第三方库风格改名 ⏳ 收益递减 |
-| P2 :ui-common | ✅ 已落地 | 公共 UI 资源独立成模块（主题生成任务/styles/colors/dimens/通用 drawable/anim），app 仅留页面级资源 |
+| P2 :ui-common | ✅ 已落地 | 公共 UI 资源独立成模块（主题生成任务/styles/colors/dimens/通用 drawable/anim），app 仅留页面级资源（现状：该模块已并入 `:app`，资源与主题 JSON 均在 app 内） |
 | 可选增强 | ✅ 已落地 | 限速 setSpeedLimit（5.4）/ DownloadNotifier 完成通知（5.3）/ 前台服务保活（下载中防杀 + 通知栏状态，API 34 dataSync 类型） |
 | 分片级并发下载 | ⏳ 未来扩展 | 8.2 扩展点：分片队列 + 小线程池；依赖 activeResponses 任务级连接表改多连接管理，改动非局部，留待真机验证后再做 |
 
@@ -939,7 +947,7 @@ File getSaveDir();  boolean hasStoragePermission();  void requestStoragePermissi
 | 新下载协议 | 4.6（BaseDownloadTask + Registry） | 新子类 + 注册特征，框架零改动 |
 | 新爬虫源 / 新解析协议 | 3.3（SpiderModule） | 新 Spider 实现 / 新 ResolveResult 解析，下载/播放零改动 |
 | 新播放内核 / Media3 | 3.4（PlayerModule） | 适配层加适配器（PlayerApi 契约不变）；**Media3 升级 = 新增 Media3Adapter** |
-| 新 UI 资源 / 新页面 | 3.7（ui-common） | 按命名前缀规范 + 归属模块 res；ui-common 零改动 |
+| 新 UI 资源 / 新页面 | 3.7（ui-common，现归 `:app`） | 按命名前缀规范 + 归属模块 res；app 内资源/组件零改动 |
 | 新日志小类型 | 3.1（LogStore） | 各模块枚举类加一项（code+label），LogStore 零改动 |
 | 新配置项 | 3.6（配置门面模式） | 模块内自持数据 + get/set/subscribe + exportConfig/importConfig；设置页分区加一行 |
 | 分片级并发下载（单任务多线程拉片） | 4.7 内部 | 分片队列 + 小线程池，改动局部 |

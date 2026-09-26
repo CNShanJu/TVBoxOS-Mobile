@@ -1,8 +1,12 @@
 # 改进.txt 第二阶段实施工单：核心模块化（:core-model 起步）
 
-> **实施进度（2026-09-25）**：核心模块化已基本完成——`:core-model`（纯模型）、`:core-network`（原 common 拆出网络）、`:core-storage`（Room+PrefsDataStore）、`:core-utils`（AES/MD5/AdBlocker）、`:spider-api`、`:player-api` 均已落地。
+> **已归档（2026-09）**：本文件是第二阶段实施工单，**工单内容已全部落地并已完成归档**——其后核心模块进一步合并（见下方「模块现状」），契约模块已回并业务模块。本文件仅作阶段二原始工单留档，实际模块划分以 `settings.gradle` 为准。
+
+> **模块现状（2026-09）**：全仓 9 个模块 `:app`/`:common`/`:core-storage`/`:player`/`:thirdparty`/`:log`/`:core-network`/`:spider`/`:download`。本文件中提到的 `:core-model`/`:core-utils`/`:state` 已合并进 `:common`，`:spider-api`→`:spider`，`:player-api`→`:player`，`:crash`/`:TabLayout`/`:ViewPager1Delegate`/`:quickjs`→`:thirdparty`，`:ui-common`→`:app`（主题 JSON 在 `app/src/main/assets/theme/`）。下文历史记录保留当年模块名。
+
+> **实施进度（2026-09-25）**：核心模块化已基本完成——`:core-model`（纯模型）、`:core-network`（原 common 拆出网络）、`:core-storage`（Room+PrefsDataStore）、`:core-utils`（AES/MD5/AdBlocker）、`:spider-api`、`:player-api` 均已落地（现状：`:core-model`/`:core-utils`/`:state` 已并入 `:common`，`:spider-api` 已并入 `:spider`，`:player-api` 已并入 `:player`）。
 > 剩余长线项：`:playback`/feature-* 模块未建（需真机回归）、播放器主线收口（P2-P4）、EventBus 跨页 refresh 收口、Media3/Hilt（第五阶段）。
-> 本文件保留作为阶段二原始工单参考。
+> 本文件保留作为阶段二原始工单参考（工单已归档，见顶部说明）。
 
 > 本工单把 改进.txt 第二~五阶段细化为可执行步骤。原则：每步保持全仓库可编译；
 > 每次“搬一个模型→改 import→全量编译”作为一次原子提交；先建模块壳，再按依赖自底向上迁移。
@@ -18,7 +22,7 @@
   迁移到 core-model 前需先解耦（见 3.2）。
 - 同名包问题：`com.github.tvbox.osc.bean` 同时存在于 app/spider/download——core-model 承接后应删除各模块内同名旧文件（同 FQN 重复定义会造成解析歧义，逐文件删除并编译验证）。
 
-## 1. 模块布局（目标）
+## 1. 模块布局（当时的落地目标；现状 9 模块见顶部「模块现状」）
 
 ```
 :core-model     纯模型(无 Android 依赖): bean + 下载/爬虫 DTO + Entity?

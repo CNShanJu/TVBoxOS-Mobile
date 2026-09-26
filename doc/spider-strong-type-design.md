@@ -1,16 +1,18 @@
 # 强类型 SpiderService 设计（改进.txt §1/§4.3 落地方案）
 
-> **实施进度（2026-09-25）**：强类型契约已落地——`:spider-api` 提供 SpiderDetailApi/SpiderSearchApi/SpiderHomeApi/SpiderManualCheckApi/PlayUrlResolverApi，`:spider` 侧实现对应 Impl。
+> **实施进度（2026-09-25）**：强类型契约已落地——`:spider`（原 `:spider-api`，契约与实现现同模块）提供 SpiderDetailApi/SpiderSearchApi/SpiderHomeApi/SpiderManualCheckApi/PlayUrlResolverApi 契约，`:spider` 侧实现对应 Impl。
 > SourceViewModel 已收敛为 **typed-first + 失败回退旧 HttpClient 直连**（detail/search/quickSearch/category/list/play 六入口），字符串通道 SpiderContentApi 仍为底层数据源（非可下线遗留层）。
 > 构造注入 SpiderService（替代静态 Provider）、删除回退通道为后续长线项，需逐源真机回归。
 
+> **模块现状（2026-09）**：全仓 9 个模块 `:app`/`:common`/`:core-storage`/`:player`/`:thirdparty`/`:log`/`:core-network`/`:spider`/`:download`。本文件中提到的 `:core-model`/`:core-utils`/`:state` 已合并进 `:common`，`:spider-api`→`:spider`，`:player-api`→`:player`，`:crash`/`:TabLayout`/`:ViewPager1Delegate`/`:quickjs`→`:thirdparty`，`:ui-common`→`:app`（主题 JSON 在 `app/src/main/assets/theme/`）。下文历史记录保留当年模块名。
+
 > 目标：把 app 侧"字符串 JSON/XML + 各自解析"下沉为 :spider 内实现返回的**类型化领域对象**，
-> app/UI 只依赖 :spider-api 契约；并用 FakeSpiderService 支持 JVM 单测。
+> app/UI 只依赖 `:spider` 的契约（原 `:spider-api`，现契约与实现同模块，边界靠源码层门禁守）；并用 FakeSpiderService 支持 JVM 单测。
 > 现状锚点：`SourceViewModel` 依 type=0/1/3/4 分别走 XML/JSON/JS+Jar 并各自 parse 成
-> `AbsSortXml/AbsXml`（core-model）；`:spider-api` 已有字符串级 `SpiderContentApi`。
+> `AbsSortXml/AbsXml`（现 `:common`，原 `:core-model`）；`:spider`（原 `:spider-api`）已有字符串级 `SpiderContentApi`。
 > 本设计分“对象模型 → 契约 → 实现下沉 → 迁移 → 假件/门禁”五步，全部落地后才能删字符串通道。
 
-## 1. 对象模型（全部放 core-model，纯 Java，Serializable）
+## 1. 对象模型（全部放 core-model（现 `:common`），纯 Java，Serializable）
 - 复用已有：`AbsSortXml`(分类/首页 tab)、`AbsXml`(详情/搜索/推荐列表)、`Movie/MovieSort`。
 - 新增强类型容器（可选，先以 Abs* 为最终返回，避免二次建模）：
   - `SortPage { SortData 分类元数据; List<Movie.Video> videoList; 分页状态 }`
@@ -18,7 +20,7 @@
   - `PlayResult { JSONObject 兼容字段 key/url/flag/parse/header/headerObj… }`
 - 规则：对象只放数据，无 ApiConfig/Hawk/网络行为；与 Room Entity 不共用。
 
-## 2. 契约（:spider-api）
+## 2. 契约（:spider-api，现契约与实现同在 `:spider`）
 ```java
 public interface SpiderService {
     SortPage home(String sourceKey, boolean filter);          // 首页分类+视频
@@ -43,7 +45,7 @@ public interface SpiderService {
 - `SourceViewModel(SpiderService spiderService)`：类型安全、可用 FakeSpiderService；
 - 字符串协议(JSON 拼接/正则嗅探等)只存在于 :spider 实现内部；
 - `SpiderContentApi`(字符串版) 作过渡兼容层，迁移完成后删除。
-- 已完成落地（2025 增量）：`:spider-api` 拆出 `SpiderDetailApi/SearchApi/HomeApi/ManualCheckApi/PlayUrlResolverApi/SortParser`；
+- 已完成落地（2025 增量）：原 `:spider-api` 拆出 `SpiderDetailApi/SearchApi/HomeApi/ManualCheckApi/PlayUrlResolverApi/SortParser`（该契约模块其后并入 `:spider`，契约与实现同模块）；
   detail/search(quick/聚合)/category/homeContent/homeVideoContent(type3)在 `SourceViewModel` 均 **typed 优先 + 字符串回退**，
   各 impl 内置 `SpiderBridge` 链路日志；SortParser(纯静态,带 XStream 白名单)供 VM 与 :spider 共用并有单测。
 
@@ -52,7 +54,7 @@ public interface SpiderService {
   覆盖 SourceViewModel 各 tab 事件后置、空结果、异常回退。
 - 新增 Gradle 依赖方向校验 task（违规红门禁），CI 可插。
 
-## 6. 实施顺序（每个子项 = 一个可编译提交）
+## 6. 实施顺序（每个子项 = 一个可编译提交；已按此顺序落地，模块名对照见顶部「模块现状」）
 1. core-model 补类型容器(如需要)  → 2. :spider-api 加 SpiderService → 3. :spider 实现 detail→search→category/home
 → 4. SourceViewModel 切换 + 删旧解析分支 → 5. FakeSpiderService + 单测 → 6. 删 SpiderContentApi。
 > 前置：真机/模拟器环境就绪（XML/JSON/JS/Jar 四类源逐一回归）。

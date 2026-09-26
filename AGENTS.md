@@ -30,20 +30,26 @@ app / feature
 
 ## 二、模块边界(现状模块与残留治理)
 
+现状:**9 个模块** —— `:app`、`:common`、`:core-network`、`:core-storage`、`:log`、`:player`、`:spider`、`:download`、`:thirdparty`。
+合模块已落地(契约与实现同模块后,靠**源码层门禁**守边界,不再靠 Gradle 拆模块):`:core-model`/`:core-utils`/`:state` → `:common`;`:spider-api` → `:spider`;`:player-api` → `:player`;`:crash`/`:TabLayout`/`:ViewPager1Delegate`/`:quickjs` → `:thirdparty`;`:ui-common` → `:app`(主题 JSON 在 `app/src/main/assets/theme/`,`generateThemeColors` 任务在 `app/build.gradle`)。
+
 | 模块 | 边界要求 |
 |---|---|
 | `:common` | 全局共用:纯模型(`com.github.tvbox.osc.bean.*`,不依赖 Android/Hawk/Room/ApiConfig)+ 算法工具(AES/MD5/AdBlocker)+ 系统状态(`.state.*`);由原 `:core-model`/`:core-utils`/`:state` 三模块合并,包名不变 |
 | `:core-network` | 收敛网络客户端(OkGoHelper/HttpClient/各 OkHttp 创建),业务不得自行 `new OkHttpClient.Builder()` |
 | `:core-storage` | Room/缓存/配置收口,对外只暴露 Repository/类型安全 Config,不暴露 DAO;storage 不得依赖 spider/download/player |
-| `:spider-api` | 爬虫契约(SourcePage/Category/Detail/Search/Play 请求与结果),QuickJS/JarLoader/ApiConfig/具体 Spider 留在 :spider |
-| `:player-api` | 播放契约(PlayerSession/PlayerState/PlayerOptions/PlayerEvent/PlayerFactory),UI 不得直接依赖 MyVideoView/IJK/Exo 具体内核 |
+| `:spider` | 爬虫**契约 + 实现同模块**(原 `:spider-api` 已并入):契约(SourcePage/Category/Detail/Search/Play 与 SourceConfigProviders/ParseConfigProviders/LiveChannelConfigApi/SourceLoaderApi/IjkCodecConfigProviders)、QuickJS/JarLoader/ApiConfig/具体 Spider;**app/UI 一律经契约,禁止直连 `ApiConfig`/`JsLoader`/`PlayUrlResolver`**(`checkModuleDependencies` 已加该红线,仅组合根/启动注入点与两条遗留项在白名单) |
+| `:player` | 播放**契约 + 实现同模块**(原 `:player-api` 已并入):契约(PlayerSession/PlayerState/PlayerOptions/PlayerEvent/PlayerFactory)与 MyVideoView/IJK/Exo 同模块;UI 不得直接依赖具体内核 |
+| `:thirdparty` | 纯第三方归堆,不依赖任何本仓模块:TabLayout(`com.angcyo.tablayout`)、CustomActivityOnCrash(`cat.ereza.customactivityoncrash`,原 `:crash`)、QuickJS(`com.whl.quickjs.*` + `src/main/jniLibs`,原 `:quickjs`) |
 | `:download` | 只公开 DownloadFacade.enqueue/pause/resume/delete/observe;Manager/Scheduler/Executor/Archive 等为模块内部实现 |
+| `:log` | 日志(LogStore + 落盘/Logcat 采集),不依赖任何业务模块 |
 | `:app` 的 ui-kit/ui-common | 主题资源(原 `:ui-common`)与通用组件已全部收在 app 内(app 的 `res` + `ui/kit` package);组件成熟后再考虑拆模块 |
 
 现状残留(持续治理,新代码勿新增同类):
 - app 仍直用 `MyVideoView`/IJK/Exo、`PlayerTrackHelper` 按内核分发(播放器收口长线)。
 - `:core-network` 已只剩网络职责(OkGoHelper/HttpClient/HttpUrls/FCallBack/HCallBack/SSLCompat/urlhttp 的 brotli 拦截器);AES/MD5/AdBlocker/AppLog/LOG 已迁出。残留:网络客户端装配与通用工具仍同包,后续可按职责再分目录。
-- `:spider-api` 字符串通道(SpiderContentApi)为过渡兼容层,新功能不得新增字符串协议依赖。
+- `:spider` 字符串通道(SpiderContentApi)为过渡兼容层,新功能不得新增字符串协议依赖。
+- app 仍有两处直连 `:spider` 实现,列在门禁白名单里待迁移:`ui/activity/FastSearchActivity.kt`(`JsLoader.stopAll/load`)、`util/EpisodeDownloadBatch.kt`(`PlayUrlResolver.resolve*`,应经 ParseConfigProviders)。
 - 未建 `:playback` / feature-* 模块(第三/四阶段,需真机回归环境再动)。
 
 ## 三、大页面拆分目标(§三)
@@ -128,7 +134,7 @@ app / feature
 ## 八、推荐推进顺序(供排期参考)
 
 1. **第一阶段(补边界)**:SourceViewModel→SpiderApi;DownloadFragment→DownloadFacade;DetailActivity 不直调 DownloadManager;注册并使用 PlayerFactory;禁止新增 Hawk/EventBus/具体 Manager 直调。
-2. **第二阶段(抽基础)**:common(模型/工具/状态)→ spider-api → core-network → core-storage。
+2. **第二阶段(抽基础)**:common(模型/工具/状态)→ spider 契约 → core-network → core-storage;已完成,且契约模块已回并业务模块(见 §二)。
 3. **第三阶段(拆播放器与大页)**:playback shell;拆 PlayFragment/DetailActivity;字幕迁 playback;ViewModel 只调接口。
 4. **第四阶段**:feature-* 按需模块化(不要在依赖未稳时先搬目录)。
 5. **第五阶段(现代化)**:Exo→Media3、EventBus→Flow/接口、Hawk→DataStore、Java→Kotlin、Hilt(按需)、依赖检查与测试门禁。
@@ -230,7 +236,7 @@ app / feature
 ## 十、常用基础设施速查
 
 - 配置:core-storage `config.PrefsDataStore`(DataStore,运行权威;历史 Hawk 一次性迁移通道 `KeyValueStore` 已随 hawk 退役下线);各业务 Config 门面见 `com.github.tvbox.osc.config`(SystemConfig)与各模块 config 包。
-- 契约 Providers(app 侧桥接 :spider 实现):`spider-api.SourceConfigProviders/ParseConfigProviders/LiveChannelConfigApi/SourceLoaderApi/IjkCodecConfigProviders` 等,业务/UI 一律经它们取源元信息,禁止直触 ApiConfig。
+- 契约 Providers(在 `:spider` 模块的契约包内,原 `:spider-api`):`SourceConfigProviders/ParseConfigProviders/LiveChannelConfigApi/SourceLoaderApi/IjkCodecConfigProviders` 等,业务/UI 一律经它们取源元信息,禁止直触 ApiConfig。`checkModuleDependencies` 已把"app 直连 `ApiConfig`/`JsLoader`/`PlayUrlResolver`"设为红线(白名单:组合根 `di/AppCompositionRoot`、启动 `base/App`、`server/ControlManager` 注入点,以及 `FastSearchActivity`/`EpisodeDownloadBatch` 两条待迁移项)。
 - 弹窗:统一 `ui/dialog/DialogCoordinator`(center/right/bottom/loading/confirm);同构内容层合并用共享 Panel(如 LiveSettingPanel/DownloadSeriesPanel/PlayingControlPanel),Bottom/Right 收敛为薄壳。
 - 共享执行器:`util/HeavyTaskUtil`(getBigTaskExecutorService 并行 / getSerialExecutorService 串行);配合 epoch/过期自检做取消语义。
 - 播放上下文:`util/player/{PlayRequest,PlaySessionKeys,PlayedVodKey,PlayHistoryRepository,SubtitleCoordinator,PlayParseCoordinator,PlaybackSessions}`。

@@ -3,16 +3,18 @@
 > 生成方式：对照 `改进.txt` 逐项做仓库审计（grep/读码），记录"文档要求 vs 当前状态"。
 > 状态图例：✅ 已达标 / ⚠️ 部分 / ❌ 未做。审计日期：见最近提交记录。
 
+> **模块现状（2026-09）**：全仓 9 个模块 `:app`/`:common`/`:core-storage`/`:player`/`:thirdparty`/`:log`/`:core-network`/`:spider`/`:download`。本文件中提到的 `:core-model`/`:core-utils`/`:state` 已合并进 `:common`，`:spider-api`→`:spider`，`:player-api`→`:player`，`:crash`/`:TabLayout`/`:ViewPager1Delegate`/`:quickjs`→`:thirdparty`，`:ui-common`→`:app`（主题 JSON 在 `app/src/main/assets/theme/`）。下文历史记录保留当年模块名。
+
 ## 1. 依赖方向（改进.txt §一/§六）— 大体达标
 - ✅ app 内 `getCSP()` 清零；UI 无 `new OkHttpClient.Builder()`。
-- ✅ `:core-model` 无 android import；`:download` 不再依赖 `:spider`（只依赖 `:spider-api`）。
+- ✅ `:common`（原 `:core-model`）无 android import；`:download` 只经 `:spider` 的公开契约（原 `:spider-api`，现契约与实现同模块）取爬虫能力，边界由源码门禁守。
 - ✅ Gradle `checkModuleDependencies` 门禁 + CI（`.github/workflows/verify.yml`）。
 - ⚠️ 仍存在跨层直读（见 §4 穿透点）。
 
 ## 2. 第一阶段验收对照（§七·一）
 | 项 | 状态 | 现状/残留 |
 |---|---|---|
-| SourceViewModel 走 SpiderApi | ✅ type3 typed 优先+回退 | type0/1/4 仍在 VM 内走 `HttpClient`+`xml()/json()/sortJson()` 内联解析；VM 内仍大量 EventBus.post。ApiConfig 直读已清零：源注册表/首页源/vip 旗标改经 `spider-api.SourceConfigApi`（`SourceConfigProviders` 注入，ApiConfig 实现契约） |
+| SourceViewModel 走 SpiderApi | ✅ type3 typed 优先+回退 | type0/1/4 仍在 VM 内走 `HttpClient`+`xml()/json()/sortJson()` 内联解析(EventBus 已全仓移除,VM 侧改为直调监听,见 AGENTS §五)。ApiConfig 直读已清零：源注册表/首页源/vip 旗标改经 `:spider` 契约 `SourceConfigApi`（原 `:spider-api`，`SourceConfigProviders` 注入，ApiConfig 实现契约） |
 | DownloadFragment 走 DownloadFacade | ✅ | MSG_* 已并入 Facade;UI 无 `util.DownloadManager`/内部实现 import(门禁含 kt) |
 | DetailActivity 不直调 DownloadManager | ✅ | 另：仍直用 `cache.RoomDataManger.getVodInfo`（DAO 泄漏点，见 §4） |
 | 注册并使用 PlayerFactory | ⚠️ | 已注册 IJK(1)/Exo(2) adapter + `PlaybackSessions`/`VideoViewPlayerApi` 会话原型；PlayFragment 仍直持 `MyVideoView`/内核，session 仅日志观察 |
@@ -20,13 +22,13 @@
 ## 3. 模块边界（§二/§八）
 | 模块 | 状态 | 残留 |
 |---|---|---|
-| `:core-model` | ✅ | `ParseBean` 仍在 `:spider`（本轮迁移）+ 含行为(getUrl proxy 替换 / mixUrl Base64) → 迁移时纯化 |
+| `:common`（原 `:core-model`） | ✅ | `ParseBean` 仍在 `:spider`（本轮迁移）+ 含行为(getUrl proxy 替换 / mixUrl Base64) → 迁移时纯化 |
 | `:core-network` | ⚠️ | 目录/模块名已对齐;配置(SystemConfig/HawkConfig/KeyValueStore)已迁 :core-storage,event/LogEvent 已清;内部仍是杂项袋:`util/{HttpClient,OkGoHelper,AES,MD5,AdBlocker,AppLog,LOG,urlhttp/*}`(改进.txt §2.8 待拆) |
 | `:core-storage` | ✅ | data/cache/Repository + **配置归位**：`SystemConfig/HawkConfig` 迁入 `com.github.tvbox.osc.config`，新增 `KeyValueStore`(Hawk 类型安全封装,App 侧业务 Config 均走它);app 无 DAO 直读、UI 经门面读写配置 |
-| `:spider-api` / `:spider` | ✅ 试点 | 字符串通道(SpiderContentApi)仍在(过渡兼容)；`ApiConfig` 仍暴露具体 Spider(内部实现需留) |
+| `:spider`（原 `:spider-api`，现契约与实现同模块） | ✅ 试点 | 字符串通道(SpiderContentApi)仍在(过渡兼容)；`ApiConfig` 仍暴露具体 Spider(内部实现需留) |
 | `:download` | ✅ | 内部实现已收 `...download.internal` 包(Manager/Scheduler/Executor/Core/Store/Config/Policy/Archive/Notifier/Log/task 全族),公开包仅 Facade+模型/接口;app 零内部实现引用(门禁 java+kt 全查) |
-| `:player-api` / `:player` | ⚠️ | 契约 + 原型已接；app 仍直用 `MyVideoView`/IJK/Exo、`PlayerTrackHelper` 按内核 instanceof 分发 |
-| `:ui-common` / ui-kit | ⚠️ | ui-common=纯资源 ✅；app 内已建 ui-kit package（6 个纯净组件），通用 View 归拢中 |
+| `:player`（原 `:player-api`，现契约与实现同模块） | ⚠️ | 契约 + 原型已接；app 仍直用 `MyVideoView`/IJK/Exo、`PlayerTrackHelper` 按内核 instanceof 分发 |
+| `:app` 的 ui-kit / ui-common（原 `:ui-common` 已并入 `:app`） | ⚠️ | ui-common=纯资源 ✅（现为 app 内资源，主题 JSON 在 `app/src/main/assets/theme/`）；app 内已建 ui-kit package（6 个纯净组件），通用 View 归拢中 |
 | `:playback` / feature-* | ❌ | 未建（改进.txt 第三/四阶段，需真机回归环境） |
 
 ## 4. 穿透点（UI/上层直读下层实现，新代码应避免）
@@ -35,7 +37,8 @@
   装配/封装边界:App.java 订阅默认注入与 putDefault(启动装配)、RemoteTVBox(类内方法封装)、各配置门面内部。
 - UI 直触 DAO/存储实现：已清零(app `RoomDataManger` 直读已收口到 HistoryRepository)。
 - UI/业务自建线程池：`PlayFragment`(PLAYED_RECORD_EXECUTOR/parseThreadPool)、`LocalVideoFrameLoader`/`LocalVideoAdapter` **已收口**到模块级执行器 `HeavyTaskUtil`；门禁 `checkModuleDependencies` 的 UI 层红线已从"只认 new*ThreadPool"收紧为拦截 `Executors.new*` 全部工厂 + `new *ThreadPoolExecutor`/`ForkJoinPool`。剩余 `Thunder`、subtitle `DefaultTaskExecutor` 未收口（随大页面拆分一并治理）。
-- EventBus 仍广泛(register/post ~37 处)；新事件仍有出现，未真正退为"仅兼容层"。
+- EventBus 已**全仓移除**（app + download，依赖已从 classpath 删除，仅剩注释里的历史说明）；跨页/模块事件一律直调、
+  经 Facade 订阅接口或明确监听器，禁止再引入（AGENTS §五，门禁含 app 层 EventBus 红线）。
 - ui-kit:app 内已建 `com.github.tvbox.osc.ui.kit`(§2.7 第一阶段),迁入 6 个纯净组件;
   播放器/业务耦合视图(Player*View/FrostedGlassUtil)仍留 widget 包。
 - 直播偏好已收口:`util.LiveConfig` 门面(connectTimeout/showTime/showNetSpeed/channelReverse/crossGroup/
@@ -53,8 +56,8 @@
   已合并:LiveSettingDialog↔Right / DownloadSeriesDialog↔Right / PlayingControlDialog↔Right。
   说明:AllVodSeriesBottom↔Right 是**刻意差异**(Bottom 本地 RoundChip 网格单选,Right 复用
   DetailActivity 的 SeriesAdapter+flags 且 onDismiss 复位 grid)——不强行合并,保持两套适配器契约。
-- DownloadEvent 自 common/event 迁入 download 模块(事件归业务模块,§2.8);common 仅剩
-  RefreshEvent/ServerEvent(app 用)、LogEvent(common 内用)、HistoryStateEvent/TopStateEvent(无引用残留)。
+- 事件类已全部删除（随 EventBus 退役）：`DownloadEvent`/`RefreshEvent`/`ServerEvent`/`LogEvent`/
+  `HistoryStateEvent`/`TopStateEvent` 均无残留源码，跨页/模块事件改直调或 Facade 订阅接口（AGENTS §五）。
 - DownloadFragment 不再直连 EventBus:下载结构变更走 DownloadFacade.DownloadStatusListener、
   任务级进度走新增 DownloadFacade.TaskProgressListener(onTaskProgress(taskId))——改进.txt §五
   "跨页状态由 Facade 提供订阅"落地;UI 零 org.greenrobot.eventbus import。
@@ -65,10 +68,11 @@
 | PlayFragment.java | ~1610 | PlayViewModel/Coordinator/PlayerSession(SubtitleCoordinator/PlayHistoryRepository 已抽,见 §8) |
 | DetailActivity.java | ~1276 | DetailViewModel/Repository/EpisodeSelectionState（已拆出少量 Helper） |
 | DownloadFragment.java | ~1208 | 已大量走 Facade，可继续薄化 |
-| SourceViewModel.java | ~970 | 源元信息已走 `SourceConfigApi` 契约；type0/1 内联解析/EventBus 仍留(进一步依赖注入化) |
+| SourceViewModel.java | ~970 | 源元信息已走 `SourceConfigApi` 契约；type0/1 内联解析仍留(进一步依赖注入化；EventBus 侧已改直调监听) |
 
 ## 6. 现代化（§七·五）— 全部未启动（符合"最后做"）
-Exo→Media3、EventBus→Flow/接口、Hawk→DataStore、Java→Kotlin 渐进、Hilt（按需）、ui-common→ui-kit 拆分。
+Exo→Media3、Hawk→DataStore、Java→Kotlin 渐进、Hilt（按需）。（EventBus→直调/明确监听接口**已完成**，见 §4；ui-common→ui-kit 见下方现状口径）
+现状口径：`:ui-common` 已并入 `:app`（主题 JSON 在 `app/src/main/assets/theme/`、`generateThemeColors` 任务在 `app/build.gradle`、公共资源在 `app/src/main/res/`），ui-kit 组件已在 app 内，只余"组件成熟后再评估拆模块"。
 
 ## 7. 近期可安全推进清单（按收益）
 1. ✅ `ParseBean` 已迁 `:core-model` 并纯化：移除 Base64(mixUrl)/proxy 替换依赖；行为收敛到
@@ -87,7 +91,7 @@ Exo→Media3、EventBus→Flow/接口、Hawk→DataStore、Java→Kotlin 渐进�
 7. ⏸ feature 模块化、Media3/DataStore/Hilt（长期）。
 
 ## 8. 边界规则抽查结果（§六逐条）
-- ✅ app 无 getCSP / UI 无裸建 OkHttpClient / core-model 无 android 依赖 / download 无 :spider 依赖。
+- ✅ app 无 getCSP / UI 无裸建 OkHttpClient / `:common`（原 core-model）无 android 依赖 / `:download` 只经 `:spider` 公开契约（原 `:spider-api`，现契约与实现同模块，边界由源码门禁守）。
 - ⚠️ 播放器收口第一步:新增 `player/KernelTrackSupport` 能力接口,IJK/Exo 各自实现,
   `PlayerTrackHelper` 不再 instanceof 具体内核(app 内 UI 已无内核强转);轨道切换/内置字幕回调/
   进度恢复语义收敛到接口。
@@ -543,12 +547,12 @@ Exo→Media3、EventBus→Flow/接口、Hawk→DataStore、Java→Kotlin 渐进�
 | 项 | 状态 | 前置/说明 |
 |---|---|---|
 | :playback / feature-* 模块 | ❌ 未建 | 阶段三/四;需真机回归环境 |
-| :core-network 杂项袋拆分 | ✅ 完成 | AES/MD5→:core-utils、urlhttp 旧栈删除、AdBlocker→:core-utils、SubUrlResolver(s)→:spider、LOG/AppLog→:core-storage(5bf1d01d);util 余纯网络职责 |
+| :core-network 杂项袋拆分 | ✅ 完成 | AES/MD5→:core-utils、urlhttp 旧栈删除、AdBlocker→:core-utils、SubUrlResolver(s)→:spider、LOG/AppLog→:core-storage(5bf1d01d);util 余纯网络职责（现状：`:core-utils` 已并入 `:common`，包名不变） |
 | 字符串通道 SpiderContentApi | ⚠️ 澄清:typed 底座,非删除项 | typed 实现(SpiderHome/Detail/SearchImpl)内部经 SpiderContentImpl 拉取后再解析,string 通道是运行底座;可治理点=收窄 app 直用面(SourceViewModel typed-first+fallback),需真机背书(见评估 §H) |
 | SourceViewModel type0/1/4 契约化 | ⏳ 解析层已收口 | typed 解析已与 VM 同源(AbsXmlParser,0cce8442);VM type0/1/4 六入口 typed-first 收敛为行为面,需逐源真机回归(见评估 §J/K5) |
 | 播放器内核收口 | ⚠️ | UI 层内核直用清零(SettingActivity DoT 收口 PlayerTrackHelper,45ea6745);MyVideoView 仍 7 文件 import(播放器全驱动 P1-P4 待真机) |
 | Exo→Media3 | ❌ | player 仍 exoplayer 2.18.7,media3 import 0 |
-| :ui-common / ui-kit 边界 | ✅ 达标 | ui-common 纯资源(0 java,107 res);ui-kit 15 组件无 Hawk/EventBus/ApiConfig/Activity 强转/自建线程池违例;拆独立模块待复用稳定(见评估 §I) |
+| :app 的 ui-kit / ui-common（原 `:ui-common` 已并入 `:app`） | ✅ 达标 | ui-common 纯资源(0 java,107 res，现为 app 内资源，主题 JSON 在 `app/src/main/assets/theme/`);ui-kit 15 组件无 Hawk/EventBus/ApiConfig/Activity 强转/自建线程池违例;拆独立模块待复用稳定(见评估 §I) |
 
 ### B. 大页面物理拆分(改进.txt §三,阶段三)
 > 行数实测于 HEAD 701bccb8(2026-09-06,Get-Content 计行,与 git HEAD 一致):

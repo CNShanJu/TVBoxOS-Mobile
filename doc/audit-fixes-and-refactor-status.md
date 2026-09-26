@@ -3,6 +3,8 @@
 > 本文件汇总 TVBoxOS-Mobile 多轮整改（安全/性能审计 + 模块边界路线图 改进.txt）
 > 的落地状态、关键改动点与真机回归矩阵。代码级验证：Debug/Release 双变体 BUILD SUCCESSFUL。
 
+> **模块现状（2026-09）**：全仓 9 个模块 `:app`/`:common`/`:core-storage`/`:player`/`:thirdparty`/`:log`/`:core-network`/`:spider`/`:download`。本文件中提到的 `:core-model`/`:core-utils`/`:state` 已合并进 `:common`，`:spider-api`→`:spider`，`:player-api`→`:player`，`:crash`/`:TabLayout`/`:ViewPager1Delegate`/`:quickjs`→`:thirdparty`，`:ui-common`→`:app`（主题 JSON 在 `app/src/main/assets/theme/`）。下文历史记录保留当年模块名。
+
 ## 0. 近期进展补充（2026-09-25）
 
 - **未推送改动全量复查 + 缺陷修复（一轮 review→fix 批次）**：对当时全部未 push 内容（6 个本地 commit + 工作区改动）做了四个域（下载/播放UI/检查更新/网络爬虫）并行审查 + 逐条读码复核，确认并修掉以下问题（均已过 `assembleDebug/assembleRelease/testDebugUnitTest/checkModuleDependencies`，单测 176 例 0 失败）：
@@ -110,16 +112,19 @@
   Activity 内不再持有 searchExecutorService/pauseRunnable/quickSearchData 等搜索状态。
 - 详情/播放页另有先期拆分的 `util/player/PlayParseHelper.java`（暂未被引用，见“待后续”）。
 
-### 1.9 模块化(改进.txt 第二/三阶段已落地部分)
+### 1.9 模块化(改进.txt 第二/三阶段已落地部分；当时的模块划分，现状见顶部「模块现状」)
 - 新增 `:core-model`（纯 Java，23 个共享 DTO：Movie/MovieSort/AbsXml/AbsSortXml/AbsJson/AbsSortJson/
   SourceBean/Subscription/VodInfo(+嵌套)/DownloadTask/IJKCode/Live*/Subtitle*/TmdbVodInfo/Source 等）。
+  现状：该模块已连同 `:core-utils`/`:state` 并入 `:common`（包名不变）。
 - 新增 `:core-storage`（android-library）：迁入 data/cache 包(Entity/DAO/AppDataManager/RoomDataManger/CacheManager)，
   已去除对 App 单例、spider ApiConfig、HistoryHelper/SystemConfig/Hawk 的依赖；Room schema 统一导出。
 - 原 `:common` 已更名挂接为 `:core-network`（projectDir=common，FQN 不变）；裁剪计划见
   `doc/phase2-core-modules-plan.md`。
+  现状：`:common` 与 `:core-network` 为两个并存模块——`:common` 承接纯模型/算法工具(AES/MD5/AdBlocker)/
+  系统状态(`.state.*`)，`:core-network` 只留网络职责；上述“更名挂接”是当时的一次性历史动作。
 
 ### 1.10 强类型蜘蛛契约(type3 试点,改进.txt §1/§4.3)
-- `:spider-api` 提供领域契约:`SpiderDetailApi`/`SpiderSearchApi`/`SpiderHomeApi`/`SpiderManualCheckApi`/
+- `:spider`（原 `:spider-api`，现契约与实现同在 `:spider`）提供领域契约:`SpiderDetailApi`/`SpiderSearchApi`/`SpiderHomeApi`/`SpiderManualCheckApi`/
   `PlayUrlResolverApi`(含 ResolveResult)/`MediaUrlUtil`/`SortParser`(首页/分类 JSON+XML 解析,XStream 白名单,纯静态)。
 - `:spider` 侧实现 `SpiderDetailImpl`/`SpiderSearchImpl`/`SpiderHomeImpl`/`SpiderManualCheckImpl`/`SpiderUrlResolverImpl`,
   解析下沉(spider 内拉串→Gson→Abs*/SortParser→返回类型化对象),链路日志 tag=`SpiderBridge`。
@@ -129,7 +134,7 @@
   (`SortParserTest`),排序/筛选解析可 JVM 验证。
 
 ### 1.11 playback 会话层原型(roadmap 2.1 第一部分)
-- `:player-api` 新增 `PlaybackSessions`:会话键注册表(bind/unbind/observe/release + 内建 PLAYER 日志)。
+- `:player`（原 `:player-api`，现契约与实现同在 `:player`）新增 `PlaybackSessions`:会话键注册表(bind/unbind/observe/release + 内建 PLAYER 日志)。
 - app 新增 `VideoViewPlayerApi`(⑥ 适配层):包 doikki VideoView,以**轮询 getCurrentPlayState 差分**映射
   引擎无关 `PlayState`,不向共享视图挂额外 OnStateChangeListener(避免与既有 Controller 监听冲突)。
 - `AppCompositionRoot` 注册 PlayerFactory type=1(IJK)/type=2(Exo) adapter(工厂语义与 PlayerHelper.updateCfg 对齐)。

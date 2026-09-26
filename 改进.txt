@@ -2,6 +2,14 @@
 
 不建议立即新增六七个模块全面重写。应先建立依赖规则，再按收益拆物理模块。
 
+现状（与 AGENTS.md §二 同步维护）：全仓 **9 个 Gradle 模块** —— :app、:common、:core-network、:core-storage、:log、:player、:spider、:download、:thirdparty。
+本文件下文提到的模块名有些已合并（下文历史/建议部分保留原样）：
+- :core-model + :core-utils + :state → :common（纯模型/算法工具/系统状态，包名不变）
+- :spider-api → :spider、:player-api → :player（契约与实现同模块，契约包名不变）
+- :crash + :TabLayout + :ViewPager1Delegate + :quickjs → :thirdparty（纯第三方归堆，不依赖任何本仓模块）
+- :ui-common → :app（主题 JSON 在 app/src/main/assets/theme/，generateThemeColors 任务在 app/build.gradle）
+契约与实现合到同一模块后，边界不再靠拆 Gradle 模块保证，而是靠 **checkModuleDependencies 源码层门禁**：app/UI 禁止直连 :spider 的 ApiConfig/JsLoader/PlayUrlResolver，禁止 getCSP()/Hawk/EventBus/DownloadManager.get()/自建线程池与 OkHttpClient。
+
 一、目标架构
 建议最终分成四层：
 
@@ -346,31 +354,30 @@ Java 大类逐步 Kotlin 化
 添加模块依赖检查和测试门禁
 
 
-八、建议的最终模块清单
-:app                    应用入口、导航、依赖组装
-:core-model             纯业务模型
+八、建议的最终模块清单（目标清单；现状 9 模块见文首“现状”段）
+已落地（现状 9 个）：
+:app                    应用入口、导航、依赖组装（含原 :ui-common 的主题与公共资源）
+:common                 纯模型 + 算法工具 + 系统状态（原 :core-model/:core-utils/:state）
 :core-network           网络策略和客户端
 :core-storage           Room、配置、备份
-:ui-common              主题与资源
-:ui-kit                 可复用 View（成熟后再拆）
-:spider-api             爬虫契约
-:spider                 QuickJS/Jar 爬虫实现
+:log                    日志
+:spider                 爬虫实现 + 爬虫契约（原 :spider-api 已并入）
 :download               下载实现及 Facade
-:player-api             播放契约
-:player                 播放内核实现
+:player                 播放内核实现 + 播放契约（原 :player-api 已并入）
+:thirdparty             纯第三方归堆（TabLayout/CustomActivityOnCrash/QuickJS，不依赖本仓模块）
+
+仍为目标的（未建，见 AGENTS.md §二/§八）：
+:ui-kit                 可复用 View（成熟后再拆）
 :playback                播放业务协调、字幕、后台服务
 :remote                  局域网遥控（后期）
-:log
-:state
-:quickjs
-:crash
-:vendor-tab              可选合并 TabLayout/ViewPager1Delegate
+:vendor-tab              可选合并 TabLayout/ViewPager1Delegate（已并入 :thirdparty）
 核心不是模块数量，而是这三条：
 
 UI 只依赖门面和接口。
 业务模块只通过契约协作。
 网络、存储、模型和 UI 组件只有一个权威实现。
 当前最值得先做的是“补完现有门面调用”，然后抽 core-model + spider-api。这两步完成后，下载、爬虫、播放器和 app 的职责才会真正独立。
+（这两步已落地并按上文合模块收敛；接下来的重心是 AGENTS.md §三的“大页面拆分”与 §六红线不反弹。）
 
 
 九、发布与版本纪律（与 AGENTS.md 同步维护）
