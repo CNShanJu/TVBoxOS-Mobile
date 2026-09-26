@@ -35,17 +35,20 @@ task clean(type: Delete) {
 // 运行:./gradlew checkModuleDependencies(后续可挂到 check/CI)。
 // ------------------------------------------------------------------
 def forbiddenModuleDeps = [
-        ':quickjs'        : [':app', ':core-network', ':core-storage', ':download', ':player', ':spider'],
-        ':core-storage'   : [':app', ':download', ':player', ':quickjs', ':spider', ':thirdparty'],
-        ':download'       : [':app', ':quickjs', ':thirdparty'],
-        ':common'         : [':app', ':core-network', ':core-storage', ':download', ':player', ':quickjs', ':spider', ':thirdparty'],
-        ':core-network'   : [':app', ':common', ':download', ':player', ':quickjs', ':spider', ':thirdparty'],
-        ':log'            : [':app', ':core-network', ':core-storage', ':download', ':player', ':spider'],
-        ':player'         : [':app', ':download', ':quickjs', ':spider', ':thirdparty'],
-        ':thirdparty'     : [':app', ':core-network', ':core-storage', ':download', ':player', ':spider'],
+        // 纯第三方归堆:不含任何本仓模块
+        ':thirdparty'     : [':app', ':common', ':core-network', ':core-storage', ':download', ':log', ':player', ':spider'],
+        // 基础设施层
+        ':log'            : [':app', ':common', ':core-network', ':core-storage', ':download', ':player', ':spider', ':thirdparty'],
+        ':common'         : [':app', ':core-network', ':core-storage', ':download', ':player', ':spider', ':thirdparty'],
+        ':core-storage'   : [':app', ':download', ':player', ':spider', ':thirdparty'],
+        ':core-network'   : [':app', ':common', ':download', ':player', ':spider', ':thirdparty'],
+        // 业务实现层(契约与实现同模块)
+        ':spider'         : [':app', ':download', ':player'],
+        ':player'         : [':app', ':download', ':spider', ':thirdparty'],
+        ':download'       : [':app', ':thirdparty'],
 ]
 def moduleDir = [
-        ':app' : 'app', ':common' : 'common', ':core-network' : 'core-network', ':core-storage' : 'core-storage', ':download' : 'download', ':log' : 'log', ':player' : 'player', ':quickjs' : 'quickjs', ':spider' : 'spider', ':thirdparty' : 'thirdparty'
+        ':app' : 'app', ':common' : 'common', ':core-network' : 'core-network', ':core-storage' : 'core-storage', ':download' : 'download', ':log' : 'log', ':player' : 'player', ':spider' : 'spider', ':thirdparty' : 'thirdparty'
 ]
 
 
@@ -126,6 +129,31 @@ tasks.register('checkModuleDependencies') {
                         if (pat.matcher(line).find()) {
                             violations << "UI 层红线[${label}]: ${f.path}:${idx + 1}"
                         }
+                    }
+                }
+            }
+        }
+        // app 层红线:api/impl 合模块后的"墙"。:spider 的契约与实现现在同模块,故必须在源码层
+        // 拦住 app 直连实现单例/具体爬虫类(AGENTS §二/§十):一律经 spider 契约
+        // (SourceConfigProviders/ParseConfigProviders/LiveChannelConfigApi/IjkCodecConfigProviders)。
+        // 下面是仅存的装配/注入点与两条遗留待迁移项,新增直连一律门禁失败。
+        def spiderImplPattern = ~/(com\.github\.tvbox\.osc\.api\.ApiConfig|com\.github\.catvod\.crawler\.(JsLoader|PlayUrlResolver))/
+        def spiderImplAllow = [
+                'di\\AppCompositionRoot.java',          // 组合根:契约适配 ApiConfig(唯一装配点)
+                'base\\App.java',                        // 启动:context/局域网地址注入 + JsLoader 预热
+                'server\\ControlManager.java',           // 局域网地址注入
+                'ui\\activity\\FastSearchActivity.kt',   // 遗留:JsLoader.stopAll/load(待迁移,见 AGENTS §二)
+                'util\\EpisodeDownloadBatch.kt',         // 遗留:PlayUrlResolver 直调(待迁移,见 AGENTS §二)
+        ]
+        appSourceDirs.each { dir ->
+            if (!dir.exists()) return
+            dir.eachFileRecurse(groovy.io.FileType.FILES) { f ->
+                if (!(f.name.endsWith('.java') || f.name.endsWith('.kt'))) return
+                def path = f.path.replace('/', '\\')
+                if (spiderImplAllow.any { path.endsWith(it) }) return
+                f.getText('UTF-8').readLines().eachWithIndex { line, idx ->
+                    if (spiderImplPattern.matcher(line).find()) {
+                        violations << "app 层红线[爬虫实现直连,应经 spider 契约]: ${f.path}:${idx + 1}"
                     }
                 }
             }
